@@ -26,6 +26,7 @@ BDIS（Biomedicine Digital Information System，生物医药数字信息系统�
 ```text
 frontend/          Next.js 前端工程
 backend/           Spring Boot 后端工程
+flyway/            独立数据库迁移模块
 deploy/nginx/      nginx 反向代理配置
 docs/              项目需求与设计文档
 ```
@@ -58,20 +59,28 @@ Docker Compose：
 pnpm compose:up
 ```
 
+数据库迁移：
+
+```bash
+pnpm dev:infra
+pnpm db:migrate
+pnpm db:validate
+```
+
 提交前可运行：
 
 ```bash
 pnpm validate
 ```
 
-更多命令说明见 [docs/10_脚本命令使用指南_V1.0_全组_20260707.md](docs/10_脚本命令使用指南_V1.0_全组_20260707.md)。
+更多命令说明见 [docs/10_脚本命令使用指南_V1.0_全组_20260707.md](docs/10_脚本命令使用指南_V1.0_全组_20260707.md)。数据库迁移规则见 [docs/10_Flyway数据库迁移规则_V1.0_全组_20260708.md](docs/10_Flyway数据库迁移规则_V1.0_全组_20260708.md)。
 
 ## 配置隔离
 
 不同成员的数据库用户名、密码、端口等本地配置不应写死进代码，也不要提交 `.env`。
 
 - Docker Compose 会自动读取项目根目录的 `.env`。
-- 直接运行后端时，Spring Boot 会尝试读取当前目录或上一级目录的 `.env`，也可以读取系统环境变量，例如 `MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`。
+- 直接运行后端时，Spring Boot 会尝试读取当前目录或上一级目录的 `.env`，也可以读取系统环境变量，例如 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`。
 - Windows 可在 IntelliJ IDEA / VS Code 运行配置中填写环境变量，或使用 PowerShell 设置临时变量。
 - Linux 可在 shell 中使用 `export MYSQL_USER=...`，或通过 IDE 运行配置注入。
 - `.env.example` 只作为字段模板，真实 `.env` 已被 `.gitignore` 忽略。
