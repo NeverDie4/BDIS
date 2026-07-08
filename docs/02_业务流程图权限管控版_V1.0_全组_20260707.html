@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生物医药数字信息系统业务流程图（权限管控版）</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --border: #d8e1eb;
+      --line: #9fb1c7;
+      --blue: #2563eb;
+      --green: #2f855a;
+      --teal: #0f766e;
+      --amber: #b7791f;
+      --rose: #be123c;
+      --slate: #475569;
+      --violet: #6d28d9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    .page {
+      width: min(1440px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 34px 0 48px;
+    }
+
+    header {
+      margin-bottom: 22px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 3vw, 38px);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .identity-container {
+      padding: 18px;
+      border: 3px solid #334155;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+    }
+
+    .container-title {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .container-badge {
+      display: grid;
+      place-items: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      color: #ffffff;
+      background: var(--slate);
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .container-title h2 {
+      margin: 0 0 5px;
+      font-size: 23px;
+      line-height: 1.3;
+    }
+
+    .container-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .control-card {
+      min-height: 94px;
+      padding: 13px;
+      border: 1px solid #dbe4ef;
+      border-left: 6px solid var(--slate);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .control-card h3 {
+      margin: 0 0 7px;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    .control-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 0;
+    }
+
+    .stage {
+      position: relative;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .stage-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px 14px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .stage-title h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.3;
+    }
+
+    .stage-title span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid-4,
+    .grid-3,
+    .grid-5 {
+      display: grid;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-5 {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .card {
+      min-height: 118px;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+      border-left: 6px solid var(--accent);
+      border-radius: 8px;
+      background: #fbfdff;
+      overflow: hidden;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .mini-flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 8px;
+      border: 1px solid color-mix(in srgb, var(--accent), white 72%);
+      border-radius: 5px;
+      color: #243447;
+      background: color-mix(in srgb, var(--accent), white 92%);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: normal;
+    }
+
+    .mini-arrow {
+      color: var(--accent);
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .connector {
+      display: grid;
+      place-items: center;
+      min-height: 46px;
+    }
+
+    .downline {
+      position: relative;
+      width: 2px;
+      height: 32px;
+      background: var(--line);
+    }
+
+    .downline::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -1px;
+      width: 12px;
+      height: 12px;
+      border-right: 2px solid var(--line);
+      border-bottom: 2px solid var(--line);
+      transform: translateX(-50%) rotate(45deg);
+      background: transparent;
+    }
+
+    .hub {
+      display: grid;
+      grid-template-columns: 1.1fr 1.4fr 1.1fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .hub-main {
+      display: grid;
+      place-items: center;
+      min-height: 150px;
+      padding: 20px;
+      border: 2px solid #24445c;
+      border-radius: 8px;
+      background: #ffffff;
+      text-align: center;
+    }
+
+    .hub-main h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+
+    .hub-main p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .hub-side {
+      display: grid;
+      gap: 10px;
+    }
+
+    .hub-item {
+      min-height: 68px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fbfdff;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .hub-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .accent-blue { --accent: var(--blue); }
+    .accent-green { --accent: var(--green); }
+    .accent-teal { --accent: var(--teal); }
+    .accent-amber { --accent: var(--amber); }
+    .accent-rose { --accent: var(--rose); }
+    .accent-slate { --accent: var(--slate); }
+    .accent-violet { --accent: var(--violet); }
+
+    .logic-note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px dashed #b8c5d5;
+      border-radius: 8px;
+      color: #475569;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+
+    @media (max-width: 1180px) {
+      .control-grid,
+      .grid-4,
+      .grid-3,
+      .grid-5,
+      .hub {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hub-main {
+        grid-column: 1 / -1;
+        order: -1;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 28px, 680px);
+        padding-top: 24px;
+      }
+
+      .identity-container {
+        padding: 12px;
+      }
+
+      .container-title {
+        grid-template-columns: 1fr;
+      }
+
+      .control-grid,
+      .grid-4,
+      .grid-3,
+      .grid-5,
+      .hub {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        padding: 14px;
+      }
+
+      .connector {
+        min-height: 36px;
+      }
+
+      .downline {
+        height: 26px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        width: 100%;
+        padding: 0;
+      }
+
+      .identity-container,
+      .stage {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>生物医药数字信息系统业务流程图（权限管控版）</h1>
+      <p class="subtitle">以统一身份认证、角色权限、层级授权和操作审计为管控体系，支撑并约束全流程业务运行。</p>
+    </header>
+
+    <section class="identity-container" aria-label="统一身份认证与权限管控体系">
+      <div class="container-title">
+        <div class="container-badge">管控</div>
+        <div>
+          <h2>统一身份认证与权限管控体系</h2>
+          <p>统一管理用户身份、角色权限、层级关系、数据访问范围和关键操作记录，覆盖下方全部业务流程。</p>
+        </div>
+      </div>
+
+      <div class="control-grid" aria-label="用户管理控制点">
+        <article class="control-card">
+          <h3>用户账号管理</h3>
+          <p>教师、学生、科研人员、培训人员、机构用户等账号统一维护。</p>
+        </article>
+        <article class="control-card">
+          <h3>角色权限管理</h3>
+          <p>按角色控制菜单、功能、文件、数据查询和业务办理权限。</p>
+        </article>
+        <article class="control-card">
+          <h3>层级与数据范围</h3>
+          <p>按组织、部门、团队、项目等层级配置可见和可操作范围。</p>
+        </article>
+        <article class="control-card">
+          <h3>访问与操作审计</h3>
+          <p>记录登录、查询、上传、审核、认定、下载等关键操作。</p>
+        </article>
+      </div>
+
+      <section class="flow" aria-label="权限管控下的业务流程">
+        <section class="stage" aria-label="统一入口与鉴权">
+          <div class="stage-title">
+            <h2>01 统一入口与鉴权</h2>
+            <span>所有用户和系统入口先完成身份识别、权限判断和数据范围确认。</span>
+          </div>
+          <div class="grid-4">
+            <article class="card accent-green">
+              <h3>科研人员 / 科研机构</h3>
+              <p>查询资源分布、生长数据，参与课题研究和成果转化。</p>
+            </article>
+            <article class="card accent-blue">
+              <h3>教师 / 学生</h3>
+              <p>进入课程、课题、教学视频、培训记录和评价结果服务。</p>
+            </article>
+            <article class="card accent-teal">
+              <h3>手机 APP 端</h3>
+              <p>现场采集生长数据、拍照定位、上传样本并同步数据。</p>
+            </article>
+            <article class="card accent-slate">
+              <h3>校内 SOAP 系统</h3>
+              <p>经接口鉴权后进行数据交换，面向校内师生提供数据服务。</p>
+            </article>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><div class="downline"></div></div>
+
+        <section class="stage" aria-label="数据采集与交换">
+          <div class="stage-title">
+            <h2>02 数据采集与交换</h2>
+            <span>在权限控制下，把现场数据、校内系统数据、教学科研资料和业务材料统一接入。</span>
+          </div>
+          <div class="grid-4">
+            <article class="card accent-teal">
+              <h3>移动端采集</h3>
+              <p>手机 APP 获取生长数据、图片、位置和现场记录。</p>
+              <div class="mini-flow">
+                <span class="pill">采集</span><span class="mini-arrow">→</span><span class="pill">校验</span><span class="mini-arrow">→</span><span class="pill">同步</span>
+              </div>
+            </article>
+            <article class="card accent-slate">
+              <h3>SOAP 数据交换</h3>
+              <p>与校内系统完成接口调用、数据获取、返回和交换记录。</p>
+              <div class="mini-flow">
+                <span class="pill">请求</span><span class="mini-arrow">→</span><span class="pill">交换</span><span class="mini-arrow">→</span><span class="pill">入库</span>
+              </div>
+            </article>
+            <article class="card accent-blue">
+              <h3>后台录入与上传</h3>
+              <p>维护品种、基地、课程、课题、培训、评价和业绩材料。</p>
+              <div class="mini-flow">
+                <span class="pill">录入</span><span class="mini-arrow">→</span><span class="pill">上传</span><span class="mini-arrow">→</span><span class="pill">提交</span>
+              </div>
+            </article>
+            <article class="card accent-amber">
+              <h3>文件与视频资料</h3>
+              <p>接入图谱、课件、线上教学视频、培训素材、申报附件等文件。</p>
+              <div class="mini-flow">
+                <span class="pill">上传</span><span class="mini-arrow">→</span><span class="pill">分类</span><span class="mini-arrow">→</span><span class="pill">归档</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><div class="downline"></div></div>
+
+        <section class="stage" aria-label="数据资源中心">
+          <div class="stage-title">
+            <h2>03 数据资源中心</h2>
+            <span>统一沉淀系统运行所需的核心数据、文件资料和权限关联关系。</span>
+          </div>
+          <div class="hub">
+            <div class="hub-side">
+              <div class="hub-item"><strong>资源基础库</strong>中药材品种、产地、基地、分布地图、图谱样本。</div>
+              <div class="hub-item"><strong>生长数据库</strong>生长环境、形态指标、采集记录、数据来源。</div>
+            </div>
+            <div class="hub-main">
+              <div>
+                <h3>统一数据与文件资源池</h3>
+                <p>数据存储、文件存储、图谱比对、查询检索、上传下载、自动备份。</p>
+              </div>
+            </div>
+            <div class="hub-side">
+              <div class="hub-item"><strong>教学科研库</strong>实验课程、线上教学、课题研究、成果转化材料。</div>
+              <div class="hub-item"><strong>管理业务库</strong>培训记录、评价结果、申报素材、工作业绩、权限关系。</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><div class="downline"></div></div>
+
+        <section class="stage" aria-label="核心业务处理">
+          <div class="stage-title">
+            <h2>04 核心业务处理</h2>
+            <span>权限管控体系下的 5 类业务功能域，按授权范围办理、跟踪、审核和归档。</span>
+          </div>
+          <div class="grid-5">
+            <article class="card accent-green">
+              <h3>中药材资源与生长数据管理</h3>
+              <p>资源地图查询、生长数据采集、图谱比对、数据分析和溯源。</p>
+              <div class="mini-flow">
+                <span class="pill">采集</span><span class="mini-arrow">→</span><span class="pill">分析</span><span class="mini-arrow">→</span><span class="pill">溯源</span>
+              </div>
+            </article>
+            <article class="card accent-blue">
+              <h3>教学科研资源管理</h3>
+              <p>实验课程、线上教学、课题研究、参与过程和成果材料管理。</p>
+              <div class="mini-flow">
+                <span class="pill">课程</span><span class="mini-arrow">→</span><span class="pill">课题</span><span class="mini-arrow">→</span><span class="pill">成果</span>
+              </div>
+            </article>
+            <article class="card accent-amber">
+              <h3>教学培训过程管理</h3>
+              <p>培训素材、教学培训过程、结果、反馈和复用情况记录。</p>
+              <div class="mini-flow">
+                <span class="pill">素材</span><span class="mini-arrow">→</span><span class="pill">过程</span><span class="mini-arrow">→</span><span class="pill">结果</span>
+              </div>
+            </article>
+            <article class="card accent-rose">
+              <h3>评价体系与申报管理</h3>
+              <p>评价标准维护、评价过程跟踪、评价结果归档和申报材料沉淀。</p>
+              <div class="mini-flow">
+                <span class="pill">标准</span><span class="mini-arrow">→</span><span class="pill">评价</span><span class="mini-arrow">→</span><span class="pill">申报</span>
+              </div>
+            </article>
+            <article class="card accent-teal">
+              <h3>工作业绩认定管理</h3>
+              <p>业绩录入、审核、编辑、分类分级统计和认定标准更新。</p>
+              <div class="mini-flow">
+                <span class="pill">填报</span><span class="mini-arrow">→</span><span class="pill">审核</span><span class="mini-arrow">→</span><span class="pill">认定</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><div class="downline"></div></div>
+
+        <section class="stage" aria-label="审核追踪归档">
+          <div class="stage-title">
+            <h2>05 审核、追踪与归档</h2>
+            <span>关键业务结果进入审核确认、过程追踪、历史归档和自动备份。</span>
+          </div>
+          <div class="grid-3">
+            <article class="card accent-violet">
+              <h3>过程跟踪</h3>
+              <p>记录采集、上传、教学培训、评价、业绩审核等全过程节点。</p>
+            </article>
+            <article class="card accent-rose">
+              <h3>审核确认</h3>
+              <p>对课程资料、课题成果、评价结果、业绩材料等进行审核认定。</p>
+            </article>
+            <article class="card accent-slate">
+              <h3>归档备份</h3>
+              <p>归档业务数据和文件，保留历史版本、追溯记录和备份数据。</p>
+            </article>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><div class="downline"></div></div>
+
+        <section class="stage" aria-label="应用输出服务">
+          <div class="stage-title">
+            <h2>06 应用输出与服务</h2>
+            <span>按用户身份和权限范围输出查询、教学、申报、统计和下载服务。</span>
+          </div>
+          <div class="grid-4">
+            <article class="card accent-green">
+              <h3>地图与数据查询</h3>
+              <p>重庆市中药材分布地图、品种分布地点、生长数据和溯源信息查询。</p>
+            </article>
+            <article class="card accent-blue">
+              <h3>教学科研服务</h3>
+              <p>实验课程学习、线上视频教学、课题参与、成果材料查询与下载。</p>
+            </article>
+            <article class="card accent-rose">
+              <h3>评价申报服务</h3>
+              <p>评价过程与结果查询，非遗申请等申报材料汇总和支撑数据输出。</p>
+            </article>
+            <article class="card accent-teal">
+              <h3>业绩与管理统计</h3>
+              <p>工作业绩分类分级统计、认定结果输出、权限范围内操作记录查询。</p>
+            </article>
+          </div>
+
+          <div class="logic-note">
+            权限管控表达：用户管理不是普通业务卡片，而是覆盖全部流程的统一管控体系；所有业务入口、采集、处理、审核和输出都在账号、角色、层级权限和审计约束内运行。
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

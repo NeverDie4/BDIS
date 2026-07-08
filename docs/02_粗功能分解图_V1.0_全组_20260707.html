@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生物医药数字信息系统粗功能分解图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7fb;
+      --paper: #ffffff;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --line: #cbd5e1;
+      --border: #d8e1eb;
+      --green: #2f855a;
+      --blue: #2563eb;
+      --amber: #b7791f;
+      --rose: #be123c;
+      --teal: #0f766e;
+      --slate: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    .page {
+      width: min(1360px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 34px 0 46px;
+    }
+
+    header {
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 3vw, 38px);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .system-node {
+      position: relative;
+      margin: 0 auto 32px;
+      padding: 22px 28px;
+      width: min(760px, 100%);
+      background: var(--paper);
+      border: 2px solid #24445c;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 18px 38px rgba(31, 41, 55, 0.08);
+    }
+
+    .system-node::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -32px;
+      width: 2px;
+      height: 32px;
+      background: var(--line);
+    }
+
+    .system-node h2 {
+      margin: 0 0 6px;
+      font-size: 24px;
+    }
+
+    .system-node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .layer {
+      position: relative;
+      margin-top: 26px;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.055);
+    }
+
+    .layer::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -27px;
+      width: 2px;
+      height: 27px;
+      background: var(--line);
+    }
+
+    .layer-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: baseline;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .layer-title h2 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .layer-title span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .domain {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-top: 6px solid var(--accent);
+      border-radius: 8px;
+      background: #fbfdff;
+      overflow: hidden;
+    }
+
+    .domain-head {
+      padding: 15px 16px 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.92));
+      border-bottom: 1px solid #e8eef5;
+    }
+
+    .domain-code {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 3px 8px;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent), white 88%);
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .domain h3 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.34;
+    }
+
+    .domain p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .cap-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 14px;
+      list-style: none;
+    }
+
+    .cap-list li {
+      padding: 10px 11px;
+      min-height: 48px;
+      border: 1px solid #e3eaf2;
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 14px;
+    }
+
+    .cap-list strong {
+      color: var(--ink);
+    }
+
+    .domain:nth-child(1) { --accent: var(--green); }
+    .domain:nth-child(2) { --accent: var(--blue); }
+    .domain:nth-child(3) { --accent: var(--amber); }
+    .domain:nth-child(4) { --accent: var(--rose); }
+    .domain:nth-child(5) { --accent: var(--teal); }
+    .domain:nth-child(6) { --accent: var(--slate); }
+
+    @media (max-width: 1180px) {
+      .domain-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 28px, 680px);
+        padding-top: 24px;
+      }
+
+      .system-node::after,
+      .layer::before {
+        display: none;
+      }
+
+      .domain-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        width: 100%;
+        padding: 0;
+      }
+
+      .system-node,
+      .layer {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>生物医药数字信息系统粗功能分解图</h1>
+      <p class="subtitle">按功能域进行粗粒度拆分，突出业务边界与关键能力，不展开底层技术和平台支撑细项。</p>
+    </header>
+
+    <section class="system-node" aria-label="系统总目标">
+      <h2>生物医药数字信息系统</h2>
+      <p>生长数据管理 · 教学科研管理 · 教学培训记录 · 评价申报管理 · 业绩认定管理 · 用户管理</p>
+    </section>
+
+    <section class="layer" aria-label="功能域拆分">
+      <div class="layer-title">
+        <h2>功能域拆分</h2>
+        <span>仅保留系统整体功能域，能力点放在对应功能域内。</span>
+      </div>
+
+      <div class="domain-grid">
+        <article class="domain">
+          <div class="domain-head">
+            <span class="domain-code">功能域 01</span>
+            <h3>中药材资源与生长数据管理</h3>
+            <p>围绕中药材资源分布、生长过程数据和基础数据资产建设。</p>
+          </div>
+          <ul class="cap-list">
+            <li><strong>重庆市中药材分布网络地图</strong>：品种、地点、基地等在线查询。</li>
+            <li><strong>生长数据采集与存储</strong>：实时采集、图片文件归档、数据上传下载。</li>
+            <li><strong>校内系统与手机端通信</strong>：SOAP 数据交换、手机 APP 采集与同步。</li>
+            <li><strong>图谱比对、数据分析与溯源</strong>：图谱比对、数据对比、趋势统计和来源追踪。</li>
+          </ul>
+        </article>
+
+        <article class="domain">
+          <div class="domain-head">
+            <span class="domain-code">功能域 02</span>
+            <h3>教学科研资源管理</h3>
+            <p>支撑实验教学、课题研究、线上学习和成果沉淀。</p>
+          </div>
+          <ul class="cap-list">
+            <li><strong>实验课程存储</strong>：课程内容、实验材料、步骤和教学资料管理。</li>
+            <li><strong>线上教学资源</strong>：视频教学、课件、文档、图片等资源维护。</li>
+            <li><strong>课题研究存储</strong>：课题内容、研究过程、参与人员和过程材料归档。</li>
+            <li><strong>成果转化支撑</strong>：关联研究数据、成果材料和转化记录。</li>
+          </ul>
+        </article>
+
+        <article class="domain">
+          <div class="domain-head">
+            <span class="domain-code">功能域 03</span>
+            <h3>教学培训过程管理</h3>
+            <p>这里的培训按教学培训活动理解，重点记录过程、结果和素材沉淀。</p>
+          </div>
+          <ul class="cap-list">
+            <li><strong>培训素材制作与存储</strong>：培训课件、讲义、视频、案例等统一管理。</li>
+            <li><strong>教学培训过程记录</strong>：培训安排、参与情况、学习过程和过程材料记录。</li>
+            <li><strong>教学培训结果记录</strong>：考核结果、反馈评价、学习成果和统计结果归档。</li>
+            <li><strong>培训资料复用</strong>：面向教师、培训人员的培训内容查询和复用。</li>
+          </ul>
+        </article>
+
+        <article class="domain">
+          <div class="domain-head">
+            <span class="domain-code">功能域 04</span>
+            <h3>评价体系与申报管理</h3>
+            <p>围绕中药材评价过程、评价结果和申报材料形成闭环管理。</p>
+          </div>
+          <ul class="cap-list">
+            <li><strong>中药材评价体系</strong>：评价指标、评价规则、评价标准维护。</li>
+            <li><strong>评价过程跟踪</strong>：评价任务、过程记录、结果确认和历史追溯。</li>
+            <li><strong>申报素材管理</strong>：沉淀非遗申请等申报所需数据和佐证材料。</li>
+            <li><strong>评价结果归档</strong>：评价结果、统计报告和申报材料统一归档。</li>
+          </ul>
+        </article>
+
+        <article class="domain">
+          <div class="domain-head">
+            <span class="domain-code">功能域 05</span>
+            <h3>工作业绩认定管理</h3>
+            <p>按照学校现行业绩分类认定办法，完成业绩填报、审核和统计。</p>
+          </div>
+          <ul class="cap-list">
+            <li><strong>工作业绩录入与编辑</strong>：支持业绩填报、修改和材料上传。</li>
+            <li><strong>业绩审核与认定</strong>：实现提交、审核、退回、确认等流程。</li>
+            <li><strong>分级分类统计</strong>：按学校分类分级标准统计与认定。</li>
+            <li><strong>认定标准维护</strong>：支持分类、级别、规则和标准动态更新。</li>
+          </ul>
+        </article>
+
+        <article class="domain">
+          <div class="domain-head">
+            <span class="domain-code">功能域 06</span>
+            <h3>用户管理</h3>
+            <p>作为系统入口和权限控制功能域，支撑多类用户分层使用系统。</p>
+          </div>
+          <ul class="cap-list">
+            <li><strong>用户账号管理</strong>：教师、学生、科研人员、培训人员、机构用户等账号维护。</li>
+            <li><strong>角色权限管理</strong>：按角色配置菜单、功能、数据和文件访问权限。</li>
+            <li><strong>层级管理</strong>：支持组织、部门、团队、项目等层级关系维护。</li>
+            <li><strong>访问与操作记录</strong>：记录用户登录、数据访问和关键业务操作。</li>
+          </ul>
+        </article>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>

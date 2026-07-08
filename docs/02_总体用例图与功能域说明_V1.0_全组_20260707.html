@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>生物医药数字信息系统总体用例图与功能域说明</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --border: #d8e1eb;
+      --soft: #edf2f7;
+      --green: #2f855a;
+      --blue: #2563eb;
+      --amber: #b7791f;
+      --rose: #be123c;
+      --teal: #0f766e;
+      --slate: #475569;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    .page {
+      width: min(1500px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 34px 0 48px;
+    }
+
+    header {
+      margin-bottom: 22px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 3vw, 38px);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .panel {
+      margin-top: 22px;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.055);
+    }
+
+    .panel-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: baseline;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--soft);
+    }
+
+    .panel-title h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.3;
+    }
+
+    .panel-title span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .uml-scroll {
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+
+    .uml-diagram {
+      display: block;
+      width: 100%;
+      min-width: 1320px;
+      height: auto;
+      border: 1px solid #dbe4ef;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .uml-boundary {
+      fill: #ffffff;
+      stroke: #243447;
+      stroke-width: 3;
+      rx: 0;
+    }
+
+    .uml-boundary-label {
+      fill: #1f2937;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .uml-boundary-note {
+      fill: #64748b;
+      font-size: 13px;
+    }
+
+    .domain-frame {
+      fill: #fbfdff;
+      stroke: #e2e8f0;
+      stroke-width: 1.4;
+      rx: 8;
+    }
+
+    .domain-title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .actor-symbol {
+      fill: none;
+      stroke: #1f2937;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .actor-label {
+      fill: #1f2937;
+      font-size: 16px;
+      font-weight: 800;
+      text-anchor: middle;
+    }
+
+    .actor-note {
+      fill: #64748b;
+      font-size: 12px;
+      text-anchor: middle;
+    }
+
+    .association {
+      stroke: #475569;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      opacity: 0.38;
+    }
+
+    .usecase-shape {
+      fill: #f8fafc;
+      stroke: #475569;
+      stroke-width: 1.6;
+    }
+
+    .uc-resource .usecase-shape { fill: #eef8f2; stroke: var(--green); }
+    .uc-teaching .usecase-shape { fill: #eff6ff; stroke: var(--blue); }
+    .uc-training .usecase-shape { fill: #fff7e8; stroke: var(--amber); }
+    .uc-eval .usecase-shape { fill: #fff1f2; stroke: var(--rose); }
+    .uc-performance .usecase-shape { fill: #eefaf8; stroke: var(--teal); }
+    .uc-user .usecase-shape { fill: #f8fafc; stroke: var(--slate); }
+
+    .usecase-text {
+      fill: #1f2937;
+      font-size: 13px;
+      font-weight: 800;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1180px;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      border-bottom: 1px solid #e5edf5;
+      border-right: 1px solid #e5edf5;
+      vertical-align: top;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8fafc;
+      color: #243447;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    th:last-child,
+    td:last-child {
+      border-right: 0;
+    }
+
+    .domain-id {
+      font-weight: 800;
+      color: var(--blue);
+      white-space: nowrap;
+    }
+
+    .domain-name {
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px dashed #b8c5d5;
+      border-radius: 8px;
+      color: #475569;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 28px, 680px);
+        padding-top: 24px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .page {
+        width: 100%;
+        padding: 0;
+      }
+
+      .panel {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+
+      th {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>生物医药数字信息系统总体用例图与功能域说明</h1>
+      <p class="subtitle">根据粗功能分解图调整总体用例图，突出参与者、系统边界、六大功能域和核心用例之间的关联。</p>
+    </header>
+
+    <section class="panel" aria-label="总体用例图">
+      <div class="panel-title">
+        <h2>一、总体用例图</h2>
+        <span>矩形内为系统边界和业务用例，外侧为教师、学生、科研人员、采集端、评价申报人员、业绩审核人员、管理员和外部系统。</span>
+      </div>
+
+      <div class="uml-scroll">
+        <svg class="uml-diagram" viewBox="0 0 1700 1430" role="img" aria-label="生物医药数字信息系统 UML 总体用例图">
+          <defs>
+            <g id="actor-stick">
+              <circle class="actor-symbol" cx="0" cy="-36" r="16"></circle>
+              <path class="actor-symbol" d="M 0 -20 L 0 20"></path>
+              <path class="actor-symbol" d="M -30 -2 L 30 -2"></path>
+              <path class="actor-symbol" d="M 0 20 L -26 58"></path>
+              <path class="actor-symbol" d="M 0 20 L 26 58"></path>
+            </g>
+          </defs>
+
+          <rect x="0" y="0" width="1700" height="1430" fill="#ffffff"></rect>
+          <rect x="300" y="50" width="1100" height="1320" class="uml-boundary"></rect>
+          <text x="335" y="92" class="uml-boundary-label">生物医药数字信息系统</text>
+          <text x="335" y="118" class="uml-boundary-note">系统边界内按需求分析拆分为六个功能域，每个功能域保留核心业务用例。</text>
+
+          <g id="actor-collector" transform="translate(130 245)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">采集人员 / 手机 APP</text>
+            <text class="actor-note" x="0" y="101">现场采集与同步</text>
+          </g>
+          <g id="actor-teacher" transform="translate(130 485)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">教师 / 学生</text>
+            <text class="actor-note" x="0" y="101">课程、资源、培训、查询</text>
+          </g>
+          <g id="actor-researcher" transform="translate(130 690)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">科研人员 / 机构</text>
+            <text class="actor-note" x="0" y="101">课题、成果、分析、申报</text>
+          </g>
+          <g id="actor-trainer" transform="translate(130 910)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">培训人员</text>
+            <text class="actor-note" x="0" y="101">培训过程与结果记录</text>
+          </g>
+
+          <g id="actor-soap" transform="translate(1570 245)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">校内 SOAP 系统</text>
+            <text class="actor-note" x="0" y="101">外部数据交换接口</text>
+          </g>
+          <g id="actor-evaluator" transform="translate(1570 880)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">评价 / 申报人员</text>
+            <text class="actor-note" x="0" y="101">评价体系与申报材料</text>
+          </g>
+          <g id="actor-performance" transform="translate(1570 1080)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">业绩填报 / 审核人员</text>
+            <text class="actor-note" x="0" y="101">填报、审核、认定</text>
+          </g>
+          <g id="actor-admin" transform="translate(1570 1278)">
+            <use href="#actor-stick"></use>
+            <text class="actor-label" x="0" y="82">系统管理员</text>
+            <text class="actor-note" x="0" y="101">账号、权限、层级、日志</text>
+          </g>
+
+          <g class="domain uc-resource">
+            <rect class="domain-frame" x="335" y="148" width="1030" height="210"></rect>
+            <text class="domain-title" x="355" y="176" fill="#2f855a">功能域 01：中药材资源与生长数据管理</text>
+            <g>
+              <ellipse class="usecase-shape" cx="468" cy="245" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="468" y="245">重庆市中药材分布网络地图</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="245" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="245">生长数据采集与存储</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="1122" cy="245" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="1122" y="245">校内系统与手机端通信</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="315" rx="148" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="315">图谱比对、数据分析与溯源</text>
+            </g>
+          </g>
+
+          <g class="domain uc-teaching">
+            <rect class="domain-frame" x="335" y="378" width="1030" height="180"></rect>
+            <text class="domain-title" x="355" y="406" fill="#2563eb">功能域 02：教学科研资源管理</text>
+            <g>
+              <ellipse class="usecase-shape" cx="468" cy="470" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="468" y="470">实验课程存储</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="470" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="470">线上教学资源</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="1122" cy="470" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="1122" y="470">课题研究存储</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="530" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="530">成果转化支撑</text>
+            </g>
+          </g>
+
+          <g class="domain uc-training">
+            <rect class="domain-frame" x="335" y="578" width="1030" height="190"></rect>
+            <text class="domain-title" x="355" y="606" fill="#b7791f">功能域 03：教学培训过程管理</text>
+            <g>
+              <ellipse class="usecase-shape" cx="468" cy="670" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="468" y="670">培训素材制作与存储</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="670" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="670">教学培训过程记录</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="1122" cy="670" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="1122" y="670">教学培训结果记录</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="730" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="730">培训资料复用</text>
+            </g>
+          </g>
+
+          <g class="domain uc-eval">
+            <rect class="domain-frame" x="335" y="788" width="1030" height="180"></rect>
+            <text class="domain-title" x="355" y="816" fill="#be123c">功能域 04：评价体系与申报管理</text>
+            <g>
+              <ellipse class="usecase-shape" cx="468" cy="880" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="468" y="880">中药材评价体系</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="880" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="880">评价过程跟踪</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="1122" cy="880" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="1122" y="880">申报素材管理</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="940" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="940">评价结果归档</text>
+            </g>
+          </g>
+
+          <g class="domain uc-performance">
+            <rect class="domain-frame" x="335" y="988" width="1030" height="180"></rect>
+            <text class="domain-title" x="355" y="1016" fill="#0f766e">功能域 05：工作业绩认定管理</text>
+            <g>
+              <ellipse class="usecase-shape" cx="468" cy="1080" rx="126" ry="27"></ellipse>
+              <text class="usecase-text" x="468" y="1080">工作业绩录入与编辑</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="1080" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="1080">业绩审核与认定</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="1122" cy="1080" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="1122" y="1080">分级分类统计</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="790" cy="1140" rx="114" ry="27"></ellipse>
+              <text class="usecase-text" x="790" y="1140">认定标准维护</text>
+            </g>
+          </g>
+
+          <g class="domain uc-user">
+            <rect class="domain-frame" x="335" y="1188" width="1030" height="140"></rect>
+            <text class="domain-title" x="355" y="1216" fill="#475569">功能域 06：用户管理</text>
+            <g>
+              <ellipse class="usecase-shape" cx="468" cy="1278" rx="112" ry="24"></ellipse>
+              <text class="usecase-text" x="468" y="1278">用户账号管理</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="710" cy="1278" rx="112" ry="24"></ellipse>
+              <text class="usecase-text" x="710" y="1278">角色权限管理</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="946" cy="1278" rx="92" ry="24"></ellipse>
+              <text class="usecase-text" x="946" y="1278">层级管理</text>
+            </g>
+            <g>
+              <ellipse class="usecase-shape" cx="1188" cy="1278" rx="112" ry="24"></ellipse>
+              <text class="usecase-text" x="1188" y="1278">访问与操作记录</text>
+            </g>
+          </g>
+
+          <g class="associations" aria-hidden="true">
+            <polyline class="association" points="190,245 260,245 260,198 468,198 468,218"></polyline>
+            <polyline class="association" points="190,245 270,245 270,205 790,205 790,218"></polyline>
+            <polyline class="association" points="1510,245 1435,245 1435,205 1122,205 1122,218"></polyline>
+            <polyline class="association" points="190,690 280,690 280,348 790,348 790,342"></polyline>
+
+            <polyline class="association" points="190,485 250,485 250,438 468,438 468,443"></polyline>
+            <polyline class="association" points="190,485 260,485 260,430 790,430 790,443"></polyline>
+            <polyline class="association" points="190,690 270,690 270,438 1122,438 1122,443"></polyline>
+            <polyline class="association" points="190,690 280,690 280,560 790,560 790,557"></polyline>
+
+            <polyline class="association" points="190,910 250,910 250,638 468,638 468,643"></polyline>
+            <polyline class="association" points="190,910 260,910 260,628 790,628 790,643"></polyline>
+            <polyline class="association" points="190,910 270,910 270,638 1122,638 1122,643"></polyline>
+            <polyline class="association" points="190,910 280,910 280,765 790,765 790,757"></polyline>
+
+            <polyline class="association" points="1510,880 1445,880 1445,840 468,840 468,853"></polyline>
+            <polyline class="association" points="1510,880 1435,880 1435,838 790,838 790,853"></polyline>
+            <polyline class="association" points="1510,880 1236,880"></polyline>
+            <polyline class="association" points="1510,880 1435,880 1435,982 790,982 790,967"></polyline>
+
+            <polyline class="association" points="1510,1080 1445,1080 1445,1040 468,1040 468,1053"></polyline>
+            <polyline class="association" points="1510,1080 1435,1080 1435,1038 790,1038 790,1053"></polyline>
+            <polyline class="association" points="1510,1080 1236,1080"></polyline>
+            <polyline class="association" points="1510,1080 1435,1080 1435,1180 790,1180 790,1167"></polyline>
+
+            <polyline class="association" points="1510,1278 1445,1278 1445,1238 468,1238 468,1254"></polyline>
+            <polyline class="association" points="1510,1278 1435,1278 1435,1230 710,1230 710,1254"></polyline>
+            <polyline class="association" points="1510,1278 1425,1278 1425,1222 946,1222 946,1254"></polyline>
+            <polyline class="association" points="1510,1278 1300,1278"></polyline>
+          </g>
+        </svg>
+      </div>
+
+      <div class="note">
+        绘图说明：小人表示参与者，矩形表示系统边界，内部浅色分区表示功能域，椭圆表示用例。关联线连接到代表性用例椭圆边缘，并控制数量以避免覆盖文字；具体用例归属由功能域分区体现。用例名称已按粗功能分解图统一。
+      </div>
+    </section>
+
+    <section class="panel" aria-label="功能域用例说明表">
+      <div class="panel-title">
+        <h2>二、功能域用例说明表</h2>
+        <span>表格与上方用例图保持一致，面向需求分析阶段说明每个功能域的参与者、能力点和输出。</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>编号</th>
+              <th>功能域</th>
+              <th>主要参与者</th>
+              <th>核心用例 / 能力点</th>
+              <th>主要业务结果</th>
+              <th>异常或扩展</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="domain-id">FD-01</td>
+              <td class="domain-name">中药材资源与生长数据管理</td>
+              <td>教师、学生、科研人员、科研机构、采集人员、手机 APP、校内 SOAP 系统</td>
+              <td>重庆市中药材分布网络地图；生长数据采集与存储；校内系统与手机端通信；图谱比对、数据分析与溯源。</td>
+              <td>形成可查询、可分析、可溯源的中药材资源、生长数据、图片文件和接口交换记录。</td>
+              <td>网络异常时支持移动端暂存后同步；接口失败时记录日志并重试；无匹配数据时提示无结果。</td>
+            </tr>
+            <tr>
+              <td class="domain-id">FD-02</td>
+              <td class="domain-name">教学科研资源管理</td>
+              <td>教师、学生、科研人员、科研机构、系统管理员</td>
+              <td>实验课程存储；线上教学资源；课题研究存储；成果转化支撑。</td>
+              <td>课程、课件、视频、文档、课题过程材料和成果转化记录被统一维护、查询和归档。</td>
+              <td>资源上传失败时提示重试；课题成员或成果材料变更时保留历史记录和版本信息。</td>
+            </tr>
+            <tr>
+              <td class="domain-id">FD-03</td>
+              <td class="domain-name">教学培训过程管理</td>
+              <td>教师、培训人员、学生、学员</td>
+              <td>培训素材制作与存储；教学培训过程记录；教学培训结果记录；培训资料复用。</td>
+              <td>形成培训素材、安排、参与情况、学习过程、考核结果和反馈评价的完整档案。</td>
+              <td>缺勤、未完成、补考或补交反馈可作为扩展记录处理；资料可按权限查询和复用。</td>
+            </tr>
+            <tr>
+              <td class="domain-id">FD-04</td>
+              <td class="domain-name">评价体系与申报管理</td>
+              <td>评价管理人员、专家、教师、科研人员、申报人员</td>
+              <td>中药材评价体系；评价过程跟踪；申报素材管理；评价结果归档。</td>
+              <td>评价指标、规则、任务、过程记录、申报数据和佐证材料可追踪、可统计、可归档。</td>
+              <td>评价标准变更时保留版本；申报材料缺失时提示补充；评价结果按权限开放下载。</td>
+            </tr>
+            <tr>
+              <td class="domain-id">FD-05</td>
+              <td class="domain-name">工作业绩认定管理</td>
+              <td>教师、科研人员、业绩填报人员、审核人员、管理人员</td>
+              <td>工作业绩录入与编辑；业绩审核与认定；分级分类统计；认定标准维护。</td>
+              <td>形成业绩填报材料、审核记录、认定结果和按学校标准统计的分级分类报表。</td>
+              <td>材料不符合要求时退回修改；认定标准更新后按版本进行认定和历史追踪。</td>
+            </tr>
+            <tr>
+              <td class="domain-id">FD-06</td>
+              <td class="domain-name">用户管理</td>
+              <td>系统管理员、教师、学生、科研人员、培训人员、机构用户、外部系统账号</td>
+              <td>用户账号管理；角色权限管理；层级管理；访问与操作记录。</td>
+              <td>为各类用户提供账号、角色、菜单、功能、数据范围、文件访问和审计记录支撑。</td>
+              <td>认证失败时拒绝访问；权限不足时隐藏功能或提示无权限；关键操作进入审计记录。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        后续详细设计时，可在每个功能域下继续补充触发条件、输入输出字段、权限矩阵、接口清单和数据字典。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "name": "bdis",
+  "private": true,
+  "packageManager": "pnpm@11.3.0",
+  "scripts": {
+    "setup": "node scripts/setup-env.mjs",
+    "check": "node scripts/check-env.mjs",
+    "validate": "node scripts/validate.mjs",
+    "clean": "node scripts/clean.mjs",
+    "dev": "pnpm run dev:web",
+    "dev:web": "pnpm --dir frontend dev",
+    "dev:api": "node scripts/run-maven.mjs -f backend/pom.xml spring-boot:run",
+    "dev:infra": "docker compose up mysql redis",
+    "build": "pnpm run build:web",
+    "build:web": "pnpm --dir frontend build",
+    "lint": "pnpm run lint:web",
+    "lint:web": "pnpm --dir frontend lint",
+    "format": "pnpm run format:web",
+    "format:web": "pnpm --dir frontend format",
+    "test": "node scripts/run-maven.mjs -f backend/pom.xml test",
+    "test:api": "node scripts/run-maven.mjs -f backend/pom.xml test",
+    "compose:config": "docker compose config --quiet",
+    "compose:up": "docker compose up --build",
+    "compose:down": "docker compose down"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.5.3"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx,js,jsx,json,css,md}": [
+      "pnpm --dir frontend lint",
+      "pnpm --dir frontend format"
+    ],
+    "backend/**/*.{yml,yaml,md}": [
+      "prettier --write"
+    ]
+  }
+}

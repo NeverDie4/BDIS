@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# frontend
+frontend/.next/
+frontend/out/
+frontend/coverage/
+frontend/.env*.local
+
+# backend
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# runtime data
+storage/
+logs/
+mysql-data/
+redis-data/
+
+# environment
+.env
+.env.local
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# AI assistant local rules
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+.github/copilot-instructions.md
+.trae/rules/
+
+# OS
+.DS_Store
+Thumbs.db
