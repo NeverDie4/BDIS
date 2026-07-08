@@ -23,7 +23,7 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: classpath:db/migration
-    baseline-on-migrate: true
+    baseline-on-migrate: false
   servlet:
     multipart:
       max-file-size: 200MB

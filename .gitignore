@@ -12,6 +12,9 @@ frontend/.env*.local
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
 
+# flyway
+flyway/target/
+
 # runtime data
 storage/
 logs/
