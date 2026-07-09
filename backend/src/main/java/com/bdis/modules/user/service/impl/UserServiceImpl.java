@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.DuplicateResourceException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.user.dto.RoleAssignDTO;
@@ -58,7 +59,8 @@ public class UserServiceImpl implements UserService {
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(
                     condition ->
-                            condition.like(UserEntity::getUsername, query.getKeyword())
+                            condition
+                                    .like(UserEntity::getUsername, query.getKeyword())
                                     .or()
                                     .like(UserEntity::getRealName, query.getKeyword())
                                     .or()
@@ -67,9 +69,6 @@ public class UserServiceImpl implements UserService {
         if (query.getStatus() != null) {
             wrapper.eq(UserEntity::getStatus, query.getStatus());
         }
-        if (StringUtils.hasText(query.getUserType())) {
-            wrapper.eq(UserEntity::getUserType, query.getUserType());
-        }
         if (query.getOrganizationId() != null) {
             wrapper.eq(UserEntity::getOrganizationId, query.getOrganizationId());
         }
@@ -77,7 +76,8 @@ public class UserServiceImpl implements UserService {
             wrapper.eq(UserEntity::getDepartmentId, query.getDepartmentId());
         }
         wrapper.orderByDesc(UserEntity::getId);
-        Page<UserEntity> page = userMapper.selectPage(Page.of(query.getPage(), query.getSize()), wrapper);
+        Page<UserEntity> page =
+                userMapper.selectPage(Page.of(query.getPage(), query.getSize()), wrapper);
         List<UserVO> records = attachRoles(page.getRecords());
         if (query.getRoleId() != null) {
             records =
@@ -85,7 +85,12 @@ public class UserServiceImpl implements UserService {
                             .filter(
                                     user ->
                                             user.getRoles().stream()
-                                                    .anyMatch(role -> role.getId().equals(query.getRoleId())))
+                                                    .anyMatch(
+                                                            role ->
+                                                                    role.getId()
+                                                                            .equals(
+                                                                                    query
+                                                                                            .getRoleId())))
                             .toList();
         }
         return PageResult.of(records, page);
@@ -110,7 +115,6 @@ public class UserServiceImpl implements UserService {
         user.setEmail(dto.getEmail());
         user.setOrganizationId(dto.getOrganizationId());
         user.setDepartmentId(dto.getDepartmentId());
-        user.setUserType(dto.getUserType());
         user.setStatus(1);
         user.setCreatedBy(SecurityUtils.currentUser().getUserId());
         userMapper.insert(user);
@@ -136,8 +140,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         requireUser(id);
+        if (SecurityUtils.currentUser().getUserId().equals(id)) {
+            throw new ForbiddenException("不能删除当前登录用户");
+        }
+        userRoleMapper.delete(
+                new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getUserId, id));
         userMapper.deleteById(id);
     }
 
@@ -164,9 +174,6 @@ public class UserServiceImpl implements UserService {
         if (dto.getDepartmentId() != null) {
             user.setDepartmentId(dto.getDepartmentId());
         }
-        if (dto.getUserType() != null) {
-            user.setUserType(dto.getUserType());
-        }
         if (dto.getStatus() != null) {
             user.setStatus(dto.getStatus());
         }
@@ -174,14 +181,16 @@ public class UserServiceImpl implements UserService {
     }
 
     private void replaceRoles(Long userId, List<Long> roleIds) {
-        userRoleMapper.delete(new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getUserId, userId));
+        userRoleMapper.delete(
+                new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getUserId, userId));
         if (CollectionUtils.isEmpty(roleIds)) {
             return;
         }
         Long operatorId = SecurityUtils.currentUser().getUserId();
         for (Long roleId : roleIds) {
-            if (roleMapper.selectById(roleId) == null) {
-                throw new ResourceNotFoundException("角色不存在：" + roleId);
+            RoleEntity role = roleMapper.selectById(roleId);
+            if (role == null || role.getStatus() == null || role.getStatus() != 1) {
+                throw new ResourceNotFoundException("角色不存在或已停用：" + roleId);
             }
             UserRoleEntity relation = new UserRoleEntity();
             relation.setUserId(userId);
@@ -219,7 +228,8 @@ public class UserServiceImpl implements UserService {
                                 .in(UserRoleEntity::getUserId, userIds));
         Map<Long, List<RoleVO>> roleMap = new LinkedHashMap<>();
         if (!relations.isEmpty()) {
-            List<Long> roleIds = relations.stream().map(UserRoleEntity::getRoleId).distinct().toList();
+            List<Long> roleIds =
+                    relations.stream().map(UserRoleEntity::getRoleId).distinct().toList();
             Map<Long, RoleVO> rolesById = new LinkedHashMap<>();
             for (RoleEntity role : roleMapper.selectBatchIds(roleIds)) {
                 rolesById.put(role.getId(), toRoleVO(role));
@@ -227,7 +237,8 @@ public class UserServiceImpl implements UserService {
             for (UserRoleEntity relation : relations) {
                 RoleVO role = rolesById.get(relation.getRoleId());
                 if (role != null) {
-                    roleMap.computeIfAbsent(relation.getUserId(), ignored -> new ArrayList<>()).add(role);
+                    roleMap.computeIfAbsent(relation.getUserId(), ignored -> new ArrayList<>())
+                            .add(role);
                 }
             }
         }
@@ -250,7 +261,6 @@ public class UserServiceImpl implements UserService {
         vo.setEmail(user.getEmail());
         vo.setOrganizationId(user.getOrganizationId());
         vo.setDepartmentId(user.getDepartmentId());
-        vo.setUserType(user.getUserType());
         vo.setStatus(user.getStatus());
         vo.setLastLoginAt(user.getLastLoginAt());
         return vo;

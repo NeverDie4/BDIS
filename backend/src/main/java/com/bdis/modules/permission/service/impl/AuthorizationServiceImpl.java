@@ -34,7 +34,9 @@ public class AuthorizationServiceImpl implements AuthorizationService {
     private final DataScopeService dataScopeService;
 
     public AuthorizationServiceImpl(
-            PermissionMapper permissionMapper, MenuMapper menuMapper, DataScopeService dataScopeService) {
+            PermissionMapper permissionMapper,
+            MenuMapper menuMapper,
+            DataScopeService dataScopeService) {
         this.permissionMapper = permissionMapper;
         this.menuMapper = menuMapper;
         this.dataScopeService = dataScopeService;
@@ -63,9 +65,15 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                         ? dto.getPermissionCode()
                         : dto.getResourceType() + ":" + dto.getAction();
         boolean allowed = hasPermission(permissionCode);
+        DataScopeResultVO dataScope = dataScopeService.resolveForCurrentUser(dto.getResourceType());
+        String reason = allowed ? "允许访问" : "缺少权限：" + permissionCode;
+        if (allowed && hasResourceContext(dto) && !matchesDataScope(dataScope, dto)) {
+            allowed = false;
+            reason = "超出数据范围";
+        }
         vo.setAllowed(allowed);
-        vo.setReason(allowed ? "允许访问" : "缺少权限：" + permissionCode);
-        vo.setDataScope(dataScopeService.resolveForCurrentUser(dto.getResourceType()));
+        vo.setReason(reason);
+        vo.setDataScope(dataScope);
         return vo;
     }
 
@@ -130,7 +138,11 @@ public class AuthorizationServiceImpl implements AuthorizationService {
                 user.getRoleCodes().contains(SecurityConstants.ADMIN_ROLE_CODE)
                         || user.getPermissions().contains("*");
         return permissions.stream()
-                .filter(permission -> admin || user.getPermissions().contains(permission.getPermissionCode()))
+                .filter(
+                        permission ->
+                                admin
+                                        || user.getPermissions()
+                                                .contains(permission.getPermissionCode()))
                 .map(this::toPermissionVO)
                 .toList();
     }
@@ -142,13 +154,39 @@ public class AuthorizationServiceImpl implements AuthorizationService {
         }
         List<MenuVO> roots = new ArrayList<>();
         for (MenuVO menu : byId.values()) {
-            if (menu.getParentId() == null || menu.getParentId() == 0 || !byId.containsKey(menu.getParentId())) {
+            if (menu.getParentId() == null
+                    || menu.getParentId() == 0
+                    || !byId.containsKey(menu.getParentId())) {
                 roots.add(menu);
             } else {
                 byId.get(menu.getParentId()).getChildren().add(menu);
             }
         }
         return roots;
+    }
+
+    private boolean hasResourceContext(AuthorizationDecisionDTO dto) {
+        return dto.getOwnerUserId() != null
+                || dto.getOrganizationId() != null
+                || dto.getDepartmentId() != null;
+    }
+
+    private boolean matchesDataScope(DataScopeResultVO dataScope, AuthorizationDecisionDTO dto) {
+        if (dataScope.isAllIncluded()) {
+            return true;
+        }
+        CurrentUser user = SecurityUtils.currentUser();
+        if (dataScope.isSelfIncluded()
+                && dto.getOwnerUserId() != null
+                && dto.getOwnerUserId().equals(user.getUserId())) {
+            return true;
+        }
+        if (dto.getOrganizationId() != null
+                && dataScope.getOrganizationIds().contains(dto.getOrganizationId())) {
+            return true;
+        }
+        return dto.getDepartmentId() != null
+                && dataScope.getDepartmentIds().contains(dto.getDepartmentId());
     }
 
     private MenuVO toMenuVO(MenuEntity entity) {

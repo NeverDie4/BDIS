@@ -5,6 +5,11 @@ import type { ApiResult } from "@/types/api";
 import { clearStoredToken, getStoredToken } from "./auth-token";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
+const AUTH_REDIRECT_FLAG = "__bdisAuthRedirect";
+
+type AuthRedirectError = {
+  [AUTH_REDIRECT_FLAG]?: true;
+};
 
 export const request = axios.create({
   baseURL: API_BASE_URL,
@@ -28,12 +33,19 @@ request.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       clearStoredToken();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        (error as AuthRedirectError)[AUTH_REDIRECT_FLAG] = true;
         window.location.href = "/login";
       }
     }
     return Promise.reject(error);
   },
 );
+
+export function isAuthRedirectError(error: unknown) {
+  return Boolean(
+    error && typeof error === "object" && (error as AuthRedirectError)[AUTH_REDIRECT_FLAG],
+  );
+}
 
 export async function apiGet<T>(url: string, params?: Record<string, unknown>) {
   const response = await request.get<ApiResult<T>>(url, { params });

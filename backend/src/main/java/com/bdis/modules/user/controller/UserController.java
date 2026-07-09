@@ -52,14 +52,14 @@ public class UserController {
     }
 
     @PutMapping("/{userId}")
-    public Result<Void> update(@PathVariable Long userId, @RequestBody UserUpdateDTO dto) {
+    public Result<Void> update(@PathVariable Long userId, @Valid @RequestBody UserUpdateDTO dto) {
         authorizationService.requirePermission("auth:user:update");
         userService.update(userId, dto);
         return Result.success();
     }
 
     @PatchMapping("/{userId}")
-    public Result<Void> patch(@PathVariable Long userId, @RequestBody UserUpdateDTO dto) {
+    public Result<Void> patch(@PathVariable Long userId, @Valid @RequestBody UserUpdateDTO dto) {
         authorizationService.requirePermission("auth:user:update");
         userService.patch(userId, dto);
         return Result.success();

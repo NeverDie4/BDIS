@@ -6,7 +6,9 @@ import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.permission.dto.MenuDTO;
 import com.bdis.modules.permission.entity.MenuEntity;
+import com.bdis.modules.permission.entity.PermissionEntity;
 import com.bdis.modules.permission.mapper.MenuMapper;
+import com.bdis.modules.permission.mapper.PermissionMapper;
 import com.bdis.modules.permission.query.MenuQuery;
 import com.bdis.modules.permission.service.MenuService;
 import com.bdis.modules.permission.vo.MenuVO;
@@ -22,8 +24,11 @@ public class MenuServiceImpl implements MenuService {
 
     private final MenuMapper menuMapper;
 
-    public MenuServiceImpl(MenuMapper menuMapper) {
+    private final PermissionMapper permissionMapper;
+
+    public MenuServiceImpl(MenuMapper menuMapper, PermissionMapper permissionMapper) {
         this.menuMapper = menuMapper;
+        this.permissionMapper = permissionMapper;
     }
 
     @Override
@@ -32,7 +37,8 @@ public class MenuServiceImpl implements MenuService {
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(
                     condition ->
-                            condition.like(MenuEntity::getMenuCode, query.getKeyword())
+                            condition
+                                    .like(MenuEntity::getMenuCode, query.getKeyword())
                                     .or()
                                     .like(MenuEntity::getMenuName, query.getKeyword()));
         }
@@ -70,6 +76,19 @@ public class MenuServiceImpl implements MenuService {
     @Override
     public void delete(Long id) {
         requireMenu(id);
+        Long childCount =
+                menuMapper.selectCount(
+                        new LambdaQueryWrapper<MenuEntity>().eq(MenuEntity::getParentId, id));
+        if (childCount > 0) {
+            throw new DuplicateResourceException("菜单存在子菜单，不能删除");
+        }
+        Long permissionCount =
+                permissionMapper.selectCount(
+                        new LambdaQueryWrapper<PermissionEntity>()
+                                .eq(PermissionEntity::getMenuId, id));
+        if (permissionCount > 0) {
+            throw new DuplicateResourceException("菜单已绑定权限点，不能删除");
+        }
         menuMapper.deleteById(id);
     }
 
@@ -80,7 +99,9 @@ public class MenuServiceImpl implements MenuService {
         }
         List<MenuVO> roots = new ArrayList<>();
         for (MenuVO item : byId.values()) {
-            if (item.getParentId() == null || item.getParentId() == 0 || !byId.containsKey(item.getParentId())) {
+            if (item.getParentId() == null
+                    || item.getParentId() == 0
+                    || !byId.containsKey(item.getParentId())) {
                 roots.add(item);
             } else {
                 byId.get(item.getParentId()).getChildren().add(item);
@@ -113,7 +134,8 @@ public class MenuServiceImpl implements MenuService {
 
     private void ensureCodeAvailable(String code) {
         MenuEntity existed =
-                menuMapper.selectOne(new LambdaQueryWrapper<MenuEntity>().eq(MenuEntity::getMenuCode, code));
+                menuMapper.selectOne(
+                        new LambdaQueryWrapper<MenuEntity>().eq(MenuEntity::getMenuCode, code));
         if (existed != null) {
             throw new DuplicateResourceException("菜单编码已存在");
         }

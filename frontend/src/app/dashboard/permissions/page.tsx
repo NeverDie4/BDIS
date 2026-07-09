@@ -1,6 +1,6 @@
 "use client";
 
-import { apiDelete, apiGet, apiPost, getApiErrorMessage } from "@/lib/request";
+import { apiDelete, apiGet, apiPost, getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { MenuItem, PageResult, Permission } from "@/types/api";
 import {
@@ -67,7 +67,9 @@ export default function PermissionsPage() {
       setMenus(menuTree);
       setPermissions(permissionPage.records);
     } catch (error) {
-      message.error(getApiErrorMessage(error, "菜单权限数据加载失败"));
+      if (!isAuthRedirectError(error)) {
+        message.error(getApiErrorMessage(error, "菜单权限数据加载失败"));
+      }
     } finally {
       setLoading(false);
     }

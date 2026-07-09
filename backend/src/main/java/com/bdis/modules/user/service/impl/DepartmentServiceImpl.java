@@ -6,7 +6,9 @@ import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.user.dto.DepartmentDTO;
 import com.bdis.modules.user.entity.DepartmentEntity;
+import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.DepartmentMapper;
+import com.bdis.modules.user.mapper.UserMapper;
 import com.bdis.modules.user.query.DepartmentQuery;
 import com.bdis.modules.user.service.DepartmentService;
 import com.bdis.modules.user.vo.DepartmentVO;
@@ -22,8 +24,11 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     private final DepartmentMapper departmentMapper;
 
-    public DepartmentServiceImpl(DepartmentMapper departmentMapper) {
+    private final UserMapper userMapper;
+
+    public DepartmentServiceImpl(DepartmentMapper departmentMapper, UserMapper userMapper) {
         this.departmentMapper = departmentMapper;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -32,7 +37,8 @@ public class DepartmentServiceImpl implements DepartmentService {
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(
                     condition ->
-                            condition.like(DepartmentEntity::getDepartmentNo, query.getKeyword())
+                            condition
+                                    .like(DepartmentEntity::getDepartmentNo, query.getKeyword())
                                     .or()
                                     .like(DepartmentEntity::getDepartmentName, query.getKeyword()));
         }
@@ -73,6 +79,19 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     public void delete(Long id) {
         requireDepartment(id);
+        Long childCount =
+                departmentMapper.selectCount(
+                        new LambdaQueryWrapper<DepartmentEntity>()
+                                .eq(DepartmentEntity::getParentId, id));
+        if (childCount > 0) {
+            throw new DuplicateResourceException("部门存在子部门，不能删除");
+        }
+        Long userCount =
+                userMapper.selectCount(
+                        new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getDepartmentId, id));
+        if (userCount > 0) {
+            throw new DuplicateResourceException("部门下存在用户，不能删除");
+        }
         departmentMapper.deleteById(id);
     }
 
@@ -83,7 +102,9 @@ public class DepartmentServiceImpl implements DepartmentService {
         }
         List<DepartmentVO> roots = new ArrayList<>();
         for (DepartmentVO item : byId.values()) {
-            if (item.getParentId() == null || item.getParentId() == 0 || !byId.containsKey(item.getParentId())) {
+            if (item.getParentId() == null
+                    || item.getParentId() == 0
+                    || !byId.containsKey(item.getParentId())) {
                 roots.add(item);
             } else {
                 byId.get(item.getParentId()).getChildren().add(item);

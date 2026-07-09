@@ -1,6 +1,8 @@
 package com.bdis.modules.user.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Getter;
@@ -22,13 +24,13 @@ public class UserCreateDTO {
 
     private String phoneNumber;
 
+    @Email(message = "邮箱格式不正确")
     private String email;
 
     private Long organizationId;
 
     private Long departmentId;
 
-    private String userType;
-
+    @NotEmpty(message = "角色列表不能为空")
     private List<Long> roleIds;
 }

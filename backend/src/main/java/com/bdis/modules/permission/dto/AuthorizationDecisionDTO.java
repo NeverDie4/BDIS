@@ -17,4 +17,10 @@ public class AuthorizationDecisionDTO {
     private String action;
 
     private String permissionCode;
+
+    private Long ownerUserId;
+
+    private Long organizationId;
+
+    private Long departmentId;
 }

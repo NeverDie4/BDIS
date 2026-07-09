@@ -1,6 +1,7 @@
 package com.bdis.modules.permission.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.CurrentUser;
@@ -19,6 +20,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class DataScopeServiceImpl implements DataScopeService {
+
+    private static final String ALWAYS_FALSE_SQL = "1 = 0";
 
     private final DataScopeMapper dataScopeMapper;
 
@@ -68,9 +71,45 @@ public class DataScopeServiceImpl implements DataScopeService {
     }
 
     @Override
+    public <T> DataScopeResultVO applyToQuery(
+            LambdaQueryWrapper<T> wrapper,
+            String resourceType,
+            SFunction<T, ?> ownerField,
+            SFunction<T, ?> organizationField,
+            SFunction<T, ?> departmentField) {
+        DataScopeResultVO scope = resolveForCurrentUser(resourceType);
+        if (scope.isAllIncluded()) {
+            return scope;
+        }
+        CurrentUser user = SecurityUtils.currentUser();
+        wrapper.and(
+                condition -> {
+                    boolean[] applied = {false};
+                    if (scope.isSelfIncluded() && ownerField != null) {
+                        appendOr(condition, applied);
+                        condition.eq(ownerField, user.getUserId());
+                    }
+                    if (!scope.getOrganizationIds().isEmpty() && organizationField != null) {
+                        appendOr(condition, applied);
+                        condition.in(organizationField, scope.getOrganizationIds());
+                    }
+                    if (!scope.getDepartmentIds().isEmpty() && departmentField != null) {
+                        appendOr(condition, applied);
+                        condition.in(departmentField, scope.getDepartmentIds());
+                    }
+                    if (!applied[0]) {
+                        condition.apply(ALWAYS_FALSE_SQL);
+                    }
+                });
+        return scope;
+    }
+
+    @Override
     public List<DataScopeVO> listByRole(Long roleId) {
         return dataScopeMapper
-                .selectList(new LambdaQueryWrapper<DataScopeEntity>().eq(DataScopeEntity::getRoleId, roleId))
+                .selectList(
+                        new LambdaQueryWrapper<DataScopeEntity>()
+                                .eq(DataScopeEntity::getRoleId, roleId))
                 .stream()
                 .map(this::toVO)
                 .toList();
@@ -78,8 +117,9 @@ public class DataScopeServiceImpl implements DataScopeService {
 
     @Override
     public Long save(DataScopeDTO dto) {
-        if (roleMapper.selectById(dto.getRoleId()) == null) {
-            throw new ResourceNotFoundException("角色不存在");
+        RoleEntity role = roleMapper.selectById(dto.getRoleId());
+        if (role == null || role.getStatus() == null || role.getStatus() != 1) {
+            throw new ResourceNotFoundException("角色不存在或已停用");
         }
         DataScopeEntity entity =
                 dataScopeMapper.selectOne(
@@ -113,6 +153,14 @@ public class DataScopeServiceImpl implements DataScopeService {
             throw new ResourceNotFoundException("数据范围配置不存在");
         }
         dataScopeMapper.deleteById(id);
+    }
+
+    private <T> void appendOr(LambdaQueryWrapper<T> wrapper, boolean[] applied) {
+        if (applied[0]) {
+            wrapper.or();
+            return;
+        }
+        applied[0] = true;
     }
 
     private void mergeRules(DataScopeResultVO result, List<DataScopeEntity> rules) {

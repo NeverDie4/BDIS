@@ -1,6 +1,6 @@
 "use client";
 
-import { apiDelete, apiGet } from "@/lib/request";
+import { apiDelete, apiGet, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CurrentUser, MenuItem } from "@/types/api";
 import {
@@ -51,8 +51,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         setUser(currentUser);
         setMenus(menuTree);
       })
+      .catch((error) => {
+        if (!isAuthRedirectError(error)) {
+          clearAuth();
+          router.replace("/login");
+        }
+      })
       .finally(() => setLoading(false));
-  }, [router, setMenus, setUser, token]);
+  }, [clearAuth, router, setMenus, setUser, token]);
 
   const menuItems = useMemo<MenuProps["items"]>(() => buildMenuItems(menus), [menus]);
 

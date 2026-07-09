@@ -8,11 +8,14 @@ import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.permission.dto.PermissionDTO;
 import com.bdis.modules.permission.entity.PermissionEntity;
+import com.bdis.modules.permission.entity.RolePermissionEntity;
 import com.bdis.modules.permission.mapper.PermissionMapper;
+import com.bdis.modules.permission.mapper.RolePermissionMapper;
 import com.bdis.modules.permission.query.PermissionQuery;
 import com.bdis.modules.permission.service.PermissionService;
 import com.bdis.modules.permission.vo.PermissionVO;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -20,8 +23,12 @@ public class PermissionServiceImpl implements PermissionService {
 
     private final PermissionMapper permissionMapper;
 
-    public PermissionServiceImpl(PermissionMapper permissionMapper) {
+    private final RolePermissionMapper rolePermissionMapper;
+
+    public PermissionServiceImpl(
+            PermissionMapper permissionMapper, RolePermissionMapper rolePermissionMapper) {
         this.permissionMapper = permissionMapper;
+        this.rolePermissionMapper = rolePermissionMapper;
     }
 
     @Override
@@ -30,7 +37,8 @@ public class PermissionServiceImpl implements PermissionService {
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(
                     condition ->
-                            condition.like(PermissionEntity::getPermissionCode, query.getKeyword())
+                            condition
+                                    .like(PermissionEntity::getPermissionCode, query.getKeyword())
                                     .or()
                                     .like(PermissionEntity::getPermissionName, query.getKeyword()));
         }
@@ -74,8 +82,12 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         requirePermission(id);
+        rolePermissionMapper.delete(
+                new LambdaQueryWrapper<RolePermissionEntity>()
+                        .eq(RolePermissionEntity::getPermissionId, id));
         permissionMapper.deleteById(id);
     }
 

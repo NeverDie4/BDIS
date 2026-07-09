@@ -15,10 +15,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -41,7 +41,8 @@ public class SecurityConfig {
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(
                         exception ->
-                                exception.authenticationEntryPoint(
+                                exception
+                                        .authenticationEntryPoint(
                                                 (request, response, authException) -> {
                                                     response.setStatus(401);
                                                     response.setCharacterEncoding(
@@ -50,13 +51,12 @@ public class SecurityConfig {
                                                             MediaType.APPLICATION_JSON_VALUE);
                                                     response.getWriter()
                                                             .write(
-                                                                    objectMapper
-                                                                            .writeValueAsString(
-                                                                                    Result.error(
-                                                                                            ResultCodeEnum
-                                                                                                    .UNAUTHORIZED,
-                                                                                            "未登录或登录已失效",
-                                                                                            null)));
+                                                                    objectMapper.writeValueAsString(
+                                                                            Result.error(
+                                                                                    ResultCodeEnum
+                                                                                            .UNAUTHORIZED,
+                                                                                    "未登录或登录已失效",
+                                                                                    null)));
                                                 })
                                         .accessDeniedHandler(
                                                 (request, response, accessDeniedException) -> {
@@ -67,13 +67,12 @@ public class SecurityConfig {
                                                             MediaType.APPLICATION_JSON_VALUE);
                                                     response.getWriter()
                                                             .write(
-                                                                    objectMapper
-                                                                            .writeValueAsString(
-                                                                                    Result.error(
-                                                                                            ResultCodeEnum
-                                                                                                    .FORBIDDEN,
-                                                                                            "无权限访问",
-                                                                                            null)));
+                                                                    objectMapper.writeValueAsString(
+                                                                            Result.error(
+                                                                                    ResultCodeEnum
+                                                                                            .FORBIDDEN,
+                                                                                    "无权限访问",
+                                                                                    null)));
                                                 }))
                 .authorizeHttpRequests(
                         requests ->
@@ -107,7 +106,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);

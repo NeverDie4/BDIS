@@ -7,8 +7,12 @@ import com.bdis.common.exception.DuplicateResourceException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.user.dto.OrganizationDTO;
+import com.bdis.modules.user.entity.DepartmentEntity;
 import com.bdis.modules.user.entity.OrganizationEntity;
+import com.bdis.modules.user.entity.UserEntity;
+import com.bdis.modules.user.mapper.DepartmentMapper;
 import com.bdis.modules.user.mapper.OrganizationMapper;
+import com.bdis.modules.user.mapper.UserMapper;
 import com.bdis.modules.user.query.OrganizationQuery;
 import com.bdis.modules.user.service.OrganizationService;
 import com.bdis.modules.user.vo.OrganizationVO;
@@ -20,8 +24,17 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private final OrganizationMapper organizationMapper;
 
-    public OrganizationServiceImpl(OrganizationMapper organizationMapper) {
+    private final DepartmentMapper departmentMapper;
+
+    private final UserMapper userMapper;
+
+    public OrganizationServiceImpl(
+            OrganizationMapper organizationMapper,
+            DepartmentMapper departmentMapper,
+            UserMapper userMapper) {
         this.organizationMapper = organizationMapper;
+        this.departmentMapper = departmentMapper;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -30,9 +43,12 @@ public class OrganizationServiceImpl implements OrganizationService {
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(
                     condition ->
-                            condition.like(OrganizationEntity::getOrganizationNo, query.getKeyword())
+                            condition
+                                    .like(OrganizationEntity::getOrganizationNo, query.getKeyword())
                                     .or()
-                                    .like(OrganizationEntity::getOrganizationName, query.getKeyword()));
+                                    .like(
+                                            OrganizationEntity::getOrganizationName,
+                                            query.getKeyword()));
         }
         if (query.getStatus() != null) {
             wrapper.eq(OrganizationEntity::getStatus, query.getStatus());
@@ -70,6 +86,19 @@ public class OrganizationServiceImpl implements OrganizationService {
     @Override
     public void delete(Long id) {
         requireOrganization(id);
+        Long departmentCount =
+                departmentMapper.selectCount(
+                        new LambdaQueryWrapper<DepartmentEntity>()
+                                .eq(DepartmentEntity::getOrganizationId, id));
+        if (departmentCount > 0) {
+            throw new DuplicateResourceException("机构下存在部门，不能删除");
+        }
+        Long userCount =
+                userMapper.selectCount(
+                        new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getOrganizationId, id));
+        if (userCount > 0) {
+            throw new DuplicateResourceException("机构下存在用户，不能删除");
+        }
         organizationMapper.deleteById(id);
     }
 

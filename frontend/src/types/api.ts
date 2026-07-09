@@ -75,7 +75,6 @@ export type User = {
   email?: string;
   organizationId?: number;
   departmentId?: number;
-  userType?: string;
   status?: number;
   lastLoginAt?: string;
   roles?: Role[];

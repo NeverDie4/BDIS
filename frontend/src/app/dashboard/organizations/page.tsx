@@ -1,12 +1,12 @@
 "use client";
 
-import { apiDelete, apiGet, apiPost } from "@/lib/request";
+import { apiDelete, apiGet, apiPost, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Organization, PageResult } from "@/types/api";
 import { App, Button, Form, Input, Modal, Popconfirm, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type OrganizationForm = {
   organizationNo: string;
@@ -25,19 +25,23 @@ export default function OrganizationsPage() {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<OrganizationForm>();
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const page = await apiGet<PageResult<Organization>>("/organizations", { page: 1, size: 100 });
       setRows(page.records);
+    } catch (error) {
+      if (!isAuthRedirectError(error)) {
+        message.error("机构数据加载失败");
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, [message]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const columns = useMemo<ColumnsType<Organization>>(
     () => [
@@ -67,7 +71,7 @@ export default function OrganizationsPage() {
           ) : null,
       },
     ],
-    [hasPermission, message],
+    [hasPermission, load, message],
   );
 
   async function submit(values: OrganizationForm) {

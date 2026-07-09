@@ -10,8 +10,6 @@ public class UserQuery extends BaseQuery {
 
     private Long roleId;
 
-    private String userType;
-
     private Long organizationId;
 
     private Long departmentId;

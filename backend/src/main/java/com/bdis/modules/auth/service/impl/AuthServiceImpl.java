@@ -100,7 +100,6 @@ public class AuthServiceImpl implements AuthService {
         user.setRealName(dto.getRealName());
         user.setPhoneNumber(dto.getPhoneNumber());
         user.setEmail(dto.getEmail());
-        user.setUserType("admin");
         user.setStatus(1);
         userMapper.insert(user);
         UserRoleEntity userRole = new UserRoleEntity();

@@ -73,7 +73,7 @@ public class JwtUtils {
             throw new UnauthorizedException("Token 已过期");
         }
         return new JwtClaims(
-                Long.valueOf(String.valueOf(payload.get("sub"))),
+                numberValue(payload.get("sub")),
                 String.valueOf(payload.get("username")),
                 String.valueOf(payload.get("jti")),
                 Instant.ofEpochSecond(numberValue(payload.get("iat"))),
@@ -117,6 +117,10 @@ public class JwtUtils {
         if (value instanceof Number number) {
             return number.longValue();
         }
-        return Long.parseLong(String.valueOf(value));
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            throw new UnauthorizedException("Token 内容无效");
+        }
     }
 }

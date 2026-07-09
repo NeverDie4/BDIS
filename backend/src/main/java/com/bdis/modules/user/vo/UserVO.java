@@ -25,8 +25,6 @@ public class UserVO {
 
     private Long departmentId;
 
-    private String userType;
-
     private Integer status;
 
     private LocalDateTime lastLoginAt;

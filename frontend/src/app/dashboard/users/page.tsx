@@ -1,12 +1,12 @@
 "use client";
 
-import { apiDelete, apiGet, apiPost } from "@/lib/request";
+import { apiDelete, apiGet, apiPost, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { PageResult, Role, User } from "@/types/api";
 import { App, Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UserForm = {
   username: string;
@@ -14,17 +14,8 @@ type UserForm = {
   realName: string;
   phoneNumber?: string;
   email?: string;
-  userType?: string;
   roleIds?: number[];
 };
-
-const userTypeOptions = [
-  { label: "管理员", value: "admin" },
-  { label: "教师", value: "teacher" },
-  { label: "学生", value: "student" },
-  { label: "采集人员", value: "collector" },
-  { label: "审核人员", value: "reviewer" },
-];
 
 export default function UsersPage() {
   const { message } = App.useApp();
@@ -38,7 +29,7 @@ export default function UsersPage() {
   const canCreate = hasPermission("auth:user:create");
   const canDelete = hasPermission("auth:user:delete");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [userPage, rolePage] = await Promise.all([
@@ -47,20 +38,23 @@ export default function UsersPage() {
       ]);
       setUsers(userPage.records);
       setRoles(rolePage.records);
+    } catch (error) {
+      if (!isAuthRedirectError(error)) {
+        message.error("用户数据加载失败");
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, [message]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const columns = useMemo<ColumnsType<User>>(
     () => [
       { title: "账号", dataIndex: "username" },
       { title: "姓名", dataIndex: "realName" },
-      { title: "类型", dataIndex: "userType" },
       {
         title: "角色",
         dataIndex: "roles",
@@ -98,7 +92,7 @@ export default function UsersPage() {
           ) : null,
       },
     ],
-    [canDelete, message],
+    [canDelete, load, message],
   );
 
   async function submit(values: UserForm) {
@@ -138,10 +132,7 @@ export default function UsersPage() {
           <Form.Item name="realName" label="姓名" rules={[{ required: true, message: "请输入姓名" }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="userType" label="用户类型">
-            <Select options={userTypeOptions} />
-          </Form.Item>
-          <Form.Item name="roleIds" label="角色">
+          <Form.Item name="roleIds" label="角色" rules={[{ required: true, message: "请选择角色" }]}>
             <Select
               mode="multiple"
               options={roles.map((role) => ({ label: role.roleName, value: role.id }))}

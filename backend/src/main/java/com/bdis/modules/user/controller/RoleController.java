@@ -51,7 +51,7 @@ public class RoleController {
     }
 
     @PutMapping("/{roleId}")
-    public Result<Void> update(@PathVariable Long roleId, @RequestBody RoleUpdateDTO dto) {
+    public Result<Void> update(@PathVariable Long roleId, @Valid @RequestBody RoleUpdateDTO dto) {
         authorizationService.requirePermission("auth:role:update");
         roleService.update(roleId, dto);
         return Result.success();

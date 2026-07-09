@@ -6,8 +6,10 @@ import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.DuplicateResourceException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
+import com.bdis.modules.permission.entity.DataScopeEntity;
 import com.bdis.modules.permission.entity.PermissionEntity;
 import com.bdis.modules.permission.entity.RolePermissionEntity;
+import com.bdis.modules.permission.mapper.DataScopeMapper;
 import com.bdis.modules.permission.mapper.PermissionMapper;
 import com.bdis.modules.permission.mapper.RolePermissionMapper;
 import com.bdis.modules.user.dto.RoleCreateDTO;
@@ -20,7 +22,6 @@ import com.bdis.modules.user.mapper.UserRoleMapper;
 import com.bdis.modules.user.query.RoleQuery;
 import com.bdis.modules.user.service.RoleService;
 import com.bdis.modules.user.vo.RoleVO;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -37,15 +38,19 @@ public class RoleServiceImpl implements RoleService {
 
     private final RolePermissionMapper rolePermissionMapper;
 
+    private final DataScopeMapper dataScopeMapper;
+
     public RoleServiceImpl(
             RoleMapper roleMapper,
             UserRoleMapper userRoleMapper,
             PermissionMapper permissionMapper,
-            RolePermissionMapper rolePermissionMapper) {
+            RolePermissionMapper rolePermissionMapper,
+            DataScopeMapper dataScopeMapper) {
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
         this.permissionMapper = permissionMapper;
         this.rolePermissionMapper = rolePermissionMapper;
+        this.dataScopeMapper = dataScopeMapper;
     }
 
     @Override
@@ -54,7 +59,8 @@ public class RoleServiceImpl implements RoleService {
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.and(
                     condition ->
-                            condition.like(RoleEntity::getRoleCode, query.getKeyword())
+                            condition
+                                    .like(RoleEntity::getRoleCode, query.getKeyword())
                                     .or()
                                     .like(RoleEntity::getRoleName, query.getKeyword()));
         }
@@ -62,7 +68,8 @@ public class RoleServiceImpl implements RoleService {
             wrapper.eq(RoleEntity::getStatus, query.getStatus());
         }
         wrapper.orderByAsc(RoleEntity::getSortOrder).orderByDesc(RoleEntity::getId);
-        Page<RoleEntity> page = roleMapper.selectPage(Page.of(query.getPage(), query.getSize()), wrapper);
+        Page<RoleEntity> page =
+                roleMapper.selectPage(Page.of(query.getPage(), query.getSize()), wrapper);
         return PageResult.of(page.getRecords().stream().map(this::toVO).toList(), page);
     }
 
@@ -113,6 +120,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         requireRole(id);
         Long usedCount =
@@ -121,6 +129,11 @@ public class RoleServiceImpl implements RoleService {
         if (usedCount > 0) {
             throw new DuplicateResourceException("角色已被用户使用，不能删除");
         }
+        rolePermissionMapper.delete(
+                new LambdaQueryWrapper<RolePermissionEntity>()
+                        .eq(RolePermissionEntity::getRoleId, id));
+        dataScopeMapper.delete(
+                new LambdaQueryWrapper<DataScopeEntity>().eq(DataScopeEntity::getRoleId, id));
         roleMapper.deleteById(id);
     }
 
@@ -137,8 +150,10 @@ public class RoleServiceImpl implements RoleService {
         Long operatorId = SecurityUtils.currentUser().getUserId();
         for (Long permissionId : dto.getPermissionIds()) {
             PermissionEntity permission = permissionMapper.selectById(permissionId);
-            if (permission == null) {
-                throw new ResourceNotFoundException("权限不存在：" + permissionId);
+            if (permission == null
+                    || permission.getStatus() == null
+                    || permission.getStatus() != 1) {
+                throw new ResourceNotFoundException("权限不存在或已停用：" + permissionId);
             }
             RolePermissionEntity relation = new RolePermissionEntity();
             relation.setRoleId(id);
@@ -158,7 +173,8 @@ public class RoleServiceImpl implements RoleService {
 
     private void ensureCodeAvailable(String code, Long excludeId) {
         RoleEntity existed =
-                roleMapper.selectOne(new LambdaQueryWrapper<RoleEntity>().eq(RoleEntity::getRoleCode, code));
+                roleMapper.selectOne(
+                        new LambdaQueryWrapper<RoleEntity>().eq(RoleEntity::getRoleCode, code));
         if (existed != null && (excludeId == null || !existed.getId().equals(excludeId))) {
             throw new DuplicateResourceException("角色编码已存在");
         }

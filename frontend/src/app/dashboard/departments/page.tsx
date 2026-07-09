@@ -1,12 +1,12 @@
 "use client";
 
-import { apiDelete, apiGet, apiPost } from "@/lib/request";
+import { apiDelete, apiGet, apiPost, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Department, Organization, PageResult } from "@/types/api";
 import { App, Button, Form, Input, Modal, Popconfirm, Select, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type DepartmentForm = {
   departmentNo: string;
@@ -25,7 +25,7 @@ export default function DepartmentsPage() {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<DepartmentForm>();
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [departmentTree, organizationPage] = await Promise.all([
@@ -34,14 +34,18 @@ export default function DepartmentsPage() {
       ]);
       setDepartments(departmentTree);
       setOrganizations(organizationPage.records);
+    } catch (error) {
+      if (!isAuthRedirectError(error)) {
+        message.error("部门数据加载失败");
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, [message]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const flatDepartments = useMemo(() => flattenDepartments(departments), [departments]);
 
@@ -72,7 +76,7 @@ export default function DepartmentsPage() {
           ) : null,
       },
     ],
-    [hasPermission, message],
+    [hasPermission, load, message],
   );
 
   async function submit(values: DepartmentForm) {

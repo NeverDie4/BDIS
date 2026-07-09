@@ -56,20 +56,24 @@ public class CurrentUserServiceImpl implements CurrentUserService {
                 userRoleMapper.selectList(
                         new LambdaQueryWrapper<UserRoleEntity>()
                                 .eq(UserRoleEntity::getUserId, userId));
-        Set<Long> roleIds = new LinkedHashSet<>();
+        Set<Long> relationRoleIds = new LinkedHashSet<>();
         for (UserRoleEntity userRole : userRoles) {
-            roleIds.add(userRole.getRoleId());
+            relationRoleIds.add(userRole.getRoleId());
         }
+        Set<Long> roleIds = new LinkedHashSet<>();
         Set<String> roleCodes = new LinkedHashSet<>();
         Set<String> permissions = new LinkedHashSet<>();
-        if (!roleIds.isEmpty()) {
-            List<RoleEntity> roles = roleMapper.selectBatchIds(roleIds);
+        if (!relationRoleIds.isEmpty()) {
+            List<RoleEntity> roles = roleMapper.selectBatchIds(relationRoleIds);
             for (RoleEntity role : roles) {
                 if (role.getStatus() != null && role.getStatus() == 1) {
+                    roleIds.add(role.getId());
                     roleCodes.add(role.getRoleCode());
                 }
             }
-            permissions.addAll(loadPermissions(roleIds));
+            if (!roleIds.isEmpty()) {
+                permissions.addAll(loadPermissions(roleIds));
+            }
         }
         if (roleCodes.contains(SecurityConstants.ADMIN_ROLE_CODE)) {
             permissions.add("*");

@@ -1,6 +1,6 @@
 "use client";
 
-import { apiDelete, apiGet, apiPost, apiPut, getApiErrorMessage } from "@/lib/request";
+import { apiDelete, apiGet, apiPost, apiPut, getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { PageResult, Permission, Role } from "@/types/api";
 import { App, Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
@@ -45,7 +45,9 @@ export default function RolesPage() {
       setRoles(rolePage.records);
       setPermissions(permissionPage.records);
     } catch (error) {
-      message.error(getApiErrorMessage(error, "角色数据加载失败"));
+      if (!isAuthRedirectError(error)) {
+        message.error(getApiErrorMessage(error, "角色数据加载失败"));
+      }
     } finally {
       setLoading(false);
     }
