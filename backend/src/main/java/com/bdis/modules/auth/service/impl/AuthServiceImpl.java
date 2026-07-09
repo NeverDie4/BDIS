@@ -1,0 +1,216 @@
+package com.bdis.modules.auth.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.common.constants.SecurityConstants;
+import com.bdis.common.exception.DuplicateResourceException;
+import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.UnauthorizedException;
+import com.bdis.common.security.BootstrapProperties;
+import com.bdis.common.security.CurrentUser;
+import com.bdis.common.security.JwtClaims;
+import com.bdis.common.security.JwtProperties;
+import com.bdis.common.security.JwtUtils;
+import com.bdis.common.security.SecurityUtils;
+import com.bdis.common.security.TokenBlacklistService;
+import com.bdis.modules.audit.entity.LoginLogEntity;
+import com.bdis.modules.audit.mapper.LoginLogMapper;
+import com.bdis.modules.auth.dto.BootstrapAdminDTO;
+import com.bdis.modules.auth.dto.LoginDTO;
+import com.bdis.modules.auth.service.AuthService;
+import com.bdis.modules.auth.service.CurrentUserService;
+import com.bdis.modules.auth.vo.CurrentUserVO;
+import com.bdis.modules.auth.vo.LoginVO;
+import com.bdis.modules.user.entity.RoleEntity;
+import com.bdis.modules.user.entity.UserEntity;
+import com.bdis.modules.user.entity.UserRoleEntity;
+import com.bdis.modules.user.mapper.RoleMapper;
+import com.bdis.modules.user.mapper.UserMapper;
+import com.bdis.modules.user.mapper.UserRoleMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+@Service
+public class AuthServiceImpl implements AuthService {
+
+    private final UserMapper userMapper;
+
+    private final RoleMapper roleMapper;
+
+    private final UserRoleMapper userRoleMapper;
+
+    private final LoginLogMapper loginLogMapper;
+
+    private final PasswordEncoder passwordEncoder;
+
+    private final JwtUtils jwtUtils;
+
+    private final JwtProperties jwtProperties;
+
+    private final BootstrapProperties bootstrapProperties;
+
+    private final TokenBlacklistService tokenBlacklistService;
+
+    private final CurrentUserService currentUserService;
+
+    public AuthServiceImpl(
+            UserMapper userMapper,
+            RoleMapper roleMapper,
+            UserRoleMapper userRoleMapper,
+            LoginLogMapper loginLogMapper,
+            PasswordEncoder passwordEncoder,
+            JwtUtils jwtUtils,
+            JwtProperties jwtProperties,
+            BootstrapProperties bootstrapProperties,
+            TokenBlacklistService tokenBlacklistService,
+            CurrentUserService currentUserService) {
+        this.userMapper = userMapper;
+        this.roleMapper = roleMapper;
+        this.userRoleMapper = userRoleMapper;
+        this.loginLogMapper = loginLogMapper;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtils = jwtUtils;
+        this.jwtProperties = jwtProperties;
+        this.bootstrapProperties = bootstrapProperties;
+        this.tokenBlacklistService = tokenBlacklistService;
+        this.currentUserService = currentUserService;
+    }
+
+    @Override
+    @Transactional
+    public CurrentUserVO bootstrapAdmin(BootstrapAdminDTO dto, HttpServletRequest request) {
+        if (!StringUtils.hasText(bootstrapProperties.getToken())) {
+            throw new ForbiddenException("未配置初始化令牌");
+        }
+        if (!bootstrapProperties.getToken().equals(dto.getBootstrapToken())) {
+            throw new ForbiddenException("初始化令牌无效");
+        }
+        if (userMapper.selectCount(null) > 0) {
+            throw new DuplicateResourceException("系统已存在用户，不能再次初始化管理员");
+        }
+        RoleEntity adminRole = ensureAdminRole();
+        UserEntity user = new UserEntity();
+        user.setUserNo(generateNo("U"));
+        user.setUsername(dto.getUsername());
+        user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
+        user.setRealName(dto.getRealName());
+        user.setPhoneNumber(dto.getPhoneNumber());
+        user.setEmail(dto.getEmail());
+        user.setStatus(1);
+        userMapper.insert(user);
+        UserRoleEntity userRole = new UserRoleEntity();
+        userRole.setUserId(user.getId());
+        userRole.setRoleId(adminRole.getId());
+        userRoleMapper.insert(userRole);
+        recordLogin(user.getId(), user.getUsername(), "success", "bootstrap-admin", request);
+        return toCurrentUserVO(currentUserService.load(user.getId()));
+    }
+
+    @Override
+    public LoginVO login(LoginDTO dto, HttpServletRequest request) {
+        UserEntity user =
+                userMapper.selectOne(
+                        new LambdaQueryWrapper<UserEntity>()
+                                .eq(UserEntity::getUsername, dto.getUsername()));
+        if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPasswordHash())) {
+            recordLogin(null, dto.getUsername(), "failed", "账号或密码错误", request);
+            throw new UnauthorizedException("账号或密码错误");
+        }
+        if (user.getStatus() == null || user.getStatus() != 1) {
+            recordLogin(user.getId(), user.getUsername(), "failed", "账号已停用", request);
+            throw new UnauthorizedException("账号已停用");
+        }
+        user.setLastLoginAt(LocalDateTime.now());
+        userMapper.updateById(user);
+        CurrentUser currentUser = currentUserService.load(user.getId());
+        String accessToken = jwtUtils.generate(currentUser);
+        LoginVO vo = new LoginVO();
+        vo.setAccessToken(accessToken);
+        vo.setExpiresIn(jwtProperties.getAccessTokenTtlMinutes() * 60);
+        vo.setUser(toCurrentUserVO(currentUser));
+        recordLogin(user.getId(), user.getUsername(), "success", null, request);
+        return vo;
+    }
+
+    @Override
+    public void logout(String authorizationHeader) {
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith(SecurityConstants.BEARER_PREFIX)) {
+            return;
+        }
+        String token = authorizationHeader.substring(SecurityConstants.BEARER_PREFIX.length());
+        JwtClaims claims = jwtUtils.parse(token);
+        tokenBlacklistService.blacklist(claims);
+    }
+
+    @Override
+    public CurrentUserVO currentUser() {
+        return toCurrentUserVO(SecurityUtils.currentUser());
+    }
+
+    private RoleEntity ensureAdminRole() {
+        RoleEntity adminRole =
+                roleMapper.selectOne(
+                        new LambdaQueryWrapper<RoleEntity>()
+                                .eq(RoleEntity::getRoleCode, SecurityConstants.ADMIN_ROLE_CODE));
+        if (adminRole != null) {
+            return adminRole;
+        }
+        RoleEntity role = new RoleEntity();
+        role.setRoleCode(SecurityConstants.ADMIN_ROLE_CODE);
+        role.setRoleName("系统管理员");
+        role.setRoleType("system");
+        role.setDataScope("all");
+        role.setDescription("系统初始化管理员角色");
+        role.setSortOrder(1);
+        role.setStatus(1);
+        roleMapper.insert(role);
+        return role;
+    }
+
+    private CurrentUserVO toCurrentUserVO(CurrentUser user) {
+        CurrentUserVO vo = new CurrentUserVO();
+        vo.setUserId(user.getUserId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setOrganizationId(user.getOrganizationId());
+        vo.setDepartmentId(user.getDepartmentId());
+        vo.setRoleCodes(user.getRoleCodes());
+        vo.setRoleIds(user.getRoleIds());
+        vo.setPermissions(user.getPermissions());
+        return vo;
+    }
+
+    private void recordLogin(
+            Long userId,
+            String username,
+            String result,
+            String failReason,
+            HttpServletRequest request) {
+        LoginLogEntity log = new LoginLogEntity();
+        log.setUserId(userId);
+        log.setUsername(username);
+        log.setLoginResult(result);
+        log.setFailReason(failReason);
+        log.setIpAddress(clientIp(request));
+        log.setUserAgent(request.getHeader("User-Agent"));
+        log.setLoggedInAt(LocalDateTime.now());
+        loginLogMapper.insert(log);
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(forwardedFor)) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    private String generateNo(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
+    }
+}
