@@ -1,5 +1,8 @@
 package com.bdis.modules.file.service.impl;
 
+import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.service.FileStorageService;
@@ -15,6 +18,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,7 +26,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class LocalFileStorageServiceImpl implements FileStorageService {
 
-    private static final DateTimeFormatter DAY_PATH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+    private static final DateTimeFormatter DAY_PATH_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy/MM/dd");
 
     private final FileResourceMapper fileResourceMapper;
 
@@ -30,15 +35,25 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
     private String storagePath;
 
     @Override
+    @Transactional
     public FileResourceVO upload(MultipartFile file, String bizType, String fileUsage) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("上传文件不能为空");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "上传文件不能为空");
         }
 
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() == null ? "file" : file.getOriginalFilename());
+        String originalFilename =
+                StringUtils.cleanPath(
+                        file.getOriginalFilename() == null ? "file" : file.getOriginalFilename());
         String extension = getExtension(originalFilename);
-        String fileNo = "FILE" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
-                + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
+        String fileNo =
+                "FILE"
+                        + LocalDateTime.now()
+                                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                        + UUID.randomUUID()
+                                .toString()
+                                .replace("-", "")
+                                .substring(0, 8)
+                                .toUpperCase(Locale.ROOT);
         String storedFilename = extension.isBlank() ? fileNo : fileNo + "." + extension;
         String relativeDir = "uploads/" + LocalDate.now().format(DAY_PATH_FORMATTER);
         Path root = Path.of(storagePath).toAbsolutePath().normalize();
@@ -46,7 +61,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
         Path target = targetDir.resolve(storedFilename).normalize();
 
         if (!target.startsWith(root)) {
-            throw new IllegalArgumentException("非法文件路径");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "非法文件路径");
         }
 
         try {
@@ -67,11 +82,23 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
         entity.setFileUrl(fileUrl);
         entity.setThumbnailUrl(fileUrl);
         entity.setStorageType("local");
+        Long operatorId = SecurityUtils.currentUser().getUserId();
+        entity.setUploaderId(operatorId);
+        entity.setCreatedBy(operatorId);
         entity.setUploadedAt(LocalDateTime.now());
         entity.setStatus(1);
         entity.setIsDeleted(0);
         entity.setRemark(buildRemark(bizType, fileUsage));
-        fileResourceMapper.insert(entity);
+        try {
+            fileResourceMapper.insert(entity);
+        } catch (RuntimeException exception) {
+            try {
+                Files.deleteIfExists(target);
+            } catch (IOException cleanupException) {
+                exception.addSuppressed(cleanupException);
+            }
+            throw exception;
+        }
 
         return toVO(entity);
     }
@@ -108,7 +135,9 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
         if (contentType.startsWith("audio/")) {
             return "audio";
         }
-        if (contentType.contains("pdf") || contentType.contains("word") || contentType.contains("excel")) {
+        if (contentType.contains("pdf")
+                || contentType.contains("word")
+                || contentType.contains("excel")) {
             return "document";
         }
         return "file";

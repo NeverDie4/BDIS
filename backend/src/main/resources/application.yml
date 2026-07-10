@@ -46,5 +46,12 @@ springdoc:
     path: /swagger-ui.html
 
 bdis:
+  security:
+    jwt:
+      secret: ${BDIS_JWT_SECRET:bdis-development-secret-change-me}
+      access-token-ttl-minutes: ${BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES:120}
+      issuer: bdis-api
+  bootstrap:
+    token: ${BDIS_BOOTSTRAP_TOKEN:}
   file:
     storage-path: ${BDIS_FILE_STORAGE_PATH:./storage}

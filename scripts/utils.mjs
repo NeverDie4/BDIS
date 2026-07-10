@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export function commandName(name) {
-  return name;
+  return process.platform === 'win32' ? `${name}.cmd` : name;
 }
 
 export function projectPath(...parts) {
@@ -25,7 +25,7 @@ export function runStep(label, command, args, options = {}) {
     cwd: rootDir,
     env: process.env,
     stdio: 'inherit',
-    shell: true,
+    shell: false,
     ...options,
   });
 
@@ -48,7 +48,7 @@ export function capture(command, args, options = {}) {
     cwd: rootDir,
     env: process.env,
     encoding: 'utf8',
-    shell: true,
+    shell: false,
     ...options,
   });
 
@@ -115,14 +115,14 @@ export function findJava21Home() {
       continue;
     }
 
-    const result = spawnSync(javaPath, ['-version'], { encoding: 'utf8', shell: true });
+    const result = spawnSync(javaPath, ['-version'], { encoding: 'utf8' });
     const output = `${result.stdout || ''}${result.stderr || ''}`;
     if (result.status === 0 && detectJavaMajor(output) === 21) {
       return { home: candidate, output };
     }
   }
 
-  const current = spawnSync('java', ['-version'], { encoding: 'utf8', shell: true });
+  const current = spawnSync('java', ['-version'], { encoding: 'utf8' });
   const currentOutput = `${current.stdout || ''}${current.stderr || ''}`;
   if (current.status === 0 && detectJavaMajor(currentOutput) === 21) {
     return { home: null, output: currentOutput };

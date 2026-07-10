@@ -557,6 +557,17 @@
   gap: 8px;
 }
 
+@media (max-width: 1280px) {
+  .contentGrid {
+    grid-template-columns: 260px minmax(420px, 1fr);
+  }
+
+  .detailPanel {
+    min-height: auto;
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 720px) {
   .toolbar {
     align-items: stretch;

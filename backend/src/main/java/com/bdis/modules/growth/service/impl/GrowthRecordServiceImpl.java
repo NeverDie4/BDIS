@@ -1,5 +1,7 @@
 package com.bdis.modules.growth.service.impl;
 
+import com.bdis.common.exception.ResourceNotFoundException;
+import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.growth.dto.GrowthRecordCreateRequest;
 import com.bdis.modules.growth.entity.GrowthRecordEntity;
 import com.bdis.modules.growth.mapper.GrowthRecordMapper;
@@ -24,6 +26,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
 
     @Override
     public List<GrowthRecordVO> listByPointId(Long pointId) {
+        if (mapPointMapper.selectById(pointId) == null) {
+            throw new ResourceNotFoundException("地图点位不存在");
+        }
         return growthRecordMapper.selectByPointId(pointId);
     }
 
@@ -32,8 +37,10 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     public GrowthRecordVO createForPoint(Long pointId, GrowthRecordCreateRequest request) {
         MapPointEntity point = mapPointMapper.selectById(pointId);
         if (point == null) {
-            throw new IllegalArgumentException("地图点位不存在");
+            throw new ResourceNotFoundException("地图点位不存在");
         }
+
+        Long operatorId = SecurityUtils.currentUser().getUserId();
 
         LocalDateTime collectedAt =
                 request.getCollectedAt() == null ? LocalDateTime.now() : request.getCollectedAt();
@@ -41,6 +48,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         GrowthRecordEntity record = new GrowthRecordEntity();
         record.setSpeciesId(point.getSpeciesId());
         record.setDistributionId(pointId);
+        record.setCollectorId(operatorId);
         record.setCollectorNameSnapshot(request.getCollectorName());
         record.setRegionId(point.getRegionId());
         record.setLongitude(point.getLongitude());
@@ -56,16 +64,18 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         record.setDataSource(defaultText(request.getDataSource(), "map"));
         record.setReviewStatus("draft");
         record.setCollectedAt(collectedAt);
+        record.setCreatedBy(operatorId);
         record.setRemark(request.getRemark());
         growthRecordMapper.insert(record);
 
         point.setLastCollectedAt(collectedAt);
+        point.setUpdatedBy(operatorId);
         mapPointMapper.updateById(point);
 
         return growthRecordMapper.selectByPointId(pointId).stream()
                 .filter(item -> record.getId().equals(item.getId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("采集记录不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("采集记录不存在"));
     }
 
     private String defaultText(String value, String defaultValue) {

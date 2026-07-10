@@ -65,7 +65,7 @@ export function HerbPointFormModal({
       coverImageUrl: initialPoint?.coverImageUrl,
       lastCollectedAt: initialPoint?.lastCollectedAt ? dayjs(initialPoint.lastCollectedAt) : undefined,
       sourceType: initialPoint?.sourceType ?? "pc",
-      dataSource: initialPoint?.dataSource ?? "map-demo",
+      dataSource: initialPoint?.dataSource ?? "map",
       remark: initialPoint?.remark,
     });
   }, [form, initialPoint, open]);

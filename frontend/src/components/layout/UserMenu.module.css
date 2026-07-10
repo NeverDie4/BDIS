@@ -1,0 +1,23 @@
+.avatarButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #d9cbb6;
+  border-radius: 50%;
+  background: rgba(var(--color-texture-rgb), 0.86);
+  cursor: pointer;
+}
+
+.avatarButton :global(.ant-avatar) {
+  width: 38px;
+  height: 38px;
+  background: var(--color-paper);
+  color: var(--color-primary);
+  box-shadow: none;
+}
+
+.avatarButton:hover :global(.ant-avatar) {
+  background: var(--color-primary-light);
+  box-shadow: none;
+}

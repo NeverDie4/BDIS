@@ -7,6 +7,9 @@ frontend/.next/
 frontend/out/
 frontend/coverage/
 frontend/.env*.local
+frontend/.next-dev*.log
+frontend/build-debug.log
+frontend/tsconfig.tsbuildinfo
 
 # backend
 backend/target/
@@ -20,6 +23,8 @@ storage/
 logs/
 mysql-data/
 redis-data/
+build-debug.log
+*.tsbuildinfo
 
 # environment
 .env
