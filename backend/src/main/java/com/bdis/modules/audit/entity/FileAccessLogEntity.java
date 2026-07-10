@@ -1,5 +1,6 @@
 package com.bdis.modules.audit.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bdis.common.core.LogEntity;
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ public class FileAccessLogEntity extends LogEntity {
 
     private String accessType;
 
+    @TableField("result_status")
     private String accessResult;
 
     private String ipAddress;

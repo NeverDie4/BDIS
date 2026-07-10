@@ -41,8 +41,10 @@ public class DataSyncLogEntity extends LogEntity {
 
     private Long exchangeId;
 
+    @TableField("biz_type")
     private String businessType;
 
+    @TableField("biz_id")
     private Long businessId;
 
     private String externalNo;
