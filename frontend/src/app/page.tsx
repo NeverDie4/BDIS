@@ -1,9 +1,3 @@
-<<<<<<< Updated upstream
-import { redirect } from "next/navigation";
-
-export default function HomePage() {
-  redirect("/login");
-=======
 "use client";
 
 import { HerbEssenceStrip } from "@/components/home/HerbEssenceStrip";
@@ -19,5 +13,4 @@ export default function HomePage() {
       <HomeOverviewGrid />
     </SiteLayout>
   );
->>>>>>> Stashed changes
 }
