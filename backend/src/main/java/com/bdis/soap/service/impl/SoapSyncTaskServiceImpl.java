@@ -71,7 +71,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         task.setMethodName(defaultValue(dto.getMethodName(), "syncGrowthRecord"));
         task.setSyncDirection(defaultValue(dto.getDirection(), "INBOUND"));
         task.setSyncStatus("PENDING");
-        task.setMock(dto.getMock() == null || dto.getMock());
+        task.setIsMock(dto.getMock() == null || dto.getMock());
         task.setRetryCount(0);
         task.setStatus(1);
         task.setIsDeleted(0);
@@ -227,6 +227,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
     private SoapSyncTaskVO toTaskVO(SoapSyncTaskEntity entity) {
         SoapSyncTaskVO vo = new SoapSyncTaskVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setMock(entity.getIsMock());
         return vo;
     }
 

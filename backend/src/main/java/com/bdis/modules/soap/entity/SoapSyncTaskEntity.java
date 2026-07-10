@@ -1,6 +1,5 @@
 package com.bdis.modules.soap.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bdis.common.core.BaseEntity;
 import java.time.LocalDateTime;
@@ -30,6 +29,5 @@ public class SoapSyncTaskEntity extends BaseEntity {
 
     private Integer retryCount;
 
-    @TableField("is_mock")
-    private Boolean mock;
+    private Boolean isMock;
 }

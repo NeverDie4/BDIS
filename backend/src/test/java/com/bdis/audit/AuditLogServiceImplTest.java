@@ -40,7 +40,7 @@ class AuditLogServiceImplTest {
         assertThat(entity.getOperationType()).isEqualTo("UPLOAD");
         assertThat(entity.getBizType()).isEqualTo("file_resource");
         assertThat(entity.getBizId()).isEqualTo(100L);
-        assertThat(entity.getOperationResult()).isEqualTo("SUCCESS");
+        assertThat(entity.getResultStatus()).isEqualTo("SUCCESS");
         assertThat(entity.getOperationTime()).isNotNull();
     }
 }

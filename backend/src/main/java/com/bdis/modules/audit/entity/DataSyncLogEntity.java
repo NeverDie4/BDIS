@@ -1,6 +1,5 @@
 package com.bdis.modules.audit.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bdis.common.core.LogEntity;
 import java.time.LocalDateTime;
@@ -16,8 +15,7 @@ public class DataSyncLogEntity extends LogEntity {
 
     private String syncType;
 
-    @TableField("source_system")
-    private String sourceType;
+    private String sourceSystem;
 
     private String requestData;
 
@@ -25,11 +23,9 @@ public class DataSyncLogEntity extends LogEntity {
 
     private String syncStatus;
 
-    @TableField("error_message")
-    private String failureReason;
+    private String errorMessage;
 
-    @TableField("target_table")
-    private String targetType;
+    private String targetTable;
 
     private Long targetId;
 
@@ -41,11 +37,9 @@ public class DataSyncLogEntity extends LogEntity {
 
     private Long exchangeId;
 
-    @TableField("biz_type")
-    private String businessType;
+    private String bizType;
 
-    @TableField("biz_id")
-    private Long businessId;
+    private Long bizId;
 
     private String externalNo;
 

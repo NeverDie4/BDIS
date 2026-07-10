@@ -28,17 +28,17 @@ public class DataSyncLogServiceImpl implements DataSyncLogService {
     public void record(DataSyncRecordDTO dto) {
         DataSyncLogEntity entity = new DataSyncLogEntity();
         entity.setSyncType(dto.getSyncType());
-        entity.setSourceType(dto.getSourceType());
-        entity.setTargetType(dto.getTargetType());
+        entity.setSourceSystem(dto.getSourceType());
+        entity.setTargetTable(dto.getTargetType());
         entity.setTaskId(dto.getTaskId());
         entity.setExchangeId(dto.getExchangeId());
-        entity.setBusinessType(dto.getBusinessType());
-        entity.setBusinessId(dto.getBusinessId());
+        entity.setBizType(dto.getBusinessType());
+        entity.setBizId(dto.getBusinessId());
         entity.setExternalNo(dto.getExternalNo());
         entity.setSyncStatus(dto.getSyncStatus());
         entity.setSuccessCount(dto.getSuccessCount());
         entity.setFailureCount(dto.getFailureCount());
-        entity.setFailureReason(dto.getFailureReason());
+        entity.setErrorMessage(dto.getFailureReason());
         entity.setOperatorId(CurrentUserUtils.currentUserId());
         entity.setOperatorName(CurrentUserUtils.currentUsername());
         entity.setOperationTime(LocalDateTime.now());
@@ -56,11 +56,11 @@ public class DataSyncLogServiceImpl implements DataSyncLogService {
                                 query.getSyncType())
                         .eq(
                                 query.getSourceType() != null,
-                                DataSyncLogEntity::getSourceType,
+                                DataSyncLogEntity::getSourceSystem,
                                 query.getSourceType())
                         .eq(
                                 query.getTargetType() != null,
-                                DataSyncLogEntity::getTargetType,
+                                DataSyncLogEntity::getTargetTable,
                                 query.getTargetType())
                         .eq(
                                 query.getSyncStatus() != null,
@@ -72,11 +72,11 @@ public class DataSyncLogServiceImpl implements DataSyncLogService {
                                 query.getTaskId())
                         .eq(
                                 query.getBusinessType() != null,
-                                DataSyncLogEntity::getBusinessType,
+                                DataSyncLogEntity::getBizType,
                                 query.getBusinessType())
                         .eq(
                                 query.getBusinessId() != null,
-                                DataSyncLogEntity::getBusinessId,
+                                DataSyncLogEntity::getBizId,
                                 query.getBusinessId())
                         .eq(
                                 query.getExternalNo() != null,
@@ -90,6 +90,11 @@ public class DataSyncLogServiceImpl implements DataSyncLogService {
                                 entity -> {
                                     DataSyncLogVO vo = new DataSyncLogVO();
                                     BeanUtils.copyProperties(entity, vo);
+                                    vo.setSourceType(entity.getSourceSystem());
+                                    vo.setTargetType(entity.getTargetTable());
+                                    vo.setBusinessType(entity.getBizType());
+                                    vo.setBusinessId(entity.getBizId());
+                                    vo.setFailureReason(entity.getErrorMessage());
                                     return vo;
                                 })
                         .toList();

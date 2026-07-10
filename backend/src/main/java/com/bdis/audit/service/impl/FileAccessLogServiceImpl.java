@@ -31,7 +31,7 @@ public class FileAccessLogServiceImpl implements FileAccessLogService {
         entity.setOperatorId(CurrentUserUtils.currentUserId());
         entity.setOperatorName(CurrentUserUtils.currentUsername());
         entity.setAccessType(dto.getAccessType());
-        entity.setAccessResult(dto.getAccessResult());
+        entity.setResultStatus(dto.getAccessResult());
         entity.setIpAddress(CurrentUserUtils.currentIp());
         entity.setUserAgent(CurrentUserUtils.currentUserAgent());
         entity.setOperationTime(LocalDateTime.now());
@@ -63,6 +63,7 @@ public class FileAccessLogServiceImpl implements FileAccessLogService {
                                 entity -> {
                                     FileAccessLogVO vo = new FileAccessLogVO();
                                     BeanUtils.copyProperties(entity, vo);
+                                    vo.setAccessResult(entity.getResultStatus());
                                     return vo;
                                 })
                         .toList();

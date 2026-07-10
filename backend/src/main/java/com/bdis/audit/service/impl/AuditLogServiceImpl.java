@@ -34,10 +34,10 @@ public class AuditLogServiceImpl implements AuditLogService {
         entity.setOperationType(dto.getOperationType());
         entity.setBizType(dto.getBizType());
         entity.setBizId(dto.getBizId());
-        entity.setOperationResult(dto.getOperationResult());
+        entity.setResultStatus(dto.getOperationResult());
         entity.setErrorMessage(dto.getErrorMessage());
         entity.setRequestMethod(CurrentUserUtils.currentRequestMethod());
-        entity.setRequestUri(CurrentUserUtils.currentRequestUri());
+        entity.setRequestUrl(CurrentUserUtils.currentRequestUri());
         entity.setIpAddress(CurrentUserUtils.currentIp());
         entity.setUserAgent(CurrentUserUtils.currentUserAgent());
         entity.setOperationTime(LocalDateTime.now());
@@ -87,6 +87,7 @@ public class AuditLogServiceImpl implements AuditLogService {
     private AuditLogVO toVO(OperationLogEntity entity) {
         AuditLogVO vo = new AuditLogVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setOperationResult(entity.getResultStatus());
         return vo;
     }
 }

@@ -1,6 +1,5 @@
 package com.bdis.modules.audit.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bdis.common.core.LogEntity;
 import java.time.LocalDateTime;
@@ -26,13 +25,11 @@ public class OperationLogEntity extends LogEntity {
 
     private String requestMethod;
 
-    @TableField("request_url")
-    private String requestUri;
+    private String requestUrl;
 
     private String requestParam;
 
-    @TableField("result_status")
-    private String operationResult;
+    private String resultStatus;
 
     private String errorMessage;
 
