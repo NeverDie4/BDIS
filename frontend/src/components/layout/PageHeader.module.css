@@ -1,0 +1,19 @@
+.tags {
+  justify-content: flex-end;
+  max-width: 300px;
+}
+
+.tag {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
+  border-radius: 999px;
+  background: var(--color-tag-bg);
+  color: var(--color-primary);
+  padding: 4px 10px;
+}
+
+@media (max-width: 860px) {
+  .tags {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}

@@ -1,0 +1,63 @@
+.mobilePage {
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.08) 0 1px, transparent 1px 48px),
+    var(--color-bg);
+  padding: 18px 14px 28px;
+}
+
+.mobileHero {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
+  border-radius: var(--radius-card-lg);
+  background: rgba(var(--color-texture-rgb), 0.88);
+  padding: 24px 20px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--color-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.mobileHero h1 {
+  margin: 0 !important;
+  color: var(--color-title) !important;
+  font-family: var(--font-ui);
+  font-size: 30px !important;
+}
+
+.mobileHero p {
+  margin: 12px 0 0 !important;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  line-height: 1.8;
+}
+
+.formCard {
+  margin-top: 14px;
+  border-radius: var(--radius-card-lg);
+  background: rgba(var(--color-texture-rgb), 0.94);
+  box-shadow: var(--shadow-card-soft);
+}
+
+.mobileActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (min-width: 560px) {
+  .mobilePage {
+    display: grid;
+    place-items: start center;
+  }
+
+  .mobileHero,
+  .formCard {
+    width: min(520px, 100%);
+  }
+}

@@ -1,0 +1,20 @@
+.card {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(var(--color-texture-rgb), 0.96), rgba(247, 241, 232, 0.9)),
+    var(--color-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.card :global(.ant-card-head) {
+  min-height: auto;
+  border-bottom-color: rgba(var(--color-border-rgb), 0.8);
+  color: var(--color-title);
+  font-family: var(--font-ui);
+  font-weight: 800;
+}
+
+.card :global(.ant-card-body) {
+  color: var(--color-text);
+}

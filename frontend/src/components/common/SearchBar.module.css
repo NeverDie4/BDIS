@@ -1,0 +1,16 @@
+.searchBar {
+  min-width: 240px;
+}
+
+.searchBar :global(.ant-input-affix-wrapper),
+.searchBar :global(.ant-input-search-button) {
+  border-color: var(--color-border);
+}
+
+.searchBar :global(.ant-input-affix-wrapper) {
+  background: rgba(var(--color-texture-rgb), 0.86);
+}
+
+.searchBar :global(.ant-input-search-button) {
+  border-radius: 0 var(--radius-button) var(--radius-button) 0 !important;
+}
