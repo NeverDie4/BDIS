@@ -1,0 +1,103 @@
+.panel {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-card-lg);
+  background:
+    radial-gradient(circle at 22% 24%, rgba(var(--color-primary-rgb), 0.12), transparent 26%),
+    linear-gradient(135deg, rgba(var(--color-texture-rgb), 0.98), rgba(229, 242, 233, 0.84));
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.copy h2 {
+  margin: 0 !important;
+  color: var(--color-title) !important;
+  font-family: var(--font-ui);
+  font-size: 22px !important;
+}
+
+.copy p {
+  margin: var(--space-sm) 0 0 !important;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  line-height: 1.8;
+}
+
+.mapArea {
+  position: relative;
+  min-height: 420px;
+  margin-top: var(--space-lg);
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-border-rgb), 0.82);
+  border-radius: var(--radius-card);
+  background: rgba(var(--color-texture-rgb), 0.62);
+}
+
+.mapShape {
+  position: absolute;
+  inset: 8% 4%;
+  width: 92%;
+  height: 84%;
+}
+
+.mapShape path:first-child {
+  fill: rgba(var(--color-primary-rgb), 0.1);
+  stroke: rgba(var(--color-primary-rgb), 0.32);
+  stroke-width: 3;
+}
+
+.mapShape path:not(:first-child) {
+  fill: none;
+  stroke: rgba(138, 90, 43, 0.22);
+  stroke-linecap: round;
+  stroke-width: 8;
+}
+
+.marker {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid rgba(var(--color-texture-rgb), 0.9);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-paper);
+  box-shadow: 0 8px 18px rgba(var(--color-primary-rgb), 0.2);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+  box-shadow: 0 0 0 3px rgba(var(--color-texture-rgb), 0.24);
+}
+
+.markerLabel {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pending {
+  background: var(--color-warning);
+}
+
+.warning {
+  background: var(--color-danger);
+}
+
+.active {
+  outline: 3px solid rgba(var(--color-primary-rgb), 0.18);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+@media (max-width: 720px) {
+  .mapArea {
+    min-height: 320px;
+  }
+}

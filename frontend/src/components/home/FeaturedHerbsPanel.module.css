@@ -1,0 +1,183 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.moreButton {
+  height: auto;
+  padding: 0;
+  color: var(--color-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.moreButton:hover {
+  background: transparent !important;
+  color: var(--color-primary-hover) !important;
+}
+
+.moreButton a {
+  color: inherit;
+}
+
+.herbShelf {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex: 1;
+  gap: 12px;
+  min-height: 0;
+}
+
+.herbTile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  min-height: 270px;
+  padding: 10px 9px 11px;
+  box-sizing: border-box;
+  border: 1px solid #ebe1d2;
+  border-radius: 10px;
+  background: #fdf8ef;
+  box-shadow: none;
+  color: inherit;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.herbTile::before {
+  position: absolute;
+  inset: 2px;
+  border: 1px solid rgba(217, 204, 183, 0.34);
+  border-radius: 7px;
+  pointer-events: none;
+  content: "";
+}
+
+.herbTile:hover {
+  border-color: #c9b08d;
+  background: #fffaf2;
+  color: inherit;
+}
+
+.herbImageBox {
+  display: flex;
+  flex: 0 0 132px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 132px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(201, 176, 141, 0.24);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(201, 176, 141, 0.12), transparent 58%),
+    rgba(255, 250, 242, 0.42);
+}
+
+.herbImageBox :global(.ant-image) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 100%;
+}
+
+.herbImage {
+  width: 100% !important;
+  height: 126px !important;
+  object-fit: contain;
+}
+
+.imagePlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(201, 176, 141, 0.46);
+  border-radius: 50%;
+  background: rgba(251, 247, 239, 0.78);
+  color: rgba(var(--color-primary-rgb), 0.52);
+  font-family: var(--font-brand);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.herbName {
+  margin: 10px 0 3px !important;
+  color: var(--color-text) !important;
+  font-family: var(--font-brand) !important;
+  font-size: 19px !important;
+  line-height: 1.25 !important;
+}
+
+.herbOrigin {
+  display: block;
+  width: 100%;
+  color: var(--color-muted);
+  font-family: var(--font-data);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.description {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 48px;
+  margin: 0;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+}
+
+.description span {
+  display: block;
+  white-space: nowrap;
+}
+
+.herbOrigin {
+  overflow: hidden;
+  color: #7d705f;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagRow {
+  justify-content: center;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 9px;
+}
+
+.paperTag {
+  margin-inline-end: 0 !important;
+  padding: 0 7px;
+  border: 1px solid #d9c29d !important;
+  border-radius: 4px;
+  background: #f5e8cd !important;
+  color: #7b5430 !important;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 20px;
+}
+
+@media (max-width: 1180px) {
+  .herbShelf {
+    grid-template-columns: repeat(4, minmax(112px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-color: rgba(138, 90, 43, 0.24) transparent;
+    scrollbar-width: thin;
+  }
+}

@@ -1,0 +1,67 @@
+.card {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(145deg, rgba(var(--color-texture-rgb), 0.98), rgba(229, 242, 233, 0.86)),
+    var(--color-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.topLine,
+.bottomLine {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.title {
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.valueLine {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: baseline;
+  margin-top: var(--space-md);
+}
+
+.valueLine strong {
+  color: var(--color-title);
+  font-family: var(--font-data);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.valueLine span {
+  color: var(--color-muted);
+  font-family: var(--font-data);
+  font-weight: 700;
+}
+
+.bottomLine {
+  margin-top: var(--space-md);
+}
+
+.description {
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+}
+
+.trend {
+  color: var(--color-success);
+  font-weight: 800;
+}
