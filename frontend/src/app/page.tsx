@@ -1,5 +1,16 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { HerbEssenceStrip } from "@/components/home/HerbEssenceStrip";
+import { HeroSearchSection } from "@/components/home/HeroSearchSection";
+import { HomeOverviewGrid } from "@/components/home/HomeOverviewGrid";
+import { SiteLayout } from "@/components/layout/SiteLayout";
 
 export default function HomePage() {
-  redirect("/login");
+  return (
+    <SiteLayout>
+      <HeroSearchSection />
+      <HerbEssenceStrip />
+      <HomeOverviewGrid />
+    </SiteLayout>
+  );
 }

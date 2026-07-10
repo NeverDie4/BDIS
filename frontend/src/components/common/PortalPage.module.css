@@ -1,0 +1,40 @@
+.page {
+  display: grid;
+  gap: 22px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card {
+  min-height: 178px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(var(--color-texture-rgb), 0.96), rgba(247, 241, 232, 0.92)),
+    var(--color-paper);
+  box-shadow: var(--shadow-card-soft);
+}
+
+.card h3 {
+  margin: 0 0 10px !important;
+  color: var(--color-title) !important;
+  font-family: var(--font-ui);
+  font-size: 18px !important;
+}
+
+.card p {
+  margin: 0 !important;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  line-height: 1.8;
+}
+
+@media (max-width: 860px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+}
