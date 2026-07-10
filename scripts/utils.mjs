@@ -1,12 +1,12 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
-import { delimiter, dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { spawnSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
+import { delimiter, dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export function commandName(name) {
-  return process.platform === 'win32' ? `${name}.cmd` : name;
+  return process.platform === "win32" ? `${name}.cmd` : name;
 }
 
 function quoteWindowsCommandArg(value) {
@@ -19,12 +19,12 @@ function quoteWindowsCommandArg(value) {
 }
 
 function spawnCommand(command, args, options) {
-  if (process.platform !== 'win32' || !/\.(?:cmd|bat)$/i.test(command)) {
+  if (process.platform !== "win32" || !/\.(?:cmd|bat)$/i.test(command)) {
     return spawnSync(command, args, options);
   }
 
-  const commandLine = [command, ...args.map(quoteWindowsCommandArg)].join(' ');
-  return spawnSync('cmd.exe', ['/d', '/s', '/c', commandLine], options);
+  const commandLine = [command, ...args.map(quoteWindowsCommandArg)].join(" ");
+  return spawnSync("cmd.exe", ["/d", "/s", "/c", commandLine], options);
 }
 
 export function projectPath(...parts) {
@@ -32,17 +32,17 @@ export function projectPath(...parts) {
 }
 
 export function displayPath(path) {
-  return relative(rootDir, path).replaceAll('\\', '/');
+  return relative(rootDir, path).replaceAll("\\", "/");
 }
 
 export function runStep(label, command, args, options = {}) {
   console.log(`\n> ${label}`);
-  console.log(`  ${[command, ...args].join(' ')}`);
+  console.log(`  ${[command, ...args].join(" ")}`);
 
   const result = spawnCommand(command, args, {
     cwd: rootDir,
     env: process.env,
-    stdio: 'inherit',
+    stdio: "inherit",
     shell: false,
     ...options,
   });
@@ -65,7 +65,7 @@ export function capture(command, args, options = {}) {
   const result = spawnCommand(command, args, {
     cwd: rootDir,
     env: process.env,
-    encoding: 'utf8',
+    encoding: "utf8",
     shell: false,
     ...options,
   });
@@ -73,7 +73,11 @@ export function capture(command, args, options = {}) {
   if (result.error || result.status !== 0) {
     return {
       ok: false,
-      message: result.error?.message || result.stderr || result.stdout || 'command failed',
+      message:
+        result.error?.message ||
+        result.stderr ||
+        result.stdout ||
+        "command failed",
     };
   }
 
@@ -108,17 +112,17 @@ export function detectJavaMajor(output) {
 }
 
 export function findJava21Home() {
-  const javaBinary = process.platform === 'win32' ? 'java.exe' : 'java';
+  const javaBinary = process.platform === "win32" ? "java.exe" : "java";
   const candidates = [];
 
   if (process.env.JAVA_HOME) {
     candidates.push(process.env.JAVA_HOME);
   }
 
-  if (process.platform !== 'win32') {
-    candidates.push('/usr/lib/jvm/java-21-openjdk');
-    candidates.push('/usr/lib/jvm/java-21');
-    candidates.push('/usr/lib/jvm/jdk-21');
+  if (process.platform !== "win32") {
+    candidates.push("/usr/lib/jvm/java-21-openjdk");
+    candidates.push("/usr/lib/jvm/java-21");
+    candidates.push("/usr/lib/jvm/jdk-21");
   }
 
   const seen = new Set();
@@ -128,20 +132,20 @@ export function findJava21Home() {
     }
     seen.add(candidate);
 
-    const javaPath = join(candidate, 'bin', javaBinary);
+    const javaPath = join(candidate, "bin", javaBinary);
     if (!existsSync(javaPath)) {
       continue;
     }
 
-    const result = spawnSync(javaPath, ['-version'], { encoding: 'utf8' });
-    const output = `${result.stdout || ''}${result.stderr || ''}`;
+    const result = spawnSync(javaPath, ["-version"], { encoding: "utf8" });
+    const output = `${result.stdout || ""}${result.stderr || ""}`;
     if (result.status === 0 && detectJavaMajor(output) === 21) {
       return { home: candidate, output };
     }
   }
 
-  const current = spawnSync('java', ['-version'], { encoding: 'utf8' });
-  const currentOutput = `${current.stdout || ''}${current.stderr || ''}`;
+  const current = spawnSync("java", ["-version"], { encoding: "utf8" });
+  const currentOutput = `${current.stdout || ""}${current.stderr || ""}`;
   if (current.status === 0 && detectJavaMajor(currentOutput) === 21) {
     return { home: null, output: currentOutput };
   }
@@ -158,6 +162,6 @@ export function java21Env() {
   return {
     ...process.env,
     JAVA_HOME: java.home,
-    PATH: `${join(java.home, 'bin')}${delimiter}${process.env.PATH || ''}`,
+    PATH: `${join(java.home, "bin")}${delimiter}${process.env.PATH || ""}`,
   };
 }

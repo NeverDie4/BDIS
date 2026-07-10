@@ -11,7 +11,7 @@ public class HerbFeatureProperties {
 
     private boolean enabled = true;
 
-    private String serviceUrl = "http://localhost:8001/extract-feature";
+    private String serviceUrl = "http://localhost:8002/extract-feature";
 
     private Integer timeoutSeconds = 180;
 

@@ -1,10 +1,15 @@
 # 生物医药数字信息系统 Java 类命名规范
 
+> 版本：V1.1
+> 日期：2026-07-10
+> 负责人：全组
+> 本次更新：统一根包名，补充 Request、QueryRequest 与模块分包规则。
+
 ## 1. 编写目的
 
 为保证生物医药数字信息系统在多人协作开发过程中的代码风格统一、类名清晰、职责明确，特制定本 Java 类命名规范。本文档只约定 Java 类的命名规则，不涉及具体 Java 类设计和业务实现。
 
-本规范适用于后端项目中的 Controller、Service、Mapper、Entity、DTO、VO、Query、Enum、Config、Exception、Constants、Utils 等 Java 类。
+本规范适用于后端项目中的 Controller、Service、Mapper、Entity、DTO、Request、VO、Query、Enum、Config、Exception、Constants、Utils 等 Java 类。
 
 ---
 
@@ -275,6 +280,29 @@ HerbObject
 
 说明：DTO 名称应尽量体现使用场景，例如 `CreateDTO`、`UpdateDTO`、`SubmitDTO`、`ImportDTO`。
 
+#### 4.6.1 Request 类
+
+Request 专用于 Controller 接收的 HTTP 请求，命名格式为：
+
+```text
+业务对象名 + 场景 + Request
+```
+
+推荐示例：
+
+```java
+HerbSpeciesCreateRequest
+HerbAtlasQueryRequest
+HerbIdentificationReviewRequest
+```
+
+DTO 与 Request 的边界如下：
+
+1. 只服务于 HTTP 入参的对象使用 `Request`。
+2. Service 之间传递、集成交换或可脱离 HTTP 使用的对象使用 `DTO`。
+3. 同一个对象不得同时提供仅后缀不同、字段完全相同的 DTO 和 Request。
+4. 现有 DTO 可兼容保留，修改相关接口时再按上述边界逐步统一，不做无业务收益的批量改名。
+
 ---
 
 ### 4.7 VO 类
@@ -340,7 +368,7 @@ HerbCondition
 HerbFilterParam
 ```
 
-说明：本项目统一使用 `Query` 表示查询条件，不混用 `Search`、`Condition`、`Filter`。
+说明：可复用的业务查询对象使用 `Query`；只作为 HTTP 查询参数的对象可使用 `QueryRequest`。不混用 `Search`、`Condition`、`Filter`。
 
 ---
 
@@ -675,32 +703,31 @@ CommonBusinessService
 推荐基础包名：
 
 ```java
-com.bmdis
+com.bdis
 ```
 
 推荐基础结构：
 
 ```text
-com.bmdis
-├── controller
-├── service
-│   └── impl
-├── mapper
-├── entity
-├── dto
-├── vo
-├── query
-├── enums
+com.bdis
+├── common
 ├── config
-├── exception
-├── constants
-└── utils
+└── modules
+    └── 业务模块
+        ├── controller
+        ├── service
+        │   └── impl
+        ├── mapper
+        ├── entity
+        ├── dto
+        ├── vo
+        └── query
 ```
 
 如果项目后期模块较多，也可以按业务模块分包：
 
 ```text
-com.bmdis.herb
+com.bdis.modules.herb
 ├── controller
 ├── service
 ├── mapper
@@ -709,7 +736,7 @@ com.bmdis.herb
 └── vo
 ```
 
-实训项目建议优先采用第一种结构，简单直观，便于小组协作。
+项目已采用按业务模块分包方式。新业务类统一放入 `com.bdis.modules.<module>`；`common` 仅保存真正跨模块的基础能力，顶层 `config` 保存全局配置。现存顶层业务包作为兼容代码逐步迁移，不再新增同类结构。
 
 ---
 
@@ -724,8 +751,9 @@ Service 实现：业务名 + ServiceImpl
 Mapper：业务名 + Mapper
 Entity：业务名 + Entity
 DTO：业务名 + 场景 + DTO
+Request：业务名 + 场景 + Request
 VO：业务名 + 场景 + VO
-Query：业务名 + Query
+Query：业务名 + Query；HTTP 专用查询可使用 QueryRequest
 Enum：业务名 + Enum
 Config：配置名 + Config
 Exception：异常名 + Exception
@@ -755,4 +783,4 @@ DateUtils
 
 ## 10. 文档说明
 
-本项目 Java 类命名统一采用大驼峰命名法，类名应体现清晰的业务含义和所在层次。Controller、Service、Mapper、Entity、DTO、VO、Query、Enum、Config、Exception、Constants、Utils 等不同类型的类应使用统一后缀进行区分。业务对象命名应保持一致，例如中药材统一命名为 Herb，生长记录统一命名为 GrowthRecord，文件资源统一命名为 FileResource，评价任务统一命名为 EvaluationTask。项目中禁止使用无意义类名、数字后缀、中英文混合命名和层次后缀混用。通过统一 Java 类命名规范，可以提高代码可读性，降低多人协作成本，并方便后续开发、测试和维护。
+本项目 Java 类命名统一采用大驼峰命名法，类名应体现清晰的业务含义和所在层次。Controller、Service、Mapper、Entity、DTO、Request、VO、Query、Enum、Config、Exception、Constants、Utils 等不同类型的类应使用统一后缀进行区分。业务对象命名应保持一致，例如中药材统一命名为 Herb，生长记录统一命名为 GrowthRecord，文件资源统一命名为 FileResource，评价任务统一命名为 EvaluationTask。项目中禁止使用无意义类名、数字后缀、中英文混合命名和层次后缀混用。通过统一 Java 类命名规范，可以提高代码可读性，降低多人协作成本，并方便后续开发、测试和维护。

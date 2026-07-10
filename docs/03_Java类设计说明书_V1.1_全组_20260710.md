@@ -1,11 +1,12 @@
 # 生物医药数字信息系统 Java 类设计说明书
 
-> 版本：V1.0  
-> 日期：2026-07-08  
+> 版本：V1.1
+> 日期：2026-07-10
 > 负责人：全组  
 > 适用阶段：详细设计、后端开发、代码生成、测试设计  
 > 技术栈：Java、Spring Boot、MyBatis Plus、MySQL 8.0、Redis、Nginx  
 > 关联文档：需求分析说明书、模块设计说明书、接口设计规范与接口清单、数据库详细设计说明书、Java 类命名规范
+> 本次更新：同步启动类、配置包、模块包迁移状态及识别采集新增表的 Java 映射。
 
 ---
 
@@ -14,6 +15,8 @@
 本文档用于说明生物医药数字信息系统后端 Java 类的整体设计，包括包结构、分层结构、公共基础类、模块类清单、实体类映射、DTO/VO/Query/Enum 设计和代码落地优先级。
 
 本文档不替代接口设计文档和数据库设计文档。接口路径、HTTP 方法和请求响应格式以接口设计规范为准；数据库表结构、字段类型和索引以数据库详细设计说明书为准；类命名规则以 Java 类命名规范为准。
+
+本文档同时包含“当前实现基线”和“后续目标设计”。第 4 至 8 节描述当前必须遵守的结构和映射；后续模块类清单用于指导逐步实现，不表示其中每个类都已经存在。当前代码清单以源码和编译结果为准。
 
 ---
 
@@ -56,15 +59,15 @@ com.bdis
 
 ```text
 com.bdis
-├── BiomedDigitalInformationSystemApplication
+├── BdisApplication
 ├── common
 │   ├── core
 │   ├── exception
 │   ├── security
-│   ├── config
 │   ├── constants
 │   ├── enums
 │   └── utils
+├── config
 ├── modules
 │   ├── auth
 │   ├── user
@@ -86,12 +89,9 @@ com.bdis
 │   ├── performance
 │   ├── soap
 │   └── dashboard
-└── infrastructure
-    ├── storage
-    ├── redis
-    ├── mybatis
-    └── xml
 ```
+
+目标结构统一使用 `com.bdis.modules.<module>`。当前 `audit`、`dashboard`、`file`、`soap` 的部分 Controller、Service、DTO、Query 和 VO 仍位于 `com.bdis.<module>`，而 Entity、Mapper 位于 `com.bdis.modules.<module>`；这是合并后的兼容状态。后续按模块整体迁移，迁移完成前不再新增顶层业务包。
 
 ---
 
@@ -134,7 +134,7 @@ modules.xxx
 
 | 类名 | 包路径 | 职责 |
 | --- | --- | --- |
-| `BiomedDigitalInformationSystemApplication` | `com.bdis` | Spring Boot 启动入口。 |
+| `BdisApplication` | `com.bdis` | Spring Boot 启动入口。 |
 
 ### 6.2 通用响应类
 
@@ -142,7 +142,6 @@ modules.xxx
 | --- | --- | --- |
 | `Result<T>` | `common.core` | 普通接口统一响应。 |
 | `PageResult<T>` | `common.core` | 分页接口统一响应。 |
-| `ErrorResult` | `common.core` | 异常响应结构。 |
 | `ResultCodeEnum` | `common.enums` | 成功、参数错误、未授权、无权限、资源不存在等响应编码。 |
 
 ### 6.3 通用基类
@@ -151,9 +150,7 @@ modules.xxx
 | --- | --- | --- |
 | `BaseEntity` | `common.core` | 通用主键、状态、逻辑删除、创建时间、更新时间等字段。 |
 | `BaseQuery` | `common.core` | 分页、关键词、排序、时间范围等通用查询字段。 |
-| `BaseVO` | `common.core` | 通用展示字段。 |
 | `CurrentUser` | `common.security` | 当前登录用户上下文对象。 |
-| `DataScope` | `common.security` | 数据范围判断结果对象。 |
 
 ### 6.4 异常类
 
@@ -172,28 +169,19 @@ modules.xxx
 
 | 类名 | 包路径 | 职责 |
 | --- | --- | --- |
-| `WebMvcConfig` | `common.config` | 跨域、拦截器、静态资源映射。 |
-| `SecurityConfig` | `common.config` | Token 认证、访问控制配置。 |
-| `MyBatisPlusConfig` | `common.config` | 分页插件、逻辑删除、自动填充配置。 |
-| `RedisConfig` | `common.config` | Redis 序列化和连接配置。 |
-| `FileStorageConfig` | `common.config` | 本地文件或对象存储配置。 |
-| `SwaggerConfig` | `common.config` | 接口文档配置。 |
-| `JacksonConfig` | `common.config` | 日期时间和 JSON 序列化配置。 |
+| `SecurityConfig` | `config` | Token 认证、访问控制和 CORS 配置。 |
+| `MyBatisPlusConfig` | `config` | MyBatis Plus 分页插件配置。 |
+| `StaticResourceConfig` | `config` | 本地上传文件静态资源映射。 |
+| `OpenApiConfig` | `config` | OpenAPI 接口文档配置。 |
 
 ### 6.6 工具类和常量类
 
 | 类名 | 包路径 | 职责 |
 | --- | --- | --- |
-| `JwtUtils` | `common.utils` | Token 生成、解析和校验。 |
-| `DateUtils` | `common.utils` | 日期时间处理。 |
-| `FileUtils` | `common.utils` | 文件名、扩展名、大小转换等处理。 |
-| `XmlUtils` | `common.utils` | XML 解析和转换。 |
-| `TreeUtils` | `common.utils` | 菜单、部门、区域等树形结构组装。 |
-| `SystemConstants` | `common.constants` | 系统通用常量。 |
+| `JwtUtils` | `common.security` | Token 生成、解析和校验。 |
+| `SecurityUtils` | `common.security` | 当前认证信息读取。 |
+| `CurrentUserUtils` | `common.utils` | 当前用户辅助访问。 |
 | `SecurityConstants` | `common.constants` | Token、Header、权限相关常量。 |
-| `FileConstants` | `common.constants` | 文件类型、存储路径、大小限制常量。 |
-| `RedisKeyConstants` | `common.constants` | Redis Key 前缀。 |
-| `AuditConstants` | `common.constants` | 审计动作和日志常量。 |
 
 ---
 
@@ -233,6 +221,12 @@ modules.xxx
 | `herb_image` | `HerbImageEntity` | herb | 用户上传或采集中药材图片表。 |
 | `herb_image_recognition` | `ImageRecognitionEntity` | spectrum | 图片 AI 识别结果表。 |
 | `herb_image_match` | `SpectrumComparisonEntity` | spectrum | 图片与标准图谱比对结果表。 |
+| `herb_atlas_feature` | `HerbAtlasFeatureEntity` | spectrum | 标准图谱特征向量表。 |
+| `herb_image_feature` | `HerbImageFeatureEntity` | spectrum | 用户图片特征向量表。 |
+| `herb_identification_result` | `HerbIdentificationResultEntity` | spectrum | 图片最终识别结论表。 |
+| `herb_collection_task` | `HerbCollectionTaskEntity` | collection | 中药材采集任务表。 |
+| `herb_batch` | `HerbBatchEntity` | collection | 采集批次档案表。 |
+| `herb_batch_image` | `HerbBatchImageEntity` | collection | 批次与图片关联表。 |
 | `herb_knowledge_entity` | `KnowledgeNodeEntity` | knowledge | 知识图谱实体表。 |
 | `herb_knowledge_relation` | `KnowledgeRelationEntity` | knowledge | 知识图谱关系类型表。 |
 | `herb_knowledge_triple` | `KnowledgeTripleEntity` | knowledge | 知识图谱三元组表。 |
@@ -280,10 +274,11 @@ public interface HerbMapper extends BaseMapper<HerbEntity> {
 | dictionary | `DictTypeMapper`、`DictItemMapper`、`RegionMapper` |
 | file | `FileResourceMapper`、`FileBusinessMapper` |
 | audit | `LoginLogMapper`、`OperationLogMapper`、`DataChangeLogMapper`、`FileAccessLogMapper`、`DataSyncLogMapper` |
-| herb | `HerbMapper`、`HerbImageMapper` |
+| herb | `HerbMapper`、`HerbSpeciesMapper`、`HerbImageMapper` |
 | map | `HerbBaseMapper`、`MapPointMapper` |
 | growth | `GrowthRecordMapper`、`GrowthAuditRecordMapper` |
-| spectrum | `AiModelVersionMapper`、`SpectrumMapper`、`SpectrumTagMapper`、`ImageRecognitionMapper`、`SpectrumComparisonMapper` |
+| spectrum | `AiModelVersionMapper`、`SpectrumMapper`、`SpectrumTagMapper`、`ImageRecognitionMapper`、`SpectrumComparisonMapper`、`HerbAtlasMapper`、`HerbAtlasTagMapper`、`HerbAtlasFeatureMapper`、`HerbImageFeatureMapper`、`HerbImageMatchMapper`、`HerbIdentificationResultMapper` |
+| collection | `HerbCollectionTaskMapper`、`HerbBatchMapper`、`HerbBatchImageMapper` |
 | knowledge | `KnowledgeNodeMapper`、`KnowledgeRelationMapper`、`KnowledgeTripleMapper` |
 | course | `CourseMapper`、`ExperimentStepMapper`、`CourseResourceMapper` |
 | research | `ResearchProjectMapper`、`ProjectMemberMapper`、`ResearchAchievementMapper` |
