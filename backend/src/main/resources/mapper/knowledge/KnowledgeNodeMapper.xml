@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.knowledge.mapper.KnowledgeNodeMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.knowledge.entity.KnowledgeNodeEntity">
+        <id column="id" property="id"/>
+        <result column="entity_code" property="entityCode"/>
+        <result column="entity_name" property="entityName"/>
+        <result column="entity_type" property="entityType"/>
+        <result column="related_id" property="relatedId"/>
+        <result column="description" property="description"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+</mapper>

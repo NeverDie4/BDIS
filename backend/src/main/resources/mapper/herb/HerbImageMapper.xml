@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.herb.mapper.HerbImageMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.herb.entity.HerbImageEntity">
+        <id column="id" property="id"/>
+        <result column="image_code" property="imageCode"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="image_name" property="imageName"/>
+        <result column="upload_source" property="uploadSource"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="base_id" property="baseId"/>
+        <result column="collect_place" property="collectPlace"/>
+        <result column="collect_time" property="collectTime"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="process_status" property="processStatus"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <resultMap id="ImageVOResultMap" type="com.bdis.modules.herb.vo.HerbImageVO">
+        <id column="id" property="id"/>
+        <result column="image_code" property="imageCode"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="image_name" property="imageName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="upload_source" property="uploadSource"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="base_id" property="baseId"/>
+        <result column="collect_place" property="collectPlace"/>
+        <result column="collect_time" property="collectTime"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="process_status" property="processStatus"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id,
+        image_code,
+        species_id,
+        image_url,
+        image_name,
+        upload_source,
+        collector_id,
+        base_id,
+        collect_place,
+        collect_time,
+        image_type,
+        growth_stage,
+        health_status,
+        process_status,
+        create_time,
+        update_time,
+        deleted
+    </sql>
+
+    <sql id="ImageVOColumns">
+        i.id,
+        i.image_code,
+        i.image_url,
+        i.image_name,
+        i.species_id,
+        s.herb_name AS species_name,
+        i.upload_source,
+        i.collector_id,
+        i.base_id,
+        i.collect_place,
+        i.collect_time,
+        i.image_type,
+        i.growth_stage,
+        i.health_status,
+        i.process_status
+    </sql>
+
+    <insert id="insertImage" parameterType="com.bdis.modules.herb.entity.HerbImageEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_image (
+            image_code,
+            species_id,
+            image_url,
+            image_name,
+            upload_source,
+            collector_id,
+            base_id,
+            collect_place,
+            collect_time,
+            image_type,
+            growth_stage,
+            health_status,
+            process_status,
+            create_time,
+            update_time,
+            deleted
+        ) VALUES (
+            #{imageCode},
+            #{speciesId},
+            #{imageUrl},
+            #{imageName},
+            #{uploadSource},
+            #{collectorId},
+            #{baseId},
+            #{collectPlace},
+            #{collectTime},
+            #{imageType},
+            #{growthStage},
+            #{healthStatus},
+            #{processStatus},
+            #{createTime},
+            #{updateTime},
+            #{deleted}
+        )
+    </insert>
+
+    <update id="updateImage" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
+        UPDATE herb_image
+        SET species_id = #{speciesId},
+            collector_id = #{collectorId},
+            base_id = #{baseId},
+            collect_place = #{collectPlace},
+            collect_time = #{collectTime},
+            image_type = #{imageType},
+            growth_stage = #{growthStage},
+            health_status = #{healthStatus},
+            process_status = #{processStatus},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="updateProcessStatus" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
+        UPDATE herb_image
+        SET process_status = #{processStatus},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="logicalDeleteById" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
+        UPDATE herb_image
+        SET deleted = 1,
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <select id="selectActiveById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_image
+        WHERE id = #{id}
+          AND deleted = 0
+    </select>
+
+    <select id="selectDetailById" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.deleted = 0
+        WHERE i.id = #{id}
+          AND i.deleted = 0
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.deleted = 0
+        <where>
+            i.deleted = 0
+            <if test="query.speciesId != null">
+                AND i.species_id = #{query.speciesId}
+            </if>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    i.image_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.image_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.collect_place LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.uploadSource != null and query.uploadSource != ''">
+                AND i.upload_source = #{query.uploadSource}
+            </if>
+            <if test="query.imageType != null and query.imageType != ''">
+                AND i.image_type = #{query.imageType}
+            </if>
+            <if test="query.growthStage != null and query.growthStage != ''">
+                AND i.growth_stage = #{query.growthStage}
+            </if>
+            <if test="query.healthStatus != null and query.healthStatus != ''">
+                AND i.health_status = #{query.healthStatus}
+            </if>
+            <if test="query.processStatus != null and query.processStatus != ''">
+                AND i.process_status = #{query.processStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND i.collect_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND i.collect_time &lt;= #{query.endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.deleted = 0
+        <where>
+            i.deleted = 0
+            <if test="query.speciesId != null">
+                AND i.species_id = #{query.speciesId}
+            </if>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    i.image_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.image_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.collect_place LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.uploadSource != null and query.uploadSource != ''">
+                AND i.upload_source = #{query.uploadSource}
+            </if>
+            <if test="query.imageType != null and query.imageType != ''">
+                AND i.image_type = #{query.imageType}
+            </if>
+            <if test="query.growthStage != null and query.growthStage != ''">
+                AND i.growth_stage = #{query.growthStage}
+            </if>
+            <if test="query.healthStatus != null and query.healthStatus != ''">
+                AND i.health_status = #{query.healthStatus}
+            </if>
+            <if test="query.processStatus != null and query.processStatus != ''">
+                AND i.process_status = #{query.processStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND i.collect_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND i.collect_time &lt;= #{query.endTime}
+            </if>
+        </where>
+        ORDER BY i.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByCollectorId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_image
+        WHERE collector_id = #{collectorId}
+          AND deleted = 0
+    </select>
+
+    <select id="selectByCollectorId" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.deleted = 0
+        WHERE i.collector_id = #{collectorId}
+          AND i.deleted = 0
+        ORDER BY i.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectActiveForFeatureExtraction" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_image
+        WHERE deleted = 0
+          AND image_url IS NOT NULL
+          AND image_url != ''
+        <if test="speciesId != null">
+          AND species_id = #{speciesId}
+        </if>
+        ORDER BY id ASC
+    </select>
+</mapper>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.spectrum.mapper.SpectrumMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.spectrum.entity.SpectrumEntity">
+        <id column="id" property="id"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="atlas_code" property="atlasCode"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="image_name" property="imageName"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="medicinal_part" property="medicinalPart"/>
+        <result column="source" property="source"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+</mapper>

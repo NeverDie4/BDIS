@@ -1,0 +1,38 @@
+package com.bdis.modules.herb.vo;
+
+import java.time.LocalDateTime;
+import lombok.Data;
+
+@Data
+public class HerbImageVO {
+
+    private Long id;
+
+    private String imageCode;
+
+    private String imageUrl;
+
+    private String imageName;
+
+    private Long speciesId;
+
+    private String speciesName;
+
+    private String uploadSource;
+
+    private Long collectorId;
+
+    private Long baseId;
+
+    private String collectPlace;
+
+    private LocalDateTime collectTime;
+
+    private String imageType;
+
+    private String growthStage;
+
+    private String healthStatus;
+
+    private String processStatus;
+}

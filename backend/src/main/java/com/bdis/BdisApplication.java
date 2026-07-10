@@ -6,7 +6,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
-@MapperScan("com.bdis.mapper")
+@MapperScan({
+    "com.bdis.mapper",
+    "com.bdis.modules.collection.mapper",
+    "com.bdis.modules.herb.mapper",
+    "com.bdis.modules.spectrum.mapper",
+    "com.bdis.modules.knowledge.mapper"
+})
 @SpringBootApplication
 public class BdisApplication {
 

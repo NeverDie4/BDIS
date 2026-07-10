@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.spectrum.mapper.ImageRecognitionMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.spectrum.entity.ImageRecognitionEntity">
+        <id column="id" property="id"/>
+        <result column="image_id" property="imageId"/>
+        <result column="model_version_id" property="modelVersionId"/>
+        <result column="predicted_species_id" property="predictedSpeciesId"/>
+        <result column="predicted_name" property="predictedName"/>
+        <result column="confidence" property="confidence"/>
+        <result column="recognition_status" property="recognitionStatus"/>
+        <result column="recognition_time" property="recognitionTime"/>
+        <result column="raw_result" property="rawResult"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <resultMap id="RecognitionVOResultMap" type="com.bdis.modules.spectrum.vo.HerbRecognitionVO">
+        <id column="id" property="id"/>
+        <result column="image_id" property="imageId"/>
+        <result column="image_code" property="imageCode"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="model_version_id" property="modelVersionId"/>
+        <result column="predicted_species_id" property="predictedSpeciesId"/>
+        <result column="predicted_species_name" property="predictedSpeciesName"/>
+        <result column="predicted_name" property="predictedName"/>
+        <result column="confidence" property="confidence"/>
+        <result column="recognition_status" property="recognitionStatus"/>
+        <result column="recognition_time" property="recognitionTime"/>
+        <result column="raw_result" property="rawResult"/>
+    </resultMap>
+
+    <sql id="RecognitionVOColumns">
+        r.id,
+        r.image_id,
+        i.image_code,
+        i.image_url,
+        r.model_version_id,
+        r.predicted_species_id,
+        s.herb_name AS predicted_species_name,
+        r.predicted_name,
+        r.confidence,
+        r.recognition_status,
+        r.recognition_time,
+        r.raw_result
+    </sql>
+
+    <insert id="insertRecognition"
+            parameterType="com.bdis.modules.spectrum.entity.ImageRecognitionEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_image_recognition (
+            image_id,
+            model_version_id,
+            predicted_species_id,
+            predicted_name,
+            confidence,
+            recognition_status,
+            recognition_time,
+            raw_result,
+            create_time,
+            update_time,
+            deleted
+        ) VALUES (
+            #{imageId},
+            #{modelVersionId},
+            #{predictedSpeciesId},
+            #{predictedName},
+            #{confidence},
+            #{recognitionStatus},
+            #{recognitionTime},
+            #{rawResult},
+            #{createTime},
+            #{updateTime},
+            #{deleted}
+        )
+    </insert>
+
+    <select id="selectLatestByImageId" resultMap="RecognitionVOResultMap">
+        SELECT
+        <include refid="RecognitionVOColumns"/>
+        FROM herb_image_recognition r
+        LEFT JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        LEFT JOIN herb_species s ON s.id = r.predicted_species_id AND s.deleted = 0
+        WHERE r.image_id = #{imageId}
+          AND r.deleted = 0
+        ORDER BY r.recognition_time DESC, r.create_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectVoById" resultMap="RecognitionVOResultMap">
+        SELECT
+        <include refid="RecognitionVOColumns"/>
+        FROM herb_image_recognition r
+        LEFT JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        LEFT JOIN herb_species s ON s.id = r.predicted_species_id AND s.deleted = 0
+        WHERE r.id = #{id}
+          AND r.deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByImageId" resultMap="RecognitionVOResultMap">
+        SELECT
+        <include refid="RecognitionVOColumns"/>
+        FROM herb_image_recognition r
+        LEFT JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        LEFT JOIN herb_species s ON s.id = r.predicted_species_id AND s.deleted = 0
+        WHERE r.image_id = #{imageId}
+          AND r.deleted = 0
+        ORDER BY r.recognition_time DESC, r.create_time DESC
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_image_recognition r
+        LEFT JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        LEFT JOIN herb_species s ON s.id = r.predicted_species_id AND s.deleted = 0
+        <where>
+            r.deleted = 0
+            <if test="query.imageId != null">
+                AND r.image_id = #{query.imageId}
+            </if>
+            <if test="query.predictedSpeciesId != null">
+                AND r.predicted_species_id = #{query.predictedSpeciesId}
+            </if>
+            <if test="query.predictedName != null and query.predictedName != ''">
+                AND r.predicted_name LIKE CONCAT('%', #{query.predictedName}, '%')
+            </if>
+            <if test="query.recognitionStatus != null and query.recognitionStatus != ''">
+                AND r.recognition_status = #{query.recognitionStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND r.recognition_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND r.recognition_time &lt;= #{query.endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultMap="RecognitionVOResultMap">
+        SELECT
+        <include refid="RecognitionVOColumns"/>
+        FROM herb_image_recognition r
+        LEFT JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        LEFT JOIN herb_species s ON s.id = r.predicted_species_id AND s.deleted = 0
+        <where>
+            r.deleted = 0
+            <if test="query.imageId != null">
+                AND r.image_id = #{query.imageId}
+            </if>
+            <if test="query.predictedSpeciesId != null">
+                AND r.predicted_species_id = #{query.predictedSpeciesId}
+            </if>
+            <if test="query.predictedName != null and query.predictedName != ''">
+                AND r.predicted_name LIKE CONCAT('%', #{query.predictedName}, '%')
+            </if>
+            <if test="query.recognitionStatus != null and query.recognitionStatus != ''">
+                AND r.recognition_status = #{query.recognitionStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND r.recognition_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND r.recognition_time &lt;= #{query.endTime}
+            </if>
+        </where>
+        ORDER BY r.recognition_time DESC, r.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+</mapper>

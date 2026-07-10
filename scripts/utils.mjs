@@ -9,6 +9,24 @@ export function commandName(name) {
   return process.platform === 'win32' ? `${name}.cmd` : name;
 }
 
+function quoteWindowsCommandArg(value) {
+  const text = String(value);
+  if (!/[\s&()<>^|"]/u.test(text)) {
+    return text;
+  }
+
+  return `"${text.replaceAll('"', '\\"')}"`;
+}
+
+function spawnCommand(command, args, options) {
+  if (process.platform !== 'win32' || !/\.(?:cmd|bat)$/i.test(command)) {
+    return spawnSync(command, args, options);
+  }
+
+  const commandLine = [command, ...args.map(quoteWindowsCommandArg)].join(' ');
+  return spawnSync('cmd.exe', ['/d', '/s', '/c', commandLine], options);
+}
+
 export function projectPath(...parts) {
   return resolve(rootDir, ...parts);
 }
@@ -21,7 +39,7 @@ export function runStep(label, command, args, options = {}) {
   console.log(`\n> ${label}`);
   console.log(`  ${[command, ...args].join(' ')}`);
 
-  const result = spawnSync(command, args, {
+  const result = spawnCommand(command, args, {
     cwd: rootDir,
     env: process.env,
     stdio: 'inherit',
@@ -44,7 +62,7 @@ export function runStep(label, command, args, options = {}) {
 }
 
 export function capture(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const result = spawnCommand(command, args, {
     cwd: rootDir,
     env: process.env,
     encoding: 'utf8',

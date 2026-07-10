@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.spectrum.mapper.HerbAtlasTagMapper">
+    <resultMap id="TagResultMap" type="com.bdis.modules.spectrum.entity.SpectrumTagEntity">
+        <id column="id" property="id"/>
+        <result column="atlas_id" property="atlasId"/>
+        <result column="tag_name" property="tagName"/>
+        <result column="tag_type" property="tagType"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <insert id="insertTags">
+        INSERT INTO herb_atlas_tag (
+            atlas_id,
+            tag_name,
+            tag_type,
+            create_time,
+            update_time,
+            deleted
+        ) VALUES
+        <foreach collection="tags" item="tag" separator=",">
+            (
+                #{tag.atlasId},
+                #{tag.tagName},
+                #{tag.tagType},
+                #{tag.createTime},
+                #{tag.updateTime},
+                #{tag.deleted}
+            )
+        </foreach>
+    </insert>
+
+    <update id="logicalDeleteByAtlasId" parameterType="com.bdis.modules.spectrum.entity.SpectrumTagEntity">
+        UPDATE herb_atlas_tag
+        SET deleted = 1,
+            update_time = #{updateTime}
+        WHERE atlas_id = #{atlasId}
+          AND deleted = 0
+    </update>
+
+    <select id="selectByAtlasId" resultMap="TagResultMap">
+        SELECT
+            id,
+            atlas_id,
+            tag_name,
+            tag_type,
+            create_time,
+            update_time,
+            deleted
+        FROM herb_atlas_tag
+        WHERE atlas_id = #{atlasId}
+          AND deleted = 0
+        ORDER BY create_time ASC, id ASC
+    </select>
+</mapper>

@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.collection.mapper.HerbBatchImageMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.collection.entity.HerbBatchImageEntity">
+        <id column="id" property="id"/>
+        <result column="batch_id" property="batchId"/>
+        <result column="image_id" property="imageId"/>
+        <result column="identification_result_id" property="identificationResultId"/>
+        <result column="image_role" property="imageRole"/>
+        <result column="is_primary" property="isPrimary"/>
+        <result column="bind_status" property="bindStatus"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <resultMap id="BatchImageVOResultMap" type="com.bdis.modules.collection.vo.HerbBatchImageVO">
+        <id column="id" property="id"/>
+        <result column="batch_id" property="batchId"/>
+        <result column="image_id" property="imageId"/>
+        <result column="image_code" property="imageCode"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="image_name" property="imageName"/>
+        <result column="upload_source" property="uploadSource"/>
+        <result column="collect_place" property="collectPlace"/>
+        <result column="collect_time" property="collectTime"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="identification_result_id" property="identificationResultId"/>
+        <result column="final_species_id" property="finalSpeciesId"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="final_confidence" property="finalConfidence"/>
+        <result column="result_source" property="resultSource"/>
+        <result column="match_result" property="matchResult"/>
+        <result column="need_review" property="needReview"/>
+        <result column="review_status" property="reviewStatus"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="identify_time" property="identifyTime"/>
+        <result column="image_role" property="imageRole"/>
+        <result column="is_primary" property="isPrimary"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="bind_status" property="bindStatus"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="ImageBatchVOResultMap" type="com.bdis.modules.collection.vo.HerbImageBatchVO">
+        <result column="batch_id" property="batchId"/>
+        <result column="batch_code" property="batchCode"/>
+        <result column="batch_name" property="batchName"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="batch_status" property="batchStatus"/>
+        <result column="bind_status" property="bindStatus"/>
+        <result column="image_role" property="imageRole"/>
+        <result column="is_primary" property="isPrimary"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id,
+        batch_id,
+        image_id,
+        identification_result_id,
+        image_role,
+        is_primary,
+        bind_status,
+        sort_order,
+        remark,
+        create_time,
+        update_time,
+        deleted
+    </sql>
+
+    <sql id="BatchImageVOColumns">
+        bi.id,
+        bi.batch_id,
+        bi.image_id,
+        i.image_code,
+        i.image_url,
+        i.image_name,
+        i.upload_source,
+        i.collect_place,
+        i.collect_time,
+        i.image_type,
+        i.growth_stage,
+        i.health_status,
+        bi.identification_result_id,
+        r.final_species_id,
+        r.final_species_name,
+        r.final_confidence,
+        r.result_source,
+        r.match_result,
+        r.need_review,
+        r.review_status,
+        r.suggestion,
+        r.identify_time,
+        bi.image_role,
+        bi.is_primary,
+        bi.sort_order,
+        bi.bind_status,
+        bi.remark,
+        bi.create_time,
+        bi.update_time
+    </sql>
+
+    <sql id="BatchImageWhere">
+        <where>
+            bi.deleted = 0
+            AND bi.batch_id = #{batchId}
+            <if test="query != null and query.bindStatus != null and query.bindStatus != ''">
+                AND bi.bind_status = #{query.bindStatus}
+            </if>
+            <if test="query != null and query.imageRole != null and query.imageRole != ''">
+                AND bi.image_role = #{query.imageRole}
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" parameterType="com.bdis.modules.collection.entity.HerbBatchImageEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_batch_image (
+            batch_id,
+            image_id,
+            identification_result_id,
+            image_role,
+            is_primary,
+            bind_status,
+            sort_order,
+            remark,
+            create_time,
+            update_time,
+            deleted
+        ) VALUES (
+            #{batchId},
+            #{imageId},
+            #{identificationResultId},
+            #{imageRole},
+            #{isPrimary},
+            #{bindStatus},
+            #{sortOrder},
+            #{remark},
+            #{createTime},
+            #{updateTime},
+            #{deleted}
+        )
+    </insert>
+
+    <insert id="batchInsert">
+        INSERT INTO herb_batch_image (
+            batch_id,
+            image_id,
+            identification_result_id,
+            image_role,
+            is_primary,
+            bind_status,
+            sort_order,
+            remark,
+            create_time,
+            update_time,
+            deleted
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.batchId},
+                #{item.imageId},
+                #{item.identificationResultId},
+                #{item.imageRole},
+                #{item.isPrimary},
+                #{item.bindStatus},
+                #{item.sortOrder},
+                #{item.remark},
+                #{item.createTime},
+                #{item.updateTime},
+                #{item.deleted}
+            )
+        </foreach>
+    </insert>
+
+    <update id="updateById" parameterType="com.bdis.modules.collection.entity.HerbBatchImageEntity">
+        UPDATE herb_batch_image
+        SET identification_result_id = #{identificationResultId},
+            image_role = #{imageRole},
+            is_primary = #{isPrimary},
+            bind_status = #{bindStatus},
+            sort_order = #{sortOrder},
+            remark = #{remark},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="updateIdentificationResultById"
+            parameterType="com.bdis.modules.collection.entity.HerbBatchImageEntity">
+        UPDATE herb_batch_image
+        SET identification_result_id = #{identificationResultId},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND deleted = 0
+          AND bind_status = 'bound'
+    </update>
+
+    <update id="logicDeleteById">
+        UPDATE herb_batch_image
+        SET deleted = 1,
+            bind_status = 'removed',
+            update_time = NOW()
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="logicDeleteByBatchIdAndImageId">
+        UPDATE herb_batch_image
+        SET deleted = 1,
+            bind_status = 'removed',
+            update_time = NOW()
+        WHERE batch_id = #{batchId}
+          AND image_id = #{imageId}
+          AND deleted = 0
+    </update>
+
+    <update id="clearPrimaryByBatchId">
+        UPDATE herb_batch_image
+        SET is_primary = 0,
+            update_time = NOW()
+        WHERE batch_id = #{batchId}
+          AND deleted = 0
+          AND bind_status = 'bound'
+    </update>
+
+    <update id="updatePrimaryByBatchIdAndImageId">
+        UPDATE herb_batch_image
+        SET is_primary = 1,
+            update_time = NOW()
+        WHERE batch_id = #{batchId}
+          AND image_id = #{imageId}
+          AND deleted = 0
+          AND bind_status = 'bound'
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch_image
+        WHERE id = #{id}
+          AND deleted = 0
+    </select>
+
+    <select id="selectByBatchId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch_image
+        WHERE batch_id = #{batchId}
+          AND deleted = 0
+          AND bind_status = 'bound'
+        ORDER BY sort_order ASC, create_time ASC
+    </select>
+
+    <select id="selectByImageId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch_image
+        WHERE image_id = #{imageId}
+          AND deleted = 0
+          AND bind_status = 'bound'
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByBatchIdAndImageId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch_image
+        WHERE batch_id = #{batchId}
+          AND image_id = #{imageId}
+          AND deleted = 0
+          AND bind_status = 'bound'
+        LIMIT 1
+    </select>
+
+    <select id="selectDetailByBatchIdAndImageId" resultMap="BatchImageVOResultMap">
+        SELECT
+        <include refid="BatchImageVOColumns"/>
+        FROM herb_batch_image bi
+        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.deleted = 0
+        LEFT JOIN herb_identification_result r
+            ON r.id = COALESCE(
+                bi.identification_result_id,
+                (
+                    SELECT latest.id
+                    FROM herb_identification_result latest
+                    WHERE latest.image_id = bi.image_id
+                      AND latest.deleted = 0
+                    ORDER BY latest.identify_time DESC, latest.create_time DESC
+                    LIMIT 1
+                )
+            )
+            AND r.deleted = 0
+        WHERE bi.batch_id = #{batchId}
+          AND bi.image_id = #{imageId}
+          AND bi.deleted = 0
+          AND bi.bind_status = 'bound'
+        LIMIT 1
+    </select>
+
+    <select id="selectBatchImagesWithIdentification" resultMap="BatchImageVOResultMap">
+        SELECT
+        <include refid="BatchImageVOColumns"/>
+        FROM herb_batch_image bi
+        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.deleted = 0
+        LEFT JOIN herb_identification_result r
+            ON r.id = COALESCE(
+                bi.identification_result_id,
+                (
+                    SELECT latest.id
+                    FROM herb_identification_result latest
+                    WHERE latest.image_id = bi.image_id
+                      AND latest.deleted = 0
+                    ORDER BY latest.identify_time DESC, latest.create_time DESC
+                    LIMIT 1
+                )
+            )
+            AND r.deleted = 0
+        <include refid="BatchImageWhere"/>
+        ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.create_time ASC
+    </select>
+
+    <select id="selectBatchInfoByImageId" resultMap="ImageBatchVOResultMap">
+        SELECT
+        b.id AS batch_id,
+        b.batch_code,
+        b.batch_name,
+        b.species_name,
+        b.batch_status,
+        bi.bind_status,
+        bi.image_role,
+        bi.is_primary
+        FROM herb_batch_image bi
+        INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.deleted = 0
+        WHERE bi.image_id = #{imageId}
+          AND bi.deleted = 0
+          AND bi.bind_status = 'bound'
+        ORDER BY bi.create_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="countByBatchId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_batch_image
+        WHERE batch_id = #{batchId}
+          AND deleted = 0
+    </select>
+
+    <select id="countBoundByBatchId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_batch_image
+        WHERE batch_id = #{batchId}
+          AND deleted = 0
+          AND bind_status = 'bound'
+    </select>
+</mapper>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.knowledge.mapper.KnowledgeRelationMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.knowledge.entity.KnowledgeRelationEntity">
+        <id column="id" property="id"/>
+        <result column="relation_code" property="relationCode"/>
+        <result column="relation_name" property="relationName"/>
+        <result column="relation_type" property="relationType"/>
+        <result column="description" property="description"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+</mapper>

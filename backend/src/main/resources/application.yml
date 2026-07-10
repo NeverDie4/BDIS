@@ -48,3 +48,31 @@ springdoc:
 bdis:
   file:
     storage-path: ${BDIS_FILE_STORAGE_PATH:./storage}
+
+file:
+  upload-path: ${FILE_UPLOAD_PATH:uploads}
+  image-upload-path: ${FILE_IMAGE_UPLOAD_PATH:herb/image}
+  atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}
+
+herb:
+  atlas:
+    auto-import: ${HERB_ATLAS_AUTO_IMPORT:true}
+  recognition:
+    enabled: ${HERB_RECOGNITION_ENABLED:true}
+    mock-enabled: ${HERB_RECOGNITION_MOCK_ENABLED:false}
+    service-url: ${HERB_RECOGNITION_SERVICE_URL:http://localhost:8001/recognize}
+    feature-service-url: ${HERB_FEATURE_SERVICE_URL:http://localhost:8001/feature}
+    timeout-seconds: ${HERB_RECOGNITION_TIMEOUT_SECONDS:180}
+  feature:
+    enabled: ${HERB_FEATURE_ENABLED:true}
+    service-url: ${HERB_FEATURE_EXTRACTION_SERVICE_URL:http://localhost:8001/extract-feature}
+    timeout-seconds: ${HERB_FEATURE_TIMEOUT_SECONDS:180}
+    mock-enabled: ${HERB_FEATURE_MOCK_ENABLED:false}
+    model-name: ${HERB_FEATURE_MODEL_NAME:resnet50}
+    model-version: ${HERB_FEATURE_MODEL_VERSION:v1.0}
+    mock-dimension: ${HERB_FEATURE_MOCK_DIMENSION:512}
+  identification:
+    high-threshold: ${HERB_IDENTIFICATION_HIGH_THRESHOLD:0.85}
+    middle-threshold: ${HERB_IDENTIFICATION_MIDDLE_THRESHOLD:0.60}
+    top-k: ${HERB_IDENTIFICATION_TOP_K:5}
+    enable-doubao-review: ${HERB_IDENTIFICATION_ENABLE_DOUBAO_REVIEW:true}
