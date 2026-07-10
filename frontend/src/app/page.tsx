@@ -1,13 +1,8 @@
-<<<<<<< Updated upstream
-import { redirect } from "next/navigation";
-
-export default function HomePage() {
-  redirect("/login");
-=======
 "use client";
 
 import { HerbEssenceStrip } from "@/components/home/HerbEssenceStrip";
 import { HeroSearchSection } from "@/components/home/HeroSearchSection";
+import { HomeFooter } from "@/components/home/HomeFooter";
 import { HomeOverviewGrid } from "@/components/home/HomeOverviewGrid";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 
@@ -17,7 +12,7 @@ export default function HomePage() {
       <HeroSearchSection />
       <HerbEssenceStrip />
       <HomeOverviewGrid />
+      <HomeFooter />
     </SiteLayout>
   );
->>>>>>> Stashed changes
 }

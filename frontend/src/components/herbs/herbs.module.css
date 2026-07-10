@@ -1,0 +1,307 @@
+.herbPage {
+  width: calc(100vw - 8px);
+  height: calc(100vh - var(--header-height, 80px));
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  margin-left: calc((100% - 100vw + 8px) / 2);
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspaceWithDetail {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(360px, 3fr);
+}
+
+.leftWorkspace {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.managementPanel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tableArea {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pageHeader {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: clamp(130px, 10vw, 170px);
+  margin: 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-border);
+  padding: 24px 38px;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(255, 250, 242, 0.16) 0%,
+      rgba(255, 250, 242, 0.04) 55%,
+      rgba(255, 250, 242, 0.1) 100%
+    ),
+    url("/images/herbs/herb-title-banner.png");
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+}
+
+.pageHeaderText,
+.pageHeaderAction {
+  position: relative;
+  z-index: 1;
+}
+
+.pageHeaderText {
+  width: 70%;
+  min-width: 0;
+}
+
+.pageHeaderText h1 {
+  margin: 0;
+}
+
+.pageHeaderText p {
+  margin: 8px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pageHeaderAction {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  width: 30%;
+  min-width: 0;
+  margin-left: 24px;
+}
+
+.tabsArea {
+  width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 20px;
+}
+
+.tabs {
+  width: 100%;
+}
+
+.tabs :global(.ant-tabs-nav) {
+  min-height: 52px;
+  margin: 0;
+}
+
+.tabs :global(.ant-tabs-content-holder) {
+  display: none;
+}
+
+.filterForm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border);
+  padding: 14px 18px;
+}
+
+.keywordFilter,
+.selectFilter,
+.statusFilter {
+  margin: 0;
+}
+
+.keywordFilter {
+  flex: 0 1 300px;
+}
+
+.selectFilter {
+  flex: 0 1 150px;
+}
+
+.statusFilter {
+  flex: 0 1 130px;
+}
+
+.keywordFilter :global(.ant-form-item-control),
+.selectFilter :global(.ant-form-item-control),
+.statusFilter :global(.ant-form-item-control) {
+  width: 100%;
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 18px;
+}
+
+.toolbarLeft,
+.toolbarRight {
+  min-width: 0;
+}
+
+.table {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.detailPanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.76);
+  overflow: hidden;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 16px 20px;
+}
+
+.detailTitleGroup {
+  min-width: 0;
+}
+
+.detailTitleGroup h2,
+.detailTitleGroup p {
+  margin: 0;
+}
+
+.detailTabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 20px;
+}
+
+.detailTabs :global(.ant-tabs-content-holder) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.detailTabs :global(.ant-tabs-content) {
+  height: 100%;
+}
+
+.detailTabs :global(.ant-tabs-tabpane) {
+  height: 100%;
+}
+
+.detailContent {
+  height: 100%;
+  padding: 16px 0 24px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1199px) {
+  .pageHeader {
+    min-height: 140px;
+    padding: 22px 26px;
+    background-position: 58% center;
+  }
+
+  .workspaceWithDetail {
+    grid-template-columns: minmax(0, 65fr) minmax(340px, 35fr);
+  }
+
+  .filterForm {
+    align-items: flex-start;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 899px) {
+  .workspaceWithDetail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .leftWorkspace {
+    min-height: 50vh;
+  }
+
+  .detailPanel {
+    min-height: 50vh;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    min-height: 180px;
+    padding: 24px 20px;
+    background-position: 62% center;
+  }
+
+  .pageHeaderText,
+  .pageHeaderAction {
+    width: 100%;
+  }
+
+  .pageHeaderAction {
+    margin-left: 0;
+  }
+
+  .pageHeaderText p {
+    white-space: normal;
+  }
+}

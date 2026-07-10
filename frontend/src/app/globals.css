@@ -9,11 +9,16 @@ html,
 body {
   min-height: 100%;
   margin: 0;
-  background: var(--color-page);
   color: var(--color-text);
 }
 
 body {
+  background:
+    linear-gradient(rgba(255, 250, 242, 0.72), rgba(255, 250, 242, 0.72)),
+    url("/images/paper-texture.png");
+  background-attachment: fixed;
+  background-position: center top;
+  background-size: cover;
   font-family: var(--font-data);
 }
 
