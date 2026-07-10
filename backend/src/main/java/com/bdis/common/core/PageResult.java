@@ -22,6 +22,10 @@ public class PageResult<T> {
         this.total = total;
     }
 
+    public PageResult(long total, long page, long size, List<T> records) {
+        this(records, page, size, total);
+    }
+
     public static <T> PageResult<T> of(List<T> records, IPage<?> page) {
         return new PageResult<>(records, page.getCurrent(), page.getSize(), page.getTotal());
     }

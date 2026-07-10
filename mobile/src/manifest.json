@@ -1,0 +1,17 @@
+{
+  "name": "生物医药数字信息系统",
+  "appid": "__UNI__BDIS",
+  "description": "中药材采集与图谱识别手机端",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "router": {
+      "mode": "hash"
+    },
+    "title": "BDIS 手机端"
+  },
+  "app-plus": {
+    "usingComponents": true
+  }
+}

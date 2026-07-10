@@ -1,0 +1,39 @@
+package com.bdis.modules.herb.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.bdis.modules.herb.dto.HerbImageQueryRequest;
+import com.bdis.modules.herb.entity.HerbImageEntity;
+import com.bdis.modules.herb.vo.HerbImageVO;
+import java.util.List;
+import org.apache.ibatis.annotations.Param;
+
+public interface HerbImageMapper extends BaseMapper<HerbImageEntity> {
+
+    int insertImage(HerbImageEntity image);
+
+    int updateImage(HerbImageEntity image);
+
+    int updateProcessStatus(HerbImageEntity image);
+
+    int logicalDeleteById(HerbImageEntity image);
+
+    HerbImageEntity selectActiveById(@Param("id") Long id);
+
+    HerbImageVO selectDetailById(@Param("id") Long id);
+
+    Long countPage(@Param("query") HerbImageQueryRequest query);
+
+    List<HerbImageVO> selectPage(
+            @Param("query") HerbImageQueryRequest query,
+            @Param("offset") Long offset,
+            @Param("pageSize") Integer pageSize);
+
+    Long countByCollectorId(@Param("collectorId") Long collectorId);
+
+    List<HerbImageVO> selectByCollectorId(
+            @Param("collectorId") Long collectorId,
+            @Param("offset") Long offset,
+            @Param("pageSize") Integer pageSize);
+
+    List<HerbImageEntity> selectActiveForFeatureExtraction(@Param("speciesId") Long speciesId);
+}
