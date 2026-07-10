@@ -42,7 +42,8 @@ public class FeatureExtractionClientImpl implements FeatureExtractionClient {
                     restTemplate().postForEntity(properties.getServiceUrl(), request, Map.class);
             return parseResponse(response.getBody());
         } catch (RuntimeException exception) {
-            throw new BusinessException("Feature extraction service call failed: " + exception.getMessage());
+            throw new BusinessException(
+                    "Feature extraction service call failed: " + exception.getMessage());
         }
     }
 

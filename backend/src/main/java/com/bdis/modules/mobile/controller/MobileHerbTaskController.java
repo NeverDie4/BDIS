@@ -47,8 +47,7 @@ public class MobileHerbTaskController {
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize) {
         return Result.success(
-                mobileHerbTaskService.batches(
-                        taskId, collectorId, batchStatus, pageNum, pageSize));
+                mobileHerbTaskService.batches(taskId, collectorId, batchStatus, pageNum, pageSize));
     }
 
     @PostMapping("/{taskId}/batches")

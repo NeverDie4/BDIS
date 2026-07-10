@@ -9,8 +9,8 @@ import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.spectrum.config.HerbIdentificationProperties;
 import com.bdis.modules.spectrum.constant.HerbMatchResultConstants;
 import com.bdis.modules.spectrum.constant.HerbProcessStatusConstants;
-import com.bdis.modules.spectrum.constant.HerbReviewStatusConstants;
 import com.bdis.modules.spectrum.constant.HerbResultSourceConstants;
+import com.bdis.modules.spectrum.constant.HerbReviewStatusConstants;
 import com.bdis.modules.spectrum.dto.HerbIdentificationQueryRequest;
 import com.bdis.modules.spectrum.dto.HerbIdentificationReviewRequest;
 import com.bdis.modules.spectrum.dto.HerbIdentifyRequest;
@@ -84,7 +84,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         HerbImageEntity image = getActiveImage(imageId);
         HerbIdentifyRequest safeRequest = request == null ? new HerbIdentifyRequest() : request;
         ensureImageFeature(imageId, Boolean.TRUE.equals(safeRequest.getForceRefresh()));
-        HerbImageMatchVO localMatch = herbImageMatchService.match(imageId, toMatchRequest(safeRequest));
+        HerbImageMatchVO localMatch =
+                herbImageMatchService.match(imageId, toMatchRequest(safeRequest));
         HerbRecognitionVO doubaoRecognition = null;
         String doubaoError = null;
         HerbIdentificationResultEntity result =
@@ -127,7 +128,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         Long total = identificationResultMapper.countPage(safeRequest);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbIdentificationPageVO> records =
-                identificationResultMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
+                identificationResultMapper.selectPage(
+                        safeRequest, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -142,14 +144,15 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         HerbIdentificationReviewRequest safeRequest =
                 request == null ? new HerbIdentificationReviewRequest() : request;
         HerbEntity species = resolveReviewSpecies(safeRequest);
-        result.setFinalSpeciesId(species == null ? safeRequest.getFinalSpeciesId() : species.getId());
+        result.setFinalSpeciesId(
+                species == null ? safeRequest.getFinalSpeciesId() : species.getId());
         result.setFinalSpeciesName(resolveReviewSpeciesName(safeRequest, species));
         applyReviewStatus(result, safeRequest);
         result.setReviewComment(safeRequest.getReviewComment());
         result.setReviewerId(safeRequest.getReviewerId());
         result.setReviewerName(safeRequest.getReviewerName());
         result.setReviewTime(LocalDateTime.now());
-        result.setUpdateTime(result.getReviewTime());
+        result.setUpdatedAt(result.getReviewTime());
         identificationResultMapper.updateReviewResult(result);
         HerbImageEntity image = getActiveImage(result.getImageId());
         updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.REVIEWED);
@@ -168,7 +171,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     }
 
     private void ensureImageFeature(Long imageId, boolean forceRefresh) {
-        FeatureExtractResultVO feature = herbImageFeatureMapper.selectLatestSuccessByImageId(imageId);
+        FeatureExtractResultVO feature =
+                herbImageFeatureMapper.selectLatestSuccessByImageId(imageId);
         if (forceRefresh || feature == null) {
             herbFeatureService.extractImageFeature(imageId);
         }
@@ -200,9 +204,11 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
                         : HerbReviewStatusConstants.CONFIRMED);
         result.setSuggestion(localSuggestion(result.getMatchResult()));
         result.setIdentifyTime(now);
-        result.setCreateTime(now);
-        result.setUpdateTime(now);
-        result.setDeleted(0);
+        result.setCreatedAt(now);
+        result.setUpdatedAt(now);
+        result.setIsDeleted(0);
+        result.setStatus(1);
+        result.setVersion(0);
         return result;
     }
 
@@ -258,8 +264,10 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
 
     private String localSuggestion(String matchResult) {
         return switch (matchResult) {
-            case HerbMatchResultConstants.MATCHED -> "Local atlas similarity is high and can be used as a preliminary result";
-            case HerbMatchResultConstants.UNCERTAIN -> "Local atlas has candidates but confidence is insufficient, manual review is required";
+            case HerbMatchResultConstants.MATCHED ->
+                    "Local atlas similarity is high and can be used as a preliminary result";
+            case HerbMatchResultConstants.UNCERTAIN ->
+                    "Local atlas has candidates but confidence is insufficient, manual review is required";
             default -> "Local atlas cannot make a reliable judgment, manual review is required";
         };
     }
@@ -293,9 +301,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     }
 
     private String rawSummary(
-            HerbImageMatchVO localMatch,
-            HerbRecognitionVO doubaoRecognition,
-            String doubaoError) {
+            HerbImageMatchVO localMatch, HerbRecognitionVO doubaoRecognition, String doubaoError) {
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("localCandidates", localMatch.getCandidates());
         summary.put("bestSimilarity", localMatch.getBestSimilarity());
@@ -327,7 +333,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         HerbIdentificationVO vo = new HerbIdentificationVO();
         vo.setId(result.getId());
         vo.setImageId(result.getImageId());
-        vo.setImageCode(image.getImageCode());
+        vo.setImageCode(image.getImageNo());
         vo.setImageUrl(image.getImageUrl());
         vo.setBestMatchId(result.getBestMatchId());
         vo.setRecognitionId(result.getRecognitionId());
@@ -385,7 +391,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     private HerbIdentificationVO emptyResult(HerbImageEntity image) {
         HerbIdentificationVO vo = new HerbIdentificationVO();
         vo.setImageId(image.getId());
-        vo.setImageCode(image.getImageCode());
+        vo.setImageCode(image.getImageNo());
         vo.setImageUrl(image.getImageUrl());
         vo.setNeedReview(true);
         vo.setSuggestion("No identification result found");
@@ -405,7 +411,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         HerbImageEntity update = new HerbImageEntity();
         update.setId(imageId);
         update.setProcessStatus(processStatus);
-        update.setUpdateTime(LocalDateTime.now());
+        update.setUpdatedAt(LocalDateTime.now());
         herbImageMapper.updateProcessStatus(update);
     }
 
@@ -443,7 +449,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
 
     private boolean doubaoAgreedWithLocalCandidate(
             HerbImageMatchVO localMatch, HerbRecognitionVO doubaoRecognition) {
-        if (doubaoRecognition == null || !StringUtils.hasText(doubaoRecognition.getPredictedName())) {
+        if (doubaoRecognition == null
+                || !StringUtils.hasText(doubaoRecognition.getPredictedName())) {
             return false;
         }
         if (localMatch == null || CollectionUtils.isEmpty(localMatch.getCandidates())) {
@@ -452,7 +459,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         return localMatch.getCandidates().stream()
                 .anyMatch(
                         candidate ->
-                                doubaoRecognition.getPredictedName()
+                                doubaoRecognition
+                                        .getPredictedName()
                                         .equals(candidate.getSpeciesName()));
     }
 
@@ -465,7 +473,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         localMatch.getCandidates().stream()
                 .filter(
                         candidate ->
-                                doubaoRecognition.getPredictedName()
+                                doubaoRecognition
+                                        .getPredictedName()
                                         .equals(candidate.getSpeciesName()))
                 .forEach(candidate -> candidate.setDoubaoAgreed(true));
     }

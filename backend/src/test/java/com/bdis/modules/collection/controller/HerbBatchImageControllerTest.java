@@ -42,17 +42,18 @@ class HerbBatchImageControllerTest {
                                 .contentType("application/json")
                                 .content("{\"imageId\":12,\"imageRole\":\"leaf\",\"isPrimary\":1}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.imageId").value(12));
     }
 
     @Test
     void listBatchImagesReturnsUnifiedResult() throws Exception {
-        when(herbBatchImageService.listByBatch(any(), any())).thenReturn(java.util.List.of(activeVO()));
+        when(herbBatchImageService.listByBatch(any(), any()))
+                .thenReturn(java.util.List.of(activeVO()));
 
         mockMvc.perform(get("/herb/batch/1/images"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data[0].imageId").value(12));
     }
 
@@ -64,7 +65,7 @@ class HerbBatchImageControllerTest {
 
         mockMvc.perform(put("/herb/batch/1/image/12/primary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.isPrimary").value(1));
     }
 

@@ -27,8 +27,7 @@ public interface HerbCollectionTaskMapper {
             @Param("offset") Long offset,
             @Param("pageSize") Integer pageSize);
 
-    List<HerbCollectionTaskListVO> selectList(
-            @Param("query") HerbCollectionTaskQueryRequest query);
+    List<HerbCollectionTaskListVO> selectList(@Param("query") HerbCollectionTaskQueryRequest query);
 
     Long countMyTasks(@Param("query") HerbCollectionTaskMyQueryRequest query);
 

@@ -19,9 +19,7 @@ class VectorSimilarityUtilsTest {
     @Test
     void cosineSimilarityRejectsDimensionMismatch() {
         assertThatThrownBy(
-                        () ->
-                                VectorSimilarityUtils.cosineSimilarity(
-                                        List.of(1D, 0D), List.of(1D)))
+                        () -> VectorSimilarityUtils.cosineSimilarity(List.of(1D, 0D), List.of(1D)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("dimension mismatch");
     }

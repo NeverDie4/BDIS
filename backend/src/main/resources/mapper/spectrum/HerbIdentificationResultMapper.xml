@@ -23,9 +23,9 @@
         <result column="review_time" property="reviewTime"/>
         <result column="raw_summary" property="rawSummary"/>
         <result column="identify_time" property="identifyTime"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="PageResultMap"
@@ -70,15 +70,15 @@
         review_time,
         raw_summary,
         identify_time,
-        create_time,
-        update_time,
-        deleted
+        created_at,
+        updated_at,
+        is_deleted
     </sql>
 
     <sql id="PageColumns">
         r.id,
         r.image_id,
-        i.image_code,
+        i.image_no AS image_code,
         i.image_url,
         r.recognition_id,
         r.final_species_id,
@@ -118,9 +118,9 @@
             review_time,
             raw_summary,
             identify_time,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
             #{imageId},
             #{bestMatchId},
@@ -139,9 +139,9 @@
             #{reviewTime},
             #{rawSummary},
             #{identifyTime},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
@@ -158,9 +158,9 @@
             reviewer_id = #{reviewerId},
             reviewer_name = #{reviewerName},
             review_time = #{reviewTime},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="selectActiveById" resultMap="BaseResultMap">
@@ -168,17 +168,17 @@
         <include refid="BaseColumns"/>
         FROM herb_identification_result
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="selectLatestByImageId" resultMap="PageResultMap">
         SELECT
         <include refid="PageColumns"/>
         FROM herb_identification_result r
-        INNER JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
         WHERE r.image_id = #{imageId}
-          AND r.deleted = 0
-        ORDER BY r.identify_time DESC, r.create_time DESC
+          AND r.is_deleted = 0
+        ORDER BY r.identify_time DESC, r.created_at DESC
         LIMIT 1
     </select>
 
@@ -186,18 +186,18 @@
         SELECT
         <include refid="PageColumns"/>
         FROM herb_identification_result r
-        INNER JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
         WHERE r.image_id = #{imageId}
-          AND r.deleted = 0
-        ORDER BY r.identify_time DESC, r.create_time DESC
+          AND r.is_deleted = 0
+        ORDER BY r.identify_time DESC, r.created_at DESC
     </select>
 
     <select id="countPage" resultType="java.lang.Long">
         SELECT COUNT(1)
         FROM herb_identification_result r
-        INNER JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
         <where>
-            r.deleted = 0
+            r.is_deleted = 0
             <if test="query.imageId != null">
                 AND r.image_id = #{query.imageId}
             </if>
@@ -232,9 +232,9 @@
         SELECT
         <include refid="PageColumns"/>
         FROM herb_identification_result r
-        INNER JOIN herb_image i ON i.id = r.image_id AND i.deleted = 0
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
         <where>
-            r.deleted = 0
+            r.is_deleted = 0
             <if test="query.imageId != null">
                 AND r.image_id = #{query.imageId}
             </if>
@@ -263,7 +263,7 @@
                 AND r.identify_time &lt;= #{query.endTime}
             </if>
         </where>
-        ORDER BY r.identify_time DESC, r.create_time DESC
+        ORDER BY r.identify_time DESC, r.created_at DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 </mapper>

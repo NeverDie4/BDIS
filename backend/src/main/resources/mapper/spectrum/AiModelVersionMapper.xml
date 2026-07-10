@@ -7,14 +7,15 @@
         <id column="id" property="id"/>
         <result column="model_code" property="modelCode"/>
         <result column="model_name" property="modelName"/>
-        <result column="version" property="version"/>
         <result column="model_type" property="modelType"/>
-        <result column="model_path" property="modelPath"/>
-        <result column="accuracy" property="accuracy"/>
+        <result column="model_version" property="modelVersion"/>
+        <result column="provider" property="provider"/>
+        <result column="api_endpoint" property="apiEndpoint"/>
+        <result column="feature_dim" property="featureDim"/>
+        <result column="is_default" property="isDefault"/>
         <result column="status" property="status"/>
-        <result column="description" property="description"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 </mapper>

@@ -2,8 +2,8 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
-import com.bdis.common.storage.LocalFileStorage.StoredFile;
+import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileStorageService.StoredFile;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -38,11 +39,13 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
 
     private static final DateTimeFormatter ATLAS_CODE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final Set<String> SUPPORTED_IMAGE_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "webp");
 
     private final HerbAtlasMapper herbAtlasMapper;
     private final HerbAtlasTagMapper herbAtlasTagMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorageService fileStorageService;
     private final HerbFeatureVectorClient featureVectorClient;
     private final ObjectMapper objectMapper;
 
@@ -50,13 +53,13 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
             HerbAtlasMapper herbAtlasMapper,
             HerbAtlasTagMapper herbAtlasTagMapper,
             HerbSpeciesMapper herbSpeciesMapper,
-            LocalFileStorage localFileStorage,
+            FileStorageService fileStorageService,
             HerbFeatureVectorClient featureVectorClient,
             ObjectMapper objectMapper) {
         this.herbAtlasMapper = herbAtlasMapper;
         this.herbAtlasTagMapper = herbAtlasTagMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorageService = fileStorageService;
         this.featureVectorClient = featureVectorClient;
         this.objectMapper = objectMapper;
     }
@@ -65,24 +68,27 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     @Transactional
     public HerbAtlasVO upload(MultipartFile file, HerbAtlasUploadRequest request) {
         HerbEntity species = getActiveSpecies(request == null ? null : request.getSpeciesId());
-        StoredFile storedFile = localFileStorage.saveHerbAtlasImage(file);
+        validateImageFile(file);
+        StoredFile storedFile = fileStorageService.save(file);
         LocalDateTime now = LocalDateTime.now();
 
         SpectrumEntity atlas = new SpectrumEntity();
         atlas.setSpeciesId(request.getSpeciesId());
-        atlas.setAtlasCode(resolveAtlasCode(request.getAtlasCode(), now));
-        atlas.setImageUrl(storedFile.url());
-        atlas.setImageName(file.getOriginalFilename());
+        atlas.setHerbName(species.getHerbName());
+        atlas.setAtlasNo(resolveAtlasCode(request.getAtlasCode(), now));
+        atlas.setImageUrl(storedFile.fileUrl());
+        atlas.setAtlasTitle(file.getOriginalFilename());
         atlas.setImageType(request.getImageType());
         atlas.setGrowthStage(request.getGrowthStage());
         atlas.setMedicinalPart(request.getMedicinalPart());
-        atlas.setSource(request.getSource());
-        atlas.setDescription(request.getDescription());
+        atlas.setSourceType(request.getSource());
+        atlas.setIdentificationPoints(request.getDescription());
         fillFeatureVector(atlas);
         atlas.setStatus(request.getStatus() == null ? 1 : request.getStatus());
-        atlas.setCreateTime(now);
-        atlas.setUpdateTime(now);
-        atlas.setDeleted(0);
+        atlas.setCreatedAt(now);
+        atlas.setUpdatedAt(now);
+        atlas.setIsDeleted(0);
+        atlas.setVersion(0);
         herbAtlasMapper.insertAtlas(atlas);
         List<HerbAtlasTagVO> tagVOs = saveTags(atlas.getId(), request.getTags(), now);
 
@@ -100,10 +106,10 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         atlas.setImageType(request.getImageType());
         atlas.setGrowthStage(request.getGrowthStage());
         atlas.setMedicinalPart(request.getMedicinalPart());
-        atlas.setSource(request.getSource());
-        atlas.setDescription(request.getDescription());
+        atlas.setSourceType(request.getSource());
+        atlas.setIdentificationPoints(request.getDescription());
         atlas.setStatus(request.getStatus());
-        atlas.setUpdateTime(now);
+        atlas.setUpdatedAt(now);
         herbAtlasMapper.updateAtlas(atlas);
 
         List<HerbAtlasTagVO> tagVOs = null;
@@ -123,7 +129,7 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     public void delete(Long id) {
         SpectrumEntity atlas = getActiveAtlas(id);
         LocalDateTime now = LocalDateTime.now();
-        atlas.setUpdateTime(now);
+        atlas.setUpdatedAt(now);
         int affected = herbAtlasMapper.logicalDeleteById(atlas);
         if (affected == 0) {
             throw new BusinessException("Herb atlas not found or already deleted");
@@ -149,7 +155,8 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         normalizePageRequest(request);
         Long total = herbAtlasMapper.countPage(request);
         Long offset = (long) (request.getPageNum() - 1) * request.getPageSize();
-        List<HerbAtlasVO> records = herbAtlasMapper.selectPage(request, offset, request.getPageSize());
+        List<HerbAtlasVO> records =
+                herbAtlasMapper.selectPage(request, offset, request.getPageSize());
         return new PageResult<>(total, request.getPageNum(), request.getPageSize(), records);
     }
 
@@ -178,6 +185,15 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         return species;
     }
 
+    private void validateImageFile(MultipartFile file) {
+        String extension =
+                file == null ? null : StringUtils.getFilenameExtension(file.getOriginalFilename());
+        if (!StringUtils.hasText(extension)
+                || !SUPPORTED_IMAGE_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            throw new BusinessException("Unsupported image format");
+        }
+    }
+
     private SpectrumEntity getActiveAtlas(Long id) {
         if (id == null) {
             throw new BusinessException("Herb atlas id is required");
@@ -198,9 +214,10 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     }
 
     private List<HerbAtlasTagVO> saveTags(Long atlasId, String tags, LocalDateTime now) {
-        List<SpectrumTagEntity> tagEntities = parseTags(tags).stream()
-                .map(tagName -> toTagEntity(atlasId, tagName, now))
-                .toList();
+        List<SpectrumTagEntity> tagEntities =
+                parseTags(tags).stream()
+                        .map(tagName -> toTagEntity(atlasId, tagName, now))
+                        .toList();
         if (!tagEntities.isEmpty()) {
             herbAtlasTagMapper.insertTags(tagEntities);
         }
@@ -224,9 +241,11 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         tag.setAtlasId(atlasId);
         tag.setTagName(tagName);
         tag.setTagType("feature");
-        tag.setCreateTime(now);
-        tag.setUpdateTime(now);
-        tag.setDeleted(0);
+        tag.setStatus(1);
+        tag.setCreatedAt(now);
+        tag.setUpdatedAt(now);
+        tag.setIsDeleted(0);
+        tag.setVersion(0);
         return tag;
     }
 
@@ -251,7 +270,7 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     private void logicalDeleteTags(Long atlasId, LocalDateTime now) {
         SpectrumTagEntity tag = new SpectrumTagEntity();
         tag.setAtlasId(atlasId);
-        tag.setUpdateTime(now);
+        tag.setUpdatedAt(now);
         herbAtlasTagMapper.logicalDeleteByAtlasId(tag);
     }
 
@@ -268,17 +287,17 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         HerbAtlasVO vo = new HerbAtlasVO();
         vo.setId(entity.getId());
         vo.setSpeciesId(entity.getSpeciesId());
-        vo.setAtlasCode(entity.getAtlasCode());
+        vo.setAtlasCode(entity.getAtlasNo());
         vo.setImageUrl(entity.getImageUrl());
-        vo.setImageName(entity.getImageName());
+        vo.setImageName(entity.getAtlasTitle());
         vo.setImageType(entity.getImageType());
         vo.setGrowthStage(entity.getGrowthStage());
         vo.setMedicinalPart(entity.getMedicinalPart());
-        vo.setSource(entity.getSource());
-        vo.setDescription(entity.getDescription());
+        vo.setSource(entity.getSourceType());
+        vo.setDescription(entity.getIdentificationPoints());
         vo.setStatus(entity.getStatus());
-        vo.setCreateTime(entity.getCreateTime());
-        vo.setUpdateTime(entity.getUpdateTime());
+        vo.setCreateTime(entity.getCreatedAt());
+        vo.setUpdateTime(entity.getUpdatedAt());
         return vo;
     }
 
@@ -288,8 +307,8 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         vo.setAtlasId(entity.getAtlasId());
         vo.setTagName(entity.getTagName());
         vo.setTagType(entity.getTagType());
-        vo.setCreateTime(entity.getCreateTime());
-        vo.setUpdateTime(entity.getUpdateTime());
+        vo.setCreateTime(entity.getCreatedAt());
+        vo.setUpdateTime(entity.getUpdatedAt());
         return vo;
     }
 }

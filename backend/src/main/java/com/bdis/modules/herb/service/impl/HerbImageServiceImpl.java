@@ -2,8 +2,8 @@ package com.bdis.modules.herb.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
-import com.bdis.common.storage.LocalFileStorage.StoredFile;
+import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileStorageService.StoredFile;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
@@ -33,35 +33,36 @@ public class HerbImageServiceImpl implements HerbImageService {
 
     private final HerbImageMapper herbImageMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorageService fileStorageService;
     private final HerbFeatureService herbFeatureService;
 
     public HerbImageServiceImpl(
             HerbImageMapper herbImageMapper,
             HerbSpeciesMapper herbSpeciesMapper,
-            LocalFileStorage localFileStorage,
+            FileStorageService fileStorageService,
             HerbFeatureService herbFeatureService) {
         this.herbImageMapper = herbImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorageService = fileStorageService;
         this.herbFeatureService = herbFeatureService;
     }
 
     @Override
     @Transactional
     public HerbImageVO upload(MultipartFile file, HerbImageUploadRequest request) {
-        HerbImageUploadRequest safeRequest = request == null ? new HerbImageUploadRequest() : request;
+        HerbImageUploadRequest safeRequest =
+                request == null ? new HerbImageUploadRequest() : request;
         HerbEntity species = getActiveSpeciesIfPresent(safeRequest.getSpeciesId());
         LocalDateTime now = LocalDateTime.now();
         String imageCode = generateImageCode(now);
-        StoredFile storedFile = localFileStorage.saveHerbImage(file, imageCode);
+        StoredFile storedFile = fileStorageService.save(file);
 
         HerbImageEntity image = buildImage(file, safeRequest, storedFile, imageCode, now);
         try {
             herbImageMapper.insertImage(image);
             herbFeatureService.extractImageFeature(image.getId());
         } catch (RuntimeException exception) {
-            localFileStorage.deleteByUrl(storedFile.url());
+            fileStorageService.delete(storedFile.storagePath());
             throw exception;
         }
         return toVO(image, species);
@@ -71,19 +72,20 @@ public class HerbImageServiceImpl implements HerbImageService {
     @Transactional
     public HerbImageVO update(Long id, HerbImageUpdateRequest request) {
         HerbImageEntity image = getActiveImage(id);
-        HerbImageUpdateRequest safeRequest = request == null ? new HerbImageUpdateRequest() : request;
+        HerbImageUpdateRequest safeRequest =
+                request == null ? new HerbImageUpdateRequest() : request;
         HerbEntity species = getActiveSpeciesIfPresent(safeRequest.getSpeciesId());
         LocalDateTime now = LocalDateTime.now();
         image.setSpeciesId(safeRequest.getSpeciesId());
-        image.setCollectorId(safeRequest.getCollectorId());
-        image.setBaseId(safeRequest.getBaseId());
-        image.setCollectPlace(safeRequest.getCollectPlace());
-        image.setCollectTime(safeRequest.getCollectTime());
+        image.setUploaderId(safeRequest.getCollectorId());
+        image.setDistributionId(safeRequest.getBaseId());
+        image.setCollectedLocation(safeRequest.getCollectPlace());
+        image.setCollectedAt(safeRequest.getCollectTime());
         image.setImageType(safeRequest.getImageType());
         image.setGrowthStage(safeRequest.getGrowthStage());
         image.setHealthStatus(safeRequest.getHealthStatus());
         image.setProcessStatus(safeRequest.getProcessStatus());
-        image.setUpdateTime(now);
+        image.setUpdatedAt(now);
         herbImageMapper.updateImage(image);
         return toVO(image, species);
     }
@@ -92,7 +94,7 @@ public class HerbImageServiceImpl implements HerbImageService {
     @Transactional
     public void delete(Long id) {
         HerbImageEntity image = getActiveImage(id);
-        image.setUpdateTime(LocalDateTime.now());
+        image.setUpdatedAt(LocalDateTime.now());
         int affected = herbImageMapper.logicalDeleteById(image);
         if (affected == 0) {
             throw new BusinessException("Herb image not found or already deleted");
@@ -166,22 +168,24 @@ public class HerbImageServiceImpl implements HerbImageService {
             String imageCode,
             LocalDateTime now) {
         HerbImageEntity image = new HerbImageEntity();
-        image.setImageCode(imageCode);
+        image.setImageNo(imageCode);
         image.setSpeciesId(request.getSpeciesId());
-        image.setImageUrl(storedFile.url());
-        image.setImageName(file.getOriginalFilename());
+        image.setImageUrl(storedFile.fileUrl());
+        image.setOriginalFilename(file.getOriginalFilename());
         image.setUploadSource(resolveUploadSource(request.getUploadSource()));
-        image.setCollectorId(request.getCollectorId());
-        image.setBaseId(request.getBaseId());
-        image.setCollectPlace(request.getCollectPlace());
-        image.setCollectTime(request.getCollectTime() == null ? now : request.getCollectTime());
+        image.setUploaderId(request.getCollectorId());
+        image.setDistributionId(request.getBaseId());
+        image.setCollectedLocation(request.getCollectPlace());
+        image.setCollectedAt(request.getCollectTime() == null ? now : request.getCollectTime());
         image.setImageType(request.getImageType());
         image.setGrowthStage(request.getGrowthStage());
         image.setHealthStatus(request.getHealthStatus());
         image.setProcessStatus(DEFAULT_PROCESS_STATUS);
-        image.setCreateTime(now);
-        image.setUpdateTime(now);
-        image.setDeleted(0);
+        image.setStatus(1);
+        image.setCreatedAt(now);
+        image.setUpdatedAt(now);
+        image.setIsDeleted(0);
+        image.setVersion(0);
         return image;
     }
 
@@ -209,16 +213,16 @@ public class HerbImageServiceImpl implements HerbImageService {
     private HerbImageVO toVO(HerbImageEntity entity, HerbEntity species) {
         HerbImageVO vo = new HerbImageVO();
         vo.setId(entity.getId());
-        vo.setImageCode(entity.getImageCode());
+        vo.setImageCode(entity.getImageNo());
         vo.setImageUrl(entity.getImageUrl());
-        vo.setImageName(entity.getImageName());
+        vo.setImageName(entity.getOriginalFilename());
         vo.setSpeciesId(entity.getSpeciesId());
         vo.setSpeciesName(species == null ? null : species.getHerbName());
         vo.setUploadSource(entity.getUploadSource());
-        vo.setCollectorId(entity.getCollectorId());
-        vo.setBaseId(entity.getBaseId());
-        vo.setCollectPlace(entity.getCollectPlace());
-        vo.setCollectTime(entity.getCollectTime());
+        vo.setCollectorId(entity.getUploaderId());
+        vo.setBaseId(entity.getDistributionId());
+        vo.setCollectPlace(entity.getCollectedLocation());
+        vo.setCollectTime(entity.getCollectedAt());
         vo.setImageType(entity.getImageType());
         vo.setGrowthStage(entity.getGrowthStage());
         vo.setHealthStatus(entity.getHealthStatus());

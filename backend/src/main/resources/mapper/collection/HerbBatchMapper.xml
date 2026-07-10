@@ -30,9 +30,9 @@
         <result column="evaluation_summary" property="evaluationSummary"/>
         <result column="trace_code" property="traceCode"/>
         <result column="remark" property="remark"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="BatchVOResultMap" type="com.bdis.modules.collection.vo.HerbBatchVO">
@@ -63,8 +63,8 @@
         <result column="evaluation_summary" property="evaluationSummary"/>
         <result column="trace_code" property="traceCode"/>
         <result column="remark" property="remark"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
     </resultMap>
 
     <resultMap id="BatchListVOResultMap" type="com.bdis.modules.collection.vo.HerbBatchListVO">
@@ -103,9 +103,9 @@
         evaluation_summary,
         trace_code,
         remark,
-        create_time,
-        update_time,
-        deleted
+        created_at,
+        updated_at,
+        is_deleted
     </sql>
 
     <sql id="BatchVOColumns">
@@ -136,13 +136,13 @@
         b.evaluation_summary,
         b.trace_code,
         b.remark,
-        b.create_time,
-        b.update_time
+        b.created_at,
+        b.updated_at
     </sql>
 
     <sql id="PageWhere">
         <where>
-            b.deleted = 0
+            b.is_deleted = 0
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
                     b.batch_code LIKE CONCAT('%', #{query.keyword}, '%')
@@ -166,10 +166,10 @@
                 AND b.batch_status = #{query.batchStatus}
             </if>
             <if test="query.startTime != null">
-                AND COALESCE(b.collect_start_time, b.create_time) &gt;= #{query.startTime}
+                AND COALESCE(b.collect_start_time, b.created_at) &gt;= #{query.startTime}
             </if>
             <if test="query.endTime != null">
-                AND COALESCE(b.collect_start_time, b.create_time) &lt;= #{query.endTime}
+                AND COALESCE(b.collect_start_time, b.created_at) &lt;= #{query.endTime}
             </if>
             <if test="query.excludedStatuses != null and query.excludedStatuses.size() > 0">
                 AND b.batch_status NOT IN
@@ -182,7 +182,7 @@
 
     <sql id="ListWhere">
         <where>
-            b.deleted = 0
+            b.is_deleted = 0
             <if test="query.speciesId != null">
                 AND b.species_id = #{query.speciesId}
             </if>
@@ -226,9 +226,9 @@
             evaluation_summary,
             trace_code,
             remark,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
             #{batchCode},
             #{batchName},
@@ -255,9 +255,9 @@
             #{evaluationSummary},
             #{traceCode},
             #{remark},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
@@ -277,9 +277,9 @@
             batch_status = #{batchStatus},
             trace_code = #{traceCode},
             remark = #{remark},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="updateStatisticsById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
@@ -296,9 +296,9 @@
             evaluation_summary = #{evaluationSummary},
             batch_status = #{batchStatus},
             remark = #{remark},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="updateStatusById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
@@ -306,34 +306,34 @@
         SET batch_status = #{batchStatus},
             remark = #{remark},
             evaluation_summary = #{evaluationSummary},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="updateRemarkById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
         UPDATE herb_batch
         SET remark = #{remark},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="updateMobileSubmitFields" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
         UPDATE herb_batch
         SET collect_end_time = #{collectEndTime},
             remark = #{remark},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="logicDeleteById">
         UPDATE herb_batch
-        SET deleted = 1,
-            update_time = NOW()
+        SET is_deleted = 1,
+            updated_at = NOW()
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -341,7 +341,7 @@
         <include refid="BaseColumns"/>
         FROM herb_batch
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="selectBatchStatisticsById" resultMap="BaseResultMap">
@@ -349,7 +349,7 @@
         <include refid="BaseColumns"/>
         FROM herb_batch
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="countBoundImagesByBatchId" resultType="java.lang.Long">
@@ -357,7 +357,7 @@
         FROM herb_batch_image
         WHERE batch_id = #{batchId}
           AND bind_status = 'bound'
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="countUnfinishedByTaskId" resultType="java.lang.Long">
@@ -365,7 +365,7 @@
         FROM herb_batch
         WHERE task_id = #{taskId}
           AND batch_status NOT IN ('confirmed', 'archived', 'cancelled')
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="selectByBatchCode" resultMap="BaseResultMap">
@@ -373,7 +373,7 @@
         <include refid="BaseColumns"/>
         FROM herb_batch
         WHERE batch_code = #{batchCode}
-          AND deleted = 0
+          AND is_deleted = 0
         LIMIT 1
     </select>
 
@@ -381,15 +381,15 @@
         SELECT
         <include refid="BatchVOColumns"/>
         FROM herb_batch b
-        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.deleted = 0
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
         WHERE b.id = #{id}
-          AND b.deleted = 0
+          AND b.is_deleted = 0
     </select>
 
     <select id="countPage" resultType="java.lang.Long">
         SELECT COUNT(1)
         FROM herb_batch b
-        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.deleted = 0
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
         <include refid="PageWhere"/>
     </select>
 
@@ -397,9 +397,9 @@
         SELECT
         <include refid="BatchVOColumns"/>
         FROM herb_batch b
-        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.deleted = 0
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
         <include refid="PageWhere"/>
-        ORDER BY b.create_time DESC
+        ORDER BY b.created_at DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
@@ -413,6 +413,6 @@
         b.batch_status
         FROM herb_batch b
         <include refid="ListWhere"/>
-        ORDER BY b.create_time DESC
+        ORDER BY b.created_at DESC
     </select>
 </mapper>

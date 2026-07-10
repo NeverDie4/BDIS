@@ -180,7 +180,7 @@ class HerbIdentificationServiceTest {
     private HerbImageEntity image() {
         HerbImageEntity image = new HerbImageEntity();
         image.setId(1L);
-        image.setImageCode("IMG_1");
+        image.setImageNo("IMG_1");
         image.setImageUrl("/herb/image/1.jpg");
         return image;
     }

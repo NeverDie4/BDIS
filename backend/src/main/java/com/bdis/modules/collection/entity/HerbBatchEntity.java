@@ -1,20 +1,17 @@
 package com.bdis.modules.collection.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.BaseEntity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_batch")
-public class HerbBatchEntity {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class HerbBatchEntity extends BaseEntity {
 
     private String batchCode;
 
@@ -63,13 +60,4 @@ public class HerbBatchEntity {
     private String evaluationSummary;
 
     private String traceCode;
-
-    private String remark;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
 }

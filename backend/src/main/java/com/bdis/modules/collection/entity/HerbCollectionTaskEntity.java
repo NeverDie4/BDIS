@@ -1,18 +1,15 @@
 package com.bdis.modules.collection.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.BaseEntity;
 import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_collection_task")
-public class HerbCollectionTaskEntity {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class HerbCollectionTaskEntity extends BaseEntity {
 
     private String taskCode;
 
@@ -39,13 +36,4 @@ public class HerbCollectionTaskEntity {
     private String taskStatus;
 
     private String description;
-
-    private String remark;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
 }

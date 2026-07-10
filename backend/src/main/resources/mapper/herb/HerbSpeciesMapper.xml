@@ -5,64 +5,84 @@
 <mapper namespace="com.bdis.modules.herb.mapper.HerbSpeciesMapper">
     <resultMap id="BaseResultMap" type="com.bdis.modules.herb.entity.HerbEntity">
         <id column="id" property="id"/>
-        <result column="herb_code" property="herbCode"/>
+        <result column="herb_no" property="herbNo"/>
         <result column="herb_name" property="herbName"/>
         <result column="latin_name" property="latinName"/>
         <result column="alias_name" property="aliasName"/>
-        <result column="category" property="category"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="category_code" property="categoryCode"/>
         <result column="medicinal_part" property="medicinalPart"/>
         <result column="efficacy" property="efficacy"/>
+        <result column="growth_environment" property="growthEnvironment"/>
+        <result column="origin_area" property="originArea"/>
+        <result column="growth_cycle" property="growthCycle"/>
         <result column="description" property="description"/>
+        <result column="knowledge_entity_id" property="knowledgeEntityId"/>
         <result column="status" property="status"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <sql id="BaseColumns">
         id,
-        herb_code,
+        herb_no,
         herb_name,
         latin_name,
         alias_name,
-        category,
+        category_id,
+        category_code,
         medicinal_part,
         efficacy,
+        growth_environment,
+        origin_area,
+        growth_cycle,
         description,
+        knowledge_entity_id,
         status,
-        create_time,
-        update_time,
-        deleted
+        created_at,
+        updated_at,
+        is_deleted
     </sql>
 
     <insert id="insertSpecies" parameterType="com.bdis.modules.herb.entity.HerbEntity"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO herb_species (
-            herb_code,
+            herb_no,
             herb_name,
             latin_name,
             alias_name,
-            category,
+            category_id,
+            category_code,
             medicinal_part,
             efficacy,
+            growth_environment,
+            origin_area,
+            growth_cycle,
             description,
+            knowledge_entity_id,
             status,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
-            #{herbCode},
+            #{herbNo},
             #{herbName},
             #{latinName},
             #{aliasName},
-            #{category},
+            #{categoryId},
+            #{categoryCode},
             #{medicinalPart},
             #{efficacy},
+            #{growthEnvironment},
+            #{originArea},
+            #{growthCycle},
             #{description},
+            #{knowledgeEntityId},
             #{status},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
@@ -72,22 +92,27 @@
             herb_name = #{herbName},
             latin_name = #{latinName},
             alias_name = #{aliasName},
-            category = #{category},
+            category_id = #{categoryId},
+            category_code = #{categoryCode},
             medicinal_part = #{medicinalPart},
             efficacy = #{efficacy},
+            growth_environment = #{growthEnvironment},
+            origin_area = #{originArea},
+            growth_cycle = #{growthCycle},
             description = #{description},
+            knowledge_entity_id = #{knowledgeEntityId},
             status = #{status},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="logicalDeleteById" parameterType="com.bdis.modules.herb.entity.HerbEntity">
         UPDATE herb_species
-        SET deleted = 1,
-            update_time = #{updateTime}
+        SET is_deleted = 1,
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="selectActiveById" resultMap="BaseResultMap">
@@ -95,15 +120,15 @@
         <include refid="BaseColumns"/>
         FROM herb_species
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="selectByHerbCode" resultMap="BaseResultMap">
         SELECT
         <include refid="BaseColumns"/>
         FROM herb_species
-        WHERE herb_code = #{herbCode}
-          AND deleted = 0
+        WHERE herb_no = #{herbCode}
+          AND is_deleted = 0
         LIMIT 1
     </select>
 
@@ -111,7 +136,7 @@
         SELECT
         <include refid="BaseColumns"/>
         FROM herb_species
-        WHERE deleted = 0
+        WHERE is_deleted = 0
           AND (
               herb_name LIKE CONCAT('%', #{keyword}, '%')
               OR alias_name LIKE CONCAT('%', #{keyword}, '%')
@@ -124,16 +149,16 @@
         SELECT COUNT(1)
         FROM herb_species
         <where>
-            deleted = 0
+            is_deleted = 0
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
                     herb_name LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR herb_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR herb_no LIKE CONCAT('%', #{query.keyword}, '%')
                     OR alias_name LIKE CONCAT('%', #{query.keyword}, '%')
                 )
             </if>
             <if test="query.category != null and query.category != ''">
-                AND category = #{query.category}
+                AND category_code = #{query.category}
             </if>
             <if test="query.status != null">
                 AND status = #{query.status}
@@ -146,22 +171,22 @@
         <include refid="BaseColumns"/>
         FROM herb_species
         <where>
-            deleted = 0
+            is_deleted = 0
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
                     herb_name LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR herb_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR herb_no LIKE CONCAT('%', #{query.keyword}, '%')
                     OR alias_name LIKE CONCAT('%', #{query.keyword}, '%')
                 )
             </if>
             <if test="query.category != null and query.category != ''">
-                AND category = #{query.category}
+                AND category_code = #{query.category}
             </if>
             <if test="query.status != null">
                 AND status = #{query.status}
             </if>
         </where>
-        ORDER BY create_time DESC
+        ORDER BY created_at DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
@@ -169,8 +194,8 @@
         SELECT
         <include refid="BaseColumns"/>
         FROM herb_species
-        WHERE deleted = 0
+        WHERE is_deleted = 0
           AND status = 1
-        ORDER BY create_time DESC
+        ORDER BY created_at DESC
     </select>
 </mapper>

@@ -1,29 +1,37 @@
 package com.bdis.common.core;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.bdis.common.enums.ResultCodeEnum;
+import java.time.OffsetDateTime;
+import lombok.Getter;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
 public class Result<T> {
 
-    private Integer code;
+    private final String code;
 
-    private String message;
+    private final String message;
 
-    private T data;
+    private final T data;
+
+    private final OffsetDateTime timestamp;
+
+    private Result(String code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+        this.timestamp = OffsetDateTime.now();
+    }
 
     public static <T> Result<T> success(T data) {
-        return new Result<>(200, "success", data);
+        return new Result<>(
+                ResultCodeEnum.SUCCESS.getCode(), ResultCodeEnum.SUCCESS.getMessage(), data);
     }
 
     public static Result<Void> success() {
-        return new Result<>(200, "success", null);
+        return success(null);
     }
 
-    public static <T> Result<T> failed(Integer code, String message) {
-        return new Result<>(code, message, null);
+    public static <T> Result<T> error(ResultCodeEnum resultCode, String message, T data) {
+        return new Result<>(resultCode.getCode(), message, data);
     }
 }

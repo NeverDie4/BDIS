@@ -23,7 +23,7 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: classpath:db/migration
-    baseline-on-migrate: true
+    baseline-on-migrate: false
   servlet:
     multipart:
       max-file-size: 200MB
@@ -46,12 +46,17 @@ springdoc:
     path: /swagger-ui.html
 
 bdis:
+  security:
+    jwt:
+      secret: ${BDIS_JWT_SECRET:bdis-development-secret-change-me}
+      access-token-ttl-minutes: ${BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES:120}
+      issuer: bdis-api
+  bootstrap:
+    token: ${BDIS_BOOTSTRAP_TOKEN:}
   file:
     storage-path: ${BDIS_FILE_STORAGE_PATH:./storage}
 
 file:
-  upload-path: ${FILE_UPLOAD_PATH:uploads}
-  image-upload-path: ${FILE_IMAGE_UPLOAD_PATH:herb/image}
   atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}
 
 herb:
@@ -61,11 +66,11 @@ herb:
     enabled: ${HERB_RECOGNITION_ENABLED:true}
     mock-enabled: ${HERB_RECOGNITION_MOCK_ENABLED:false}
     service-url: ${HERB_RECOGNITION_SERVICE_URL:http://localhost:8001/recognize}
-    feature-service-url: ${HERB_FEATURE_SERVICE_URL:http://localhost:8001/feature}
+    feature-service-url: ${HERB_FEATURE_SERVICE_URL:http://localhost:8002/feature}
     timeout-seconds: ${HERB_RECOGNITION_TIMEOUT_SECONDS:180}
   feature:
     enabled: ${HERB_FEATURE_ENABLED:true}
-    service-url: ${HERB_FEATURE_EXTRACTION_SERVICE_URL:http://localhost:8001/extract-feature}
+    service-url: ${HERB_FEATURE_EXTRACTION_SERVICE_URL:http://localhost:8002/extract-feature}
     timeout-seconds: ${HERB_FEATURE_TIMEOUT_SECONDS:180}
     mock-enabled: ${HERB_FEATURE_MOCK_ENABLED:false}
     model-name: ${HERB_FEATURE_MODEL_NAME:resnet50}

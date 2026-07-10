@@ -1,28 +1,27 @@
 package com.bdis.modules.spectrum.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.BaseEntity;
 import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_atlas")
-public class SpectrumEntity {
+public class SpectrumEntity extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    private String atlasNo;
 
     private Long speciesId;
 
     private String herbName;
 
-    private String atlasCode;
+    private String atlasTitle;
 
     private String imageUrl;
 
-    private String imageName;
+    private String thumbnailUrl;
 
     private String imageType;
 
@@ -30,22 +29,43 @@ public class SpectrumEntity {
 
     private String medicinalPart;
 
-    private String source;
+    private String healthStatus;
 
-    private String description;
+    private String formType;
+
+    private String colorFeature;
+
+    private String textureFeature;
+
+    private String shapeFeature;
+
+    private String identificationPoints;
+
+    private Long regionId;
+
+    private Long collectorId;
+
+    private LocalDateTime collectedAt;
+
+    private String sourceType;
+
+    private String sourceUrl;
+
+    private String licenseDesc;
+
+    private Integer hasWatermark;
+
+    private String imageQuality;
+
+    private Integer usableForFeature;
 
     private String featureVector;
 
     private Integer featureDim;
 
-    private String featureModelVersion;
+    private Long featureModelId;
 
-    private Integer status;
+    private String qualityStatus;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
+    private Long knowledgeEntityId;
 }

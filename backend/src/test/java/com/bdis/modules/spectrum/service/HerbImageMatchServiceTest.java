@@ -64,7 +64,6 @@ class HerbImageMatchServiceTest {
         HerbImageMatchVO result = herbImageMatchService.match(1L, request);
 
         ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
-        verify(herbImageMatchMapper, never()).logicalDeleteByImageId(1L);
         verify(herbImageMatchMapper).batchInsertMatches(captor.capture());
         assertThat(captor.getValue()).hasSize(2);
         assertThat(result.getMatchResult()).isEqualTo("matched");
@@ -113,7 +112,7 @@ class HerbImageMatchServiceTest {
     private HerbImageEntity image() {
         HerbImageEntity image = new HerbImageEntity();
         image.setId(1L);
-        image.setImageCode("IMG_1");
+        image.setImageNo("IMG_1");
         return image;
     }
 

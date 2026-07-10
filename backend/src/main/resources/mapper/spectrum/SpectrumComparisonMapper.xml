@@ -6,12 +6,25 @@
     <resultMap id="BaseResultMap" type="com.bdis.modules.spectrum.entity.SpectrumComparisonEntity">
         <id column="id" property="id"/>
         <result column="image_id" property="imageId"/>
+        <result column="recognition_id" property="recognitionId"/>
         <result column="atlas_id" property="atlasId"/>
-        <result column="similarity_score" property="similarityScore"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="herb_name" property="herbName"/>
         <result column="match_rank" property="matchRank"/>
-        <result column="match_result" property="matchResult"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="image_similarity" property="imageSimilarity"/>
+        <result column="metadata_score" property="metadataScore"/>
+        <result column="final_score" property="finalScore"/>
+        <result column="match_level" property="matchLevel"/>
+        <result column="is_image_type_matched" property="isImageTypeMatched"/>
+        <result column="is_growth_stage_matched" property="isGrowthStageMatched"/>
+        <result column="is_medicinal_part_matched" property="isMedicinalPartMatched"/>
+        <result column="is_health_status_matched" property="isHealthStatusMatched"/>
+        <result column="is_form_type_matched" property="isFormTypeMatched"/>
+        <result column="match_method" property="matchMethod"/>
+        <result column="warning_msg" property="warningMsg"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="remark" property="remark"/>
     </resultMap>
 </mapper>

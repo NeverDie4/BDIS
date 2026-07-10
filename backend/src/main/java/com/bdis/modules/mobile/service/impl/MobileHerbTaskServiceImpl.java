@@ -61,7 +61,7 @@ public class MobileHerbTaskServiceImpl implements MobileHerbTaskService {
         query.setPageSize(safeRequest.getPageSize());
         PageResult<HerbCollectionTaskVO> page = herbCollectionTaskService.myTasks(query);
         List<MobileTaskVO> records = page.getRecords().stream().map(this::toMobileTaskVO).toList();
-        return new PageResult<>(page.getTotal(), page.getPageNum(), page.getPageSize(), records);
+        return new PageResult<>(page.getTotal(), page.getPage(), page.getSize(), records);
     }
 
     @Override
@@ -91,7 +91,7 @@ public class MobileHerbTaskServiceImpl implements MobileHerbTaskService {
         PageResult<HerbBatchVO> page = herbBatchService.page(query);
         List<MobileBatchVO> records =
                 page.getRecords().stream().map(this::toMobileBatchVO).toList();
-        return new PageResult<>(page.getTotal(), page.getPageNum(), page.getPageSize(), records);
+        return new PageResult<>(page.getTotal(), page.getPage(), page.getSize(), records);
     }
 
     @Override
@@ -167,8 +167,7 @@ public class MobileHerbTaskServiceImpl implements MobileHerbTaskService {
         vo.setPlannedEndTime(task.getPlannedEndTime());
         vo.setTaskStatus(task.getTaskStatus());
         vo.setBatchCount(toInt(task.getBatchCount()));
-        vo.setUnfinishedBatchCount(
-                toInt(herbBatchMapper.countUnfinishedByTaskId(task.getId())));
+        vo.setUnfinishedBatchCount(toInt(herbBatchMapper.countUnfinishedByTaskId(task.getId())));
         vo.setDescription(task.getDescription());
         return vo;
     }

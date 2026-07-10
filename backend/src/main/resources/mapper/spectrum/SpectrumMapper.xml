@@ -5,18 +5,38 @@
 <mapper namespace="com.bdis.modules.spectrum.mapper.SpectrumMapper">
     <resultMap id="BaseResultMap" type="com.bdis.modules.spectrum.entity.SpectrumEntity">
         <id column="id" property="id"/>
+        <result column="atlas_no" property="atlasNo"/>
         <result column="species_id" property="speciesId"/>
-        <result column="atlas_code" property="atlasCode"/>
+        <result column="herb_name" property="herbName"/>
+        <result column="atlas_title" property="atlasTitle"/>
         <result column="image_url" property="imageUrl"/>
-        <result column="image_name" property="imageName"/>
+        <result column="thumbnail_url" property="thumbnailUrl"/>
         <result column="image_type" property="imageType"/>
         <result column="growth_stage" property="growthStage"/>
         <result column="medicinal_part" property="medicinalPart"/>
-        <result column="source" property="source"/>
-        <result column="description" property="description"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="form_type" property="formType"/>
+        <result column="color_feature" property="colorFeature"/>
+        <result column="texture_feature" property="textureFeature"/>
+        <result column="shape_feature" property="shapeFeature"/>
+        <result column="identification_points" property="identificationPoints"/>
+        <result column="region_id" property="regionId"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="collected_at" property="collectedAt"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_url" property="sourceUrl"/>
+        <result column="license_desc" property="licenseDesc"/>
+        <result column="has_watermark" property="hasWatermark"/>
+        <result column="image_quality" property="imageQuality"/>
+        <result column="usable_for_feature" property="usableForFeature"/>
+        <result column="feature_vector" property="featureVector"/>
+        <result column="feature_dim" property="featureDim"/>
+        <result column="feature_model_id" property="featureModelId"/>
+        <result column="quality_status" property="qualityStatus"/>
+        <result column="knowledge_entity_id" property="knowledgeEntityId"/>
         <result column="status" property="status"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 </mapper>

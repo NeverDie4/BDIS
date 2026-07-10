@@ -8,8 +8,11 @@
         <result column="atlas_id" property="atlasId"/>
         <result column="tag_name" property="tagName"/>
         <result column="tag_type" property="tagType"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="tag_source" property="tagSource"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 </mapper>

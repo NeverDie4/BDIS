@@ -36,7 +36,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     private final HerbSpeciesMapper herbSpeciesMapper;
 
     public HerbCollectionTaskServiceImpl(
-            HerbCollectionTaskMapper herbCollectionTaskMapper, HerbSpeciesMapper herbSpeciesMapper) {
+            HerbCollectionTaskMapper herbCollectionTaskMapper,
+            HerbSpeciesMapper herbSpeciesMapper) {
         this.herbCollectionTaskMapper = herbCollectionTaskMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
     }
@@ -68,9 +69,11 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         entity.setTaskStatus(taskStatus);
         entity.setDescription(request.getDescription());
         entity.setRemark(request.getRemark());
-        entity.setCreateTime(now);
-        entity.setUpdateTime(now);
-        entity.setDeleted(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        entity.setIsDeleted(0);
+        entity.setStatus(1);
+        entity.setVersion(0);
         herbCollectionTaskMapper.insert(entity);
         return entity.getId() == null ? toVO(entity) : getById(entity.getId());
     }
@@ -96,7 +99,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         existing.setTaskStatus(taskStatus);
         existing.setDescription(request.getDescription());
         existing.setRemark(request.getRemark());
-        existing.setUpdateTime(LocalDateTime.now());
+        existing.setUpdatedAt(LocalDateTime.now());
         int affected = herbCollectionTaskMapper.updateById(existing);
         if (affected == 0) {
             throw new BusinessException("Collection task not found or already deleted");
@@ -138,7 +141,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbCollectionTaskVO> records =
                 herbCollectionTaskMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
-        return new PageResult<>(total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
+        return new PageResult<>(
+                total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
 
     @Override
@@ -163,7 +167,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         List<HerbCollectionTaskVO> records =
                 herbCollectionTaskMapper.selectMyTasks(
                         safeRequest, offset, safeRequest.getPageSize());
-        return new PageResult<>(total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
+        return new PageResult<>(
+                total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
 
     @Override
@@ -324,8 +329,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         vo.setTaskStatus(entity.getTaskStatus());
         vo.setDescription(entity.getDescription());
         vo.setRemark(entity.getRemark());
-        vo.setCreateTime(entity.getCreateTime());
-        vo.setUpdateTime(entity.getUpdateTime());
+        vo.setCreateTime(entity.getCreatedAt());
+        vo.setUpdateTime(entity.getUpdatedAt());
         return vo;
     }
 }

@@ -45,7 +45,7 @@ class HerbCollectionTaskControllerTest {
                                         "{\"taskCode\":\"TASK_20260710_001\","
                                                 + "\"taskName\":\"Huanglian collection task\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.taskCode").value("TASK_20260710_001"));
     }
 
@@ -56,7 +56,7 @@ class HerbCollectionTaskControllerTest {
 
         mockMvc.perform(get("/herb/collection-task/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.id").value(1));
     }
 
@@ -68,7 +68,7 @@ class HerbCollectionTaskControllerTest {
 
         mockMvc.perform(put("/herb/collection-task/1/publish"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.taskStatus").value("published"));
     }
 

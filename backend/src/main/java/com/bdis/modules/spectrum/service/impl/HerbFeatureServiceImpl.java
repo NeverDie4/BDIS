@@ -1,7 +1,7 @@
 package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
+import com.bdis.file.service.FileStorageService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.spectrum.client.FeatureExtractionClient;
@@ -38,7 +38,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     private final HerbAtlasFeatureMapper herbAtlasFeatureMapper;
     private final HerbImageFeatureMapper herbImageFeatureMapper;
     private final FeatureExtractionClient featureExtractionClient;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
     private final HerbFeatureProperties properties;
 
@@ -48,7 +48,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
             HerbAtlasFeatureMapper herbAtlasFeatureMapper,
             HerbImageFeatureMapper herbImageFeatureMapper,
             FeatureExtractionClient featureExtractionClient,
-            LocalFileStorage localFileStorage,
+            FileStorageService fileStorageService,
             ObjectMapper objectMapper,
             HerbFeatureProperties properties) {
         this.herbAtlasMapper = herbAtlasMapper;
@@ -56,7 +56,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         this.herbAtlasFeatureMapper = herbAtlasFeatureMapper;
         this.herbImageFeatureMapper = herbImageFeatureMapper;
         this.featureExtractionClient = featureExtractionClient;
-        this.localFileStorage = localFileStorage;
+        this.fileStorageService = fileStorageService;
         this.objectMapper = objectMapper;
         this.properties = properties;
     }
@@ -69,7 +69,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     }
 
     private FeatureExtractResultVO extractAtlasFeature(SpectrumEntity atlas) {
-        Path imagePath = localFileStorage.resolveExistingUploadFile(atlas.getImageUrl());
+        Path imagePath = fileStorageService.resolve(atlas.getImageUrl());
         FeatureExtractionClientResponse response = extractValidFeature(imagePath);
         HerbAtlasFeatureEntity feature = buildAtlasFeature(atlas, response);
         herbAtlasFeatureMapper.deleteActiveByAtlasIdAndModel(
@@ -136,7 +136,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     @Transactional
     public FeatureExtractResultVO extractImageFeature(Long imageId) {
         HerbImageEntity image = getActiveImage(imageId);
-        Path imagePath = localFileStorage.resolveExistingUploadFile(image.getImageUrl());
+        Path imagePath = fileStorageService.resolve(image.getImageUrl());
         FeatureExtractionClientResponse response = extractValidFeature(imagePath);
         HerbImageFeatureEntity feature = buildImageFeature(image, response);
         herbImageFeatureMapper.deleteActiveByImageIdAndModel(
@@ -243,9 +243,11 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         feature.setFeatureVersion(response.getModelVersion());
         feature.setExtractStatus(STATUS_SUCCESS);
         feature.setExtractTime(now);
-        feature.setCreateTime(now);
-        feature.setUpdateTime(now);
-        feature.setDeleted(0);
+        feature.setCreatedAt(now);
+        feature.setUpdatedAt(now);
+        feature.setIsDeleted(0);
+        feature.setStatus(1);
+        feature.setVersion(0);
     }
 
     private void fillCommonFeature(
@@ -259,9 +261,11 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         feature.setFeatureVersion(response.getModelVersion());
         feature.setExtractStatus(STATUS_SUCCESS);
         feature.setExtractTime(now);
-        feature.setCreateTime(now);
-        feature.setUpdateTime(now);
-        feature.setDeleted(0);
+        feature.setCreatedAt(now);
+        feature.setUpdatedAt(now);
+        feature.setIsDeleted(0);
+        feature.setStatus(1);
+        feature.setVersion(0);
     }
 
     private String featureCode(FeatureExtractionClientResponse response) {
@@ -283,9 +287,17 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         vo.setTargetId(feature.getAtlasId());
         vo.setAtlasId(feature.getAtlasId());
         vo.setSpeciesId(feature.getSpeciesId());
-        fillVO(vo, feature.getFeatureCode(), feature.getFeatureVector(), feature.getFeatureDimension(),
-                feature.getFeatureModel(), feature.getFeatureVersion(), feature.getExtractStatus(),
-                feature.getExtractTime(), message, includeVector);
+        fillVO(
+                vo,
+                feature.getFeatureCode(),
+                feature.getFeatureVector(),
+                feature.getFeatureDimension(),
+                feature.getFeatureModel(),
+                feature.getFeatureVersion(),
+                feature.getExtractStatus(),
+                feature.getExtractTime(),
+                message,
+                includeVector);
         return vo;
     }
 
@@ -296,9 +308,17 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         vo.setTargetId(feature.getImageId());
         vo.setImageId(feature.getImageId());
         vo.setSpeciesId(feature.getSpeciesId());
-        fillVO(vo, feature.getFeatureCode(), feature.getFeatureVector(), feature.getFeatureDimension(),
-                feature.getFeatureModel(), feature.getFeatureVersion(), feature.getExtractStatus(),
-                feature.getExtractTime(), message, includeVector);
+        fillVO(
+                vo,
+                feature.getFeatureCode(),
+                feature.getFeatureVector(),
+                feature.getFeatureDimension(),
+                feature.getFeatureModel(),
+                feature.getFeatureVersion(),
+                feature.getExtractStatus(),
+                feature.getExtractTime(),
+                message,
+                includeVector);
         return vo;
     }
 
@@ -349,8 +369,8 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     private FeatureBatchExtractItemVO batchItem(SpectrumEntity atlas) {
         FeatureBatchExtractItemVO item = new FeatureBatchExtractItemVO();
         item.setAtlasId(atlas.getId());
-        item.setAtlasCode(atlas.getAtlasCode());
-        item.setImageName(atlas.getImageName());
+        item.setAtlasCode(atlas.getAtlasNo());
+        item.setImageName(atlas.getAtlasTitle());
         item.setSpeciesId(atlas.getSpeciesId());
         return item;
     }
@@ -358,8 +378,8 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     private FeatureBatchExtractItemVO imageBatchItem(HerbImageEntity image) {
         FeatureBatchExtractItemVO item = new FeatureBatchExtractItemVO();
         item.setImageId(image.getId());
-        item.setImageCode(image.getImageCode());
-        item.setImageName(image.getImageName());
+        item.setImageCode(image.getImageNo());
+        item.setImageName(image.getOriginalFilename());
         item.setSpeciesId(image.getSpeciesId());
         return item;
     }
@@ -368,7 +388,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         HerbImageEntity update = new HerbImageEntity();
         update.setId(imageId);
         update.setProcessStatus(processStatus);
-        update.setUpdateTime(LocalDateTime.now());
+        update.setUpdatedAt(LocalDateTime.now());
         herbImageMapper.updateProcessStatus(update);
     }
 }

@@ -7,6 +7,9 @@ frontend/.next/
 frontend/out/
 frontend/coverage/
 frontend/.env*.local
+frontend/.next-dev*.log
+frontend/build-debug.log
+frontend/tsconfig.tsbuildinfo
 
 # mobile
 mobile/dist/
@@ -40,6 +43,9 @@ ai_service/test*.png
 ai_service/test*.webp
 ai_service/run_*.cmd
 
+# flyway
+flyway/target/
+
 # runtime data
 storage/
 logs/
@@ -50,6 +56,8 @@ tmp/
 temp/
 *.tmp
 *.log
+build-debug.log
+*.tsbuildinfo
 
 # environment
 .env

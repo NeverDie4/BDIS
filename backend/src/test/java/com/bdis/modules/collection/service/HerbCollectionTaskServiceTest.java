@@ -63,9 +63,9 @@ class HerbCollectionTaskServiceTest {
         HerbCollectionTaskEntity inserted = captor.getValue();
         assertThat(inserted.getTaskStatus()).isEqualTo(HerbCollectionTaskStatusConstants.DRAFT);
         assertThat(inserted.getSpeciesName()).isEqualTo("Huanglian");
-        assertThat(inserted.getDeleted()).isZero();
-        assertThat(inserted.getCreateTime()).isNotNull();
-        assertThat(inserted.getUpdateTime()).isNotNull();
+        assertThat(inserted.getIsDeleted()).isZero();
+        assertThat(inserted.getCreatedAt()).isNotNull();
+        assertThat(inserted.getUpdatedAt()).isNotNull();
         assertThat(result.getTaskCode()).isEqualTo("TASK_20260710_001");
     }
 
@@ -124,8 +124,8 @@ class HerbCollectionTaskServiceTest {
 
         PageResult<HerbCollectionTaskVO> result = herbCollectionTaskService.page(request);
 
-        assertThat(result.getPageNum()).isEqualTo(1);
-        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
         assertThat(result.getTotal()).isEqualTo(1L);
         assertThat(result.getRecords()).hasSize(1);
     }
@@ -208,7 +208,7 @@ class HerbCollectionTaskServiceTest {
         entity.setTaskCode("TASK_20260710_001");
         entity.setTaskName("Huanglian collection task");
         entity.setTaskStatus(status);
-        entity.setDeleted(0);
+        entity.setIsDeleted(0);
         return entity;
     }
 

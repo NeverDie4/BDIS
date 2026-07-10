@@ -40,7 +40,8 @@ public class HerbBatchImageController {
 
     @PostMapping("/herb/batch/{batchId}/images")
     public Result<HerbBatchImageBindResultVO> batchBind(
-            @PathVariable Long batchId, @Valid @RequestBody HerbBatchImageBatchBindRequest request) {
+            @PathVariable Long batchId,
+            @Valid @RequestBody HerbBatchImageBatchBindRequest request) {
         return Result.success(herbBatchImageService.batchBind(batchId, request));
     }
 

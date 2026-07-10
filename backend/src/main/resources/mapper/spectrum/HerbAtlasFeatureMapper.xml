@@ -15,9 +15,9 @@
         <result column="extract_status" property="extractStatus"/>
         <result column="extract_time" property="extractTime"/>
         <result column="error_message" property="errorMessage"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="FeatureVOResultMap" type="com.bdis.modules.spectrum.vo.FeatureExtractResultVO">
@@ -48,9 +48,9 @@
             extract_status,
             extract_time,
             error_message,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
             #{atlasId},
             #{speciesId},
@@ -62,20 +62,20 @@
             #{extractStatus},
             #{extractTime},
             #{errorMessage},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
     <update id="deleteActiveByAtlasIdAndModel">
         UPDATE herb_atlas_feature
-        SET deleted = 1,
-            update_time = NOW()
+        SET is_deleted = 1,
+            updated_at = NOW()
         WHERE atlas_id = #{atlasId}
           AND feature_model = #{featureModel}
           AND feature_version = #{featureVersion}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="existsSuccessByAtlasIdAndModel" resultType="int">
@@ -85,7 +85,7 @@
           AND feature_model = #{featureModel}
           AND feature_version = #{featureVersion}
           AND extract_status = 'success'
-          AND deleted = 0
+          AND is_deleted = 0
         LIMIT 1
     </select>
 
@@ -106,8 +106,8 @@
         FROM herb_atlas_feature
         WHERE atlas_id = #{atlasId}
           AND extract_status = 'success'
-          AND deleted = 0
-        ORDER BY extract_time DESC, create_time DESC
+          AND is_deleted = 0
+        ORDER BY extract_time DESC, created_at DESC
         LIMIT 1
     </select>
 </mapper>

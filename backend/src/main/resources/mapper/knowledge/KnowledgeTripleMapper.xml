@@ -9,9 +9,11 @@
         <result column="relation_id" property="relationId"/>
         <result column="object_entity_id" property="objectEntityId"/>
         <result column="confidence" property="confidence"/>
-        <result column="source" property="source"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_desc" property="sourceDesc"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 </mapper>

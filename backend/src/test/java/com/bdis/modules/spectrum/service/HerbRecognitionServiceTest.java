@@ -21,8 +21,6 @@ import com.bdis.modules.spectrum.entity.ImageRecognitionEntity;
 import com.bdis.modules.spectrum.entity.SpectrumComparisonEntity;
 import com.bdis.modules.spectrum.mapper.ImageRecognitionMapper;
 import com.bdis.modules.spectrum.mapper.SpectrumComparisonMapper;
-import com.bdis.modules.spectrum.service.HerbAtlasMatchResult;
-import com.bdis.modules.spectrum.service.HerbAtlasMatchService;
 import com.bdis.modules.spectrum.service.impl.HerbRecognitionServiceImpl;
 import com.bdis.modules.spectrum.vo.HerbRecognitionVO;
 import java.math.BigDecimal;
@@ -92,26 +90,27 @@ class HerbRecognitionServiceTest {
         HerbEntity species = new HerbEntity();
         species.setId(2L);
         species.setHerbName("Huanglian");
-        HerbAtlasMatchResult match =
-                match(10L, 2L, "Huanglian", new BigDecimal("0.90"), 1);
+        HerbAtlasMatchResult match = match(10L, 2L, "Huanglian", new BigDecimal("0.90"), 1);
         when(herbImageMapper.selectActiveById(1L)).thenReturn(image);
         when(herbAtlasMatchService.matchTopN(image, 5)).thenReturn(List.of(match));
         when(herbSpeciesMapper.selectByNameOrAlias("Huanglian")).thenReturn(species);
 
         HerbRecognitionVO result = herbRecognitionService.recognize(1L);
 
-        ArgumentCaptor<HerbImageEntity> imageCaptor = ArgumentCaptor.forClass(HerbImageEntity.class);
+        ArgumentCaptor<HerbImageEntity> imageCaptor =
+                ArgumentCaptor.forClass(HerbImageEntity.class);
         verify(herbImageMapper, times(2)).updateProcessStatus(imageCaptor.capture());
-        assertThat(imageCaptor.getAllValues()).extracting(HerbImageEntity::getProcessStatus)
+        assertThat(imageCaptor.getAllValues())
+                .extracting(HerbImageEntity::getProcessStatus)
                 .containsExactly("recognizing", "recognized");
         ArgumentCaptor<ImageRecognitionEntity> recognitionCaptor =
                 ArgumentCaptor.forClass(ImageRecognitionEntity.class);
         verify(imageRecognitionMapper).insertRecognition(recognitionCaptor.capture());
         ImageRecognitionEntity inserted = recognitionCaptor.getValue();
         assertThat(inserted.getImageId()).isEqualTo(1L);
-        assertThat(inserted.getPredictedSpeciesId()).isEqualTo(2L);
-        assertThat(inserted.getPredictedName()).isEqualTo("Huanglian");
-        assertThat(inserted.getRecognitionStatus()).isEqualTo("success");
+        assertThat(inserted.getSpeciesId()).isEqualTo(2L);
+        assertThat(inserted.getRecognizedHerbName()).isEqualTo("Huanglian");
+        assertThat(inserted.getIsUncertain()).isZero();
         assertThat(inserted.getConfidence()).isEqualByComparingTo("0.90");
         assertThat(result.getPredictedSpeciesName()).isEqualTo("Huanglian");
         assertThat(result.getRecognitionStatus()).isEqualTo("success");
@@ -150,8 +149,7 @@ class HerbRecognitionServiceTest {
     @Test
     void recognizeCallsDoubaoOnlyWhenLocalSimilarityIsLow() {
         HerbImageEntity image = image("uploaded");
-        HerbAtlasMatchResult lowMatch =
-                match(10L, 2L, "Huanglian", new BigDecimal("0.50"), 1);
+        HerbAtlasMatchResult lowMatch = match(10L, 2L, "Huanglian", new BigDecimal("0.50"), 1);
         HerbRecognitionClientResponse auxiliaryResponse = new HerbRecognitionClientResponse();
         auxiliaryResponse.setSuccess(true);
         auxiliaryResponse.setPredictedName("Wuzhimaotao");
@@ -188,9 +186,11 @@ class HerbRecognitionServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("timeout");
 
-        ArgumentCaptor<HerbImageEntity> imageCaptor = ArgumentCaptor.forClass(HerbImageEntity.class);
+        ArgumentCaptor<HerbImageEntity> imageCaptor =
+                ArgumentCaptor.forClass(HerbImageEntity.class);
         verify(herbImageMapper, times(2)).updateProcessStatus(imageCaptor.capture());
-        assertThat(imageCaptor.getAllValues()).extracting(HerbImageEntity::getProcessStatus)
+        assertThat(imageCaptor.getAllValues())
+                .extracting(HerbImageEntity::getProcessStatus)
                 .containsExactly("recognizing", "failed");
     }
 
@@ -207,7 +207,8 @@ class HerbRecognitionServiceTest {
     @Test
     void historyReturnsAllRecognitionsForImage() {
         when(herbImageMapper.selectActiveById(1L)).thenReturn(image("recognized"));
-        when(imageRecognitionMapper.selectByImageId(1L)).thenReturn(List.of(new HerbRecognitionVO()));
+        when(imageRecognitionMapper.selectByImageId(1L))
+                .thenReturn(List.of(new HerbRecognitionVO()));
 
         assertThat(herbRecognitionService.history(1L)).hasSize(1);
     }
@@ -223,21 +224,21 @@ class HerbRecognitionServiceTest {
 
         PageResult<HerbRecognitionVO> result = herbRecognitionService.page(request);
 
-        assertThat(result.getPageNum()).isEqualTo(1);
-        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
         assertThat(result.getTotal()).isEqualTo(1);
     }
 
     private HerbImageEntity image(String processStatus) {
         HerbImageEntity image = new HerbImageEntity();
         image.setId(1L);
-        image.setImageCode("IMG_1");
-        image.setImageUrl("/herb/image/2026/07/08/IMG_1.jpg");
-        image.setImageName("IMG_1.jpg");
+        image.setImageNo("IMG_1");
+        image.setImageUrl("/api/files/uploads/2026-07-08/IMG_1.jpg");
+        image.setOriginalFilename("IMG_1.jpg");
         image.setProcessStatus(processStatus);
-        image.setDeleted(0);
-        image.setCreateTime(LocalDateTime.now());
-        image.setUpdateTime(LocalDateTime.now());
+        image.setIsDeleted(0);
+        image.setCreatedAt(LocalDateTime.now());
+        image.setUpdatedAt(LocalDateTime.now());
         return image;
     }
 

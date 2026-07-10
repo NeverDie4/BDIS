@@ -62,8 +62,7 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
     @Transactional
     public HerbImageMatchVO match(Long imageId, HerbImageMatchRequest request) {
         HerbImageEntity image = getActiveImage(imageId);
-        HerbImageMatchRequest safeRequest =
-                request == null ? new HerbImageMatchRequest() : request;
+        HerbImageMatchRequest safeRequest = request == null ? new HerbImageMatchRequest() : request;
         if (!Boolean.TRUE.equals(safeRequest.getForceRefresh())
                 && herbImageMatchMapper.countActiveByImageId(imageId) > 0) {
             return toMatchVO(image, herbImageMatchMapper.selectLatestByImageId(imageId));
@@ -176,25 +175,23 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
                             SpectrumComparisonEntity match = new SpectrumComparisonEntity();
                             match.setImageId(imageId);
                             match.setAtlasId(candidate.atlas().getAtlasId());
-                            match.setSimilarityScore(candidate.similarity());
+                            match.setImageSimilarity(candidate.similarity());
+                            match.setFinalScore(candidate.similarity());
                             match.setMatchRank(rank);
-                            match.setMatchResult(
+                            match.setMatchLevel(
                                     rank == 1 ? finalResult : HerbMatchResultConstants.CANDIDATE);
-                            match.setMatchBatchNo(matchBatchNo);
-                            match.setMatchTime(now);
-                            match.setCreateTime(now);
-                            match.setUpdateTime(now);
-                            match.setDeleted(0);
+                            match.setRemark(matchBatchNo);
+                            match.setCreatedAt(now);
+                            match.setUpdatedAt(now);
                             return match;
                         })
                 .toList();
     }
 
-    private HerbImageMatchVO toMatchVO(
-            HerbImageEntity image, List<HerbImageMatchPageVO> records) {
+    private HerbImageMatchVO toMatchVO(HerbImageEntity image, List<HerbImageMatchPageVO> records) {
         HerbImageMatchVO vo = new HerbImageMatchVO();
         vo.setImageId(image.getId());
-        vo.setImageCode(image.getImageCode());
+        vo.setImageCode(image.getImageNo());
         if (CollectionUtils.isEmpty(records)) {
             vo.setNeedReview(true);
             vo.setSuggestion("No local atlas match records found");
@@ -239,9 +236,12 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
 
     private String suggestion(String matchResult) {
         return switch (matchResult) {
-            case HerbMatchResultConstants.MATCHED -> "Local atlas similarity is high and can be used as a preliminary result";
-            case HerbMatchResultConstants.UNCERTAIN -> "Local atlas returned candidates, manual review is required";
-            case HerbMatchResultConstants.LOW_CONFIDENCE -> "Local atlas cannot make a reliable judgment, manual review is required";
+            case HerbMatchResultConstants.MATCHED ->
+                    "Local atlas similarity is high and can be used as a preliminary result";
+            case HerbMatchResultConstants.UNCERTAIN ->
+                    "Local atlas returned candidates, manual review is required";
+            case HerbMatchResultConstants.LOW_CONFIDENCE ->
+                    "Local atlas cannot make a reliable judgment, manual review is required";
             default -> "Candidate result for local atlas review";
         };
     }
@@ -255,7 +255,7 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
         HerbImageEntity update = new HerbImageEntity();
         update.setId(imageId);
         update.setProcessStatus(processStatus);
-        update.setUpdateTime(LocalDateTime.now());
+        update.setUpdatedAt(LocalDateTime.now());
         herbImageMapper.updateProcessStatus(update);
     }
 
@@ -275,6 +275,5 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
         }
     }
 
-    private record RankedCandidate(
-            HerbAtlasFeatureCandidateVO atlas, BigDecimal similarity) {}
+    private record RankedCandidate(HerbAtlasFeatureCandidateVO atlas, BigDecimal similarity) {}
 }

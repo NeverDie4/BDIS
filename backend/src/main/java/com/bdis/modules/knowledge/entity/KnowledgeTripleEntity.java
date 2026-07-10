@@ -1,19 +1,15 @@
 package com.bdis.modules.knowledge.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.BaseEntity;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_knowledge_triple")
-public class KnowledgeTripleEntity {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class KnowledgeTripleEntity extends BaseEntity {
 
     private Long subjectEntityId;
 
@@ -23,12 +19,7 @@ public class KnowledgeTripleEntity {
 
     private BigDecimal confidence;
 
-    private String source;
+    private String sourceType;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
+    private String sourceDesc;
 }

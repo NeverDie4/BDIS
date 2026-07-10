@@ -44,9 +44,7 @@ class HerbBatchStatusFlowUtilsTest {
         batch.setBatchStatus(HerbBatchStatusConstants.COLLECTING);
 
         assertThat(HerbBatchStatusFlowUtils.getAllowedActions(batch))
-                .containsExactly(
-                        HerbBatchActionConstants.SUBMIT,
-                        HerbBatchActionConstants.CANCEL);
+                .containsExactly(HerbBatchActionConstants.SUBMIT, HerbBatchActionConstants.CANCEL);
 
         batch.setBatchStatus(HerbBatchStatusConstants.CONFIRMED);
         assertThat(HerbBatchStatusFlowUtils.getAllowedActions(batch))

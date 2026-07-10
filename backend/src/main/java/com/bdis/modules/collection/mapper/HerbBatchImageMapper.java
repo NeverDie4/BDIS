@@ -36,7 +36,8 @@ public interface HerbBatchImageMapper {
 
     int logicDeleteById(@Param("id") Long id);
 
-    int logicDeleteByBatchIdAndImageId(@Param("batchId") Long batchId, @Param("imageId") Long imageId);
+    int logicDeleteByBatchIdAndImageId(
+            @Param("batchId") Long batchId, @Param("imageId") Long imageId);
 
     int clearPrimaryByBatchId(@Param("batchId") Long batchId);
 

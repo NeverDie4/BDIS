@@ -134,9 +134,10 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
     public MobileIdentifyMissingResultVO identifyMissingImages(Long batchId) {
         getEditableBatch(batchId);
         HerbBatchImageQueryRequest query = new HerbBatchImageQueryRequest();
-        List<HerbBatchImageVO> images = herbBatchImageService.listByBatch(batchId, query).stream()
-                .filter(image -> image.getIdentificationResultId() == null)
-                .toList();
+        List<HerbBatchImageVO> images =
+                herbBatchImageService.listByBatch(batchId, query).stream()
+                        .filter(image -> image.getIdentificationResultId() == null)
+                        .toList();
         List<MobileIdentifyMissingItemVO> items = new ArrayList<>();
         int successCount = 0;
         for (HerbBatchImageVO image : images) {
@@ -199,7 +200,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
                         : batch.getCollectEndTime());
         update.setRemark(
                 appendText(batch.getRemark(), request == null ? null : request.getRemark()));
-        update.setUpdateTime(LocalDateTime.now());
+        update.setUpdatedAt(LocalDateTime.now());
         herbBatchMapper.updateMobileSubmitFields(update);
         return detail(batchId, request == null ? null : request.getCollectorId());
     }
@@ -342,7 +343,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
     private void updateBindingIdentification(
             HerbBatchImageEntity binding, Long identificationResultId) {
         binding.setIdentificationResultId(identificationResultId);
-        binding.setUpdateTime(LocalDateTime.now());
+        binding.setUpdatedAt(LocalDateTime.now());
         herbBatchImageMapper.updateIdentificationResultById(binding);
     }
 

@@ -13,9 +13,9 @@
         <result column="bind_status" property="bindStatus"/>
         <result column="sort_order" property="sortOrder"/>
         <result column="remark" property="remark"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="BatchImageVOResultMap" type="com.bdis.modules.collection.vo.HerbBatchImageVO">
@@ -46,8 +46,8 @@
         <result column="sort_order" property="sortOrder"/>
         <result column="bind_status" property="bindStatus"/>
         <result column="remark" property="remark"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
     </resultMap>
 
     <resultMap id="ImageBatchVOResultMap" type="com.bdis.modules.collection.vo.HerbImageBatchVO">
@@ -71,21 +71,21 @@
         bind_status,
         sort_order,
         remark,
-        create_time,
-        update_time,
-        deleted
+        created_at,
+        updated_at,
+        is_deleted
     </sql>
 
     <sql id="BatchImageVOColumns">
         bi.id,
         bi.batch_id,
         bi.image_id,
-        i.image_code,
+        i.image_no AS image_code,
         i.image_url,
-        i.image_name,
+        i.original_filename AS image_name,
         i.upload_source,
-        i.collect_place,
-        i.collect_time,
+        i.collected_location AS collect_place,
+        i.collected_at AS collect_time,
         i.image_type,
         i.growth_stage,
         i.health_status,
@@ -104,13 +104,13 @@
         bi.sort_order,
         bi.bind_status,
         bi.remark,
-        bi.create_time,
-        bi.update_time
+        bi.created_at,
+        bi.updated_at
     </sql>
 
     <sql id="BatchImageWhere">
         <where>
-            bi.deleted = 0
+            bi.is_deleted = 0
             AND bi.batch_id = #{batchId}
             <if test="query != null and query.bindStatus != null and query.bindStatus != ''">
                 AND bi.bind_status = #{query.bindStatus}
@@ -132,9 +132,9 @@
             bind_status,
             sort_order,
             remark,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
             #{batchId},
             #{imageId},
@@ -144,9 +144,9 @@
             #{bindStatus},
             #{sortOrder},
             #{remark},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
@@ -160,9 +160,9 @@
             bind_status,
             sort_order,
             remark,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES
         <foreach collection="list" item="item" separator=",">
             (
@@ -174,9 +174,9 @@
                 #{item.bindStatus},
                 #{item.sortOrder},
                 #{item.remark},
-                #{item.createTime},
-                #{item.updateTime},
-                #{item.deleted}
+                #{item.createdAt},
+                #{item.updatedAt},
+                #{item.isDeleted}
             )
         </foreach>
     </insert>
@@ -189,56 +189,56 @@
             bind_status = #{bindStatus},
             sort_order = #{sortOrder},
             remark = #{remark},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="updateIdentificationResultById"
             parameterType="com.bdis.modules.collection.entity.HerbBatchImageEntity">
         UPDATE herb_batch_image
         SET identification_result_id = #{identificationResultId},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
     </update>
 
     <update id="logicDeleteById">
         UPDATE herb_batch_image
-        SET deleted = 1,
+        SET is_deleted = 1,
             bind_status = 'removed',
-            update_time = NOW()
+            updated_at = NOW()
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="logicDeleteByBatchIdAndImageId">
         UPDATE herb_batch_image
-        SET deleted = 1,
+        SET is_deleted = 1,
             bind_status = 'removed',
-            update_time = NOW()
+            updated_at = NOW()
         WHERE batch_id = #{batchId}
           AND image_id = #{imageId}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="clearPrimaryByBatchId">
         UPDATE herb_batch_image
         SET is_primary = 0,
-            update_time = NOW()
+            updated_at = NOW()
         WHERE batch_id = #{batchId}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
     </update>
 
     <update id="updatePrimaryByBatchIdAndImageId">
         UPDATE herb_batch_image
         SET is_primary = 1,
-            update_time = NOW()
+            updated_at = NOW()
         WHERE batch_id = #{batchId}
           AND image_id = #{imageId}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
     </update>
 
@@ -247,7 +247,7 @@
         <include refid="BaseColumns"/>
         FROM herb_batch_image
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="selectByBatchId" resultMap="BaseResultMap">
@@ -255,9 +255,9 @@
         <include refid="BaseColumns"/>
         FROM herb_batch_image
         WHERE batch_id = #{batchId}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
-        ORDER BY sort_order ASC, create_time ASC
+        ORDER BY sort_order ASC, created_at ASC
     </select>
 
     <select id="selectByImageId" resultMap="BaseResultMap">
@@ -265,9 +265,9 @@
         <include refid="BaseColumns"/>
         FROM herb_batch_image
         WHERE image_id = #{imageId}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
-        ORDER BY create_time DESC
+        ORDER BY created_at DESC
         LIMIT 1
     </select>
 
@@ -277,7 +277,7 @@
         FROM herb_batch_image
         WHERE batch_id = #{batchId}
           AND image_id = #{imageId}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
         LIMIT 1
     </select>
@@ -286,7 +286,7 @@
         SELECT
         <include refid="BatchImageVOColumns"/>
         FROM herb_batch_image bi
-        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.deleted = 0
+        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
         LEFT JOIN herb_identification_result r
             ON r.id = COALESCE(
                 bi.identification_result_id,
@@ -294,15 +294,15 @@
                     SELECT latest.id
                     FROM herb_identification_result latest
                     WHERE latest.image_id = bi.image_id
-                      AND latest.deleted = 0
-                    ORDER BY latest.identify_time DESC, latest.create_time DESC
+                      AND latest.is_deleted = 0
+                    ORDER BY latest.identify_time DESC, latest.created_at DESC
                     LIMIT 1
                 )
             )
-            AND r.deleted = 0
+            AND r.is_deleted = 0
         WHERE bi.batch_id = #{batchId}
           AND bi.image_id = #{imageId}
-          AND bi.deleted = 0
+          AND bi.is_deleted = 0
           AND bi.bind_status = 'bound'
         LIMIT 1
     </select>
@@ -311,7 +311,7 @@
         SELECT
         <include refid="BatchImageVOColumns"/>
         FROM herb_batch_image bi
-        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.deleted = 0
+        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
         LEFT JOIN herb_identification_result r
             ON r.id = COALESCE(
                 bi.identification_result_id,
@@ -319,14 +319,14 @@
                     SELECT latest.id
                     FROM herb_identification_result latest
                     WHERE latest.image_id = bi.image_id
-                      AND latest.deleted = 0
-                    ORDER BY latest.identify_time DESC, latest.create_time DESC
+                      AND latest.is_deleted = 0
+                    ORDER BY latest.identify_time DESC, latest.created_at DESC
                     LIMIT 1
                 )
             )
-            AND r.deleted = 0
+            AND r.is_deleted = 0
         <include refid="BatchImageWhere"/>
-        ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.create_time ASC
+        ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
     </select>
 
     <select id="selectBatchInfoByImageId" resultMap="ImageBatchVOResultMap">
@@ -340,11 +340,11 @@
         bi.image_role,
         bi.is_primary
         FROM herb_batch_image bi
-        INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.deleted = 0
+        INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
         WHERE bi.image_id = #{imageId}
-          AND bi.deleted = 0
+          AND bi.is_deleted = 0
           AND bi.bind_status = 'bound'
-        ORDER BY bi.create_time DESC
+        ORDER BY bi.created_at DESC
         LIMIT 1
     </select>
 
@@ -352,14 +352,14 @@
         SELECT COUNT(1)
         FROM herb_batch_image
         WHERE batch_id = #{batchId}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="countBoundByBatchId" resultType="java.lang.Long">
         SELECT COUNT(1)
         FROM herb_batch_image
         WHERE batch_id = #{batchId}
-          AND deleted = 0
+          AND is_deleted = 0
           AND bind_status = 'bound'
     </select>
 </mapper>

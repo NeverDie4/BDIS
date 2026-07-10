@@ -34,18 +34,18 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
 
         LocalDateTime now = LocalDateTime.now();
         HerbEntity entity = new HerbEntity();
-        entity.setHerbCode(request.getHerbCode());
+        entity.setHerbNo(request.getHerbCode());
         entity.setHerbName(request.getHerbName());
         entity.setLatinName(request.getLatinName());
         entity.setAliasName(request.getAliasName());
-        entity.setCategory(request.getCategory());
+        entity.setCategoryCode(request.getCategory());
         entity.setMedicinalPart(request.getMedicinalPart());
         entity.setEfficacy(request.getEfficacy());
         entity.setDescription(request.getDescription());
         entity.setStatus(request.getStatus() == null ? 1 : request.getStatus());
-        entity.setCreateTime(now);
-        entity.setUpdateTime(now);
-        entity.setDeleted(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        entity.setIsDeleted(0);
         herbSpeciesMapper.insertSpecies(entity);
         return toVO(entity);
     }
@@ -59,12 +59,12 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         existing.setHerbName(request.getHerbName());
         existing.setLatinName(request.getLatinName());
         existing.setAliasName(request.getAliasName());
-        existing.setCategory(request.getCategory());
+        existing.setCategoryCode(request.getCategory());
         existing.setMedicinalPart(request.getMedicinalPart());
         existing.setEfficacy(request.getEfficacy());
         existing.setDescription(request.getDescription());
         existing.setStatus(request.getStatus());
-        existing.setUpdateTime(LocalDateTime.now());
+        existing.setUpdatedAt(LocalDateTime.now());
         herbSpeciesMapper.updateSpecies(existing);
         return toVO(existing);
     }
@@ -73,7 +73,7 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
     @Transactional
     public void delete(Long id) {
         HerbEntity existing = getActiveEntity(id);
-        existing.setUpdateTime(LocalDateTime.now());
+        existing.setUpdatedAt(LocalDateTime.now());
         int affected = herbSpeciesMapper.logicalDeleteById(existing);
         if (affected == 0) {
             throw new BusinessException("Herb species not found or already deleted");
@@ -139,17 +139,17 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
     private HerbSpeciesVO toVO(HerbEntity entity) {
         HerbSpeciesVO vo = new HerbSpeciesVO();
         vo.setId(entity.getId());
-        vo.setHerbCode(entity.getHerbCode());
+        vo.setHerbCode(entity.getHerbNo());
         vo.setHerbName(entity.getHerbName());
         vo.setLatinName(entity.getLatinName());
         vo.setAliasName(entity.getAliasName());
-        vo.setCategory(entity.getCategory());
+        vo.setCategory(entity.getCategoryCode());
         vo.setMedicinalPart(entity.getMedicinalPart());
         vo.setEfficacy(entity.getEfficacy());
         vo.setDescription(entity.getDescription());
         vo.setStatus(entity.getStatus());
-        vo.setCreateTime(entity.getCreateTime());
-        vo.setUpdateTime(entity.getUpdateTime());
+        vo.setCreateTime(entity.getCreatedAt());
+        vo.setUpdateTime(entity.getUpdatedAt());
         return vo;
     }
 }

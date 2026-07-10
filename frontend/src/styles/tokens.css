@@ -1,0 +1,54 @@
+:root {
+  --color-bg: #f6efe2;
+  --color-paper: #fff8ec;
+  --color-card: #fffdf6;
+  --color-primary: #0f5f3b;
+  --color-primary-hover: #0b4f31;
+  --color-primary-light: #e5f2e9;
+  --color-brown: #8a5a2b;
+  --color-border: #e7dccb;
+  --color-text: #1f2a24;
+  --color-title: #173d2b;
+  --color-muted: #6f766d;
+
+  --color-danger: #b42318;
+  --color-warning: #b7791f;
+  --color-success: #237a42;
+  --color-info: #1f6f78;
+  --color-tag-bg: #edf6ef;
+  --color-header-bg: #fff8ec;
+  --color-header-border: #e6d8c4;
+
+  --color-primary-rgb: 15, 95, 59;
+  --color-success-rgb: 35, 122, 66;
+  --color-texture-rgb: 255, 250, 242;
+  --color-border-rgb: 232, 221, 204;
+
+  --radius-card: 12px;
+  --radius-card-lg: 24px;
+  --radius-button: 8px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 8px 24px rgba(60, 45, 25, 0.08);
+  --shadow-card-soft: 0 14px 34px rgba(60, 45, 25, 0.07);
+  --shadow-header: 0 8px 24px rgba(60, 45, 25, 0.06);
+
+  --layout-max-width: 1180px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 36px;
+
+  --font-family-base:
+    "Source Han Serif SC", "Songti SC", "Microsoft YaHei", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-brand: "LXGWWenKai", "STKaiti", "KaiTi", "Songti SC", "SimSun", serif;
+  --font-ui: "LXGWWenKai", "STKaiti", "KaiTi", "Songti SC", "Microsoft YaHei", serif;
+  --font-data: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --font-en: Georgia, "Times New Roman", serif;
+
+  --color-page: var(--color-bg);
+  --color-panel: var(--color-paper);
+}

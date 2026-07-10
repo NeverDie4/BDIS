@@ -14,8 +14,7 @@ public final class HerbQualityLevelConstants {
 
     public static final String UNKNOWN = "unknown";
 
-    public static final Set<String> VALID_LEVELS =
-            Set.of(EXCELLENT, GOOD, NORMAL, POOR, UNKNOWN);
+    public static final Set<String> VALID_LEVELS = Set.of(EXCELLENT, GOOD, NORMAL, POOR, UNKNOWN);
 
     private HerbQualityLevelConstants() {}
 }

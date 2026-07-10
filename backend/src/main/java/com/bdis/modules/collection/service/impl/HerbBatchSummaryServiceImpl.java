@@ -119,7 +119,7 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
         batch.setEvaluationSummary(request.getEvaluationSummary());
         batch.setBatchStatus(HerbBatchStatusConstants.CONFIRMED);
         batch.setRemark(buildConfirmRemark(request));
-        batch.setUpdateTime(LocalDateTime.now());
+        batch.setUpdatedAt(LocalDateTime.now());
         int affected = herbBatchMapper.updateStatisticsById(batch);
         if (affected == 0) {
             throw new BusinessException("Failed to confirm batch summary");
@@ -150,10 +150,13 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
         BigDecimal qualityScore =
                 avgSimilarity == null
                         ? null
-                        : avgSimilarity.multiply(new BigDecimal("100")).setScale(2, RoundingMode.HALF_UP);
+                        : avgSimilarity
+                                .multiply(new BigDecimal("100"))
+                                .setScale(2, RoundingMode.HALF_UP);
         String qualityLevel = resolveQualityLevel(qualityScore);
         String batchStatus =
-                resolveBatchStatus(batch, imageCount, identifiedCount, needReviewCount, mainSpecies);
+                resolveBatchStatus(
+                        batch, imageCount, identifiedCount, needReviewCount, mainSpecies);
         String evaluationSummary =
                 buildEvaluationSummary(
                         imageCount,
@@ -172,7 +175,8 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
         summary.setNeedReviewCount(needReviewCount);
         summary.setFinalSpeciesId(mainSpecies == null ? null : mainSpecies.getFinalSpeciesId());
         summary.setFinalSpeciesName(mainSpecies == null ? null : mainSpecies.getFinalSpeciesName());
-        summary.setMainSpeciesRatio(mainSpecies == null ? BigDecimal.ZERO.setScale(4) : mainSpecies.getRatio());
+        summary.setMainSpeciesRatio(
+                mainSpecies == null ? BigDecimal.ZERO.setScale(4) : mainSpecies.getRatio());
         summary.setAvgSimilarity(avgSimilarity);
         summary.setQualityScore(qualityScore);
         summary.setQualityLevel(qualityLevel);
@@ -194,7 +198,7 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
         batch.setQualityScore(summary.getQualityScore());
         batch.setEvaluationSummary(summary.getEvaluationSummary());
         batch.setBatchStatus(summary.getBatchStatus());
-        batch.setUpdateTime(LocalDateTime.now());
+        batch.setUpdatedAt(LocalDateTime.now());
     }
 
     private HerbBatchSummaryVO baseSummary(
@@ -231,7 +235,8 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
                     item.getFinalSpeciesId() != null
                             ? "id:" + item.getFinalSpeciesId()
                             : "name:" + item.getFinalSpeciesName();
-            HerbBatchSpeciesStatVO stat = stats.computeIfAbsent(key, unused -> new HerbBatchSpeciesStatVO());
+            HerbBatchSpeciesStatVO stat =
+                    stats.computeIfAbsent(key, unused -> new HerbBatchSpeciesStatVO());
             stat.setFinalSpeciesId(item.getFinalSpeciesId());
             stat.setFinalSpeciesName(item.getFinalSpeciesName());
             stat.setCount(stat.getCount() == null ? 1 : stat.getCount() + 1);
@@ -242,7 +247,10 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
                     identifiedCount == 0
                             ? BigDecimal.ZERO.setScale(4)
                             : BigDecimal.valueOf(stat.getCount())
-                                    .divide(BigDecimal.valueOf(identifiedCount), 4, RoundingMode.HALF_UP));
+                                    .divide(
+                                            BigDecimal.valueOf(identifiedCount),
+                                            4,
+                                            RoundingMode.HALF_UP));
         }
         result.sort(Comparator.comparing(HerbBatchSpeciesStatVO::getCount).reversed());
         return result;
@@ -318,7 +326,8 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
             return "该批次仍有图片未生成识别结论，建议先完成图谱识别和人工复核。";
         }
         if (HerbBatchStatusConstants.REVIEWING.equals(batchStatus)
-                && (mainSpecies == null || mainSpecies.getRatio().compareTo(MAIN_SPECIES_THRESHOLD) < 0)) {
+                && (mainSpecies == null
+                        || mainSpecies.getRatio().compareTo(MAIN_SPECIES_THRESHOLD) < 0)) {
             return "该批次识别结果存在不一致情况，最高占比药材不足 60%，建议人工复核批次下所有图片后再确认。";
         }
         String speciesName = mainSpecies == null ? "未知药材" : mainSpecies.getFinalSpeciesName();
@@ -349,7 +358,8 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
     }
 
     private int identifiedCount(List<HerbBatchIdentificationItemVO> items) {
-        return (int) items.stream().filter(item -> item.getIdentificationResultId() != null).count();
+        return (int)
+                items.stream().filter(item -> item.getIdentificationResultId() != null).count();
     }
 
     private HerbBatchIdentificationItemVO toItem(HerbBatchImageVO image) {

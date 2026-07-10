@@ -146,10 +146,10 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         HerbImageEntity statusUpdate = new HerbImageEntity();
         statusUpdate.setId(image.getId());
         statusUpdate.setProcessStatus(processStatus);
-        statusUpdate.setUpdateTime(LocalDateTime.now());
+        statusUpdate.setUpdatedAt(LocalDateTime.now());
         herbImageMapper.updateProcessStatus(statusUpdate);
         image.setProcessStatus(processStatus);
-        image.setUpdateTime(statusUpdate.getUpdateTime());
+        image.setUpdatedAt(statusUpdate.getUpdatedAt());
     }
 
     private ImageRecognitionEntity buildRecognition(
@@ -157,14 +157,13 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         LocalDateTime now = LocalDateTime.now();
         ImageRecognitionEntity recognition = new ImageRecognitionEntity();
         recognition.setImageId(image.getId());
-        recognition.setPredictedName(response.getPredictedName());
+        recognition.setRankNo(1);
+        recognition.setRecognizedHerbName(
+                response.getPredictedName() == null ? "UNKNOWN" : response.getPredictedName());
         recognition.setConfidence(response.getConfidence());
-        recognition.setRecognitionStatus(isSuccess(response) ? RECOGNITION_SUCCESS : RECOGNITION_FAILED);
-        recognition.setRecognitionTime(now);
-        recognition.setRawResult(response.getRawResult());
-        recognition.setCreateTime(now);
-        recognition.setUpdateTime(now);
-        recognition.setDeleted(0);
+        recognition.setIsUncertain(isSuccess(response) ? 0 : 1);
+        recognition.setRawResponse(response.getRawResult());
+        recognition.setCreatedAt(now);
         return recognition;
     }
 
@@ -176,9 +175,9 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         ImageRecognitionEntity recognition = buildLocalRecognition(image, bestMatch, needReview);
         HerbEntity species = matchSpecies(bestMatch.getSpeciesName());
         if (species != null) {
-            recognition.setPredictedSpeciesId(species.getId());
+            recognition.setSpeciesId(species.getId());
         } else {
-            recognition.setPredictedSpeciesId(bestMatch.getSpeciesId());
+            recognition.setSpeciesId(bestMatch.getSpeciesId());
         }
         imageRecognitionMapper.insertRecognition(recognition);
         updateImageStatus(image, STATUS_RECOGNIZED);
@@ -192,7 +191,7 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         ImageRecognitionEntity recognition = buildRecognition(image, response);
         HerbEntity species = matchSpecies(response.getPredictedName());
         if (species != null) {
-            recognition.setPredictedSpeciesId(species.getId());
+            recognition.setSpeciesId(species.getId());
         }
         imageRecognitionMapper.insertRecognition(recognition);
         updateImageStatus(image, isSuccess(response) ? STATUS_RECOGNIZED : STATUS_FAILED);
@@ -204,20 +203,14 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         LocalDateTime now = LocalDateTime.now();
         ImageRecognitionEntity recognition = new ImageRecognitionEntity();
         recognition.setImageId(image.getId());
-        recognition.setPredictedSpeciesId(bestMatch.getSpeciesId());
-        recognition.setPredictedName(bestMatch.getSpeciesName());
+        recognition.setRankNo(1);
+        recognition.setSpeciesId(bestMatch.getSpeciesId());
+        recognition.setRecognizedHerbName(bestMatch.getSpeciesName());
         recognition.setConfidence(bestMatch.getSimilarity());
-        recognition.setRecognitionStatus(needReview ? RECOGNITION_REVIEW_REQUIRED : RECOGNITION_SUCCESS);
-        recognition.setRecognitionTime(now);
-        recognition.setRawResult(
-                "{\"source\":\""
-                        + SOURCE_LOCAL_ATLAS
-                        + "\",\"needReview\":"
-                        + needReview
-                        + "}");
-        recognition.setCreateTime(now);
-        recognition.setUpdateTime(now);
-        recognition.setDeleted(0);
+        recognition.setIsUncertain(needReview ? 1 : 0);
+        recognition.setRawResponse(
+                "{\"source\":\"" + SOURCE_LOCAL_ATLAS + "\",\"needReview\":" + needReview + "}");
+        recognition.setCreatedAt(now);
         return recognition;
     }
 
@@ -226,12 +219,12 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
             SpectrumComparisonEntity comparison = new SpectrumComparisonEntity();
             comparison.setImageId(image.getId());
             comparison.setAtlasId(match.getAtlasId());
-            comparison.setSimilarityScore(match.getSimilarity());
+            comparison.setImageSimilarity(match.getSimilarity());
+            comparison.setFinalScore(match.getSimilarity());
             comparison.setMatchRank(match.getRank());
-            comparison.setMatchResult(matchLevel(match));
-            comparison.setCreateTime(LocalDateTime.now());
-            comparison.setUpdateTime(comparison.getCreateTime());
-            comparison.setDeleted(0);
+            comparison.setMatchLevel(matchLevel(match));
+            comparison.setCreatedAt(LocalDateTime.now());
+            comparison.setUpdatedAt(comparison.getCreatedAt());
             spectrumComparisonMapper.insert(comparison);
         }
     }
@@ -284,19 +277,22 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         HerbRecognitionVO vo = new HerbRecognitionVO();
         vo.setId(recognition.getId());
         vo.setImageId(recognition.getImageId());
-        vo.setImageCode(image.getImageCode());
+        vo.setImageCode(image.getImageNo());
         vo.setImageUrl(image.getImageUrl());
-        vo.setModelVersionId(recognition.getModelVersionId());
-        vo.setPredictedSpeciesId(recognition.getPredictedSpeciesId());
+        vo.setModelVersionId(recognition.getModelId());
+        vo.setPredictedSpeciesId(recognition.getSpeciesId());
         vo.setPredictedSpeciesName(species == null ? null : species.getHerbName());
-        vo.setPredictedName(recognition.getPredictedName());
+        vo.setPredictedName(recognition.getRecognizedHerbName());
         vo.setConfidence(recognition.getConfidence());
-        vo.setRecognitionStatus(recognition.getRecognitionStatus());
+        vo.setRecognitionStatus(
+                Integer.valueOf(1).equals(recognition.getIsUncertain())
+                        ? RECOGNITION_REVIEW_REQUIRED
+                        : RECOGNITION_SUCCESS);
         vo.setNeedReview(needReview);
         vo.setRecognitionSource(recognitionSource);
         vo.setCandidates(toCandidates(matches));
-        vo.setRecognitionTime(recognition.getRecognitionTime());
-        vo.setRawResult(recognition.getRawResult());
+        vo.setRecognitionTime(recognition.getCreatedAt());
+        vo.setRawResult(recognition.getRawResponse());
         return vo;
     }
 

@@ -49,9 +49,9 @@ class HerbSpeciesServiceTest {
         verify(herbSpeciesMapper).insertSpecies(captor.capture());
         HerbEntity inserted = captor.getValue();
         assertThat(inserted.getStatus()).isEqualTo(1);
-        assertThat(inserted.getDeleted()).isZero();
-        assertThat(inserted.getCreateTime()).isNotNull();
-        assertThat(inserted.getUpdateTime()).isNotNull();
+        assertThat(inserted.getIsDeleted()).isZero();
+        assertThat(inserted.getCreatedAt()).isNotNull();
+        assertThat(inserted.getUpdatedAt()).isNotNull();
         assertThat(result.getHerbCode()).isEqualTo("HERB_HUANGLIAN");
     }
 
@@ -82,7 +82,7 @@ class HerbSpeciesServiceTest {
     void deleteSpeciesUsesLogicalDelete() {
         HerbEntity existing = new HerbEntity();
         existing.setId(1L);
-        existing.setHerbCode("HERB_HUANGLIAN");
+        existing.setHerbNo("HERB_HUANGLIAN");
         existing.setHerbName("Huanglian");
         when(herbSpeciesMapper.selectActiveById(1L)).thenReturn(existing);
         when(herbSpeciesMapper.logicalDeleteById(any(HerbEntity.class))).thenReturn(1);
@@ -92,7 +92,7 @@ class HerbSpeciesServiceTest {
         ArgumentCaptor<HerbEntity> captor = ArgumentCaptor.forClass(HerbEntity.class);
         verify(herbSpeciesMapper).logicalDeleteById(captor.capture());
         assertThat(captor.getValue().getId()).isEqualTo(1L);
-        assertThat(captor.getValue().getUpdateTime()).isNotNull();
+        assertThat(captor.getValue().getUpdatedAt()).isNotNull();
     }
 
     @Test
@@ -105,8 +105,8 @@ class HerbSpeciesServiceTest {
 
         PageResult<HerbSpeciesVO> result = herbSpeciesService.page(request);
 
-        assertThat(result.getPageNum()).isEqualTo(1);
-        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
         assertThat(result.getTotal()).isEqualTo(1);
         assertThat(result.getRecords()).hasSize(1);
     }

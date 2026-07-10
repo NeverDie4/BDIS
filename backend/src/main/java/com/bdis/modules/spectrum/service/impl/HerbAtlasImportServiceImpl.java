@@ -1,8 +1,8 @@
 package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
-import com.bdis.common.storage.LocalFileStorage.StoredFile;
+import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileStorageService.StoredFile;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
@@ -39,7 +39,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
     private static final String DEFAULT_GROWTH_STAGE = "unknown";
     private static final String DEFAULT_SOURCE = "batch_import";
     private static final String DEFAULT_DESCRIPTION = "Batch imported standard atlas image";
-    private static final String DEFAULT_CATEGORY = "中药材";
+    private static final String DEFAULT_CATEGORY = "HERB";
     private static final Map<String, KnownSpecies> KNOWN_SPECIES =
             Map.of(
                     "HUANGLIAN_COPTIS_CHINENSIS",
@@ -56,7 +56,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
     private final HerbAtlasMapper herbAtlasMapper;
     private final HerbAtlasTagMapper herbAtlasTagMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorageService fileStorageService;
     private final HerbFeatureVectorClient featureVectorClient;
     private final ObjectMapper objectMapper;
     private final String defaultImportPath;
@@ -65,7 +65,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
             HerbAtlasMapper herbAtlasMapper,
             HerbAtlasTagMapper herbAtlasTagMapper,
             HerbSpeciesMapper herbSpeciesMapper,
-            LocalFileStorage localFileStorage,
+            FileStorageService fileStorageService,
             HerbFeatureVectorClient featureVectorClient,
             ObjectMapper objectMapper,
             @Value("${file.atlas-import-path:import/herb_atlas}") String defaultImportPath,
@@ -73,7 +73,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         this.herbAtlasMapper = herbAtlasMapper;
         this.herbAtlasTagMapper = herbAtlasTagMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorageService = fileStorageService;
         this.featureVectorClient = featureVectorClient;
         this.objectMapper = objectMapper;
         this.defaultImportPath = defaultImportPath;
@@ -166,16 +166,17 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         }
         LocalDateTime now = LocalDateTime.now();
         HerbEntity species = new HerbEntity();
-        species.setHerbCode(knownSpecies.herbCode());
+        species.setHerbNo(knownSpecies.herbCode());
         species.setHerbName(knownSpecies.herbName());
         species.setLatinName(knownSpecies.latinName());
         species.setAliasName(directoryName.replace('_', ' '));
-        species.setCategory(DEFAULT_CATEGORY);
+        species.setCategoryCode(DEFAULT_CATEGORY);
         species.setMedicinalPart(knownSpecies.medicinalPart());
         species.setStatus(1);
-        species.setCreateTime(now);
-        species.setUpdateTime(now);
-        species.setDeleted(0);
+        species.setCreatedAt(now);
+        species.setUpdatedAt(now);
+        species.setIsDeleted(0);
+        species.setVersion(0);
         herbSpeciesMapper.insertSpecies(species);
         return species;
     }
@@ -184,7 +185,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         List<Path> images = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(speciesDirectory)) {
             paths.filter(Files::isRegularFile)
-                    .filter(localFileStorage::isSupportedImage)
+                    .filter(this::isSupportedImage)
                     .sorted(Comparator.comparing(Path::toString))
                     .forEach(images::add);
         } catch (IOException exception) {
@@ -196,7 +197,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
     @Transactional
     protected void importImage(Path image, HerbEntity species, HerbAtlasImportResultVO result) {
         String imageName = image.getFileName().toString();
-        String speciesCode = importCode(species.getHerbCode());
+        String speciesCode = importCode(species.getHerbNo());
         if (herbAtlasMapper.existsBySpeciesIdAndImageName(species.getId(), imageName) > 0) {
             result.addSkip(imageName, speciesCode, "Image already exists");
             return;
@@ -204,9 +205,10 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
 
         try {
             String herbCodeLower = speciesCode.toLowerCase(Locale.ROOT);
-            StoredFile storedFile = localFileStorage.copyHerbAtlasImportImage(image, herbCodeLower);
+            StoredFile storedFile = fileStorageService.save(image);
             LocalDateTime now = LocalDateTime.now();
-            SpectrumEntity atlas = buildAtlas(species, speciesCode, imageName, storedFile.url(), now);
+            SpectrumEntity atlas =
+                    buildAtlas(species, speciesCode, imageName, storedFile.fileUrl(), now);
             herbAtlasMapper.insertAtlas(atlas);
             herbAtlasTagMapper.insertTags(defaultTags(atlas.getId(), herbCodeLower, now));
             result.addSuccess(imageName, speciesCode, "Imported successfully");
@@ -223,19 +225,21 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
             LocalDateTime now) {
         SpectrumEntity atlas = new SpectrumEntity();
         atlas.setSpeciesId(species.getId());
-        atlas.setAtlasCode(nextAtlasCode(importSpeciesCode));
+        atlas.setHerbName(species.getHerbName());
+        atlas.setAtlasNo(nextAtlasCode(importSpeciesCode));
         atlas.setImageUrl(imageUrl);
-        atlas.setImageName(imageName);
+        atlas.setAtlasTitle(imageName);
         atlas.setImageType(DEFAULT_IMAGE_TYPE);
         atlas.setGrowthStage(DEFAULT_GROWTH_STAGE);
         atlas.setMedicinalPart(species.getMedicinalPart());
-        atlas.setSource(DEFAULT_SOURCE);
-        atlas.setDescription(DEFAULT_DESCRIPTION);
+        atlas.setSourceType(DEFAULT_SOURCE);
+        atlas.setIdentificationPoints(DEFAULT_DESCRIPTION);
         fillFeatureVector(atlas);
         atlas.setStatus(1);
-        atlas.setCreateTime(now);
-        atlas.setUpdateTime(now);
-        atlas.setDeleted(0);
+        atlas.setCreatedAt(now);
+        atlas.setUpdatedAt(now);
+        atlas.setIsDeleted(0);
+        atlas.setVersion(0);
         return atlas;
     }
 
@@ -250,7 +254,16 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         }
     }
 
-    private List<SpectrumTagEntity> defaultTags(Long atlasId, String herbCodeLower, LocalDateTime now) {
+    private boolean isSupportedImage(Path path) {
+        String fileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        return fileName.endsWith(".jpg")
+                || fileName.endsWith(".jpeg")
+                || fileName.endsWith(".png")
+                || fileName.endsWith(".webp");
+    }
+
+    private List<SpectrumTagEntity> defaultTags(
+            Long atlasId, String herbCodeLower, LocalDateTime now) {
         return List.of(
                 tag(atlasId, "standard", now),
                 tag(atlasId, "batch_import", now),
@@ -262,9 +275,11 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         tag.setAtlasId(atlasId);
         tag.setTagName(tagName);
         tag.setTagType("feature");
-        tag.setCreateTime(now);
-        tag.setUpdateTime(now);
-        tag.setDeleted(0);
+        tag.setStatus(1);
+        tag.setCreatedAt(now);
+        tag.setUpdatedAt(now);
+        tag.setIsDeleted(0);
+        tag.setVersion(0);
         return tag;
     }
 

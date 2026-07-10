@@ -1,7 +1,7 @@
 package com.bdis.modules.spectrum.client;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
+import com.bdis.file.service.FileStorageService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.spectrum.config.HerbRecognitionProperties;
 import com.bdis.modules.spectrum.vo.HerbRecognitionCandidateVO;
@@ -27,15 +27,15 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
 
     private final HerbRecognitionProperties properties;
     private final ObjectMapper objectMapper;
-    private final LocalFileStorage localFileStorage;
+    private final FileStorageService fileStorageService;
 
     public HerbRecognitionClientImpl(
             HerbRecognitionProperties properties,
             ObjectMapper objectMapper,
-            LocalFileStorage localFileStorage) {
+            FileStorageService fileStorageService) {
         this.properties = properties;
         this.objectMapper = objectMapper;
-        this.localFileStorage = localFileStorage;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -55,12 +55,13 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
                     restTemplate().postForEntity(properties.getServiceUrl(), request, Map.class);
             return toResponse(response.getBody());
         } catch (RuntimeException exception) {
-            throw new BusinessException("Recognition service call failed: " + exception.getMessage());
+            throw new BusinessException(
+                    "Recognition service call failed: " + exception.getMessage());
         }
     }
 
     private Path resolveImagePath(String imageUrl) {
-        return localFileStorage.resolveExistingUploadFile(imageUrl);
+        return fileStorageService.resolve(imageUrl);
     }
 
     private RestTemplate restTemplate() {
@@ -77,8 +78,7 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
         }
         Map<String, Object> payload = unwrapPayload(body);
         List<HerbRecognitionCandidateVO> candidates = parseCandidates(payload.get("results"));
-        HerbRecognitionCandidateVO topCandidate =
-                candidates.isEmpty() ? null : candidates.get(0);
+        HerbRecognitionCandidateVO topCandidate = candidates.isEmpty() ? null : candidates.get(0);
         HerbRecognitionClientResponse response = new HerbRecognitionClientResponse();
         response.setSuccess(resolveSuccess(body, payload, topCandidate));
         response.setPredictedName(resolvePredictedName(payload, topCandidate));
@@ -110,7 +110,9 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
             Map<String, Object> item = (Map<String, Object>) rawMap;
             HerbRecognitionCandidateVO candidate = new HerbRecognitionCandidateVO();
             candidate.setRank(valueAsInteger(item.get("rank")));
-            candidate.setName(firstText(item.get("speciesName"), item.get("predictedName"), item.get("name")));
+            candidate.setName(
+                    firstText(
+                            item.get("speciesName"), item.get("predictedName"), item.get("name")));
             candidate.setConfidence(valueAsBigDecimal(item.get("confidence")));
             candidate.setSimilarity(valueAsBigDecimal(item.get("similarity")));
             candidates.add(candidate);
@@ -129,7 +131,8 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
             return Boolean.TRUE.equals(payload.get("success"));
         }
         if (body.containsKey("code")) {
-            return Integer.valueOf(200).equals(valueAsInteger(body.get("code"))) && topCandidate != null;
+            return Integer.valueOf(200).equals(valueAsInteger(body.get("code")))
+                    && topCandidate != null;
         }
         return topCandidate != null && topCandidate.getName() != null;
     }
@@ -162,8 +165,7 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
         response.setPredictedName("黄连");
         response.setConfidence(new BigDecimal("0.90"));
         response.setCandidates(List.of(candidate));
-        response.setRawResult(
-                "{\"success\":true,\"predictedName\":\"黄连\",\"confidence\":0.90}");
+        response.setRawResult("{\"success\":true,\"predictedName\":\"黄连\",\"confidence\":0.90}");
         return response;
     }
 

@@ -14,8 +14,6 @@ public interface HerbImageMatchMapper extends BaseMapper<SpectrumComparisonEntit
 
     int batchInsertMatches(@Param("matches") List<SpectrumComparisonEntity> matches);
 
-    int logicalDeleteByImageId(@Param("imageId") Long imageId);
-
     int countActiveByImageId(@Param("imageId") Long imageId);
 
     List<HerbAtlasFeatureCandidateVO> selectAtlasFeatureCandidates(

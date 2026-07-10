@@ -62,7 +62,8 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         }
         herbBatchImageMapper.insert(entity);
         refreshImageCount(batch);
-        return herbBatchImageMapper.selectDetailByBatchIdAndImageId(batch.getId(), entity.getImageId());
+        return herbBatchImageMapper.selectDetailByBatchIdAndImageId(
+                batch.getId(), entity.getImageId());
     }
 
     @Override
@@ -102,7 +103,8 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         HerbBatchImageBindResultVO result = new HerbBatchImageBindResultVO();
         result.setBatchId(batch.getId());
         result.setSuccessCount(entities.size());
-        result.setImages(herbBatchImageMapper.selectBatchImagesWithIdentification(batch.getId(), null));
+        result.setImages(
+                herbBatchImageMapper.selectBatchImagesWithIdentification(batch.getId(), null));
         return result;
     }
 
@@ -161,7 +163,7 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         binding.setImageRole(imageRole);
         binding.setSortOrder(request.getSortOrder());
         binding.setRemark(request.getRemark());
-        binding.setUpdateTime(LocalDateTime.now());
+        binding.setUpdatedAt(LocalDateTime.now());
         herbBatchImageMapper.updateById(binding);
         return herbBatchImageMapper.selectDetailByBatchIdAndImageId(batch.getId(), imageId);
     }
@@ -195,20 +197,24 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         }
 
         Long identificationResultId =
-                resolveIdentificationResultId(request.getImageId(), request.getIdentificationResultId());
+                resolveIdentificationResultId(
+                        request.getImageId(), request.getIdentificationResultId());
         LocalDateTime now = LocalDateTime.now();
         HerbBatchImageEntity entity = new HerbBatchImageEntity();
         entity.setBatchId(batchId);
         entity.setImageId(request.getImageId());
         entity.setIdentificationResultId(identificationResultId);
-        entity.setImageRole(normalizeRole(request.getImageRole(), HerbBatchImageRoleConstants.OTHER));
+        entity.setImageRole(
+                normalizeRole(request.getImageRole(), HerbBatchImageRoleConstants.OTHER));
         entity.setIsPrimary(request.getIsPrimary() != null && request.getIsPrimary() == 1 ? 1 : 0);
         entity.setBindStatus(HerbBatchImageStatusConstants.BOUND);
         entity.setSortOrder(request.getSortOrder());
         entity.setRemark(request.getRemark());
-        entity.setCreateTime(now);
-        entity.setUpdateTime(now);
-        entity.setDeleted(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        entity.setIsDeleted(0);
+        entity.setStatus(1);
+        entity.setVersion(0);
         return entity;
     }
 
@@ -224,12 +230,14 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
             }
             return result.getId();
         }
-        HerbIdentificationPageVO latest = herbIdentificationResultMapper.selectLatestByImageId(imageId);
+        HerbIdentificationPageVO latest =
+                herbIdentificationResultMapper.selectLatestByImageId(imageId);
         return latest == null ? null : latest.getId();
     }
 
     private HerbBatchImageEntity getBoundBinding(Long batchId, Long imageId) {
-        HerbBatchImageEntity binding = herbBatchImageMapper.selectByBatchIdAndImageId(batchId, imageId);
+        HerbBatchImageEntity binding =
+                herbBatchImageMapper.selectByBatchIdAndImageId(batchId, imageId);
         if (binding == null) {
             throw new BusinessException("Batch image binding not found");
         }
@@ -286,7 +294,7 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         Long count = herbBatchImageMapper.countBoundByBatchId(batch.getId());
         int imageCount = count == null ? 0 : count.intValue();
         batch.setImageCount(imageCount);
-        batch.setUpdateTime(LocalDateTime.now());
+        batch.setUpdatedAt(LocalDateTime.now());
         herbBatchMapper.updateStatisticsById(batch);
         return imageCount;
     }

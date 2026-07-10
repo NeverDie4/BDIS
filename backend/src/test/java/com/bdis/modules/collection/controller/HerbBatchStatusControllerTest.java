@@ -42,8 +42,9 @@ class HerbBatchStatusControllerTest {
 
         mockMvc.perform(put("/herb/batch/1/start-collection"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.COLLECTING));
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(
+                        jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.COLLECTING));
     }
 
     @Test
@@ -56,7 +57,8 @@ class HerbBatchStatusControllerTest {
                                 .contentType("application/json")
                                 .content("{\"force\":true,\"remark\":\"人工强制确认批次结果\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.CONFIRMED));
+                .andExpect(
+                        jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.CONFIRMED));
     }
 
     @Test

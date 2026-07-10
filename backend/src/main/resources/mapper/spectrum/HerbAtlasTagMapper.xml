@@ -8,9 +8,12 @@
         <result column="atlas_id" property="atlasId"/>
         <result column="tag_name" property="tagName"/>
         <result column="tag_type" property="tagType"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="tag_source" property="tagSource"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <insert id="insertTags">
@@ -18,28 +21,30 @@
             atlas_id,
             tag_name,
             tag_type,
-            create_time,
-            update_time,
-            deleted
+            status,
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES
         <foreach collection="tags" item="tag" separator=",">
             (
                 #{tag.atlasId},
                 #{tag.tagName},
                 #{tag.tagType},
-                #{tag.createTime},
-                #{tag.updateTime},
-                #{tag.deleted}
+                #{tag.status},
+                #{tag.createdAt},
+                #{tag.updatedAt},
+                #{tag.isDeleted}
             )
         </foreach>
     </insert>
 
     <update id="logicalDeleteByAtlasId" parameterType="com.bdis.modules.spectrum.entity.SpectrumTagEntity">
         UPDATE herb_atlas_tag
-        SET deleted = 1,
-            update_time = #{updateTime}
+        SET is_deleted = 1,
+            updated_at = #{updatedAt}
         WHERE atlas_id = #{atlasId}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="selectByAtlasId" resultMap="TagResultMap">
@@ -48,12 +53,15 @@
             atlas_id,
             tag_name,
             tag_type,
-            create_time,
-            update_time,
-            deleted
+            tag_source,
+            sort_order,
+            status,
+            created_at,
+            updated_at,
+            is_deleted
         FROM herb_atlas_tag
         WHERE atlas_id = #{atlasId}
-          AND deleted = 0
-        ORDER BY create_time ASC, id ASC
+          AND is_deleted = 0
+        ORDER BY created_at ASC, id ASC
     </select>
 </mapper>

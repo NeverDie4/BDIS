@@ -108,7 +108,8 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
         if (HerbBatchStatusConstants.CANCELLED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Cancelled batch cannot be cancelled again");
         }
-        String remark = request == null ? null : appendText(request.getReason(), request.getRemark());
+        String remark =
+                request == null ? null : appendText(request.getReason(), request.getRemark());
         updateStatus(batch, HerbBatchStatusConstants.CANCELLED, remark, null);
         return latest(batchId);
     }
@@ -120,7 +121,8 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
         if (!HerbBatchStatusConstants.CONFIRMED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Only confirmed batch can be reopened for review");
         }
-        String remark = request == null ? null : appendText(request.getReason(), request.getRemark());
+        String remark =
+                request == null ? null : appendText(request.getReason(), request.getRemark());
         updateStatus(batch, HerbBatchStatusConstants.REVIEWING, remark, null);
         return latest(batchId);
     }
@@ -155,17 +157,14 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     }
 
     private void updateStatus(
-            HerbBatchEntity batch,
-            String targetStatus,
-            String remark,
-            String evaluationSummary) {
+            HerbBatchEntity batch, String targetStatus, String remark, String evaluationSummary) {
         requireTransition(batch, targetStatus);
         batch.setBatchStatus(targetStatus);
         batch.setRemark(appendText(batch.getRemark(), remark));
         if (StringUtils.hasText(evaluationSummary)) {
             batch.setEvaluationSummary(appendText(batch.getEvaluationSummary(), evaluationSummary));
         }
-        batch.setUpdateTime(LocalDateTime.now());
+        batch.setUpdatedAt(LocalDateTime.now());
         int affected = herbBatchMapper.updateStatusById(batch);
         if (affected == 0) {
             throw new BusinessException("Failed to update batch status");

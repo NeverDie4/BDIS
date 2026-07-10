@@ -66,7 +66,8 @@ class HerbBatchImageServiceTest {
         HerbIdentificationPageVO latest = new HerbIdentificationPageVO();
         latest.setId(5L);
         latest.setImageId(12L);
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbImageMapper.selectActiveById(12L)).thenReturn(activeImage());
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(null);
         when(herbIdentificationResultMapper.selectLatestByImageId(12L)).thenReturn(latest);
@@ -83,7 +84,7 @@ class HerbBatchImageServiceTest {
         assertThat(inserted.getImageRole()).isEqualTo("other");
         assertThat(inserted.getBindStatus()).isEqualTo(HerbBatchImageStatusConstants.BOUND);
         assertThat(inserted.getIdentificationResultId()).isEqualTo(5L);
-        assertThat(inserted.getDeleted()).isZero();
+        assertThat(inserted.getIsDeleted()).isZero();
         assertThat(result.getImageId()).isEqualTo(12L);
         verify(herbBatchMapper).updateStatisticsById(any(HerbBatchEntity.class));
     }
@@ -100,7 +101,8 @@ class HerbBatchImageServiceTest {
 
     @Test
     void bindImageRejectsDuplicateBinding() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbImageMapper.selectActiveById(12L)).thenReturn(activeImage());
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L))
                 .thenReturn(new HerbBatchImageEntity());
@@ -117,7 +119,8 @@ class HerbBatchImageServiceTest {
         HerbIdentificationResultEntity result = new HerbIdentificationResultEntity();
         result.setId(5L);
         result.setImageId(99L);
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbImageMapper.selectActiveById(12L)).thenReturn(activeImage());
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(null);
         when(herbIdentificationResultMapper.selectActiveById(5L)).thenReturn(result);
@@ -138,7 +141,8 @@ class HerbBatchImageServiceTest {
         second.setIsPrimary(1);
         request.setImages(List.of(first, second));
 
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbImageMapper.selectActiveById(12L)).thenReturn(activeImage(12L));
         when(herbImageMapper.selectActiveById(13L)).thenReturn(activeImage(13L));
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(null);
@@ -149,7 +153,9 @@ class HerbBatchImageServiceTest {
 
         ArgumentCaptor<List<HerbBatchImageEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(herbBatchImageMapper).batchInsert(captor.capture());
-        assertThat(captor.getValue()).extracting(HerbBatchImageEntity::getIsPrimary).containsExactly(1, 0);
+        assertThat(captor.getValue())
+                .extracting(HerbBatchImageEntity::getIsPrimary)
+                .containsExactly(1, 0);
         assertThat(result.getSuccessCount()).isEqualTo(2);
     }
 
@@ -157,7 +163,8 @@ class HerbBatchImageServiceTest {
     void unbindImageMarksBindingRemovedAndRefreshesImageCount() {
         HerbBatchImageEntity binding = activeBinding();
         binding.setIsPrimary(1);
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(binding);
         when(herbBatchImageMapper.logicDeleteByBatchIdAndImageId(1L, 12L)).thenReturn(1);
         when(herbBatchImageMapper.countBoundByBatchId(1L)).thenReturn(0L);
@@ -170,7 +177,8 @@ class HerbBatchImageServiceTest {
 
     @Test
     void setPrimaryClearsOtherPrimaryBindings() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(activeBinding());
         when(herbBatchImageMapper.selectDetailByBatchIdAndImageId(1L, 12L)).thenReturn(activeVO());
 
@@ -184,7 +192,8 @@ class HerbBatchImageServiceTest {
     void updateImageRoleRejectsUnknownRole() {
         HerbBatchImageUpdateRequest request = new HerbBatchImageUpdateRequest();
         request.setImageRole("unknown");
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(activeBinding());
 
         assertThatThrownBy(() -> herbBatchImageService.update(1L, 12L, request))
@@ -194,7 +203,8 @@ class HerbBatchImageServiceTest {
 
     @Test
     void refreshStatisticsUpdatesBatchImageCount() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.DRAFT));
         when(herbBatchImageMapper.countBoundByBatchId(1L)).thenReturn(3L);
 
         HerbBatchImageStatisticsVO result = herbBatchImageService.refreshStatistics(1L);
@@ -239,9 +249,9 @@ class HerbBatchImageServiceTest {
     private HerbImageEntity activeImage(Long id) {
         HerbImageEntity entity = new HerbImageEntity();
         entity.setId(id);
-        entity.setImageCode("IMG_" + id);
+        entity.setImageNo("IMG_" + id);
         entity.setImageUrl("/image/" + id + ".jpg");
-        entity.setImageName("image-" + id + ".jpg");
+        entity.setOriginalFilename("image-" + id + ".jpg");
         return entity;
     }
 

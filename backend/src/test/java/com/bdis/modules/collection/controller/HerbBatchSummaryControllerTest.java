@@ -42,8 +42,9 @@ class HerbBatchSummaryControllerTest {
 
         mockMvc.perform(post("/herb/batch/1/summary/refresh"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.CONFIRMED));
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(
+                        jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.CONFIRMED));
     }
 
     @Test
@@ -52,7 +53,7 @@ class HerbBatchSummaryControllerTest {
 
         mockMvc.perform(get("/herb/batch/1/summary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.batchId").value(1));
     }
 
@@ -65,7 +66,7 @@ class HerbBatchSummaryControllerTest {
 
         mockMvc.perform(get("/herb/batch/1/identification-items"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data[0].imageId").value(12));
     }
 
@@ -80,8 +81,9 @@ class HerbBatchSummaryControllerTest {
                                         "{\"finalSpeciesId\":1,\"qualityLevel\":\"good\","
                                                 + "\"qualityScore\":88.75}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.CONFIRMED));
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(
+                        jsonPath("$.data.batchStatus").value(HerbBatchStatusConstants.CONFIRMED));
     }
 
     private HerbBatchSummaryVO summary() {

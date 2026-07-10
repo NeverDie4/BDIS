@@ -1,49 +1,68 @@
 package com.bdis.modules.herb.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.BaseEntity;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_image")
-public class HerbImageEntity {
+public class HerbImageEntity extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
-
-    private String imageCode;
+    private String imageNo;
 
     private Long speciesId;
 
+    private Long distributionId;
+
+    private Long growthRecordId;
+
     private String imageUrl;
 
-    private String imageName;
+    private String thumbnailUrl;
+
+    private String originalFilename;
+
+    private Long fileSize;
+
+    private String fileFormat;
+
+    private String imageType;
+
+    private String imagePurpose;
 
     private String uploadSource;
 
-    private Long collectorId;
+    private Long uploaderId;
 
-    private Long baseId;
+    private Long regionId;
 
-    private String collectPlace;
+    private String collectedLocation;
 
-    private LocalDateTime collectTime;
+    private BigDecimal longitude;
 
-    private String imageType;
+    private BigDecimal latitude;
+
+    private LocalDateTime collectedAt;
 
     private String growthStage;
 
     private String healthStatus;
 
+    private String formType;
+
+    private String featureVector;
+
+    private Integer featureDim;
+
+    private Long featureModelId;
+
+    private String featureModelCode;
+
+    private String featureModelVersion;
+
     private String processStatus;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
 }

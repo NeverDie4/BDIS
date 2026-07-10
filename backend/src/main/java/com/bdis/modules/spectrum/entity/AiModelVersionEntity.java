@@ -1,40 +1,28 @@
 package com.bdis.modules.spectrum.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import lombok.Data;
+import com.bdis.common.core.BaseEntity;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_ai_model_version")
-public class AiModelVersionEntity {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class AiModelVersionEntity extends BaseEntity {
 
     private String modelCode;
 
     private String modelName;
 
-    private String version;
-
     private String modelType;
 
-    private String modelPath;
+    private String modelVersion;
 
-    private BigDecimal accuracy;
+    private String provider;
 
-    private Integer status;
+    private String apiEndpoint;
 
-    private String description;
+    private Integer featureDim;
 
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
+    private Integer isDefault;
 }

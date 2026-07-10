@@ -9,9 +9,9 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.file.service.impl.LocalFileStorageServiceImpl;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
-import com.bdis.common.storage.LocalFileStorage;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
@@ -26,8 +26,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,9 +46,11 @@ class HerbImageServiceTest {
 
     private HerbImageService herbImageService;
 
+    private LocalFileStorageServiceImpl localFileStorage;
+
     @BeforeEach
     void setUp() {
-        LocalFileStorage localFileStorage = new LocalFileStorage(uploadRoot.toString());
+        localFileStorage = new LocalFileStorageServiceImpl(uploadRoot.toString());
         herbImageService =
                 new HerbImageServiceImpl(
                         herbImageMapper, herbSpeciesMapper, localFileStorage, herbFeatureService);
@@ -80,21 +82,22 @@ class HerbImageServiceTest {
 
         HerbImageVO result = herbImageService.upload(file, request);
 
-        ArgumentCaptor<HerbImageEntity> imageCaptor = ArgumentCaptor.forClass(HerbImageEntity.class);
+        ArgumentCaptor<HerbImageEntity> imageCaptor =
+                ArgumentCaptor.forClass(HerbImageEntity.class);
         verify(herbImageMapper).insertImage(imageCaptor.capture());
         HerbImageEntity inserted = imageCaptor.getValue();
-        assertThat(inserted.getImageCode()).startsWith("IMG_");
-        assertThat(inserted.getImageUrl()).startsWith("/herb/image/");
+        assertThat(inserted.getImageNo()).startsWith("IMG_");
+        assertThat(inserted.getImageUrl()).startsWith("/api/files/uploads/");
         assertThat(inserted.getImageUrl()).endsWith(".jpg");
-        assertThat(inserted.getImageName()).isEqualTo("huanglian_leaf.jpg");
+        assertThat(inserted.getOriginalFilename()).isEqualTo("huanglian_leaf.jpg");
         assertThat(inserted.getUploadSource()).isEqualTo("mobile");
         assertThat(inserted.getProcessStatus()).isEqualTo("uploaded");
-        assertThat(inserted.getCollectTime()).isNotNull();
-        assertThat(inserted.getCreateTime()).isNotNull();
-        assertThat(inserted.getUpdateTime()).isNotNull();
-        assertThat(inserted.getDeleted()).isZero();
-        assertThat(Files.exists(uploadRoot.resolve(inserted.getImageUrl().substring(1)))).isTrue();
-        assertThat(result.getImageCode()).isEqualTo(inserted.getImageCode());
+        assertThat(inserted.getCollectedAt()).isNotNull();
+        assertThat(inserted.getCreatedAt()).isNotNull();
+        assertThat(inserted.getUpdatedAt()).isNotNull();
+        assertThat(inserted.getIsDeleted()).isZero();
+        assertThat(Files.exists(localFileStorage.resolve(inserted.getImageUrl()))).isTrue();
+        assertThat(result.getImageCode()).isEqualTo(inserted.getImageNo());
         assertThat(result.getSpeciesName()).isEqualTo("Huanglian");
         assertThat(result.getProcessStatus()).isEqualTo("uploaded");
         verify(herbFeatureService).extractImageFeature(11L);
@@ -134,7 +137,7 @@ class HerbImageServiceTest {
         ArgumentCaptor<HerbImageEntity> captor = ArgumentCaptor.forClass(HerbImageEntity.class);
         verify(herbImageMapper).logicalDeleteById(captor.capture());
         assertThat(captor.getValue().getId()).isEqualTo(1L);
-        assertThat(captor.getValue().getUpdateTime()).isNotNull();
+        assertThat(captor.getValue().getUpdatedAt()).isNotNull();
     }
 
     @Test
@@ -169,7 +172,7 @@ class HerbImageServiceTest {
         ArgumentCaptor<HerbImageEntity> captor = ArgumentCaptor.forClass(HerbImageEntity.class);
         verify(herbImageMapper).updateImage(captor.capture());
         assertThat(captor.getValue().getSpeciesId()).isEqualTo(2L);
-        assertThat(captor.getValue().getCollectPlace()).isEqualTo("New place");
+        assertThat(captor.getValue().getCollectedLocation()).isEqualTo("New place");
         assertThat(captor.getValue().getProcessStatus()).isEqualTo("recognized");
         assertThat(result.getSpeciesName()).isEqualTo("Dangshen");
     }
@@ -184,8 +187,8 @@ class HerbImageServiceTest {
 
         PageResult<HerbImageVO> result = herbImageService.page(request);
 
-        assertThat(result.getPageNum()).isEqualTo(1);
-        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
         assertThat(result.getTotal()).isEqualTo(1);
         assertThat(result.getRecords()).hasSize(1);
     }
@@ -193,26 +196,27 @@ class HerbImageServiceTest {
     @Test
     void myImagesRequiresCollectorIdAndPaginates() {
         when(herbImageMapper.countByCollectorId(9L)).thenReturn(1L);
-        when(herbImageMapper.selectByCollectorId(9L, 0L, 10)).thenReturn(List.of(new HerbImageVO()));
+        when(herbImageMapper.selectByCollectorId(9L, 0L, 10))
+                .thenReturn(List.of(new HerbImageVO()));
 
         PageResult<HerbImageVO> result = herbImageService.my(9L, 0, 0);
 
-        assertThat(result.getPageNum()).isEqualTo(1);
-        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
         assertThat(result.getTotal()).isEqualTo(1);
     }
 
     private HerbImageEntity imageEntity() {
         HerbImageEntity image = new HerbImageEntity();
         image.setId(1L);
-        image.setImageCode("IMG_1");
-        image.setImageUrl("/herb/image/2026/07/08/IMG_1.jpg");
-        image.setImageName("leaf.jpg");
+        image.setImageNo("IMG_1");
+        image.setImageUrl("/api/files/uploads/2026-07-08/IMG_1.jpg");
+        image.setOriginalFilename("leaf.jpg");
         image.setSpeciesId(1L);
         image.setUploadSource("mobile");
-        image.setCollectTime(LocalDateTime.now());
+        image.setCollectedAt(LocalDateTime.now());
         image.setProcessStatus("uploaded");
-        image.setDeleted(0);
+        image.setIsDeleted(0);
         return image;
     }
 }

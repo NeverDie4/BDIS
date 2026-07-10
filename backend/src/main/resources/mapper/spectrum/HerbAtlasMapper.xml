@@ -7,101 +7,146 @@
         <id column="id" property="id"/>
         <result column="species_id" property="speciesId"/>
         <result column="herb_name" property="herbName"/>
-        <result column="atlas_code" property="atlasCode"/>
+        <result column="atlas_no" property="atlasNo"/>
         <result column="image_url" property="imageUrl"/>
-        <result column="image_name" property="imageName"/>
+        <result column="thumbnail_url" property="thumbnailUrl"/>
+        <result column="atlas_title" property="atlasTitle"/>
         <result column="image_type" property="imageType"/>
         <result column="growth_stage" property="growthStage"/>
         <result column="medicinal_part" property="medicinalPart"/>
-        <result column="source" property="source"/>
-        <result column="description" property="description"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="form_type" property="formType"/>
+        <result column="color_feature" property="colorFeature"/>
+        <result column="texture_feature" property="textureFeature"/>
+        <result column="shape_feature" property="shapeFeature"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="identification_points" property="identificationPoints"/>
+        <result column="region_id" property="regionId"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="collected_at" property="collectedAt"/>
+        <result column="source_url" property="sourceUrl"/>
+        <result column="license_desc" property="licenseDesc"/>
+        <result column="has_watermark" property="hasWatermark"/>
+        <result column="image_quality" property="imageQuality"/>
+        <result column="usable_for_feature" property="usableForFeature"/>
+        <result column="feature_vector" property="featureVector"/>
+        <result column="feature_dim" property="featureDim"/>
+        <result column="feature_model_id" property="featureModelId"/>
+        <result column="quality_status" property="qualityStatus"/>
+        <result column="knowledge_entity_id" property="knowledgeEntityId"/>
         <result column="status" property="status"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="AtlasVOResultMap" type="com.bdis.modules.spectrum.vo.HerbAtlasVO">
         <id column="id" property="id"/>
         <result column="species_id" property="speciesId"/>
         <result column="herb_name" property="herbName"/>
-        <result column="atlas_code" property="atlasCode"/>
+        <result column="atlas_no" property="atlasCode"/>
         <result column="image_url" property="imageUrl"/>
-        <result column="image_name" property="imageName"/>
+        <result column="atlas_title" property="imageName"/>
         <result column="image_type" property="imageType"/>
         <result column="growth_stage" property="growthStage"/>
         <result column="medicinal_part" property="medicinalPart"/>
-        <result column="source" property="source"/>
-        <result column="description" property="description"/>
+        <result column="source_type" property="source"/>
+        <result column="identification_points" property="description"/>
         <result column="status" property="status"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
     <sql id="AtlasColumns">
         id,
         species_id,
-        atlas_code,
+        herb_name,
+        atlas_no,
         image_url,
-        image_name,
+        thumbnail_url,
+        atlas_title,
         image_type,
         growth_stage,
         medicinal_part,
-        source,
-        description,
+        health_status,
+        form_type,
+        color_feature,
+        texture_feature,
+        shape_feature,
+        source_type,
+        identification_points,
+        region_id,
+        collector_id,
+        collected_at,
+        source_url,
+        license_desc,
+        has_watermark,
+        image_quality,
+        usable_for_feature,
+        feature_vector,
+        feature_dim,
+        feature_model_id,
+        quality_status,
+        knowledge_entity_id,
         status,
-        create_time,
-        update_time,
-        deleted
+        created_at,
+        updated_at,
+        is_deleted
     </sql>
 
     <sql id="AtlasVOColumns">
         a.id,
         a.species_id,
         s.herb_name,
-        a.atlas_code,
+        a.atlas_no,
         a.image_url,
-        a.image_name,
+        a.atlas_title,
         a.image_type,
         a.growth_stage,
         a.medicinal_part,
-        a.source,
-        a.description,
+        a.source_type,
+        a.identification_points,
         a.status,
-        a.create_time,
-        a.update_time
+        a.created_at,
+        a.updated_at
     </sql>
 
     <insert id="insertAtlas" parameterType="com.bdis.modules.spectrum.entity.SpectrumEntity"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO herb_atlas (
             species_id,
-            atlas_code,
+            herb_name,
+            atlas_no,
             image_url,
-            image_name,
+            atlas_title,
             image_type,
             growth_stage,
             medicinal_part,
-            source,
-            description,
+            source_type,
+            identification_points,
+            feature_vector,
+            feature_dim,
             status,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
             #{speciesId},
-            #{atlasCode},
+            #{herbName},
+            #{atlasNo},
             #{imageUrl},
-            #{imageName},
+            #{atlasTitle},
             #{imageType},
             #{growthStage},
             #{medicinalPart},
-            #{source},
-            #{description},
+            #{sourceType},
+            #{identificationPoints},
+            #{featureVector},
+            #{featureDim},
             #{status},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
@@ -110,20 +155,20 @@
         SET image_type = #{imageType},
             growth_stage = #{growthStage},
             medicinal_part = #{medicinalPart},
-            source = #{source},
-            description = #{description},
+            source_type = #{sourceType},
+            identification_points = #{identificationPoints},
             status = #{status},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="logicalDeleteById" parameterType="com.bdis.modules.spectrum.entity.SpectrumEntity">
         UPDATE herb_atlas
-        SET deleted = 1,
-            update_time = #{updateTime}
+        SET is_deleted = 1,
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="selectActiveById" resultMap="AtlasResultMap">
@@ -131,23 +176,23 @@
         <include refid="AtlasColumns"/>
         FROM herb_atlas
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="existsBySpeciesIdAndImageName" resultType="int">
         SELECT COUNT(1)
         FROM herb_atlas
         WHERE species_id = #{speciesId}
-          AND image_name = #{imageName}
-          AND deleted = 0
+          AND atlas_title = #{imageName}
+          AND is_deleted = 0
         LIMIT 1
     </select>
 
     <select id="countByAtlasCode" resultType="int">
         SELECT COUNT(1)
         FROM herb_atlas
-        WHERE atlas_code = #{atlasCode}
-          AND deleted = 0
+        WHERE atlas_no = #{atlasCode}
+          AND is_deleted = 0
         LIMIT 1
     </select>
 
@@ -155,25 +200,25 @@
         SELECT
         <include refid="AtlasVOColumns"/>
         FROM herb_atlas a
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         WHERE a.id = #{id}
-          AND a.deleted = 0
+          AND a.is_deleted = 0
     </select>
 
     <select id="countPage" resultType="java.lang.Long">
         SELECT COUNT(1)
         FROM herb_atlas a
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         <where>
-            a.deleted = 0
+            a.is_deleted = 0
             <if test="query.speciesId != null">
                 AND a.species_id = #{query.speciesId}
             </if>
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
-                    a.atlas_code LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR a.image_name LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR a.description LIKE CONCAT('%', #{query.keyword}, '%')
+                    a.atlas_no LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR a.atlas_title LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR a.identification_points LIKE CONCAT('%', #{query.keyword}, '%')
                     OR s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
                 )
             </if>
@@ -193,17 +238,17 @@
         SELECT
         <include refid="AtlasVOColumns"/>
         FROM herb_atlas a
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         <where>
-            a.deleted = 0
+            a.is_deleted = 0
             <if test="query.speciesId != null">
                 AND a.species_id = #{query.speciesId}
             </if>
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
-                    a.atlas_code LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR a.image_name LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR a.description LIKE CONCAT('%', #{query.keyword}, '%')
+                    a.atlas_no LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR a.atlas_title LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR a.identification_points LIKE CONCAT('%', #{query.keyword}, '%')
                     OR s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
                 )
             </if>
@@ -217,7 +262,7 @@
                 AND a.status = #{query.status}
             </if>
         </where>
-        ORDER BY a.create_time DESC
+        ORDER BY a.created_at DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
@@ -225,11 +270,11 @@
         SELECT
         <include refid="AtlasVOColumns"/>
         FROM herb_atlas a
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         WHERE a.species_id = #{speciesId}
-          AND a.deleted = 0
+          AND a.is_deleted = 0
           AND a.status = 1
-        ORDER BY a.create_time DESC
+        ORDER BY a.created_at DESC
     </select>
 
     <select id="selectFeatureCandidates" resultMap="AtlasResultMap">
@@ -237,32 +282,31 @@
         a.id,
         a.species_id,
         s.herb_name,
-        a.atlas_code,
+        a.atlas_no,
         a.image_url,
-        a.image_name,
+        a.atlas_title,
         a.image_type,
         a.growth_stage,
         a.medicinal_part,
-        a.source,
-        a.description,
+        a.source_type,
+        a.identification_points,
         f.feature_vector,
         f.feature_dimension AS feature_dim,
-        f.feature_version AS feature_model_version,
         a.status,
-        a.create_time,
-        a.update_time,
-        a.deleted
+        a.created_at,
+        a.updated_at,
+        a.is_deleted
         FROM herb_atlas a
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         LEFT JOIN herb_atlas_feature f
             ON f.atlas_id = a.id
-            AND f.deleted = 0
+            AND f.is_deleted = 0
             AND f.extract_status = 'success'
-        WHERE a.deleted = 0
+        WHERE a.is_deleted = 0
           AND a.status = 1
           AND f.feature_vector IS NOT NULL
           AND f.feature_vector != ''
-        ORDER BY a.create_time DESC
+        ORDER BY a.created_at DESC
     </select>
 
     <select id="selectEnabledForFeatureExtraction" resultMap="AtlasResultMap">
@@ -270,21 +314,21 @@
         a.id,
         a.species_id,
         s.herb_name,
-        a.atlas_code,
+        a.atlas_no,
         a.image_url,
-        a.image_name,
+        a.atlas_title,
         a.image_type,
         a.growth_stage,
         a.medicinal_part,
-        a.source,
-        a.description,
+        a.source_type,
+        a.identification_points,
         a.status,
-        a.create_time,
-        a.update_time,
-        a.deleted
+        a.created_at,
+        a.updated_at,
+        a.is_deleted
         FROM herb_atlas a
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
-        WHERE a.deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
+        WHERE a.is_deleted = 0
           AND a.status = 1
         <if test="speciesId != null">
           AND a.species_id = #{speciesId}

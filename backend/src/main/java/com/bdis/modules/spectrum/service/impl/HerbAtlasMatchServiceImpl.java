@@ -48,7 +48,9 @@ public class HerbAtlasMatchServiceImpl implements HerbAtlasMatchService {
                 atlases.stream()
                         .map(atlas -> toMatchResult(atlas, imageVector))
                         .filter(match -> match.getSimilarity() != null)
-                        .sorted(Comparator.comparing(HerbAtlasMatchResult::getSimilarity).reversed())
+                        .sorted(
+                                Comparator.comparing(HerbAtlasMatchResult::getSimilarity)
+                                        .reversed())
                         .limit(topN)
                         .toList();
         for (int index = 0; index < ranked.size(); index++) {

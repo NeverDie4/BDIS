@@ -5,17 +5,22 @@
 <mapper namespace="com.bdis.modules.herb.mapper.HerbMapper">
     <resultMap id="BaseResultMap" type="com.bdis.modules.herb.entity.HerbEntity">
         <id column="id" property="id"/>
-        <result column="herb_code" property="herbCode"/>
+        <result column="herb_no" property="herbNo"/>
         <result column="herb_name" property="herbName"/>
-        <result column="latin_name" property="latinName"/>
         <result column="alias_name" property="aliasName"/>
-        <result column="category" property="category"/>
+        <result column="latin_name" property="latinName"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="category_code" property="categoryCode"/>
         <result column="medicinal_part" property="medicinalPart"/>
         <result column="efficacy" property="efficacy"/>
+        <result column="growth_environment" property="growthEnvironment"/>
+        <result column="origin_area" property="originArea"/>
+        <result column="growth_cycle" property="growthCycle"/>
         <result column="description" property="description"/>
+        <result column="knowledge_entity_id" property="knowledgeEntityId"/>
         <result column="status" property="status"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 </mapper>

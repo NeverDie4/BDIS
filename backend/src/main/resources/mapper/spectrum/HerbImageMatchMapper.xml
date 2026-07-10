@@ -6,15 +6,26 @@
     <resultMap id="MatchResultMap" type="com.bdis.modules.spectrum.entity.SpectrumComparisonEntity">
         <id column="id" property="id"/>
         <result column="image_id" property="imageId"/>
+        <result column="recognition_id" property="recognitionId"/>
         <result column="atlas_id" property="atlasId"/>
-        <result column="similarity_score" property="similarityScore"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="herb_name" property="herbName"/>
         <result column="match_rank" property="matchRank"/>
-        <result column="match_result" property="matchResult"/>
-        <result column="match_batch_no" property="matchBatchNo"/>
-        <result column="match_time" property="matchTime"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="image_similarity" property="imageSimilarity"/>
+        <result column="metadata_score" property="metadataScore"/>
+        <result column="final_score" property="finalScore"/>
+        <result column="match_level" property="matchLevel"/>
+        <result column="is_image_type_matched" property="isImageTypeMatched"/>
+        <result column="is_growth_stage_matched" property="isGrowthStageMatched"/>
+        <result column="is_medicinal_part_matched" property="isMedicinalPartMatched"/>
+        <result column="is_health_status_matched" property="isHealthStatusMatched"/>
+        <result column="is_form_type_matched" property="isFormTypeMatched"/>
+        <result column="match_method" property="matchMethod"/>
+        <result column="warning_msg" property="warningMsg"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="remark" property="remark"/>
     </resultMap>
 
     <resultMap id="AtlasFeatureCandidateResultMap"
@@ -42,120 +53,155 @@
         <result column="match_result" property="matchResult"/>
         <result column="match_batch_no" property="matchBatchNo"/>
         <result column="match_time" property="matchTime"/>
-        <result column="create_time" property="createTime"/>
+        <result column="created_at" property="createTime"/>
     </resultMap>
 
     <sql id="MatchPageColumns">
         m.id,
         m.image_id,
-        i.image_code,
+        i.image_no AS image_code,
         i.image_url,
         m.atlas_id,
-        a.atlas_code,
+        a.atlas_no AS atlas_code,
         a.image_url AS atlas_image_url,
-        a.species_id,
-        s.herb_name AS species_name,
-        m.similarity_score,
+        COALESCE(m.species_id, a.species_id) AS species_id,
+        COALESCE(m.herb_name, s.herb_name) AS species_name,
+        m.image_similarity AS similarity_score,
         m.match_rank,
-        m.match_result,
-        m.match_batch_no,
-        m.match_time,
-        m.create_time
+        m.match_level AS match_result,
+        m.remark AS match_batch_no,
+        m.created_at AS match_time,
+        m.created_at
     </sql>
 
     <insert id="insertMatch" parameterType="com.bdis.modules.spectrum.entity.SpectrumComparisonEntity"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO herb_image_match (
             image_id,
+            recognition_id,
             atlas_id,
-            similarity_score,
+            species_id,
+            herb_name,
             match_rank,
-            match_result,
-            match_batch_no,
-            match_time,
-            create_time,
-            update_time,
-            deleted
+            image_similarity,
+            metadata_score,
+            final_score,
+            match_level,
+            is_image_type_matched,
+            is_growth_stage_matched,
+            is_medicinal_part_matched,
+            is_health_status_matched,
+            is_form_type_matched,
+            match_method,
+            warning_msg,
+            suggestion,
+            created_at,
+            updated_at,
+            remark
         ) VALUES (
             #{imageId},
+            #{recognitionId},
             #{atlasId},
-            #{similarityScore},
+            #{speciesId},
+            #{herbName},
             #{matchRank},
-            #{matchResult},
-            #{matchBatchNo},
-            #{matchTime},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{imageSimilarity},
+            #{metadataScore},
+            #{finalScore},
+            #{matchLevel},
+            #{isImageTypeMatched},
+            #{isGrowthStageMatched},
+            #{isMedicinalPartMatched},
+            #{isHealthStatusMatched},
+            #{isFormTypeMatched},
+            #{matchMethod},
+            #{warningMsg},
+            #{suggestion},
+            #{createdAt},
+            #{updatedAt},
+            #{remark}
         )
     </insert>
 
     <insert id="batchInsertMatches">
         INSERT INTO herb_image_match (
             image_id,
+            recognition_id,
             atlas_id,
-            similarity_score,
+            species_id,
+            herb_name,
             match_rank,
-            match_result,
-            match_batch_no,
-            match_time,
-            create_time,
-            update_time,
-            deleted
+            image_similarity,
+            metadata_score,
+            final_score,
+            match_level,
+            is_image_type_matched,
+            is_growth_stage_matched,
+            is_medicinal_part_matched,
+            is_health_status_matched,
+            is_form_type_matched,
+            match_method,
+            warning_msg,
+            suggestion,
+            created_at,
+            updated_at,
+            remark
         ) VALUES
         <foreach collection="matches" item="match" separator=",">
             (
                 #{match.imageId},
+                #{match.recognitionId},
                 #{match.atlasId},
-                #{match.similarityScore},
+                #{match.speciesId},
+                #{match.herbName},
                 #{match.matchRank},
-                #{match.matchResult},
-                #{match.matchBatchNo},
-                #{match.matchTime},
-                #{match.createTime},
-                #{match.updateTime},
-                #{match.deleted}
+                #{match.imageSimilarity},
+                #{match.metadataScore},
+                #{match.finalScore},
+                #{match.matchLevel},
+                #{match.isImageTypeMatched},
+                #{match.isGrowthStageMatched},
+                #{match.isMedicinalPartMatched},
+                #{match.isHealthStatusMatched},
+                #{match.isFormTypeMatched},
+                #{match.matchMethod},
+                #{match.warningMsg},
+                #{match.suggestion},
+                #{match.createdAt},
+                #{match.updatedAt},
+                #{match.remark}
             )
         </foreach>
     </insert>
-
-    <update id="logicalDeleteByImageId">
-        UPDATE herb_image_match
-        SET deleted = 1,
-            update_time = NOW()
-        WHERE image_id = #{imageId}
-          AND deleted = 0
-    </update>
 
     <select id="countActiveByImageId" resultType="int">
         SELECT COUNT(1)
         FROM herb_image_match
         WHERE image_id = #{imageId}
-          AND deleted = 0
     </select>
 
     <select id="selectAtlasFeatureCandidates" resultMap="AtlasFeatureCandidateResultMap">
         SELECT
         a.id AS atlas_id,
-        a.atlas_code,
+        a.atlas_no AS atlas_code,
         a.image_url AS atlas_image_url,
         a.species_id,
         s.herb_name AS species_name,
         f.feature_vector
         FROM herb_atlas a
-        INNER JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        INNER JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         INNER JOIN herb_atlas_feature f
             ON f.atlas_id = a.id
-            AND f.deleted = 0
+            AND f.is_deleted = 0
             AND f.extract_status = 'success'
-            AND f.create_time = (
-                SELECT MAX(ff.create_time)
+            AND f.created_at = (
+                SELECT MAX(ff.created_at)
                 FROM herb_atlas_feature ff
                 WHERE ff.atlas_id = a.id
-                  AND ff.deleted = 0
+                  AND ff.is_deleted = 0
                   AND ff.extract_status = 'success'
             )
-        WHERE a.deleted = 0
+        WHERE a.is_deleted = 0
           AND a.status = 1
           AND f.feature_vector IS NOT NULL
           AND f.feature_vector != ''
@@ -169,18 +215,16 @@
         SELECT
         <include refid="MatchPageColumns"/>
         FROM herb_image_match m
-        INNER JOIN herb_image i ON i.id = m.image_id AND i.deleted = 0
-        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.deleted = 0
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        INNER JOIN herb_image i ON i.id = m.image_id AND i.is_deleted = 0
+        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.is_deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         WHERE m.image_id = #{imageId}
-          AND m.deleted = 0
-          AND m.match_batch_no = (
-              SELECT mm.match_batch_no
+          AND m.remark = (
+              SELECT mm.remark
               FROM herb_image_match mm
               WHERE mm.image_id = #{imageId}
-                AND mm.deleted = 0
-                AND mm.match_batch_no IS NOT NULL
-              ORDER BY mm.match_time DESC, mm.create_time DESC
+                AND mm.remark IS NOT NULL
+              ORDER BY mm.created_at DESC
               LIMIT 1
           )
         ORDER BY m.match_rank ASC
@@ -190,84 +234,58 @@
         SELECT
         <include refid="MatchPageColumns"/>
         FROM herb_image_match m
-        INNER JOIN herb_image i ON i.id = m.image_id AND i.deleted = 0
-        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.deleted = 0
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+        INNER JOIN herb_image i ON i.id = m.image_id AND i.is_deleted = 0
+        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.is_deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
         WHERE m.image_id = #{imageId}
-          AND m.deleted = 0
-        ORDER BY m.match_time DESC, m.create_time DESC, m.match_rank ASC
+        ORDER BY m.created_at DESC, m.match_rank ASC
     </select>
 
-    <select id="countPage" resultType="java.lang.Long">
-        SELECT COUNT(1)
-        FROM herb_image_match m
-        INNER JOIN herb_image i ON i.id = m.image_id AND i.deleted = 0
-        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.deleted = 0
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
+    <sql id="MatchWhere">
         <where>
-            m.deleted = 0
             <if test="query.imageId != null">
-                AND m.image_id = #{query.imageId}
+                m.image_id = #{query.imageId}
             </if>
             <if test="query.atlasId != null">
                 AND m.atlas_id = #{query.atlasId}
             </if>
             <if test="query.speciesId != null">
-                AND a.species_id = #{query.speciesId}
+                AND COALESCE(m.species_id, a.species_id) = #{query.speciesId}
             </if>
             <if test="query.matchResult != null and query.matchResult != ''">
-                AND m.match_result = #{query.matchResult}
+                AND m.match_level = #{query.matchResult}
             </if>
             <if test="query.minSimilarity != null">
-                AND m.similarity_score &gt;= #{query.minSimilarity}
+                AND m.image_similarity &gt;= #{query.minSimilarity}
             </if>
             <if test="query.maxSimilarity != null">
-                AND m.similarity_score &lt;= #{query.maxSimilarity}
+                AND m.image_similarity &lt;= #{query.maxSimilarity}
             </if>
             <if test="query.startTime != null">
-                AND m.create_time &gt;= #{query.startTime}
+                AND m.created_at &gt;= #{query.startTime}
             </if>
             <if test="query.endTime != null">
-                AND m.create_time &lt;= #{query.endTime}
+                AND m.created_at &lt;= #{query.endTime}
             </if>
         </where>
+    </sql>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_image_match m
+        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.is_deleted = 0
+        <include refid="MatchWhere"/>
     </select>
 
     <select id="selectPage" resultMap="MatchPageResultMap">
         SELECT
         <include refid="MatchPageColumns"/>
         FROM herb_image_match m
-        INNER JOIN herb_image i ON i.id = m.image_id AND i.deleted = 0
-        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.deleted = 0
-        LEFT JOIN herb_species s ON s.id = a.species_id AND s.deleted = 0
-        <where>
-            m.deleted = 0
-            <if test="query.imageId != null">
-                AND m.image_id = #{query.imageId}
-            </if>
-            <if test="query.atlasId != null">
-                AND m.atlas_id = #{query.atlasId}
-            </if>
-            <if test="query.speciesId != null">
-                AND a.species_id = #{query.speciesId}
-            </if>
-            <if test="query.matchResult != null and query.matchResult != ''">
-                AND m.match_result = #{query.matchResult}
-            </if>
-            <if test="query.minSimilarity != null">
-                AND m.similarity_score &gt;= #{query.minSimilarity}
-            </if>
-            <if test="query.maxSimilarity != null">
-                AND m.similarity_score &lt;= #{query.maxSimilarity}
-            </if>
-            <if test="query.startTime != null">
-                AND m.create_time &gt;= #{query.startTime}
-            </if>
-            <if test="query.endTime != null">
-                AND m.create_time &lt;= #{query.endTime}
-            </if>
-        </where>
-        ORDER BY m.match_time DESC, m.create_time DESC, m.match_rank ASC
+        INNER JOIN herb_image i ON i.id = m.image_id AND i.is_deleted = 0
+        INNER JOIN herb_atlas a ON a.id = m.atlas_id AND a.is_deleted = 0
+        LEFT JOIN herb_species s ON s.id = a.species_id AND s.is_deleted = 0
+        <include refid="MatchWhere"/>
+        ORDER BY m.created_at DESC, m.match_rank ASC
         LIMIT #{offset}, #{pageSize}
     </select>
 </mapper>

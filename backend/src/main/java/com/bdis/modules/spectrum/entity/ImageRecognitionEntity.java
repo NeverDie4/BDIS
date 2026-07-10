@@ -1,40 +1,53 @@
 package com.bdis.modules.spectrum.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.LogEntity;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_image_recognition")
-public class ImageRecognitionEntity {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class ImageRecognitionEntity extends LogEntity {
 
     private Long imageId;
 
-    private Long modelVersionId;
+    private Long modelId;
 
-    private Long predictedSpeciesId;
+    private String modelCode;
 
-    private String predictedName;
+    private String modelVersion;
+
+    private Integer rankNo;
+
+    private Long speciesId;
+
+    private String recognizedHerbName;
 
     private BigDecimal confidence;
 
-    private String recognitionStatus;
+    private String imageType;
 
-    private LocalDateTime recognitionTime;
+    private String growthStage;
 
-    private String rawResult;
+    private String medicinalPart;
 
-    private LocalDateTime createTime;
+    private String healthStatus;
 
-    private LocalDateTime updateTime;
+    private String formType;
 
-    @TableLogic
-    private Integer deleted;
+    private String colorFeature;
+
+    private String textureFeature;
+
+    private String shapeFeature;
+
+    private String reason;
+
+    private String suggestion;
+
+    private String rawResponse;
+
+    private Integer isUncertain;
 }

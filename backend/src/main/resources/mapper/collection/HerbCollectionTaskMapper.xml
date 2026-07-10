@@ -19,9 +19,9 @@
         <result column="task_status" property="taskStatus"/>
         <result column="description" property="description"/>
         <result column="remark" property="remark"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
     <resultMap id="TaskVOResultMap" type="com.bdis.modules.collection.vo.HerbCollectionTaskVO">
@@ -41,8 +41,8 @@
         <result column="description" property="description"/>
         <result column="remark" property="remark"/>
         <result column="batch_count" property="batchCount"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
     </resultMap>
 
     <resultMap id="TaskListVOResultMap" type="com.bdis.modules.collection.vo.HerbCollectionTaskListVO">
@@ -72,9 +72,9 @@
         task_status,
         description,
         remark,
-        create_time,
-        update_time,
-        deleted
+        created_at,
+        updated_at,
+        is_deleted
     </sql>
 
     <sql id="TaskVOColumns">
@@ -94,13 +94,13 @@
         t.description,
         t.remark,
         COUNT(b.id) AS batch_count,
-        t.create_time,
-        t.update_time
+        t.created_at,
+        t.updated_at
     </sql>
 
     <sql id="PageWhere">
         <where>
-            t.deleted = 0
+            t.is_deleted = 0
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
                     t.task_code LIKE CONCAT('%', #{query.keyword}, '%')
@@ -140,7 +140,7 @@
 
     <sql id="ListWhere">
         <where>
-            t.deleted = 0
+            t.is_deleted = 0
             <if test="query.speciesId != null">
                 AND t.species_id = #{query.speciesId}
             </if>
@@ -161,7 +161,7 @@
 
     <sql id="MyTaskWhere">
         <where>
-            t.deleted = 0
+            t.is_deleted = 0
             AND t.collector_id = #{query.collectorId}
             <if test="query.taskStatus != null and query.taskStatus != ''">
                 AND t.task_status = #{query.taskStatus}
@@ -192,9 +192,9 @@
             task_status,
             description,
             remark,
-            create_time,
-            update_time,
-            deleted
+            created_at,
+            updated_at,
+            is_deleted
         ) VALUES (
             #{taskCode},
             #{taskName},
@@ -210,9 +210,9 @@
             #{taskStatus},
             #{description},
             #{remark},
-            #{createTime},
-            #{updateTime},
-            #{deleted}
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
         )
     </insert>
 
@@ -231,25 +231,25 @@
             task_status = #{taskStatus},
             description = #{description},
             remark = #{remark},
-            update_time = #{updateTime}
+            updated_at = #{updatedAt}
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="logicDeleteById">
         UPDATE herb_collection_task
-        SET deleted = 1,
-            update_time = NOW()
+        SET is_deleted = 1,
+            updated_at = NOW()
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <update id="updateStatusById">
         UPDATE herb_collection_task
         SET task_status = #{taskStatus},
-            update_time = NOW()
+            updated_at = NOW()
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </update>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -257,7 +257,7 @@
         <include refid="BaseColumns"/>
         FROM herb_collection_task
         WHERE id = #{id}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 
     <select id="selectByTaskCode" resultMap="BaseResultMap">
@@ -265,7 +265,7 @@
         <include refid="BaseColumns"/>
         FROM herb_collection_task
         WHERE task_code = #{taskCode}
-          AND deleted = 0
+          AND is_deleted = 0
         LIMIT 1
     </select>
 
@@ -273,9 +273,9 @@
         SELECT
         <include refid="TaskVOColumns"/>
         FROM herb_collection_task t
-        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.deleted = 0
+        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.is_deleted = 0
         WHERE t.id = #{id}
-          AND t.deleted = 0
+          AND t.is_deleted = 0
         GROUP BY t.id
     </select>
 
@@ -289,10 +289,10 @@
         SELECT
         <include refid="TaskVOColumns"/>
         FROM herb_collection_task t
-        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.deleted = 0
+        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.is_deleted = 0
         <include refid="PageWhere"/>
         GROUP BY t.id
-        ORDER BY t.create_time DESC
+        ORDER BY t.created_at DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
@@ -308,7 +308,7 @@
         t.task_status
         FROM herb_collection_task t
         <include refid="ListWhere"/>
-        ORDER BY t.create_time DESC
+        ORDER BY t.created_at DESC
     </select>
 
     <select id="countMyTasks" resultType="java.lang.Long">
@@ -321,7 +321,7 @@
         SELECT
         <include refid="TaskVOColumns"/>
         FROM herb_collection_task t
-        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.deleted = 0
+        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.is_deleted = 0
         <include refid="MyTaskWhere"/>
         GROUP BY t.id
         ORDER BY t.planned_start_time ASC
@@ -332,6 +332,6 @@
         SELECT COUNT(1)
         FROM herb_batch
         WHERE task_id = #{taskId}
-          AND deleted = 0
+          AND is_deleted = 0
     </select>
 </mapper>

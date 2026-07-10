@@ -1,19 +1,16 @@
 package com.bdis.modules.spectrum.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.bdis.common.core.BaseEntity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @TableName("herb_identification_result")
-public class HerbIdentificationResultEntity {
-
-    @TableId(type = IdType.AUTO)
-    private Long id;
+public class HerbIdentificationResultEntity extends BaseEntity {
 
     private Long imageId;
 
@@ -48,11 +45,4 @@ public class HerbIdentificationResultEntity {
     private String rawSummary;
 
     private LocalDateTime identifyTime;
-
-    private LocalDateTime createTime;
-
-    private LocalDateTime updateTime;
-
-    @TableLogic
-    private Integer deleted;
 }

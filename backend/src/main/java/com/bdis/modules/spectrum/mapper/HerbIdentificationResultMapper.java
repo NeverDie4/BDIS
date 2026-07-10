@@ -7,8 +7,7 @@ import com.bdis.modules.spectrum.vo.HerbIdentificationPageVO;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
-public interface HerbIdentificationResultMapper
-        extends BaseMapper<HerbIdentificationResultEntity> {
+public interface HerbIdentificationResultMapper extends BaseMapper<HerbIdentificationResultEntity> {
 
     int insertResult(HerbIdentificationResultEntity result);
 

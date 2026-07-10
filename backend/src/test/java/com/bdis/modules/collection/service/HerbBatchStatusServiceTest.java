@@ -36,8 +36,7 @@ class HerbBatchStatusServiceTest {
 
     @Test
     void submitRejectsBatchWithoutBoundImages() {
-        when(herbBatchMapper.selectById(1L))
-                .thenReturn(batch(HerbBatchStatusConstants.COLLECTING));
+        when(herbBatchMapper.selectById(1L)).thenReturn(batch(HerbBatchStatusConstants.COLLECTING));
         when(herbBatchMapper.countBoundImagesByBatchId(1L)).thenReturn(0L);
 
         assertThatThrownBy(() -> herbBatchStatusService.submit(1L))
@@ -49,14 +48,16 @@ class HerbBatchStatusServiceTest {
     void startCollectionUpdatesDraftBatchToCollecting() {
         when(herbBatchMapper.selectById(1L)).thenReturn(batch(HerbBatchStatusConstants.DRAFT));
         when(herbBatchMapper.updateStatusById(any())).thenReturn(1);
-        when(herbBatchMapper.selectDetailById(1L)).thenReturn(vo(HerbBatchStatusConstants.COLLECTING));
+        when(herbBatchMapper.selectDetailById(1L))
+                .thenReturn(vo(HerbBatchStatusConstants.COLLECTING));
 
         HerbBatchVO result = herbBatchStatusService.startCollection(1L);
 
         ArgumentCaptor<HerbBatchEntity> captor = ArgumentCaptor.forClass(HerbBatchEntity.class);
         verify(herbBatchMapper).updateStatusById(captor.capture());
-        assertThat(captor.getValue().getBatchStatus()).isEqualTo(HerbBatchStatusConstants.COLLECTING);
-        assertThat(captor.getValue().getUpdateTime()).isNotNull();
+        assertThat(captor.getValue().getBatchStatus())
+                .isEqualTo(HerbBatchStatusConstants.COLLECTING);
+        assertThat(captor.getValue().getUpdatedAt()).isNotNull();
         assertThat(result.getBatchStatus()).isEqualTo(HerbBatchStatusConstants.COLLECTING);
     }
 
@@ -96,20 +97,30 @@ class HerbBatchStatusServiceTest {
                                 "good",
                                 "summary"));
         when(herbBatchMapper.updateStatusById(any())).thenReturn(1);
-        when(herbBatchMapper.selectDetailById(1L)).thenReturn(vo(HerbBatchStatusConstants.CONFIRMED));
+        when(herbBatchMapper.selectDetailById(1L))
+                .thenReturn(vo(HerbBatchStatusConstants.CONFIRMED));
 
         herbBatchStatusService.confirmStatus(1L, request);
 
         ArgumentCaptor<HerbBatchEntity> captor = ArgumentCaptor.forClass(HerbBatchEntity.class);
         verify(herbBatchMapper).updateStatusById(captor.capture());
-        assertThat(captor.getValue().getBatchStatus()).isEqualTo(HerbBatchStatusConstants.CONFIRMED);
+        assertThat(captor.getValue().getBatchStatus())
+                .isEqualTo(HerbBatchStatusConstants.CONFIRMED);
         assertThat(captor.getValue().getRemark()).contains("人工强制确认").contains("人工确认");
     }
 
     @Test
     void archiveRequiresConfirmedEvaluationFields() {
         when(herbBatchMapper.selectById(1L))
-                .thenReturn(batch(HerbBatchStatusConstants.CONFIRMED, 1, 1, 0, null, "good", "summary"));
+                .thenReturn(
+                        batch(
+                                HerbBatchStatusConstants.CONFIRMED,
+                                1,
+                                1,
+                                0,
+                                null,
+                                "good",
+                                "summary"));
 
         assertThatThrownBy(() -> herbBatchStatusService.archive(1L))
                 .isInstanceOf(BusinessException.class)
@@ -164,7 +175,7 @@ class HerbBatchStatusServiceTest {
         batch.setFinalSpeciesName(finalSpeciesName);
         batch.setQualityLevel(qualityLevel);
         batch.setEvaluationSummary(evaluationSummary);
-        batch.setDeleted(0);
+        batch.setIsDeleted(0);
         return batch;
     }
 

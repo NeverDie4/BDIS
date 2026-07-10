@@ -5,13 +5,15 @@
 <mapper namespace="com.bdis.modules.knowledge.mapper.KnowledgeNodeMapper">
     <resultMap id="BaseResultMap" type="com.bdis.modules.knowledge.entity.KnowledgeNodeEntity">
         <id column="id" property="id"/>
-        <result column="entity_code" property="entityCode"/>
+        <result column="entity_no" property="entityNo"/>
         <result column="entity_name" property="entityName"/>
         <result column="entity_type" property="entityType"/>
-        <result column="related_id" property="relatedId"/>
+        <result column="ref_table" property="refTable"/>
+        <result column="ref_id" property="refId"/>
         <result column="description" property="description"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 </mapper>

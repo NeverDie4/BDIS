@@ -62,7 +62,8 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         }
         validateTask(request.getTaskId());
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
-        String batchStatus = normalizeStatus(request.getBatchStatus(), HerbBatchStatusConstants.DRAFT);
+        String batchStatus =
+                normalizeStatus(request.getBatchStatus(), HerbBatchStatusConstants.DRAFT);
 
         LocalDateTime now = LocalDateTime.now();
         HerbBatchEntity entity = new HerbBatchEntity();
@@ -85,9 +86,11 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         entity.setNeedReviewCount(0);
         entity.setTraceCode(request.getTraceCode());
         entity.setRemark(request.getRemark());
-        entity.setCreateTime(now);
-        entity.setUpdateTime(now);
-        entity.setDeleted(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        entity.setIsDeleted(0);
+        entity.setStatus(1);
+        entity.setVersion(0);
         herbBatchMapper.insert(entity);
         return entity.getId() == null ? toVO(entity) : getById(entity.getId());
     }
@@ -116,7 +119,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         existing.setBatchStatus(existing.getBatchStatus());
         existing.setTraceCode(request.getTraceCode());
         existing.setRemark(request.getRemark());
-        existing.setUpdateTime(LocalDateTime.now());
+        existing.setUpdatedAt(LocalDateTime.now());
         int affected = herbBatchMapper.updateById(existing);
         if (affected == 0) {
             throw new BusinessException("Batch not found or already deleted");
@@ -156,7 +159,8 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbBatchVO> records =
                 herbBatchMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
-        return new PageResult<>(total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
+        return new PageResult<>(
+                total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
 
     @Override
@@ -279,8 +283,8 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         vo.setEvaluationSummary(entity.getEvaluationSummary());
         vo.setTraceCode(entity.getTraceCode());
         vo.setRemark(entity.getRemark());
-        vo.setCreateTime(entity.getCreateTime());
-        vo.setUpdateTime(entity.getUpdateTime());
+        vo.setCreateTime(entity.getCreatedAt());
+        vo.setUpdateTime(entity.getUpdatedAt());
         return vo;
     }
 }

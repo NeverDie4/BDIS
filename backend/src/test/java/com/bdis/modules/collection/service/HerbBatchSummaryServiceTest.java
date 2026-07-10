@@ -10,7 +10,6 @@ import com.bdis.common.exception.BusinessException;
 import com.bdis.modules.collection.constant.HerbBatchStatusConstants;
 import com.bdis.modules.collection.constant.HerbQualityLevelConstants;
 import com.bdis.modules.collection.dto.HerbBatchConfirmRequest;
-import com.bdis.modules.collection.dto.HerbBatchImageQueryRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
@@ -48,7 +47,8 @@ class HerbBatchSummaryServiceTest {
 
     @Test
     void refreshSummaryConfirmsBatchWhenAllImagesAgreeAndReviewed() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
         when(herbBatchImageMapper.selectBatchImagesWithIdentification(any(), any()))
                 .thenReturn(
                         List.of(
@@ -72,14 +72,19 @@ class HerbBatchSummaryServiceTest {
         ArgumentCaptor<HerbBatchEntity> captor = ArgumentCaptor.forClass(HerbBatchEntity.class);
         verify(herbBatchMapper).updateStatisticsById(captor.capture());
         assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Huanglian");
-        assertThat(captor.getValue().getBatchStatus()).isEqualTo(HerbBatchStatusConstants.CONFIRMED);
+        assertThat(captor.getValue().getBatchStatus())
+                .isEqualTo(HerbBatchStatusConstants.CONFIRMED);
     }
 
     @Test
     void refreshSummarySetsIdentifyingWhenSomeImagesAreMissingResults() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.SUBMITTED));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.SUBMITTED));
         when(herbBatchImageMapper.selectBatchImagesWithIdentification(any(), any()))
-                .thenReturn(List.of(item(12L, 1L, "Huanglian", "0.9000", false, "confirmed"), item(13L)));
+                .thenReturn(
+                        List.of(
+                                item(12L, 1L, "Huanglian", "0.9000", false, "confirmed"),
+                                item(13L)));
         when(herbBatchMapper.updateStatisticsById(any())).thenReturn(1);
 
         HerbBatchSummaryVO result = herbBatchSummaryService.refreshSummary(1L);
@@ -92,7 +97,8 @@ class HerbBatchSummaryServiceTest {
 
     @Test
     void refreshSummaryKeepsCollectingBatchStatusBeforeSubmit() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.COLLECTING));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.COLLECTING));
         when(herbBatchImageMapper.selectBatchImagesWithIdentification(any(), any()))
                 .thenReturn(List.of(item(12L, 1L, "Huanglian", "0.9000", true, "pending")));
         when(herbBatchMapper.updateStatisticsById(any())).thenReturn(1);
@@ -105,12 +111,14 @@ class HerbBatchSummaryServiceTest {
         assertThat(result.getBatchStatus()).isEqualTo(HerbBatchStatusConstants.COLLECTING);
         ArgumentCaptor<HerbBatchEntity> captor = ArgumentCaptor.forClass(HerbBatchEntity.class);
         verify(herbBatchMapper).updateStatisticsById(captor.capture());
-        assertThat(captor.getValue().getBatchStatus()).isEqualTo(HerbBatchStatusConstants.COLLECTING);
+        assertThat(captor.getValue().getBatchStatus())
+                .isEqualTo(HerbBatchStatusConstants.COLLECTING);
     }
 
     @Test
     void refreshSummarySetsReviewingWhenMainSpeciesRatioIsLow() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
         when(herbBatchImageMapper.selectBatchImagesWithIdentification(any(), any()))
                 .thenReturn(
                         List.of(
@@ -127,7 +135,8 @@ class HerbBatchSummaryServiceTest {
 
     @Test
     void refreshSummaryRejectsArchivedBatch() {
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.ARCHIVED));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.ARCHIVED));
 
         assertThatThrownBy(() -> herbBatchSummaryService.refreshSummary(1L))
                 .isInstanceOf(BusinessException.class)
@@ -157,9 +166,11 @@ class HerbBatchSummaryServiceTest {
         HerbEntity species = new HerbEntity();
         species.setId(1L);
         species.setHerbName("Huanglian");
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
         when(herbSpeciesMapper.selectActiveById(1L)).thenReturn(species);
-        when(herbBatchImageMapper.selectBatchImagesWithIdentification(any(), any())).thenReturn(List.of());
+        when(herbBatchImageMapper.selectBatchImagesWithIdentification(any(), any()))
+                .thenReturn(List.of());
         when(herbBatchMapper.updateStatisticsById(any())).thenReturn(1);
 
         HerbBatchSummaryVO result = herbBatchSummaryService.confirm(1L, request);
@@ -175,7 +186,8 @@ class HerbBatchSummaryServiceTest {
     void confirmBatchRejectsInvalidQualityLevel() {
         HerbBatchConfirmRequest request = new HerbBatchConfirmRequest();
         request.setQualityLevel("bad-level");
-        when(herbBatchMapper.selectById(1L)).thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.REVIEWING));
 
         assertThatThrownBy(() -> herbBatchSummaryService.confirm(1L, request))
                 .isInstanceOf(BusinessException.class)

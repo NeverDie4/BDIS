@@ -26,7 +26,8 @@ class HerbBatchControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new HerbBatchController(herbBatchService)).build();
+        mockMvc =
+                MockMvcBuilders.standaloneSetup(new HerbBatchController(herbBatchService)).build();
     }
 
     @Test
@@ -44,7 +45,7 @@ class HerbBatchControllerTest {
                                         "{\"batchCode\":\"BATCH_20260710_001\","
                                                 + "\"batchName\":\"Huanglian batch 001\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.batchCode").value("BATCH_20260710_001"));
     }
 
@@ -58,7 +59,7 @@ class HerbBatchControllerTest {
 
         mockMvc.perform(get("/herb/batch/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.id").value(1));
     }
 }

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
+import com.bdis.file.service.impl.LocalFileStorageServiceImpl;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.spectrum.client.FeatureExtractionClient;
@@ -32,8 +32,8 @@ import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -64,7 +64,7 @@ class HerbFeatureServiceTest {
                         herbAtlasFeatureMapper,
                         herbImageFeatureMapper,
                         featureExtractionClient,
-                        new LocalFileStorage(uploadRoot.toString()),
+                        new LocalFileStorageServiceImpl(uploadRoot.toString()),
                         new ObjectMapper(),
                         featureProperties());
     }
@@ -86,7 +86,8 @@ class HerbFeatureServiceTest {
         assertThat(result.getFeatureVector()).isNull();
         ArgumentCaptor<HerbAtlasFeatureEntity> captor =
                 ArgumentCaptor.forClass(HerbAtlasFeatureEntity.class);
-        verify(herbAtlasFeatureMapper).deleteActiveByAtlasIdAndModel(any(), anyString(), anyString());
+        verify(herbAtlasFeatureMapper)
+                .deleteActiveByAtlasIdAndModel(any(), anyString(), anyString());
         verify(herbAtlasFeatureMapper).insertFeature(captor.capture());
         assertThat(captor.getValue().getFeatureVector()).isEqualTo("[0.1,0.2,0.3]");
     }
@@ -98,7 +99,7 @@ class HerbFeatureServiceTest {
 
         assertThatThrownBy(() -> herbFeatureService.extractImageFeature(2L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Image file not found");
+                .hasMessageContaining("文件不存在");
 
         verify(featureExtractionClient, never()).extract(any());
         verify(herbImageFeatureMapper, never()).insertFeature(any());
@@ -129,7 +130,8 @@ class HerbFeatureServiceTest {
         SpectrumEntity ok = atlas(2L, "ATLAS_2", "/herb/atlas/ok.jpg");
         Files.createDirectories(uploadRoot.resolve("herb/atlas"));
         Files.write(uploadRoot.resolve("herb/atlas/ok.jpg"), new byte[] {1});
-        when(herbAtlasMapper.selectEnabledForFeatureExtraction(null)).thenReturn(List.of(missing, ok));
+        when(herbAtlasMapper.selectEnabledForFeatureExtraction(null))
+                .thenReturn(List.of(missing, ok));
         when(featureExtractionClient.extract(any())).thenReturn(successResponse());
 
         FeatureBatchExtractResultVO result = herbFeatureService.batchExtractAtlasFeatures(request);
@@ -145,8 +147,8 @@ class HerbFeatureServiceTest {
         ImageFeatureBatchExtractRequest request = new ImageFeatureBatchExtractRequest();
         request.setForceRefresh(false);
         HerbImageEntity image = image(2L, "/herb/image/ok.jpg");
-        image.setImageCode("IMG_2");
-        image.setImageName("ok.jpg");
+        image.setImageNo("IMG_2");
+        image.setOriginalFilename("ok.jpg");
         Files.createDirectories(uploadRoot.resolve("herb/image"));
         Files.write(uploadRoot.resolve("herb/image/ok.jpg"), new byte[] {1});
         when(herbImageMapper.selectActiveForFeatureExtraction(null)).thenReturn(List.of(image));
@@ -201,9 +203,9 @@ class HerbFeatureServiceTest {
     private SpectrumEntity atlas(Long id, String atlasCode, String imageUrl) {
         SpectrumEntity atlas = new SpectrumEntity();
         atlas.setId(id);
-        atlas.setAtlasCode(atlasCode);
+        atlas.setAtlasNo(atlasCode);
         atlas.setSpeciesId(9L);
-        atlas.setImageName(atlasCode + ".jpg");
+        atlas.setAtlasTitle(atlasCode + ".jpg");
         atlas.setImageUrl(imageUrl);
         return atlas;
     }

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.storage.LocalFileStorage;
+import com.bdis.file.service.impl.LocalFileStorageServiceImpl;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.spectrum.client.HerbFeatureVectorClient;
@@ -28,8 +28,8 @@ import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,9 +50,11 @@ class HerbAtlasServiceTest {
 
     private HerbAtlasService herbAtlasService;
 
+    private LocalFileStorageServiceImpl localFileStorage;
+
     @BeforeEach
     void setUp() {
-        LocalFileStorage localFileStorage = new LocalFileStorage(uploadRoot.toString());
+        localFileStorage = new LocalFileStorageServiceImpl(uploadRoot.toString());
         herbAtlasService =
                 new HerbAtlasServiceImpl(
                         herbAtlasMapper,
@@ -107,18 +109,18 @@ class HerbAtlasServiceTest {
         ArgumentCaptor<SpectrumEntity> atlasCaptor = ArgumentCaptor.forClass(SpectrumEntity.class);
         verify(herbAtlasMapper).insertAtlas(atlasCaptor.capture());
         SpectrumEntity inserted = atlasCaptor.getValue();
-        assertThat(inserted.getAtlasCode()).startsWith("ATLAS_");
-        assertThat(inserted.getImageUrl()).startsWith("/uploads/herb/atlas/");
+        assertThat(inserted.getAtlasNo()).startsWith("ATLAS_");
+        assertThat(inserted.getImageUrl()).startsWith("/api/files/uploads/");
         assertThat(inserted.getFeatureVector()).isEqualTo("[0.1,0.2,0.3]");
         assertThat(inserted.getFeatureDim()).isEqualTo(3);
         assertThat(inserted.getStatus()).isEqualTo(1);
-        assertThat(Files.exists(uploadRoot.resolve(inserted.getImageUrl().replace("/uploads/", ""))))
-                .isTrue();
+        assertThat(Files.exists(localFileStorage.resolve(inserted.getImageUrl()))).isTrue();
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<SpectrumTagEntity>> tagsCaptor = ArgumentCaptor.forClass(List.class);
         verify(herbAtlasTagMapper).insertTags(tagsCaptor.capture());
-        assertThat(tagsCaptor.getValue()).extracting(SpectrumTagEntity::getTagName)
+        assertThat(tagsCaptor.getValue())
+                .extracting(SpectrumTagEntity::getTagName)
                 .containsExactly("leaf", "healthy", "standard");
         assertThat(result.getHerbName()).isEqualTo("Huanglian");
     }
@@ -162,8 +164,8 @@ class HerbAtlasServiceTest {
 
         PageResult<HerbAtlasVO> result = herbAtlasService.page(request);
 
-        assertThat(result.getPageNum()).isEqualTo(1);
-        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
         assertThat(result.getTotal()).isEqualTo(1);
     }
 
