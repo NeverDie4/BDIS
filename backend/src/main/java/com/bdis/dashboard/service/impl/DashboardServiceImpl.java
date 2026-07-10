@@ -2,14 +2,14 @@ package com.bdis.dashboard.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.dashboard.entity.DashboardSnapshotEntity;
-import com.bdis.dashboard.mapper.DashboardSnapshotMapper;
 import com.bdis.dashboard.query.DashboardQuery;
 import com.bdis.dashboard.service.DashboardService;
 import com.bdis.dashboard.vo.DashboardMapVO;
 import com.bdis.dashboard.vo.DashboardRecentGrowthRecordVO;
 import com.bdis.dashboard.vo.DashboardSummaryVO;
 import com.bdis.dashboard.vo.DashboardTodoVO;
+import com.bdis.modules.dashboard.entity.DashboardSnapshotEntity;
+import com.bdis.modules.dashboard.mapper.DashboardSnapshotMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
@@ -47,9 +47,12 @@ public class DashboardServiceImpl implements DashboardService {
         vo.setBaseCount(count("herb_base"));
         vo.setMapPointCount(count("herb_distribution"));
         vo.setGrowthRecordCount(count("herb_growth_record"));
-        vo.setPendingGrowthReviewCount(countByStatus("herb_growth_record", "review_status", "SUBMITTED"));
-        vo.setPendingDeclarationReviewCount(countByStatus("eval_application", "review_status", "SUBMITTED"));
-        vo.setPendingPerformanceReviewCount(countByStatus("perf_record", "identify_status", "SUBMITTED"));
+        vo.setPendingGrowthReviewCount(
+                countByStatus("herb_growth_record", "review_status", "SUBMITTED"));
+        vo.setPendingDeclarationReviewCount(
+                countByStatus("eval_application", "review_status", "SUBMITTED"));
+        vo.setPendingPerformanceReviewCount(
+                countByStatus("perf_record", "identify_status", "SUBMITTED"));
         vo.setCourseCount(count("edu_course"));
         vo.setFileCount(count("sys_file_resource"));
         vo.setSoapFailedCount(countByStatus("soap_sync_task", "sync_status", "FAILED"));
@@ -69,10 +72,18 @@ public class DashboardServiceImpl implements DashboardService {
         }
         String sql =
                 """
-                select id, herb_name, base_name, collector_name, review_status, collected_at
-                from herb_growth_record
-                where coalesce(is_deleted, 0) = 0
-                order by collected_at desc
+                select r.id,
+                       s.herb_name,
+                       b.base_name,
+                       r.collector_name_snapshot as collector_name,
+                       r.review_status,
+                       r.collected_at
+                from herb_growth_record r
+                left join herb_species s on s.id = r.species_id and s.is_deleted = 0
+                left join herb_distribution d on d.id = r.distribution_id and d.is_deleted = 0
+                left join herb_base b on b.id = d.base_id and b.is_deleted = 0
+                where r.is_deleted = 0
+                order by r.collected_at desc
                 limit ?
                 """;
         try {
@@ -108,12 +119,13 @@ public class DashboardServiceImpl implements DashboardService {
         List<Object> params = new ArrayList<>();
         String sql =
                 """
-                select id, herb_name, review_status, updated_at
-                from herb_growth_record
-                where coalesce(is_deleted, 0) = 0 and lower(review_status) = 'submitted'
+                select r.id, s.herb_name, r.review_status, r.updated_at
+                from herb_growth_record r
+                left join herb_species s on s.id = r.species_id and s.is_deleted = 0
+                where r.is_deleted = 0 and lower(r.review_status) = 'submitted'
                 """;
-        sql = sql + ownerFilter("herb_growth_record", "collector_id", query, params);
-        sql = sql + " order by updated_at desc limit ?";
+        sql = sql + ownerFilter("herb_growth_record", "collector_id", "r.collector_id", params);
+        sql = sql + " order by r.updated_at desc limit ?";
         params.add(limit);
         try {
             return jdbcTemplate.query(sql, this::toGrowthTodoVO, params.toArray());
@@ -134,7 +146,7 @@ public class DashboardServiceImpl implements DashboardService {
                 from eval_application
                 where coalesce(is_deleted, 0) = 0 and lower(review_status) = 'submitted'
                 """;
-        sql = sql + ownerFilter("eval_application", "applicant_id", query, params);
+        sql = sql + ownerFilter("eval_application", "applicant_id", "applicant_id", params);
         sql = sql + " order by coalesce(submitted_at, updated_at) desc limit ?";
         params.add(limit);
         try {
@@ -156,7 +168,7 @@ public class DashboardServiceImpl implements DashboardService {
                 from perf_record
                 where coalesce(is_deleted, 0) = 0 and lower(identify_status) = 'submitted'
                 """;
-        sql = sql + ownerFilter("perf_record", "user_id", query, params);
+        sql = sql + ownerFilter("perf_record", "user_id", "user_id", params);
         sql = sql + " order by coalesce(submitted_at, updated_at) desc limit ?";
         params.add(limit);
         try {
@@ -189,23 +201,35 @@ public class DashboardServiceImpl implements DashboardService {
     public DashboardMapVO mapOverview() {
         DashboardMapVO vo = new DashboardMapVO();
         vo.setPointCount(count("herb_distribution"));
-        vo.setDistrictStatistics(queryMapList(
-                """
-                select district_code, district_name, count(*) as point_count
-                from herb_distribution
-                where coalesce(is_deleted, 0) = 0
-                group by district_code, district_name
-                order by point_count desc
-                """,
-                "herb_distribution"));
-        vo.setPoints(queryMapList(
-                """
-                select id, herb_id, herb_name, base_id, base_name, district_name, longitude, latitude
-                from herb_distribution
-                where coalesce(is_deleted, 0) = 0
-                limit 200
-                """,
-                "herb_distribution"));
+        vo.setDistrictStatistics(
+                queryMapList(
+                        """
+                        select coalesce(district, '未标注') as district_name,
+                               count(*) as point_count
+                        from herb_distribution
+                        where is_deleted = 0
+                        group by district
+                        order by point_count desc
+                        """,
+                        "herb_distribution"));
+        vo.setPoints(
+                queryMapList(
+                        """
+                        select d.id,
+                               d.species_id,
+                               s.herb_name,
+                               d.base_id,
+                               b.base_name,
+                               d.district as district_name,
+                               d.longitude,
+                               d.latitude
+                        from herb_distribution d
+                        left join herb_species s on s.id = d.species_id and s.is_deleted = 0
+                        left join herb_base b on b.id = d.base_id and b.is_deleted = 0
+                        where d.is_deleted = 0
+                        limit 200
+                        """,
+                        "herb_distribution"));
         return vo;
     }
 
@@ -270,8 +294,11 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     private String ownerFilter(
-            String tableName, String ownerColumn, DashboardQuery query, List<Object> params) {
-        if (isPrivilegedRole(query.getRoleType())) {
+            String tableName,
+            String ownerColumn,
+            String qualifiedOwnerColumn,
+            List<Object> params) {
+        if (isPrivilegedRole()) {
             return "";
         }
         if (!tableExists(tableName) || !columnExists(tableName, ownerColumn)) {
@@ -279,20 +306,20 @@ public class DashboardServiceImpl implements DashboardService {
         }
         Long currentUserId = CurrentUserUtils.currentUserId();
         if (currentUserId == null || currentUserId <= 0) {
-            return "";
+            return " and 1 = 0";
         }
         params.add(currentUserId);
-        return " and " + ownerColumn + " = ?";
+        return " and " + qualifiedOwnerColumn + " = ?";
     }
 
-    private boolean isPrivilegedRole(String roleType) {
-        if (roleType == null || roleType.isBlank()) {
-            return false;
-        }
-        return "ADMIN".equalsIgnoreCase(roleType)
-                || "REVIEWER".equalsIgnoreCase(roleType)
-                || "AUDITOR".equalsIgnoreCase(roleType)
-                || "TEACHER".equalsIgnoreCase(roleType);
+    private boolean isPrivilegedRole() {
+        return CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(
+                        roleCode ->
+                                "ADMIN".equalsIgnoreCase(roleCode)
+                                        || "REVIEWER".equalsIgnoreCase(roleCode)
+                                        || "AUDITOR".equalsIgnoreCase(roleCode)
+                                        || "TEACHER".equalsIgnoreCase(roleCode));
     }
 
     private boolean columnExists(String tableName, String columnName) {
@@ -328,7 +355,7 @@ public class DashboardServiceImpl implements DashboardService {
         entity.setBaseCount(toInt(summary.getBaseCount()));
         entity.setDistributionCount(toInt(summary.getMapPointCount()));
         entity.setGrowthRecordCount(toInt(summary.getGrowthRecordCount()));
-        entity.setPendingTaskCount(toInt(summary.getTotalPendingTaskCount()));
+        entity.setPendingReviewCount(toInt(summary.getTotalPendingTaskCount()));
         entity.setDashboardData(toJson(summary));
         entity.setUpdatedAt(LocalDateTime.now());
         if (entity.getId() == null) {

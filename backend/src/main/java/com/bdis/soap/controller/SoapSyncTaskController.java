@@ -1,7 +1,7 @@
 package com.bdis.soap.controller;
 
-import com.bdis.common.response.ApiResponse;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
+import com.bdis.common.core.Result;
 import com.bdis.soap.dto.SoapRetryDTO;
 import com.bdis.soap.dto.SoapSyncTaskDTO;
 import com.bdis.soap.query.SoapSyncTaskQuery;
@@ -27,23 +27,23 @@ public class SoapSyncTaskController {
     }
 
     @PostMapping
-    public ApiResponse<SoapExchangeRecordVO> create(@Valid @RequestBody SoapSyncTaskDTO dto) {
-        return ApiResponse.success(soapSyncTaskService.createAndExecute(dto));
+    public Result<SoapExchangeRecordVO> create(@Valid @RequestBody SoapSyncTaskDTO dto) {
+        return Result.success(soapSyncTaskService.createAndExecute(dto));
     }
 
     @GetMapping
-    public ApiResponse<PageResult<SoapSyncTaskVO>> page(@Valid SoapSyncTaskQuery query) {
-        return ApiResponse.success(soapSyncTaskService.page(query));
+    public Result<PageResult<SoapSyncTaskVO>> page(@Valid SoapSyncTaskQuery query) {
+        return Result.success(soapSyncTaskService.page(query));
     }
 
     @GetMapping("/{jobId}")
-    public ApiResponse<SoapExchangeRecordVO> detail(@PathVariable Long jobId) {
-        return ApiResponse.success(soapSyncTaskService.detail(jobId));
+    public Result<SoapExchangeRecordVO> detail(@PathVariable Long jobId) {
+        return Result.success(soapSyncTaskService.detail(jobId));
     }
 
     @PostMapping("/{jobId}/retries")
-    public ApiResponse<SoapExchangeRecordVO> retry(
+    public Result<SoapExchangeRecordVO> retry(
             @PathVariable Long jobId, @RequestBody(required = false) SoapRetryDTO dto) {
-        return ApiResponse.success(soapSyncTaskService.retry(jobId, dto));
+        return Result.success(soapSyncTaskService.retry(jobId, dto));
     }
 }

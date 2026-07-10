@@ -3,8 +3,8 @@ package com.bdis.audit.controller;
 import com.bdis.audit.query.DataSyncLogQuery;
 import com.bdis.audit.service.DataSyncLogService;
 import com.bdis.audit.vo.DataSyncLogVO;
-import com.bdis.common.response.ApiResponse;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
+import com.bdis.common.core.Result;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +21,7 @@ public class DataSyncLogController {
     }
 
     @GetMapping
-    public ApiResponse<PageResult<DataSyncLogVO>> page(@Valid DataSyncLogQuery query) {
-        return ApiResponse.success(dataSyncLogService.page(query));
+    public Result<PageResult<DataSyncLogVO>> page(@Valid DataSyncLogQuery query) {
+        return Result.success(dataSyncLogService.page(query));
     }
 }

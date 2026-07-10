@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
 import com.bdis.audit.dto.AuditRecordDTO;
-import com.bdis.audit.entity.OperationLogEntity;
-import com.bdis.audit.mapper.OperationLogMapper;
 import com.bdis.audit.service.impl.AuditLogServiceImpl;
+import com.bdis.modules.audit.entity.OperationLogEntity;
+import com.bdis.modules.audit.mapper.OperationLogMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

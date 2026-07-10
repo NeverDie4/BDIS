@@ -7,8 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Data
 public class FileUploadDTO {
 
-    @NotNull
-    private MultipartFile file;
+    @NotNull private MultipartFile file;
 
     private String fileType;
     private String bizType;

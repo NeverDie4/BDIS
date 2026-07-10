@@ -1,14 +1,14 @@
 package com.bdis.soap.query;
 
-import com.bdis.common.query.PageQuery;
+import com.bdis.common.core.BaseQuery;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class SoapSyncTaskQuery extends PageQuery {
+public class SoapSyncTaskQuery extends BaseQuery {
 
     private String resourceType;
-    private String status;
+    private String syncStatus;
     private String direction;
 }

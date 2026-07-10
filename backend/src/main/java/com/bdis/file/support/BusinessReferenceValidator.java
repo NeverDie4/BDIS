@@ -1,5 +1,6 @@
 package com.bdis.file.support;
 
+import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import org.springframework.stereotype.Component;
 
@@ -8,10 +9,10 @@ public class BusinessReferenceValidator {
 
     public void validate(String bizType, Long bizId) {
         if (bizType == null || bizType.isBlank()) {
-            throw new BusinessException("业务类型不能为空");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "业务类型不能为空");
         }
         if (bizId == null || bizId <= 0) {
-            throw new BusinessException("业务 ID 不合法");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "业务 ID 不合法");
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.bdis.soap.controller;
 
-import com.bdis.common.response.ApiResponse;
+import com.bdis.common.core.Result;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class SoapFieldMappingController {
 
     @GetMapping
-    public ApiResponse<List<Map<String, String>>> mappings() {
-        return ApiResponse.success(
+    public Result<List<Map<String, String>>> mappings() {
+        return Result.success(
                 List.of(
                         Map.of("xmlField", "externalNo", "businessField", "externalNo"),
                         Map.of("xmlField", "herbName", "businessField", "herbName"),

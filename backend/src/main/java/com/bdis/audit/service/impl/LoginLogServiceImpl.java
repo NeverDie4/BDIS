@@ -2,13 +2,13 @@ package com.bdis.audit.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.bdis.audit.entity.LoginLogEntity;
-import com.bdis.audit.mapper.LoginLogMapper;
 import com.bdis.audit.query.LoginLogQuery;
 import com.bdis.audit.service.LoginLogService;
 import com.bdis.audit.vo.LoginLogVO;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.modules.audit.entity.LoginLogEntity;
+import com.bdis.modules.audit.mapper.LoginLogMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.beans.BeanUtils;
@@ -29,7 +29,7 @@ public class LoginLogServiceImpl implements LoginLogService {
         entity.setUserId(userId);
         entity.setUsername(username);
         entity.setLoginResult(result);
-        entity.setFailureReason(failureReason);
+        entity.setFailReason(failureReason);
         entity.setIpAddress(CurrentUserUtils.currentIp());
         entity.setUserAgent(CurrentUserUtils.currentUserAgent());
         entity.setLoggedInAt(LocalDateTime.now());
@@ -38,21 +38,29 @@ public class LoginLogServiceImpl implements LoginLogService {
 
     @Override
     public PageResult<LoginLogVO> page(LoginLogQuery query) {
-        Page<LoginLogEntity> page = new Page<>(query.getPageNum(), query.getPageSize());
+        Page<LoginLogEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<LoginLogEntity> wrapper =
                 new LambdaQueryWrapper<LoginLogEntity>()
                         .eq(query.getUserId() != null, LoginLogEntity::getUserId, query.getUserId())
-                        .eq(query.getUsername() != null, LoginLogEntity::getUsername, query.getUsername())
-                        .eq(query.getLoginResult() != null, LoginLogEntity::getLoginResult, query.getLoginResult())
+                        .eq(
+                                query.getUsername() != null,
+                                LoginLogEntity::getUsername,
+                                query.getUsername())
+                        .eq(
+                                query.getLoginResult() != null,
+                                LoginLogEntity::getLoginResult,
+                                query.getLoginResult())
                         .orderByDesc(LoginLogEntity::getLoggedInAt);
         Page<LoginLogEntity> result = loginLogMapper.selectPage(page, wrapper);
         List<LoginLogVO> records =
                 result.getRecords().stream()
-                        .map(entity -> {
-                            LoginLogVO vo = new LoginLogVO();
-                            BeanUtils.copyProperties(entity, vo);
-                            return vo;
-                        })
+                        .map(
+                                entity -> {
+                                    LoginLogVO vo = new LoginLogVO();
+                                    BeanUtils.copyProperties(entity, vo);
+                                    vo.setFailureReason(entity.getFailReason());
+                                    return vo;
+                                })
                         .toList();
         return PageResult.of(records, result);
     }

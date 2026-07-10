@@ -1,19 +1,15 @@
 package com.bdis.common.exception;
 
+import com.bdis.common.enums.ResultCodeEnum;
+import lombok.Getter;
+
+@Getter
 public class BusinessException extends RuntimeException {
 
-    private final int code;
+    private final ResultCodeEnum resultCode;
 
-    public BusinessException(String message) {
-        this(400, message);
-    }
-
-    public BusinessException(int code, String message) {
+    public BusinessException(ResultCodeEnum resultCode, String message) {
         super(message);
-        this.code = code;
-    }
-
-    public int getCode() {
-        return code;
+        this.resultCode = resultCode;
     }
 }

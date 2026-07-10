@@ -7,11 +7,15 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
 public class AuditAspect {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuditAspect.class);
 
     private final AuditLogService auditLogService;
 
@@ -32,13 +36,21 @@ public class AuditAspect {
         try {
             Object result = joinPoint.proceed();
             dto.setOperationResult("SUCCESS");
-            auditLogService.record(dto);
+            recordSafely(dto);
             return result;
         } catch (Throwable throwable) {
             dto.setOperationResult("FAILED");
             dto.setErrorMessage(throwable.getMessage());
-            auditLogService.record(dto);
+            recordSafely(dto);
             throw throwable;
+        }
+    }
+
+    private void recordSafely(AuditRecordDTO dto) {
+        try {
+            auditLogService.record(dto);
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Failed to persist audit log", exception);
         }
     }
 }

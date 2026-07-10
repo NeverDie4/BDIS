@@ -2,7 +2,7 @@ package com.bdis.audit.service;
 
 import com.bdis.audit.query.LoginLogQuery;
 import com.bdis.audit.vo.LoginLogVO;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
 
 public interface LoginLogService {
 

@@ -1,16 +1,16 @@
 package com.bdis.dashboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.when;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.bdis.dashboard.mapper.DashboardSnapshotMapper;
 import com.bdis.dashboard.service.impl.DashboardServiceImpl;
 import com.bdis.dashboard.vo.DashboardSummaryVO;
+import com.bdis.modules.dashboard.mapper.DashboardSnapshotMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,11 +44,13 @@ class DashboardServiceImplTest {
                         eq(Long.class)))
                 .thenReturn(2L);
         when(jdbcTemplate.queryForObject(
-                        eq("select count(*) from herb_distribution where coalesce(is_deleted, 0) = 0"),
+                        eq(
+                                "select count(*) from herb_distribution where coalesce(is_deleted, 0) = 0"),
                         eq(Long.class)))
                 .thenReturn(5L);
         when(jdbcTemplate.queryForObject(
-                        eq("select count(*) from herb_growth_record where coalesce(is_deleted, 0) = 0"),
+                        eq(
+                                "select count(*) from herb_growth_record where coalesce(is_deleted, 0) = 0"),
                         eq(Long.class)))
                 .thenReturn(8L);
         when(jdbcTemplate.queryForObject(
@@ -56,7 +58,8 @@ class DashboardServiceImplTest {
                         eq(Long.class)))
                 .thenReturn(4L);
         when(jdbcTemplate.queryForObject(
-                        eq("select count(*) from sys_file_resource where coalesce(is_deleted, 0) = 0"),
+                        eq(
+                                "select count(*) from sys_file_resource where coalesce(is_deleted, 0) = 0"),
                         eq(Long.class)))
                 .thenReturn(7L);
         when(jdbcTemplate.queryForObject(

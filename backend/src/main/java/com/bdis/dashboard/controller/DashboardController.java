@@ -1,6 +1,6 @@
 package com.bdis.dashboard.controller;
 
-import com.bdis.common.response.ApiResponse;
+import com.bdis.common.core.Result;
 import com.bdis.dashboard.query.DashboardQuery;
 import com.bdis.dashboard.service.DashboardService;
 import com.bdis.dashboard.vo.DashboardMapVO;
@@ -24,23 +24,23 @@ public class DashboardController {
     }
 
     @GetMapping("/summary")
-    public ApiResponse<DashboardSummaryVO> summary() {
-        return ApiResponse.success(dashboardService.summary());
+    public Result<DashboardSummaryVO> summary() {
+        return Result.success(dashboardService.summary());
     }
 
     @GetMapping("/recent-growth-records")
-    public ApiResponse<List<DashboardRecentGrowthRecordVO>> recentGrowthRecords(
+    public Result<List<DashboardRecentGrowthRecordVO>> recentGrowthRecords(
             @Valid DashboardQuery query) {
-        return ApiResponse.success(dashboardService.recentGrowthRecords(query));
+        return Result.success(dashboardService.recentGrowthRecords(query));
     }
 
     @GetMapping("/pending-tasks")
-    public ApiResponse<List<DashboardTodoVO>> pendingTasks(@Valid DashboardQuery query) {
-        return ApiResponse.success(dashboardService.pendingTasks(query));
+    public Result<List<DashboardTodoVO>> pendingTasks(@Valid DashboardQuery query) {
+        return Result.success(dashboardService.pendingTasks(query));
     }
 
     @GetMapping("/map-overview")
-    public ApiResponse<DashboardMapVO> mapOverview() {
-        return ApiResponse.success(dashboardService.mapOverview());
+    public Result<DashboardMapVO> mapOverview() {
+        return Result.success(dashboardService.mapOverview());
     }
 }

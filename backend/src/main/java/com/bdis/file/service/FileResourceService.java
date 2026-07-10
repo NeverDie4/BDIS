@@ -1,10 +1,10 @@
 package com.bdis.file.service;
 
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
 import com.bdis.file.dto.FileUploadDTO;
 import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.vo.FileContentVO;
-import com.bdis.file.vo.FileResourceVO;
+import com.bdis.modules.file.vo.FileResourceVO;
 
 public interface FileResourceService {
 

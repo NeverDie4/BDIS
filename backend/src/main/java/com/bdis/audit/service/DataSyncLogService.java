@@ -3,7 +3,7 @@ package com.bdis.audit.service;
 import com.bdis.audit.dto.DataSyncRecordDTO;
 import com.bdis.audit.query.DataSyncLogQuery;
 import com.bdis.audit.vo.DataSyncLogVO;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
 
 public interface DataSyncLogService {
 

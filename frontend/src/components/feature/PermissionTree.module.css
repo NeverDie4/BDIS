@@ -1,0 +1,36 @@
+.card {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(var(--color-texture-rgb), 0.96), rgba(247, 241, 232, 0.9)),
+    var(--color-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.card h2 {
+  margin: 0 !important;
+  color: var(--color-title) !important;
+  font-family: var(--font-ui);
+  font-size: 20px !important;
+}
+
+.card p {
+  margin: var(--space-sm) 0 var(--space-md) !important;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  line-height: 1.8;
+}
+
+.card :global(.ant-tree-title) {
+  font-family: var(--font-ui);
+}
+
+.card :global(.ant-tree) {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.card :global(.ant-tree-node-content-wrapper:hover),
+.card :global(.ant-tree-node-selected) {
+  background: rgba(var(--color-primary-rgb), 0.08) !important;
+}

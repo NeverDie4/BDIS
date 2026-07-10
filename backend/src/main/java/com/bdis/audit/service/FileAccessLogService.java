@@ -3,7 +3,7 @@ package com.bdis.audit.service;
 import com.bdis.audit.dto.FileAccessRecordDTO;
 import com.bdis.audit.query.FileAccessLogQuery;
 import com.bdis.audit.vo.FileAccessLogVO;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
 
 public interface FileAccessLogService {
 

@@ -6,8 +6,7 @@ import lombok.Data;
 @Data
 public class SoapSyncTaskDTO {
 
-    @NotBlank
-    private String resourceType;
+    @NotBlank private String resourceType;
 
     private String serviceName;
     private String methodName;

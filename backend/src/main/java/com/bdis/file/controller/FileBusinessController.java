@@ -1,6 +1,6 @@
 package com.bdis.file.controller;
 
-import com.bdis.common.response.ApiResponse;
+import com.bdis.common.core.Result;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.vo.FileBusinessVO;
@@ -23,13 +23,13 @@ public class FileBusinessController {
     }
 
     @PostMapping
-    public ApiResponse<FileBusinessVO> bind(@Valid @RequestBody FileBusinessBindDTO dto) {
-        return ApiResponse.success(fileBusinessService.bind(dto));
+    public Result<FileBusinessVO> bind(@Valid @RequestBody FileBusinessBindDTO dto) {
+        return Result.success(fileBusinessService.bind(dto));
     }
 
     @DeleteMapping("/{relationId}")
-    public ApiResponse<Void> unbind(@PathVariable Long relationId) {
+    public Result<Void> unbind(@PathVariable Long relationId) {
         fileBusinessService.unbind(relationId);
-        return ApiResponse.success();
+        return Result.success();
     }
 }

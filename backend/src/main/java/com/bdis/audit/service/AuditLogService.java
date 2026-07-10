@@ -3,7 +3,7 @@ package com.bdis.audit.service;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.query.AuditLogQuery;
 import com.bdis.audit.vo.AuditLogVO;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
 
 public interface AuditLogService {
 

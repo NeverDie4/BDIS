@@ -1,40 +1,60 @@
 package com.bdis.common.exception;
 
-import com.bdis.common.response.ApiResponse;
-import jakarta.validation.ConstraintViolationException;
+import com.bdis.common.core.Result;
+import com.bdis.common.enums.ResultCodeEnum;
+import java.util.HashMap;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
-        HttpStatus status =
-                exception.getCode() == 404 ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
-        if (exception.getCode() == 500) {
-            status = HttpStatus.INTERNAL_SERVER_ERROR;
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Result<Map<String, String>>> handleValidation(
+            MethodArgumentNotValidException exception) {
+        Map<String, String> errors = new HashMap<>();
+        for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
+            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
-        return ResponseEntity.status(status)
-                .body(ApiResponse.error(exception.getCode(), exception.getMessage()));
+        return ResponseEntity.badRequest()
+                .body(Result.error(ResultCodeEnum.VALIDATION_ERROR, "请求参数错误", errors));
     }
 
-    @ExceptionHandler({
-        MethodArgumentNotValidException.class,
-        BindException.class,
-        ConstraintViolationException.class
-    })
-    public ResponseEntity<ApiResponse<Void>> handleValidationException(Exception exception) {
-        return ResponseEntity.badRequest().body(ApiResponse.error(400, "请求参数不合法"));
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Result<Void>> handleBusiness(BusinessException exception) {
+        HttpStatus status =
+                switch (exception.getResultCode()) {
+                    case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
+                    case FORBIDDEN -> HttpStatus.FORBIDDEN;
+                    case NOT_FOUND -> HttpStatus.NOT_FOUND;
+                    case CONFLICT -> HttpStatus.CONFLICT;
+                    case VALIDATION_ERROR -> HttpStatus.BAD_REQUEST;
+                    default -> HttpStatus.BAD_REQUEST;
+                };
+        return ResponseEntity.status(status)
+                .body(Result.error(exception.getResultCode(), exception.getMessage(), null));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Result<Void>> handleNoResource(NoResourceFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Result.error(ResultCodeEnum.NOT_FOUND, "资源不存在", null));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+    public ResponseEntity<Result<Void>> handleSystem(Exception exception) {
+        LOGGER.error("Unhandled system exception", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(500, "服务器内部错误"));
+                .body(Result.error(ResultCodeEnum.SYSTEM_ERROR, "系统异常", null));
     }
 }

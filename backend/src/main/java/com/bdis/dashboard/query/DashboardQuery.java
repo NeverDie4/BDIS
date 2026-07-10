@@ -12,6 +12,4 @@ public class DashboardQuery {
     private Integer limit = 10;
 
     private String type;
-
-    private String roleType;
 }

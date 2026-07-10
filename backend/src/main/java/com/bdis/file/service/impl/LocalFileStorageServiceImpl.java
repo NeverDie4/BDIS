@@ -20,7 +20,8 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
 
     private final Path storageRoot;
 
-    public LocalFileStorageServiceImpl(@Value("${bdis.file.storage-path:./storage}") String storagePath) {
+    public LocalFileStorageServiceImpl(
+            @Value("${bdis.file.storage-path:./storage}") String storagePath) {
         this.storageRoot = Path.of(storagePath).toAbsolutePath().normalize();
     }
 
@@ -31,7 +32,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
         }
         String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
         String storedName = UUID.randomUUID() + (extension == null ? "" : "." + extension);
-        Path relativeDir = Path.of(LocalDate.now().toString());
+        Path relativeDir = Path.of("uploads", LocalDate.now().toString());
         Path targetDir = storageRoot.resolve(relativeDir).normalize();
         Path targetPath = targetDir.resolve(storedName).normalize();
         if (!targetPath.startsWith(storageRoot)) {
@@ -44,11 +45,12 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
             throw new FileStorageException("文件保存失败", exception);
         }
         String storagePath = storageRoot.relativize(targetPath).toString().replace('\\', '/');
-        return new StoredFile(storedName, storagePath, "/files/" + storagePath);
+        return new StoredFile(storedName, storagePath, "/api/files/" + storagePath);
     }
 
     @Override
-    public FileContentVO load(String storagePath, String fileName, String contentType, Long fileSize) {
+    public FileContentVO load(
+            String storagePath, String fileName, String contentType, Long fileSize) {
         Path targetPath = storageRoot.resolve(storagePath).normalize();
         if (!targetPath.startsWith(storageRoot) || !Files.exists(targetPath)) {
             throw new FileStorageException("文件不存在或已不可访问");

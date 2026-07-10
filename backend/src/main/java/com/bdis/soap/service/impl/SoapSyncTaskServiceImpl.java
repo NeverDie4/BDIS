@@ -6,17 +6,18 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.dto.DataSyncRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.service.DataSyncLogService;
+import com.bdis.common.core.PageResult;
+import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ResourceNotFoundException;
-import com.bdis.common.response.PageResult;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.modules.soap.entity.SoapExchangeRecordEntity;
+import com.bdis.modules.soap.entity.SoapSyncTaskEntity;
+import com.bdis.modules.soap.mapper.SoapExchangeRecordMapper;
+import com.bdis.modules.soap.mapper.SoapSyncTaskMapper;
 import com.bdis.soap.component.SoapClient;
 import com.bdis.soap.dto.SoapRetryDTO;
 import com.bdis.soap.dto.SoapSyncTaskDTO;
-import com.bdis.soap.entity.SoapExchangeRecordEntity;
-import com.bdis.soap.entity.SoapSyncTaskEntity;
-import com.bdis.soap.mapper.SoapExchangeRecordMapper;
-import com.bdis.soap.mapper.SoapSyncTaskMapper;
 import com.bdis.soap.query.SoapSyncTaskQuery;
 import com.bdis.soap.service.SoapImportService;
 import com.bdis.soap.service.SoapSyncTaskService;
@@ -64,6 +65,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
     public SoapExchangeRecordVO createAndExecute(SoapSyncTaskDTO dto) {
         SoapSyncTaskEntity task = new SoapSyncTaskEntity();
         task.setTaskNo("SOAP-" + UUID.randomUUID());
+        task.setTaskName(dto.getResourceType());
         task.setResourceType(dto.getResourceType());
         task.setServiceName(defaultValue(dto.getServiceName(), "MockHerbService"));
         task.setMethodName(defaultValue(dto.getMethodName(), "syncGrowthRecord"));
@@ -85,12 +87,21 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
 
     @Override
     public PageResult<SoapSyncTaskVO> page(SoapSyncTaskQuery query) {
-        Page<SoapSyncTaskEntity> page = new Page<>(query.getPageNum(), query.getPageSize());
+        Page<SoapSyncTaskEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<SoapSyncTaskEntity> wrapper =
                 new LambdaQueryWrapper<SoapSyncTaskEntity>()
-                        .eq(query.getResourceType() != null, SoapSyncTaskEntity::getResourceType, query.getResourceType())
-                        .eq(query.getStatus() != null, SoapSyncTaskEntity::getSyncStatus, query.getStatus())
-                        .eq(query.getDirection() != null, SoapSyncTaskEntity::getSyncDirection, query.getDirection())
+                        .eq(
+                                query.getResourceType() != null,
+                                SoapSyncTaskEntity::getResourceType,
+                                query.getResourceType())
+                        .eq(
+                                query.getSyncStatus() != null,
+                                SoapSyncTaskEntity::getSyncStatus,
+                                query.getSyncStatus())
+                        .eq(
+                                query.getDirection() != null,
+                                SoapSyncTaskEntity::getSyncDirection,
+                                query.getDirection())
                         .orderByDesc(SoapSyncTaskEntity::getCreatedAt);
         Page<SoapSyncTaskEntity> result = taskMapper.selectPage(page, wrapper);
         List<SoapSyncTaskVO> records = result.getRecords().stream().map(this::toTaskVO).toList();
@@ -119,7 +130,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
             throw new ResourceNotFoundException("SOAP 任务不存在");
         }
         if (!"FAILED".equals(task.getSyncStatus())) {
-            throw new BusinessException("只有失败任务可以重试");
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "只有失败任务可以重试");
         }
         task.setRetryCount(task.getRetryCount() == null ? 1 : task.getRetryCount() + 1);
         task.setSyncStatus("PENDING");
@@ -142,7 +153,8 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
                     requestXml != null && !requestXml.isBlank()
                             ? requestXml
                             : soapClient.mockResponse(task.getResourceType());
-            importResult = soapImportService.parseAndPrepareImport(task.getResourceType(), responseXml);
+            importResult =
+                    soapImportService.parseAndPrepareImport(task.getResourceType(), responseXml);
             parsedPayload = objectMapper.writeValueAsString(importResult.getParsedData());
             task.setSyncStatus("SUCCESS");
         } catch (Exception exception) {
@@ -160,7 +172,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         record.setMethodName(task.getMethodName());
         record.setRequestXml(requestXml);
         record.setResponseXml(responseXml);
-        record.setExchangeStatus(status);
+        record.setSyncStatus(status);
         record.setErrorMessage(errorMessage);
         record.setParsedPayload(parsedPayload);
         record.setCalledBy(CurrentUserUtils.currentUserId());
@@ -186,12 +198,19 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         dto.setTargetType("BUSINESS_IMPORT");
         dto.setTaskId(task.getId());
         dto.setExchangeId(record.getId());
-        dto.setBusinessType(importResult == null ? "herb_growth_record" : importResult.getBusinessType());
+        dto.setBusinessType(
+                importResult == null ? "herb_growth_record" : importResult.getBusinessType());
         dto.setBusinessId(importResult == null ? null : importResult.getBusinessId());
         dto.setExternalNo(importResult == null ? null : importResult.getExternalNo());
         dto.setSyncStatus(importResult == null ? status : importResult.getStatus());
-        dto.setSuccessCount(importResult == null ? ("SUCCESS".equals(status) ? 1 : 0) : importResult.getSuccessCount());
-        dto.setFailureCount(importResult == null ? ("FAILED".equals(status) ? 1 : 0) : importResult.getFailureCount());
+        dto.setSuccessCount(
+                importResult == null
+                        ? ("SUCCESS".equals(status) ? 1 : 0)
+                        : importResult.getSuccessCount());
+        dto.setFailureCount(
+                importResult == null
+                        ? ("FAILED".equals(status) ? 1 : 0)
+                        : importResult.getFailureCount());
         dto.setFailureReason(failureReason);
         dataSyncLogService.record(dto);
     }
@@ -214,6 +233,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
     private SoapExchangeRecordVO toExchangeVO(SoapExchangeRecordEntity entity) {
         SoapExchangeRecordVO vo = new SoapExchangeRecordVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setExchangeStatus(entity.getSyncStatus());
         return vo;
     }
 

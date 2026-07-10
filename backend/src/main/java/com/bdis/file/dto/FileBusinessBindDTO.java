@@ -7,14 +7,11 @@ import lombok.Data;
 @Data
 public class FileBusinessBindDTO {
 
-    @NotNull
-    private Long fileId;
+    @NotNull private Long fileId;
 
-    @NotBlank
-    private String bizType;
+    @NotBlank private String bizType;
 
-    @NotNull
-    private Long bizId;
+    @NotNull private Long bizId;
 
     private String fileUsage;
     private String remark;

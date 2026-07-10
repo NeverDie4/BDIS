@@ -3,14 +3,14 @@ package com.bdis.audit.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.dto.AuditRecordDTO;
-import com.bdis.audit.entity.OperationLogEntity;
-import com.bdis.audit.mapper.OperationLogMapper;
 import com.bdis.audit.query.AuditLogQuery;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.vo.AuditLogVO;
+import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.ResourceNotFoundException;
-import com.bdis.common.response.PageResult;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.modules.audit.entity.OperationLogEntity;
+import com.bdis.modules.audit.mapper.OperationLogMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.beans.BeanUtils;
@@ -46,14 +46,29 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     @Override
     public PageResult<AuditLogVO> page(AuditLogQuery query) {
-        Page<OperationLogEntity> page = new Page<>(query.getPageNum(), query.getPageSize());
+        Page<OperationLogEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<OperationLogEntity> wrapper =
                 new LambdaQueryWrapper<OperationLogEntity>()
-                        .eq(query.getOperatorId() != null, OperationLogEntity::getOperatorId, query.getOperatorId())
-                        .eq(query.getBizId() != null, OperationLogEntity::getBizId, query.getBizId())
-                        .eq(query.getOperationModule() != null, OperationLogEntity::getOperationModule, query.getOperationModule())
-                        .eq(query.getOperationType() != null, OperationLogEntity::getOperationType, query.getOperationType())
-                        .eq(query.getBizType() != null, OperationLogEntity::getBizType, query.getBizType())
+                        .eq(
+                                query.getOperatorId() != null,
+                                OperationLogEntity::getOperatorId,
+                                query.getOperatorId())
+                        .eq(
+                                query.getBizId() != null,
+                                OperationLogEntity::getBizId,
+                                query.getBizId())
+                        .eq(
+                                query.getOperationModule() != null,
+                                OperationLogEntity::getOperationModule,
+                                query.getOperationModule())
+                        .eq(
+                                query.getOperationType() != null,
+                                OperationLogEntity::getOperationType,
+                                query.getOperationType())
+                        .eq(
+                                query.getBizType() != null,
+                                OperationLogEntity::getBizType,
+                                query.getBizType())
                         .orderByDesc(OperationLogEntity::getOperationTime);
         Page<OperationLogEntity> result = operationLogMapper.selectPage(page, wrapper);
         List<AuditLogVO> records = result.getRecords().stream().map(this::toVO).toList();

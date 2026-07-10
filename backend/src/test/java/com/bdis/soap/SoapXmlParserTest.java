@@ -46,4 +46,15 @@ class SoapXmlParserTest {
                 SoapExchangeException.class,
                 () -> soapXmlParser.parseGrowthRecord("<Envelope><Body>"));
     }
+
+    @Test
+    void parseGrowthRecordShouldRejectDoctype() {
+        String xml =
+                """
+                <!DOCTYPE Envelope [<!ENTITY external SYSTEM "file:///etc/passwd">]>
+                <Envelope><Body><externalNo>&external;</externalNo></Body></Envelope>
+                """;
+
+        assertThrows(SoapExchangeException.class, () -> soapXmlParser.parseGrowthRecord(xml));
+    }
 }

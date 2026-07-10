@@ -29,10 +29,15 @@ public class SoapImportServiceImpl implements SoapImportService {
                 importHandlers.stream()
                         .filter(handler -> handler.supports(resourceType))
                         .findFirst()
-                        .map(handler -> handler.importData(toContext(resourceType, responseXml, parsedData)))
-                        .orElseGet(() -> SoapBusinessImportResult.prepared(
-                                text(parsedData, "externalNo"),
-                                "SOAP 数据已解析；待 M09 生长采集 Service 接入后可直接导入。"));
+                        .map(
+                                handler ->
+                                        handler.importData(
+                                                toContext(resourceType, responseXml, parsedData)))
+                        .orElseGet(
+                                () ->
+                                        SoapBusinessImportResult.prepared(
+                                                text(parsedData, "externalNo"),
+                                                "SOAP 数据已解析；待 M09 生长采集 Service 接入后可直接导入。"));
         SoapImportResultVO result = new SoapImportResultVO();
         result.setResourceType(resourceType);
         result.setStatus(importResult.getStatus());

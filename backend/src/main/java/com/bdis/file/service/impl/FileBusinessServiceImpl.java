@@ -6,21 +6,26 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
-import com.bdis.file.entity.FileBusinessEntity;
-import com.bdis.file.entity.FileResourceEntity;
-import com.bdis.file.mapper.FileBusinessMapper;
-import com.bdis.file.mapper.FileResourceMapper;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.file.vo.FileBusinessVO;
-import com.bdis.file.vo.FileResourceVO;
+import com.bdis.modules.file.entity.FileBusinessEntity;
+import com.bdis.modules.file.entity.FileResourceEntity;
+import com.bdis.modules.file.mapper.FileBusinessMapper;
+import com.bdis.modules.file.mapper.FileResourceMapper;
+import com.bdis.modules.file.vo.FileResourceVO;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FileBusinessServiceImpl implements FileBusinessService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileBusinessServiceImpl.class);
 
     private final FileBusinessMapper fileBusinessMapper;
     private final FileResourceMapper fileResourceMapper;
@@ -39,6 +44,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
+    @Transactional
     public FileBusinessVO bind(FileBusinessBindDTO dto) {
         businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
         if (fileResourceMapper.selectById(dto.getFileId()) == null) {
@@ -67,6 +73,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
+    @Transactional
     public void unbind(Long relationId) {
         FileBusinessEntity entity = fileBusinessMapper.selectById(relationId);
         if (entity == null) {
@@ -74,6 +81,13 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         }
         fileBusinessMapper.deleteById(relationId);
         recordAudit("UNBIND", entity.getBizType(), entity.getBizId());
+    }
+
+    @Override
+    public void deleteByFileId(Long fileId) {
+        fileBusinessMapper.delete(
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getFileId, fileId));
     }
 
     @Override
@@ -110,6 +124,10 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         audit.setOperationType(operationType);
         audit.setBizType(bizType);
         audit.setBizId(bizId);
-        auditLogService.record(audit);
+        try {
+            auditLogService.record(audit);
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Failed to persist file business audit log", exception);
+        }
     }
 }

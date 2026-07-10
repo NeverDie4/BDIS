@@ -11,12 +11,12 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.dto.DataSyncRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.service.DataSyncLogService;
+import com.bdis.modules.soap.entity.SoapExchangeRecordEntity;
+import com.bdis.modules.soap.entity.SoapSyncTaskEntity;
+import com.bdis.modules.soap.mapper.SoapExchangeRecordMapper;
+import com.bdis.modules.soap.mapper.SoapSyncTaskMapper;
 import com.bdis.soap.component.SoapClient;
 import com.bdis.soap.dto.SoapSyncTaskDTO;
-import com.bdis.soap.entity.SoapExchangeRecordEntity;
-import com.bdis.soap.entity.SoapSyncTaskEntity;
-import com.bdis.soap.mapper.SoapExchangeRecordMapper;
-import com.bdis.soap.mapper.SoapSyncTaskMapper;
 import com.bdis.soap.service.SoapImportService;
 import com.bdis.soap.service.impl.SoapSyncTaskServiceImpl;
 import com.bdis.soap.vo.SoapExchangeRecordVO;
@@ -50,18 +50,20 @@ class SoapSyncTaskServiceImplTest {
                         dataSyncLogService,
                         auditLogService,
                         new ObjectMapper());
-        doAnswer(invocation -> {
-                    SoapSyncTaskEntity task = invocation.getArgument(0);
-                    task.setId(10L);
-                    return 1;
-                })
+        doAnswer(
+                        invocation -> {
+                            SoapSyncTaskEntity task = invocation.getArgument(0);
+                            task.setId(10L);
+                            return 1;
+                        })
                 .when(taskMapper)
                 .insert(any(SoapSyncTaskEntity.class));
-        doAnswer(invocation -> {
-                    SoapExchangeRecordEntity record = invocation.getArgument(0);
-                    record.setId(20L);
-                    return 1;
-                })
+        doAnswer(
+                        invocation -> {
+                            SoapExchangeRecordEntity record = invocation.getArgument(0);
+                            record.setId(20L);
+                            return 1;
+                        })
                 .when(exchangeRecordMapper)
                 .insert(any(SoapExchangeRecordEntity.class));
         when(soapClient.mockResponse("GROWTH_RECORD")).thenReturn("<Envelope/>");
@@ -91,8 +93,7 @@ class SoapSyncTaskServiceImplTest {
         assertThat(sync.getBusinessId()).isEqualTo(30L);
         assertThat(sync.getExternalNo()).isEqualTo("SOAP-001");
         assertThat(sync.getSyncStatus()).isEqualTo("IMPORTED");
-        ArgumentCaptor<AuditRecordDTO> auditCaptor =
-                ArgumentCaptor.forClass(AuditRecordDTO.class);
+        ArgumentCaptor<AuditRecordDTO> auditCaptor = ArgumentCaptor.forClass(AuditRecordDTO.class);
         verify(auditLogService, times(2)).record(auditCaptor.capture());
         assertThat(auditCaptor.getAllValues())
                 .extracting(AuditRecordDTO::getOperationType)

@@ -1,12 +1,12 @@
 package com.bdis.file.controller;
 
-import com.bdis.common.response.ApiResponse;
-import com.bdis.common.response.PageResult;
+import com.bdis.common.core.PageResult;
+import com.bdis.common.core.Result;
 import com.bdis.file.dto.FileUploadDTO;
 import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileResourceService;
 import com.bdis.file.vo.FileContentVO;
-import com.bdis.file.vo.FileResourceVO;
+import com.bdis.modules.file.vo.FileResourceVO;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import org.springframework.core.io.Resource;
@@ -33,25 +33,26 @@ public class FileResourceController {
         this.fileResourceService = fileResourceService;
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<FileResourceVO> upload(@Valid @ModelAttribute FileUploadDTO dto) {
-        return ApiResponse.success(fileResourceService.upload(dto));
+    @PostMapping(
+            path = {"", "/upload"},
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<FileResourceVO> upload(@Valid @ModelAttribute FileUploadDTO dto) {
+        return Result.success(fileResourceService.upload(dto));
     }
 
     @GetMapping
-    public ApiResponse<PageResult<FileResourceVO>> page(@Valid FileResourceQuery query) {
-        return ApiResponse.success(fileResourceService.page(query));
+    public Result<PageResult<FileResourceVO>> page(@Valid FileResourceQuery query) {
+        return Result.success(fileResourceService.page(query));
     }
 
     @GetMapping("/{fileId}")
-    public ApiResponse<FileResourceVO> detail(@PathVariable Long fileId) {
-        return ApiResponse.success(fileResourceService.detail(fileId));
+    public Result<FileResourceVO> detail(@PathVariable Long fileId) {
+        return Result.success(fileResourceService.detail(fileId));
     }
 
     @GetMapping("/{fileId}/content")
     public ResponseEntity<Resource> content(
-            @PathVariable Long fileId,
-            @RequestParam(defaultValue = "inline") String disposition) {
+            @PathVariable Long fileId, @RequestParam(defaultValue = "inline") String disposition) {
         FileContentVO content = fileResourceService.content(fileId, disposition);
         ContentDisposition contentDisposition =
                 ("attachment".equalsIgnoreCase(disposition)
@@ -60,17 +61,18 @@ public class FileResourceController {
                         .filename(content.getFileName(), StandardCharsets.UTF_8)
                         .build();
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(
-                        content.getContentType() == null
-                                ? MediaType.APPLICATION_OCTET_STREAM_VALUE
-                                : content.getContentType()))
+                .contentType(
+                        MediaType.parseMediaType(
+                                content.getContentType() == null
+                                        ? MediaType.APPLICATION_OCTET_STREAM_VALUE
+                                        : content.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
                 .body(content.getResource());
     }
 
     @DeleteMapping("/{fileId}")
-    public ApiResponse<Void> delete(@PathVariable Long fileId) {
+    public Result<Void> delete(@PathVariable Long fileId) {
         fileResourceService.delete(fileId);
-        return ApiResponse.success();
+        return Result.success();
     }
 }
