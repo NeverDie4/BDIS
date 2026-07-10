@@ -25,11 +25,17 @@ public class FileResourceEntity extends BaseEntity {
 
     private String fileUrl;
 
+    private String storagePath;
+
     private String thumbnailUrl;
 
     private String storageType;
 
+    private String contentType;
+
     private Long uploaderId;
+
+    private String uploaderName;
 
     private LocalDateTime uploadedAt;
 }

@@ -28,5 +28,11 @@ public class FileResourceVO {
 
     private String storageType;
 
+    private String contentType;
+
     private LocalDateTime uploadedAt;
+
+    private Long uploaderId;
+
+    private String uploaderName;
 }

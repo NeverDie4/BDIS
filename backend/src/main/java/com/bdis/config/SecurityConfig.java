@@ -77,7 +77,7 @@ public class SecurityConfig {
                                                 }))
                 .authorizeHttpRequests(
                         requests ->
-                                requests.requestMatchers(HttpMethod.GET, "/files/**")
+                                requests.requestMatchers(HttpMethod.GET, "/files/uploads/**")
                                         .permitAll()
                                         .requestMatchers(
                                                 "/auth/sessions",
