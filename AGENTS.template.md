@@ -1,25 +1,22 @@
 # BDIS AI Agent Rule Template
 
-## 11. Security correction rules
-
-- User-private data must be scoped to the authenticated user ID from the JWT/security context. Never trust a client-supplied userId for ownership checks, and verify resource ownership before read, update, or delete operations.
 本文件是团队 AI 开发规则模板。请根据所使用的工具复制到对应位置后再使用，不要直接把个人规则文件提交到 Git。
 
 ## 1. 项目身份
 
 - 项目名称：BDIS。
 - 中文名称：生物医药数字信息系统。
-- 当前阶段：项目初始化与小组协作开发准备阶段。
 - 技术栈：Next.js + TypeScript 前端，Spring Boot + Java 21 后端，MySQL 8.0.x，Redis，Docker Compose + nginx。
 
 ## 2. 工作原则
 
 1. 先读后改：修改前先阅读相关文件、`README.md` 和 `docs` 中对应规范。
-2. 保持初始化边界：类设计、数据库表结构、接口字段尚未由小组确认时，不得擅自生成业务类、实体类、表结构、迁移脚本或测试数据。
-3. 小步修改：一次任务只处理明确目标，不做无关重构。
-4. 不覆盖成员改动：修改前检查 `git status`，发现不属于当前任务的改动时保留。
-5. 配置隔离：不得提交 `.env`、`frontend/.env.local`、密码、Token、个人路径或本地 IDE 配置。
-6. 跨平台优先：脚本优先使用 Node.js / pnpm，避免只适用于 Linux 或 Windows 的写法。
+2. 小步修改：一次任务只处理明确目标，不做无关重构。
+3. 保护成员改动：修改前检查 `git status`，不覆盖不属于当前任务的改动。
+4. 配置隔离：不得提交 `.env`、`frontend/.env.local`、密钥、Token、个人路径或本地 IDE 配置。
+5. 数据安全：用户私有数据必须使用 JWT/security context 中的当前用户身份校验，不信任客户端传入的 `userId`。
+6. 权限优先：读取、修改、删除资源前必须校验资源所有权、数据范围或管理权限。
+7. 跨平台优先：脚本优先使用 Node.js / pnpm，避免只适用于单一操作系统的写法。
 
 ## 3. 必读文档
 
@@ -35,7 +32,7 @@
 
 所有命令默认在项目根目录执行。
 
-```bash
+```powershell
 pnpm setup
 pnpm check
 pnpm validate
@@ -47,30 +44,22 @@ pnpm compose:up
 pnpm compose:down
 ```
 
-任务完成前，优先执行：
-
-```bash
-pnpm validate
-pnpm clean
-```
-
 如果只修改文档，可不强制运行完整构建，但应说明未运行的原因。
 
 ## 5. 允许做的事
 
-- 修改 README、docs、配置模板、脚本说明等初始化资料。
+- 修改 README、docs、配置模板、脚本说明等资料。
 - 调整工程化配置、跨平台脚本、lint/build/test 命令。
-- 修复项目启动、构建、依赖、环境变量读取等初始化问题。
-- 根据已确认的文档补充轻量占位页面、健康检查、配置说明。
+- 修复项目启动、构建、依赖、环境变量读取等问题。
+- 根据已确认的设计补充页面、接口、配置说明和测试说明。
 
 ## 6. 禁止擅自做的事
 
-- 不得设计或创建具体业务数据库表。
-- 不得生成 Entity、Mapper、Service、Controller 等业务实现骨架，除非任务明确要求且设计已确认。
-- 不得写死数据库账号、密码、Token、绝对路径。
+- 不得写死数据库账号、密码、Token、API Key 或个人绝对路径。
 - 不得删除或重写他人成果。
 - 不得把 `.env`、构建产物、日志、缓存提交到 Git。
 - 不得为了通过检查而降低 lint、类型检查、测试或安全配置。
+- 未经确认不得扩大需求范围或引入无关重构。
 
 ## 7. 前端约定
 
@@ -84,9 +73,9 @@ pnpm clean
 
 - 后端目录：`backend/`。
 - 使用 Java 21、Spring Boot、Maven。
-- Maven 命令优先通过根目录脚本执行，确保使用 Java 21。
-- 后端配置通过环境变量和 `.env` 注入，不在 `application.yml` 中写个人账号密码。
-- Flyway 当前默认关闭，数据库设计确认前不新增迁移脚本。
+- 后端配置通过环境变量和 `.env` 注入，不在 `application.yml` 写个人账号密码。
+- Flyway 迁移脚本必须和数据库设计文档保持一致。
+- 涉及登录用户数据的接口必须进行身份、权限或数据范围校验。
 
 ## 9. 文档约定
 
@@ -105,7 +94,3 @@ pnpm clean
 4. 是否有未完成事项、风险或需要小组确认的点。
 
 如果任务失败，说明失败命令、失败原因和建议处理方式。
-
-## 11. 用户连续执行授权
-
-- 当用户明确要求后续任务无需拆分并直接连续完成时，可一次完成超过 3 个文件的修改，无需按文件数量暂停确认。

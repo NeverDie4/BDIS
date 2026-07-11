@@ -1,6 +1,7 @@
 package com.bdis.modules.assistant.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public class HerbAiChatMessage {
     private Long id;
 
     private String sessionId;
+    private Long userId;
     private String role;
     private String content;
     private String modelName;
@@ -24,5 +26,7 @@ public class HerbAiChatMessage {
     private String errorMessage;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+
+    @TableField("is_deleted")
     private Integer deleted;
 }

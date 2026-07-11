@@ -3,18 +3,18 @@ package com.bdis.modules.assistant.knowledge.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bdis.modules.assistant.knowledge.config.HerbAssistantRagProperties;
 import com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeChunk;
 import com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeDoc;
 import com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeChunkMapper;
 import com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeDocMapper;
 import com.bdis.modules.assistant.knowledge.service.impl.HerbAiKnowledgeEmbeddingServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,8 +72,11 @@ class HerbAiKnowledgeEmbeddingServiceImplTest {
         ArgumentCaptor<HerbAiKnowledgeChunk> captor =
                 ArgumentCaptor.forClass(HerbAiKnowledgeChunk.class);
         verify(chunkMapper, atLeastOnce()).insert(captor.capture());
-        assertThat(captor.getAllValues()).extracting(HerbAiKnowledgeChunk::getChunkIndex).contains(1);
-        assertThat(captor.getAllValues()).allSatisfy(chunk -> assertThat(chunk.getContentHash()).hasSize(64));
+        assertThat(captor.getAllValues())
+                .extracting(HerbAiKnowledgeChunk::getChunkIndex)
+                .contains(1);
+        assertThat(captor.getAllValues())
+                .allSatisfy(chunk -> assertThat(chunk.getContentHash()).hasSize(64));
         assertThat(captor.getAllValues().get(0).getMetadataJson()).contains("\"docId\":1");
     }
 

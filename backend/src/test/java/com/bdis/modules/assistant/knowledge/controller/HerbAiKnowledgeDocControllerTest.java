@@ -2,6 +2,7 @@ package com.bdis.modules.assistant.knowledge.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,6 +18,7 @@ import com.bdis.modules.assistant.knowledge.service.HerbAiKnowledgeEmbeddingServ
 import com.bdis.modules.assistant.knowledge.vo.HerbAiKnowledgeDocVO;
 import com.bdis.modules.assistant.knowledge.vo.HerbKnowledgeChunkRebuildResultVO;
 import com.bdis.modules.assistant.knowledge.vo.HerbKnowledgeEmbeddingBuildResultVO;
+import com.bdis.modules.permission.service.AuthorizationService;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,7 @@ class HerbAiKnowledgeDocControllerTest {
 
     @Mock private HerbAiKnowledgeDocService service;
     @Mock private HerbAiKnowledgeEmbeddingService embeddingService;
+    @Mock private AuthorizationService authorizationService;
 
     private MockMvc mockMvc;
 
@@ -39,8 +42,10 @@ class HerbAiKnowledgeDocControllerTest {
     void setUp() {
         mockMvc =
                 MockMvcBuilders.standaloneSetup(
-                                new HerbAiKnowledgeDocController(service, embeddingService),
-                                new HerbAiKnowledgeEmbeddingController(embeddingService))
+                                new HerbAiKnowledgeDocController(
+                                        service, embeddingService, authorizationService),
+                                new HerbAiKnowledgeEmbeddingController(
+                                        embeddingService, authorizationService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }
@@ -60,6 +65,7 @@ class HerbAiKnowledgeDocControllerTest {
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.id").value(1))
                 .andExpect(jsonPath("$.data.docCode").value("DOC_001"));
+        verify(authorizationService).requirePermission("herb:assistant:knowledge:manage");
     }
 
     @Test
@@ -92,6 +98,7 @@ class HerbAiKnowledgeDocControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.records[0].docType").value("rule"));
+        verify(authorizationService).requirePermission("herb:assistant:knowledge:view");
     }
 
     @Test
@@ -106,12 +113,9 @@ class HerbAiKnowledgeDocControllerTest {
         when(embeddingService.buildPending())
                 .thenReturn(new HerbKnowledgeEmbeddingBuildResultVO(1, 1, 0, true, List.of()));
 
-        mockMvc.perform(put("/herb/assistant/knowledge/docs/1/enable"))
-                .andExpect(status().isOk());
-        mockMvc.perform(put("/herb/assistant/knowledge/docs/1/disable"))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/herb/assistant/knowledge/docs/1/chunks"))
-                .andExpect(status().isOk());
+        mockMvc.perform(put("/herb/assistant/knowledge/docs/1/enable")).andExpect(status().isOk());
+        mockMvc.perform(put("/herb/assistant/knowledge/docs/1/disable")).andExpect(status().isOk());
+        mockMvc.perform(get("/herb/assistant/knowledge/docs/1/chunks")).andExpect(status().isOk());
         mockMvc.perform(post("/herb/assistant/knowledge/docs/1/chunks/rebuild"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.chunkCount").value(2));
@@ -123,8 +127,7 @@ class HerbAiKnowledgeDocControllerTest {
                 .andExpect(jsonPath("$.data.total").value(1));
         mockMvc.perform(delete("/herb/assistant/knowledge/docs/1/embedding"))
                 .andExpect(status().isOk());
-        mockMvc.perform(delete("/herb/assistant/knowledge/docs/1"))
-                .andExpect(status().isOk());
+        mockMvc.perform(delete("/herb/assistant/knowledge/docs/1")).andExpect(status().isOk());
     }
 
     private HerbAiKnowledgeDocVO docVO() {

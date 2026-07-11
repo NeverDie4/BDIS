@@ -2,16 +2,16 @@ package com.bdis.modules.assistant.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.GlobalExceptionHandler;
 import com.bdis.modules.assistant.dto.HerbAssistantChatResponse;
-import com.bdis.modules.assistant.service.HerbAssistantService;
 import com.bdis.modules.assistant.service.HerbAiChatHistoryService;
-import com.bdis.common.core.PageResult;
+import com.bdis.modules.assistant.service.HerbAssistantService;
 import com.bdis.modules.assistant.vo.HerbAssistantBatchExplainResponse;
 import com.bdis.modules.assistant.vo.HerbAssistantImageExplainResponse;
 import java.util.List;
@@ -113,8 +113,7 @@ class HerbAssistantControllerTest {
 
     @Test
     void sessionsReturnsUnifiedPageResult() throws Exception {
-        when(historyService.listSessions(any()))
-                .thenReturn(new PageResult<>(List.of(), 1, 10, 0));
+        when(historyService.listSessions(any())).thenReturn(new PageResult<>(List.of(), 1, 10, 0));
 
         mockMvc.perform(get("/herb/assistant/sessions").param("pageNum", "1"))
                 .andExpect(status().isOk())

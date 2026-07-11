@@ -18,8 +18,7 @@ public final class HerbTextChunkUtils {
         if (!StringUtils.hasText(content)) {
             return List.of();
         }
-        String normalized =
-                content.replace("\r\n", "\n").replace('\r', '\n').trim();
+        String normalized = content.replace("\r\n", "\n").replace('\r', '\n').trim();
         List<String> chunks = new ArrayList<>();
         int start = 0;
         while (start < normalized.length()) {
@@ -39,7 +38,8 @@ public final class HerbTextChunkUtils {
             }
             int nextStart = Math.max(0, end - overlap);
             start = nextStart > start ? nextStart : end;
-            while (start < normalized.length() && Character.isWhitespace(normalized.charAt(start))) {
+            while (start < normalized.length()
+                    && Character.isWhitespace(normalized.charAt(start))) {
                 start++;
             }
         }
@@ -49,7 +49,8 @@ public final class HerbTextChunkUtils {
     public static String sha256(String content) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(content.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(digest.digest(content.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
         }

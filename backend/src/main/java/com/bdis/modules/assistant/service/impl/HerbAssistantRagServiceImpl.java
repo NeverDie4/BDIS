@@ -7,6 +7,7 @@ import com.bdis.modules.assistant.dto.HerbAssistantChatRequest;
 import com.bdis.modules.assistant.dto.HerbAssistantRagChatRequest;
 import com.bdis.modules.assistant.knowledge.config.HerbAssistantRagProperties;
 import com.bdis.modules.assistant.knowledge.constant.HerbAiKnowledgeStatusConstants;
+import com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeChunk;
 import com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeDoc;
 import com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeChunkMapper;
 import com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeDocMapper;
@@ -41,8 +42,7 @@ public class HerbAssistantRagServiceImpl implements HerbAssistantRagService {
             "你是生物医药数字信息系统的 AI 小助手。请优先根据“知识库检索内容”回答用户问题。"
                     + "不要编造知识库中没有的信息。如果检索内容不足，请明确说明，并给出基于系统流程的保守建议。";
 
-    private static final String NO_CONTEXT_ANSWER =
-            "知识库中暂未检索到相关内容，请补充文档或换个问题。";
+    private static final String NO_CONTEXT_ANSWER = "知识库中暂未检索到相关内容，请补充文档或换个问题。";
 
     private static final int DEFAULT_TOP_K = 5;
     private static final int MAX_TOP_K = 20;
@@ -50,8 +50,7 @@ public class HerbAssistantRagServiceImpl implements HerbAssistantRagService {
     private static final int PROMPT_CONTENT_LENGTH = 1200;
     private static final String GUIDE_RESOURCE_PATH = "assistant/herb-system-guide.md";
     private static final int MAX_GUIDE_CONTEXT_LENGTH = 12000;
-    private static final String DEFAULT_GUIDE_CONTEXT =
-            "本系统用于中药材图谱识别、采集任务管理、批次档案管理和识别结果复核。";
+    private static final String DEFAULT_GUIDE_CONTEXT = "本系统用于中药材图谱识别、采集任务管理、批次档案管理和识别结果复核。";
 
     private final HerbAssistantProperties assistantProperties;
     private final HerbAssistantRagProperties ragProperties;
@@ -148,6 +147,10 @@ public class HerbAssistantRagServiceImpl implements HerbAssistantRagService {
             if (docId == null || chunkId == null) {
                 continue;
             }
+            HerbAiKnowledgeChunk chunk = chunkMapper.selectActiveById(chunkId);
+            if (chunk == null) {
+                continue;
+            }
             HerbAiKnowledgeDoc doc = docCache.computeIfAbsent(docId, docMapper::selectById);
             if (!isEnabledDoc(doc, docType)) {
                 continue;
@@ -156,10 +159,10 @@ public class HerbAssistantRagServiceImpl implements HerbAssistantRagService {
             reference.setDocId(doc.getId());
             reference.setDocTitle(doc.getDocTitle());
             reference.setChunkId(chunkId);
-            reference.setChunkIndex(intValue(metadata.get("chunkIndex")));
+            reference.setChunkIndex(chunk.getChunkIndex());
             reference.setScore(document.getScore());
-            reference.setContentPreview(abbreviate(document.getText(), PREVIEW_LENGTH));
-            hits.add(new RagHit(reference, document.getText()));
+            reference.setContentPreview(abbreviate(chunk.getChunkContent(), PREVIEW_LENGTH));
+            hits.add(new RagHit(reference, chunk.getChunkContent()));
         }
         return hits;
     }
@@ -180,7 +183,9 @@ public class HerbAssistantRagServiceImpl implements HerbAssistantRagService {
         try {
             String answer =
                     ArkResponsesClient.chat(
-                            assistantProperties, buildSystemPrompt(), buildUserPrompt(question, hits));
+                            assistantProperties,
+                            buildSystemPrompt(),
+                            buildUserPrompt(question, hits));
             if (!StringUtils.hasText(answer)) {
                 throw new BusinessException("AI 模型返回内容为空");
             }

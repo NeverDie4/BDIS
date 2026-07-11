@@ -25,6 +25,5 @@ public interface HerbAiKnowledgeDocService {
 
     HerbAiKnowledgeDocVO disable(Long id);
 
-    List<HerbAiKnowledgeChunkVO> listChunks(
-            Long docId, HerbAiKnowledgeChunkQueryRequest request);
+    List<HerbAiKnowledgeChunkVO> listChunks(Long docId, HerbAiKnowledgeChunkQueryRequest request);
 }

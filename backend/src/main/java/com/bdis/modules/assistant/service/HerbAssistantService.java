@@ -1,8 +1,8 @@
 package com.bdis.modules.assistant.service;
 
+import com.bdis.modules.assistant.dto.HerbAssistantBatchExplainRequest;
 import com.bdis.modules.assistant.dto.HerbAssistantChatRequest;
 import com.bdis.modules.assistant.dto.HerbAssistantChatResponse;
-import com.bdis.modules.assistant.dto.HerbAssistantBatchExplainRequest;
 import com.bdis.modules.assistant.dto.HerbAssistantImageExplainRequest;
 import com.bdis.modules.assistant.vo.HerbAssistantBatchExplainResponse;
 import com.bdis.modules.assistant.vo.HerbAssistantImageExplainResponse;

@@ -10,10 +10,18 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface HerbAssistantImageContextMapper {
 
-    HerbAssistantImageExplainContextVO selectImageContextById(@Param("imageId") Long imageId);
+    HerbAssistantImageExplainContextVO selectImageContextById(
+            @Param("imageId") Long imageId,
+            @Param("currentUserId") Long currentUserId,
+            @Param("dataScopeAll") boolean dataScopeAll);
 
-    List<HerbAssistantMatchContextVO> selectTopMatchesByImageId(@Param("imageId") Long imageId);
+    List<HerbAssistantMatchContextVO> selectTopMatchesByImageId(
+            @Param("imageId") Long imageId,
+            @Param("currentUserId") Long currentUserId,
+            @Param("dataScopeAll") boolean dataScopeAll);
 
     HerbAssistantRecognitionContextVO selectLatestRecognitionByImageId(
-            @Param("imageId") Long imageId);
+            @Param("imageId") Long imageId,
+            @Param("currentUserId") Long currentUserId,
+            @Param("dataScopeAll") boolean dataScopeAll);
 }

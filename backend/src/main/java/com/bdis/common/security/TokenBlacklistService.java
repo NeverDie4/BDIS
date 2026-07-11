@@ -1,6 +1,8 @@
 package com.bdis.common.security;
 
 import com.bdis.common.constants.SecurityConstants;
+import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.UnauthorizedException;
 import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;
@@ -30,7 +32,8 @@ public class TokenBlacklistService {
                     .opsForValue()
                     .set(SecurityConstants.TOKEN_BLACKLIST_PREFIX + claims.jti(), "1", ttl);
         } catch (RedisConnectionFailureException exception) {
-            LOGGER.warn("Redis unavailable, skip token blacklist write: {}", exception.getMessage());
+            LOGGER.warn("Redis unavailable, failed to blacklist token: {}", exception.getMessage());
+            throw new BusinessException("退出登录失败，请稍后重试");
         }
     }
 
@@ -39,8 +42,10 @@ public class TokenBlacklistService {
             return Boolean.TRUE.equals(
                     redisTemplate.hasKey(SecurityConstants.TOKEN_BLACKLIST_PREFIX + jti));
         } catch (RedisConnectionFailureException exception) {
-            LOGGER.warn("Redis unavailable, skip token blacklist check: {}", exception.getMessage());
-            return false;
+            LOGGER.warn(
+                    "Redis unavailable, failed to check token blacklist: {}",
+                    exception.getMessage());
+            throw new UnauthorizedException("Token 状态校验失败，请稍后重试");
         }
     }
 }

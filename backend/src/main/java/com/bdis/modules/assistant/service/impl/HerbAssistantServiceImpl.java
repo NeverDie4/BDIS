@@ -1,6 +1,8 @@
 package com.bdis.modules.assistant.service.impl;
 
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.CurrentUser;
+import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.assistant.client.ArkResponsesClient;
 import com.bdis.modules.assistant.config.HerbAssistantProperties;
 import com.bdis.modules.assistant.dto.HerbAssistantBatchExplainRequest;
@@ -29,6 +31,8 @@ import java.math.RoundingMode;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -41,8 +45,7 @@ import org.springframework.web.client.RestClientException;
 @Service
 public class HerbAssistantServiceImpl implements HerbAssistantService {
 
-    private static final String MOCK_ANSWER =
-            "这是 AI 小助手模拟回答。你可以询问系统使用方法、批次识别结果、图片上传流程等。";
+    private static final String MOCK_ANSWER = "这是 AI 小助手模拟回答。你可以询问系统使用方法、批次识别结果、图片上传流程等。";
 
     private static final String SYSTEM_PROMPT =
             "你是生物医药数字信息系统的 AI 小助手，主要帮助用户理解中药材图谱识别、采集任务、批次档案、图片上传、识别结果和人工复核流程。"
@@ -62,10 +65,11 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
     private static final String GUIDE_RESOURCE_PATH = "assistant/herb-system-guide.md";
 
     private static final int MAX_GUIDE_CONTEXT_LENGTH = 12000;
+    private static final Pattern POSITIVE_ID_PATTERN = Pattern.compile("\\d+");
+    private static final Pattern BATCH_CODE_PATTERN = Pattern.compile("(?i)\\bBATCH[-_A-Z0-9]+\\b");
 
     private static final String DEFAULT_GUIDE_CONTEXT =
-            "本系统用于中药材图谱识别、采集任务管理、批次档案管理和识别结果复核。"
-                    + "常见流程包括上传采集图片、本地图谱匹配、低置信度时豆包辅助识别、生成识别结论和人工复核。";
+            "本系统用于中药材图谱识别、采集任务管理、批次档案管理和识别结果复核。" + "常见流程包括上传采集图片、本地图谱匹配、低置信度时豆包辅助识别、生成识别结论和人工复核。";
 
     private final HerbAssistantProperties properties;
     private final HerbAssistantRagProperties ragProperties;
@@ -80,8 +84,7 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
     public HerbAssistantServiceImpl(
             HerbAssistantProperties properties,
             HerbAssistantRagProperties ragProperties,
-            @Qualifier("herbAssistantChatClient")
-                    ObjectProvider<ChatClient> chatClientProvider,
+            @Qualifier("herbAssistantChatClient") ObjectProvider<ChatClient> chatClientProvider,
             HerbAiChatHistoryService historyService,
             HerbAssistantRagService ragService,
             HerbAssistantBatchContextMapper batchContextMapper,
@@ -126,7 +129,9 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
         try {
             String answer =
                     ArkResponsesClient.chat(
-                            properties, buildSystemPrompt(), request.getMessage().trim());
+                            properties,
+                            buildSystemPrompt(),
+                            buildToolAugmentedUserInput(request.getMessage().trim()));
             if (!StringUtils.hasText(answer)) {
                 throw new BusinessException("AI 模型返回内容为空");
             }
@@ -173,12 +178,17 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
             throw new BusinessException("AI 小助手暂未启用");
         }
 
-        HerbAssistantBatchContextVO context = batchContextMapper.selectBatchContextById(batchId);
+        CurrentUser currentUser = SecurityUtils.currentUser();
+        boolean dataScopeAll = hasAllAssistantDataScope(currentUser);
+        HerbAssistantBatchContextVO context =
+                batchContextMapper.selectBatchContextById(
+                        batchId, currentUser.getUserId(), dataScopeAll);
         if (context == null) {
             throw new BusinessException("批次不存在");
         }
         List<HerbAssistantImageContextVO> images =
-                batchContextMapper.selectImageContextsByBatchId(batchId);
+                batchContextMapper.selectImageContextsByBatchId(
+                        batchId, currentUser.getUserId(), dataScopeAll);
         context.setImages(images);
 
         String question = normalizeQuestion(request.getQuestion());
@@ -230,13 +240,20 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
             throw new BusinessException("AI 小助手暂未启用");
         }
 
+        CurrentUser currentUser = SecurityUtils.currentUser();
+        boolean dataScopeAll = hasAllAssistantDataScope(currentUser);
         HerbAssistantImageExplainContextVO context =
-                imageContextMapper.selectImageContextById(imageId);
+                imageContextMapper.selectImageContextById(
+                        imageId, currentUser.getUserId(), dataScopeAll);
         if (context == null) {
             throw new BusinessException("图片不存在");
         }
-        context.setMatches(imageContextMapper.selectTopMatchesByImageId(imageId));
-        context.setRecognition(imageContextMapper.selectLatestRecognitionByImageId(imageId));
+        context.setMatches(
+                imageContextMapper.selectTopMatchesByImageId(
+                        imageId, currentUser.getUserId(), dataScopeAll));
+        context.setRecognition(
+                imageContextMapper.selectLatestRecognitionByImageId(
+                        imageId, currentUser.getUserId(), dataScopeAll));
 
         String question = normalizeImageQuestion(request.getQuestion());
         HerbAssistantChatRequest chatRequest = new HerbAssistantChatRequest();
@@ -287,6 +304,78 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
                 + "如果缺少必要的 ID 或编码，请提示用户补充。工具仅用于查询，不得声称已修改识别结果、确认批次、归档批次或执行人工复核。"
                 + "如果没有调用工具，不得直接断言具体业务状态，应提示用户补充 ID 或编码，或说明当前未能查询。"
                 + "请只基于以上系统说明、工具结果和用户问题回答，不要编造系统中不存在的页面、接口、数据或功能。";
+    }
+
+    private String buildToolAugmentedUserInput(String message) {
+        String toolContext = buildToolContext(message);
+        if (!StringUtils.hasText(toolContext)) {
+            return message;
+        }
+        return "业务工具查询结果：\n"
+                + toolContext
+                + "\n\n用户问题：\n"
+                + message
+                + "\n\n请优先基于业务工具查询结果回答；如果工具结果显示未找到或无权限，请明确说明无法查询到对应业务数据。";
+    }
+
+    private String buildToolContext(String message) {
+        StringBuilder builder = new StringBuilder();
+        Long id = firstPositiveId(message);
+        if (id != null && containsAny(message, "批次", "batch", "BATCH")) {
+            builder.append("批次查询：").append(herbAssistantTools.getBatchSummaryById(id)).append('\n');
+        }
+        String batchCode = firstBatchCode(message);
+        if (StringUtils.hasText(batchCode)) {
+            builder.append("批次编码查询：")
+                    .append(herbAssistantTools.getBatchSummaryByCode(batchCode))
+                    .append('\n');
+        }
+        if (id != null && containsAny(message, "图片", "图像", "image", "IMG")) {
+            builder.append("图片查询：")
+                    .append(herbAssistantTools.getImageIdentificationById(id))
+                    .append('\n');
+        }
+        if (id != null && containsAny(message, "任务", "task", "TASK")) {
+            builder.append("任务查询：").append(herbAssistantTools.getTaskSummaryById(id)).append('\n');
+        }
+        if (containsAny(message, "我的任务", "我负责的任务")) {
+            builder.append("我的任务查询：").append(herbAssistantTools.listMyTasks()).append('\n');
+        }
+        if (containsAny(message, "复核中批次", "待复核批次")) {
+            builder.append("复核中批次查询：")
+                    .append(herbAssistantTools.listReviewingBatches())
+                    .append('\n');
+        }
+        return builder.toString().trim();
+    }
+
+    private Long firstPositiveId(String message) {
+        Matcher matcher = POSITIVE_ID_PATTERN.matcher(message);
+        while (matcher.find()) {
+            try {
+                long id = Long.parseLong(matcher.group());
+                if (id > 0) {
+                    return id;
+                }
+            } catch (NumberFormatException exception) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String firstBatchCode(String message) {
+        Matcher matcher = BATCH_CODE_PATTERN.matcher(message);
+        return matcher.find() ? matcher.group().trim() : null;
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String loadSystemGuideContext() {
@@ -427,9 +516,7 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
         builder.append("采集时间：").append(safeObject(context.getCollectTime())).append('\n');
         builder.append("\n最终识别：\n");
         builder.append("最终药材：").append(safeText(context.getFinalSpeciesName())).append('\n');
-        builder.append("最终置信度：")
-                .append(safePercentage(context.getFinalConfidence()))
-                .append('\n');
+        builder.append("最终置信度：").append(safePercentage(context.getFinalConfidence())).append('\n');
         builder.append("结果来源：").append(safeText(context.getResultSource())).append('\n');
         builder.append("匹配结果：").append(safeText(context.getMatchResult())).append('\n');
         builder.append("是否需复核：").append(formatNeedReview(context.getNeedReview())).append('\n');
@@ -456,9 +543,7 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
             builder.append("暂无豆包辅助识别记录。\n");
         } else {
             builder.append("识别药材：").append(safeText(recognition.getSpeciesName())).append('\n');
-            builder.append("置信度：")
-                    .append(safePercentage(recognition.getConfidence()))
-                    .append('\n');
+            builder.append("置信度：").append(safePercentage(recognition.getConfidence())).append('\n');
             builder.append("理由：").append(safeText(recognition.getReason())).append('\n');
             builder.append("建议：").append(safeText(recognition.getSuggestion())).append('\n');
         }
@@ -532,5 +617,11 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
             current = current.getCause();
         }
         return false;
+    }
+
+    private boolean hasAllAssistantDataScope(CurrentUser currentUser) {
+        return currentUser.getRoleCodes().contains("ADMIN")
+                || currentUser.getPermissions().contains("*")
+                || currentUser.getPermissions().contains("herb:assistant:data:all");
     }
 }

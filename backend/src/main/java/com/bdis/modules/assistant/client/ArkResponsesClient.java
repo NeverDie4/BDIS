@@ -39,7 +39,8 @@ public final class ArkResponsesClient {
                             .defaultHeader(
                                     HttpHeaders.AUTHORIZATION,
                                     "Bearer " + properties.getApiKey().trim())
-                            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                            .defaultHeader(
+                                    HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                             .build();
 
             String body =
@@ -84,7 +85,8 @@ public final class ArkResponsesClient {
         }
     }
 
-    private static SimpleClientHttpRequestFactory requestFactory(HerbAssistantProperties properties) {
+    private static SimpleClientHttpRequestFactory requestFactory(
+            HerbAssistantProperties properties) {
         Duration timeout = Duration.ofSeconds(properties.getTimeoutSeconds());
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(timeout);

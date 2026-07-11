@@ -1,6 +1,8 @@
 package com.bdis.modules.assistant.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.CurrentUser;
@@ -42,7 +44,15 @@ class HerbAssistantToolsTest {
     void setUp() {
         tools = new HerbAssistantTools(batchMapper, imageContextMapper, taskMapper);
         CurrentUser currentUser =
-                new CurrentUser(1L, "user-1", "User One", null, null, Set.of(), Set.of(), Set.of());
+                new CurrentUser(
+                        1L,
+                        "user-1",
+                        "User One",
+                        null,
+                        null,
+                        Set.of("ADMIN"),
+                        Set.of(1L),
+                        Set.of("*"));
         SecurityContextHolder.getContext()
                 .setAuthentication(
                         new UsernamePasswordAuthenticationToken(currentUser, null, List.of()));
@@ -84,7 +94,8 @@ class HerbAssistantToolsTest {
         context.setFinalSpeciesName("黄连");
         context.setFinalConfidence(new BigDecimal("0.9123"));
         context.setNeedReview(1);
-        when(imageContextMapper.selectImageContextById(12L)).thenReturn(context);
+        when(imageContextMapper.selectImageContextById(anyLong(), anyLong(), anyBoolean()))
+                .thenReturn(context);
 
         HerbAssistantImageToolResult result = tools.getImageIdentificationById(12L);
 
@@ -135,7 +146,9 @@ class HerbAssistantToolsTest {
         ArgumentCaptor<HerbCollectionTaskMyQueryRequest> queryCaptor =
                 ArgumentCaptor.forClass(HerbCollectionTaskMyQueryRequest.class);
         org.mockito.Mockito.verify(taskMapper)
-                .selectMyTasks(queryCaptor.capture(), org.mockito.ArgumentMatchers.eq(0L),
+                .selectMyTasks(
+                        queryCaptor.capture(),
+                        org.mockito.ArgumentMatchers.eq(0L),
                         org.mockito.ArgumentMatchers.eq(20));
         assertThat(queryCaptor.getValue().getCollectorId()).isEqualTo(1L);
         assertThat(results).hasSize(1);

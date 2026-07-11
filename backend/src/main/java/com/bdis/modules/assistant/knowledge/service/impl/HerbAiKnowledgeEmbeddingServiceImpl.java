@@ -1,7 +1,5 @@
 package com.bdis.modules.assistant.knowledge.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.modules.assistant.knowledge.config.HerbAssistantRagProperties;
 import com.bdis.modules.assistant.knowledge.constant.HerbAiEmbeddingStatusConstants;
@@ -14,6 +12,8 @@ import com.bdis.modules.assistant.knowledge.util.HerbTextChunkUtils;
 import com.bdis.modules.assistant.knowledge.vo.HerbKnowledgeChunkRebuildResultVO;
 import com.bdis.modules.assistant.knowledge.vo.HerbKnowledgeEmbeddingBuildItemVO;
 import com.bdis.modules.assistant.knowledge.vo.HerbKnowledgeEmbeddingBuildResultVO;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -59,6 +59,7 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
     public HerbKnowledgeChunkRebuildResultVO rebuildChunks(Long docId) {
         HerbAiKnowledgeDoc doc = requireDoc(docId);
         LocalDateTime now = LocalDateTime.now();
+        removeVectors(doc.getId());
         chunkMapper.logicDeleteByDocId(doc.getId(), now);
         List<String> chunks =
                 HerbTextChunkUtils.split(
@@ -83,10 +84,7 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
             if (chunk.getId() != null) {
                 chunk.setMetadataJson(metadataJson(doc, chunk.getId(), chunkIndex));
                 chunkMapper.updateEmbeddingStatus(
-                        chunk.getId(),
-                        HerbAiEmbeddingStatusConstants.PENDING,
-                        null,
-                        now);
+                        chunk.getId(), HerbAiEmbeddingStatusConstants.PENDING, null, now);
             }
             chunkIndex++;
         }
@@ -127,9 +125,15 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
                 failed++;
                 items.add(
                         new HerbKnowledgeEmbeddingBuildItemVO(
-                                doc.getId(), doc.getDocCode(), safeChunkCount(doc), false,
+                                doc.getId(),
+                                doc.getDocCode(),
+                                safeChunkCount(doc),
+                                false,
                                 exception.getMessage()));
-                log.warn("Failed to build herb knowledge embedding for doc {}", doc.getId(), exception);
+                log.warn(
+                        "Failed to build herb knowledge embedding for doc {}",
+                        doc.getId(),
+                        exception);
             }
         }
         return new HerbKnowledgeEmbeddingBuildResultVO(
@@ -140,7 +144,15 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
     @Transactional
     public void deleteEmbedding(Long docId) {
         HerbAiKnowledgeDoc doc = requireDoc(docId);
-        List<HerbAiKnowledgeChunk> chunks = chunkMapper.selectEntitiesByDocId(doc.getId());
+        removeVectors(doc.getId());
+        LocalDateTime now = LocalDateTime.now();
+        chunkMapper.resetEmbeddingStatusByDocId(
+                doc.getId(), HerbAiEmbeddingStatusConstants.PENDING, now);
+        docMapper.updateEmbeddingStatus(doc.getId(), HerbAiEmbeddingStatusConstants.PENDING, now);
+    }
+
+    private void removeVectors(Long docId) {
+        List<HerbAiKnowledgeChunk> chunks = chunkMapper.selectEntitiesByDocId(docId);
         SimpleVectorStore vectorStore = vectorStoreProvider.getIfAvailable();
         if (vectorStore != null) {
             List<String> vectorIds =
@@ -155,10 +167,6 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
         } else {
             log.info("VectorStore is unavailable, reset database embedding status only.");
         }
-        LocalDateTime now = LocalDateTime.now();
-        chunkMapper.resetEmbeddingStatusByDocId(
-                doc.getId(), HerbAiEmbeddingStatusConstants.PENDING, now);
-        docMapper.updateEmbeddingStatus(doc.getId(), HerbAiEmbeddingStatusConstants.PENDING, now);
     }
 
     private HerbKnowledgeEmbeddingBuildItemVO buildOne(HerbAiKnowledgeDoc doc) {
@@ -169,7 +177,8 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
             chunks = chunkMapper.selectEntitiesByDocId(doc.getId());
         }
         LocalDateTime now = LocalDateTime.now();
-        docMapper.updateEmbeddingStatus(doc.getId(), HerbAiEmbeddingStatusConstants.PROCESSING, now);
+        docMapper.updateEmbeddingStatus(
+                doc.getId(), HerbAiEmbeddingStatusConstants.PROCESSING, now);
         try {
             if (properties.isMockEmbeddingEnabled()) {
                 for (HerbAiKnowledgeChunk chunk : chunks) {
@@ -181,9 +190,14 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
                 }
                 docMapper.updateEmbeddingStatus(
                         doc.getId(), HerbAiEmbeddingStatusConstants.COMPLETED, now);
-                log.info("Mock embedding enabled, skipped VectorStore write for doc {}", doc.getId());
+                log.info(
+                        "Mock embedding enabled, skipped VectorStore write for doc {}",
+                        doc.getId());
                 return new HerbKnowledgeEmbeddingBuildItemVO(
-                        doc.getId(), doc.getDocCode(), chunks.size(), true,
+                        doc.getId(),
+                        doc.getDocCode(),
+                        chunks.size(),
+                        true,
                         "mock embedding enabled, skipped vector store write");
             }
 
@@ -203,16 +217,21 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
                         vectorId(chunk),
                         now);
             }
-            docMapper.updateEmbeddingStatus(doc.getId(), HerbAiEmbeddingStatusConstants.COMPLETED, now);
+            docMapper.updateEmbeddingStatus(
+                    doc.getId(), HerbAiEmbeddingStatusConstants.COMPLETED, now);
             return new HerbKnowledgeEmbeddingBuildItemVO(
                     doc.getId(), doc.getDocCode(), chunks.size(), true, "completed");
         } catch (RuntimeException exception) {
             LocalDateTime failedAt = LocalDateTime.now();
             for (HerbAiKnowledgeChunk chunk : chunks) {
                 chunkMapper.updateEmbeddingStatus(
-                        chunk.getId(), HerbAiEmbeddingStatusConstants.FAILED, chunk.getVectorId(), failedAt);
+                        chunk.getId(),
+                        HerbAiEmbeddingStatusConstants.FAILED,
+                        chunk.getVectorId(),
+                        failedAt);
             }
-            docMapper.updateEmbeddingStatus(doc.getId(), HerbAiEmbeddingStatusConstants.FAILED, failedAt);
+            docMapper.updateEmbeddingStatus(
+                    doc.getId(), HerbAiEmbeddingStatusConstants.FAILED, failedAt);
             log.warn("Failed to build herb knowledge embedding for doc {}", doc.getId(), exception);
             return new HerbKnowledgeEmbeddingBuildItemVO(
                     doc.getId(), doc.getDocCode(), chunks.size(), false, exception.getMessage());

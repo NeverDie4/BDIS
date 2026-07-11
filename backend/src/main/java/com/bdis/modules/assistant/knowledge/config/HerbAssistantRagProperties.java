@@ -11,6 +11,10 @@ public class HerbAssistantRagProperties {
 
     private boolean enabled = true;
     private boolean mockEmbeddingEnabled = true;
+    private boolean embeddingEnabled = false;
+    private String embeddingModel;
+    private String embeddingBaseUrl;
+    private String embeddingApiKey;
     private String vectorStorePath = "data/vector-store/herb-knowledge.json";
     private Integer chunkSize = 800;
     private Integer chunkOverlap = 100;

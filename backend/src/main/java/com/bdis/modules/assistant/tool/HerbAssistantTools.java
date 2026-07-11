@@ -1,5 +1,6 @@
 package com.bdis.modules.assistant.tool;
 
+import com.bdis.common.security.CurrentUser;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.assistant.mapper.HerbAssistantImageContextMapper;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantBatchToolResult;
@@ -10,6 +11,7 @@ import com.bdis.modules.collection.constant.HerbBatchStatusConstants;
 import com.bdis.modules.collection.dto.HerbBatchQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskMyQueryRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
+import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.vo.HerbBatchListVO;
@@ -46,7 +48,9 @@ public class HerbAssistantTools {
         }
         try {
             HerbBatchEntity batch = batchMapper.selectById(batchId);
-            return batch == null ? batchError("未找到批次 ID " + batchId) : toBatchResult(batch);
+            return batch == null || !canAccessBatch(batch)
+                    ? batchError("未找到批次 ID " + batchId)
+                    : toBatchResult(batch);
         } catch (RuntimeException exception) {
             return batchError("批次信息查询失败，请稍后重试");
         }
@@ -61,7 +65,9 @@ public class HerbAssistantTools {
         String normalizedCode = batchCode.trim();
         try {
             HerbBatchEntity batch = batchMapper.selectByBatchCode(normalizedCode);
-            return batch == null ? batchError("未找到批次 " + normalizedCode) : toBatchResult(batch);
+            return batch == null || !canAccessBatch(batch)
+                    ? batchError("未找到批次 " + normalizedCode)
+                    : toBatchResult(batch);
         } catch (RuntimeException exception) {
             return batchError("批次信息查询失败，请稍后重试");
         }
@@ -75,7 +81,10 @@ public class HerbAssistantTools {
         }
         try {
             HerbAssistantImageExplainContextVO context =
-                    imageContextMapper.selectImageContextById(imageId);
+                    imageContextMapper.selectImageContextById(
+                            imageId,
+                            SecurityUtils.currentUser().getUserId(),
+                            hasAllAssistantDataScope());
             return context == null ? imageError("未找到图片 ID " + imageId) : toImageResult(context);
         } catch (RuntimeException exception) {
             return imageError("图片识别结果查询失败，请稍后重试");
@@ -101,7 +110,9 @@ public class HerbAssistantTools {
         }
         try {
             HerbCollectionTaskVO task = taskMapper.selectDetailById(taskId);
-            return task == null ? taskError("未找到采集任务 ID " + taskId) : toTaskResult(task);
+            return task == null || !canAccessTask(task)
+                    ? taskError("未找到采集任务 ID " + taskId)
+                    : toTaskResult(task);
         } catch (RuntimeException exception) {
             return taskError("采集任务查询失败，请稍后重试");
         }
@@ -208,5 +219,38 @@ public class HerbAssistantTools {
         result.setSuccess(false);
         result.setMessage(message);
         return result;
+    }
+
+    private boolean canAccessBatch(HerbBatchEntity batch) {
+        CurrentUser currentUser = SecurityUtils.currentUser();
+        if (hasAllAssistantDataScope(currentUser)) {
+            return true;
+        }
+        if (currentUser.getUserId().equals(batch.getCreatedBy())) {
+            return true;
+        }
+        if (batch.getTaskId() == null) {
+            return false;
+        }
+        HerbCollectionTaskEntity task = taskMapper.selectById(batch.getTaskId());
+        return task != null
+                && (currentUser.getUserId().equals(task.getCollectorId())
+                        || currentUser.getUserId().equals(task.getCreatedBy()));
+    }
+
+    private boolean canAccessTask(HerbCollectionTaskVO task) {
+        CurrentUser currentUser = SecurityUtils.currentUser();
+        return hasAllAssistantDataScope(currentUser)
+                || currentUser.getUserId().equals(task.getCollectorId());
+    }
+
+    private boolean hasAllAssistantDataScope() {
+        return hasAllAssistantDataScope(SecurityUtils.currentUser());
+    }
+
+    private boolean hasAllAssistantDataScope(CurrentUser currentUser) {
+        return currentUser.getRoleCodes().contains("ADMIN")
+                || currentUser.getPermissions().contains("*")
+                || currentUser.getPermissions().contains("herb:assistant:data:all");
     }
 }

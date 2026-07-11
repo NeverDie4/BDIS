@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
@@ -14,7 +14,7 @@
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
-        <result column="deleted" property="deleted"/>
+        <result column="is_deleted" property="deleted"/>
     </resultMap>
 
     <resultMap id="SessionVOResultMap" type="com.bdis.modules.assistant.vo.HerbAiChatSessionVO">
@@ -29,7 +29,7 @@
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO herb_ai_chat_session (
             session_id, session_title, user_id, source, last_message, last_message_time,
-            status, create_time, update_time, deleted
+            status, create_time, update_time, is_deleted
         ) VALUES (
             #{sessionId}, #{sessionTitle}, #{userId}, #{source}, #{lastMessage},
             #{lastMessageTime}, #{status}, #{createTime}, #{updateTime}, #{deleted}
@@ -38,15 +38,15 @@
 
     <select id="selectBySessionId" resultMap="SessionResultMap">
         SELECT id, session_id, session_title, user_id, source, last_message,
-               last_message_time, status, create_time, update_time, deleted
+               last_message_time, status, create_time, update_time, is_deleted
         FROM herb_ai_chat_session
-        WHERE session_id = #{sessionId} AND user_id = #{userId} AND deleted = 0
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
         LIMIT 1
     </select>
 
     <sql id="PageWhere">
         <where>
-            deleted = 0
+            is_deleted = 0
             AND user_id = #{query.userId}
             <if test="query.source != null and query.source != ''">AND source = #{query.source}</if>
         </where>
@@ -68,12 +68,12 @@
         UPDATE herb_ai_chat_session
         SET last_message = #{lastMessage}, last_message_time = #{lastMessageTime},
             update_time = #{lastMessageTime}
-        WHERE session_id = #{sessionId} AND user_id = #{userId} AND deleted = 0
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
     </update>
 
     <update id="logicDeleteBySessionId">
         UPDATE herb_ai_chat_session
-        SET status = 'deleted', deleted = 1, update_time = NOW()
-        WHERE session_id = #{sessionId} AND user_id = #{userId} AND deleted = 0
+        SET status = 'deleted', is_deleted = 1, update_time = NOW()
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
     </update>
 </mapper>

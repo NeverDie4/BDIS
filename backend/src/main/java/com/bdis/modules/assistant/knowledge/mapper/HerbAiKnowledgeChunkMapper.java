@@ -16,9 +16,10 @@ public interface HerbAiKnowledgeChunkMapper {
 
     List<HerbAiKnowledgeChunk> selectEntitiesByDocId(@Param("docId") Long docId);
 
+    HerbAiKnowledgeChunk selectActiveById(@Param("id") Long id);
+
     List<HerbAiKnowledgeChunkVO> selectByDocId(
-            @Param("docId") Long docId,
-            @Param("query") HerbAiKnowledgeChunkQueryRequest query);
+            @Param("docId") Long docId, @Param("query") HerbAiKnowledgeChunkQueryRequest query);
 
     List<HerbAssistantRagReferenceVO> selectLikeReferences(
             @Param("keyword") String keyword,

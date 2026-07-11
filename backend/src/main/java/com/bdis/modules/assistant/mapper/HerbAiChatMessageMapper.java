@@ -9,7 +9,8 @@ public interface HerbAiChatMessageMapper {
 
     int insert(HerbAiChatMessage message);
 
-    List<HerbAiChatMessageVO> selectBySessionId(@Param("sessionId") String sessionId);
+    List<HerbAiChatMessageVO> selectBySessionId(
+            @Param("sessionId") String sessionId, @Param("userId") Long userId);
 
-    int logicDeleteBySessionId(@Param("sessionId") String sessionId);
+    int logicDeleteBySessionId(@Param("sessionId") String sessionId, @Param("userId") Long userId);
 }

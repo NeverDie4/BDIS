@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
@@ -63,6 +63,25 @@
             AND r.is_deleted = 0
         WHERE i.id = #{imageId}
           AND i.is_deleted = 0
+          AND (
+              #{dataScopeAll} = TRUE
+              OR i.uploader_id = #{currentUserId}
+              OR i.created_by = #{currentUserId}
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_batch_image bi
+                  INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+                  LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+                  WHERE bi.image_id = i.id
+                    AND bi.is_deleted = 0
+                    AND bi.bind_status = 'bound'
+                    AND (
+                        b.created_by = #{currentUserId}
+                        OR t.collector_id = #{currentUserId}
+                        OR t.created_by = #{currentUserId}
+                    )
+              )
+          )
         LIMIT 1
     </select>
 
@@ -76,6 +95,30 @@
         LEFT JOIN herb_atlas a ON a.id = m.atlas_id AND a.is_deleted = 0
         LEFT JOIN herb_species s ON s.id = COALESCE(m.species_id, a.species_id) AND s.is_deleted = 0
         WHERE m.image_id = #{imageId}
+          AND (
+              #{dataScopeAll} = TRUE
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_image i
+                  WHERE i.id = m.image_id
+                    AND i.is_deleted = 0
+                    AND (i.uploader_id = #{currentUserId} OR i.created_by = #{currentUserId})
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_batch_image bi
+                  INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+                  LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+                  WHERE bi.image_id = m.image_id
+                    AND bi.is_deleted = 0
+                    AND bi.bind_status = 'bound'
+                    AND (
+                        b.created_by = #{currentUserId}
+                        OR t.collector_id = #{currentUserId}
+                        OR t.created_by = #{currentUserId}
+                    )
+              )
+          )
           AND m.remark = (
               SELECT mm.remark
               FROM herb_image_match mm
@@ -97,6 +140,30 @@
         FROM herb_image_recognition r
         LEFT JOIN herb_species s ON s.id = r.species_id AND s.is_deleted = 0
         WHERE r.image_id = #{imageId}
+          AND (
+              #{dataScopeAll} = TRUE
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_image i
+                  WHERE i.id = r.image_id
+                    AND i.is_deleted = 0
+                    AND (i.uploader_id = #{currentUserId} OR i.created_by = #{currentUserId})
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_batch_image bi
+                  INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+                  LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+                  WHERE bi.image_id = r.image_id
+                    AND bi.is_deleted = 0
+                    AND bi.bind_status = 'bound'
+                    AND (
+                        b.created_by = #{currentUserId}
+                        OR t.collector_id = #{currentUserId}
+                        OR t.created_by = #{currentUserId}
+                    )
+              )
+          )
         ORDER BY r.created_at DESC, r.rank_no ASC
         LIMIT 1
     </select>

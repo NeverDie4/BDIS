@@ -59,6 +59,7 @@ public class HerbAiChatHistoryServiceImpl implements HerbAiChatHistoryService {
                 request.getMessage().trim(),
                 null,
                 normalize(request.getSource()),
+                userId,
                 now);
         sessionMapper.updateLastMessage(
                 sessionId, userId, abbreviate(request.getMessage().trim(), 500), now);
@@ -72,14 +73,15 @@ public class HerbAiChatHistoryServiceImpl implements HerbAiChatHistoryService {
         LocalDateTime now = LocalDateTime.now();
         Long userId = currentUserId();
         requireSession(sessionId, userId);
-        insertMessage(sessionId, "assistant", answer, modelName, normalize(source), now);
+        insertMessage(sessionId, "assistant", answer, modelName, normalize(source), userId, now);
         sessionMapper.updateLastMessage(sessionId, userId, abbreviate(answer, 500), now);
     }
 
     @Override
     public PageResult<HerbAiChatSessionVO> listSessions(HerbAiChatHistoryQueryRequest request) {
         request.setUserId(currentUserId());
-        int pageNum = request.getPageNum() == null || request.getPageNum() < 1 ? 1 : request.getPageNum();
+        int pageNum =
+                request.getPageNum() == null || request.getPageNum() < 1 ? 1 : request.getPageNum();
         int pageSize =
                 request.getPageSize() == null || request.getPageSize() < 1
                         ? 10
@@ -93,7 +95,7 @@ public class HerbAiChatHistoryServiceImpl implements HerbAiChatHistoryService {
     @Override
     public List<HerbAiChatMessageVO> listMessages(String sessionId) {
         requireSession(sessionId, currentUserId());
-        return messageMapper.selectBySessionId(sessionId);
+        return messageMapper.selectBySessionId(sessionId, currentUserId());
     }
 
     @Override
@@ -101,7 +103,7 @@ public class HerbAiChatHistoryServiceImpl implements HerbAiChatHistoryService {
     public void deleteSession(String sessionId) {
         Long userId = currentUserId();
         requireSession(sessionId, userId);
-        messageMapper.logicDeleteBySessionId(sessionId);
+        messageMapper.logicDeleteBySessionId(sessionId, userId);
         sessionMapper.logicDeleteBySessionId(sessionId, userId);
     }
 
@@ -111,9 +113,11 @@ public class HerbAiChatHistoryServiceImpl implements HerbAiChatHistoryService {
             String content,
             String modelName,
             String source,
+            Long userId,
             LocalDateTime now) {
         HerbAiChatMessage message = new HerbAiChatMessage();
         message.setSessionId(sessionId);
+        message.setUserId(userId);
         message.setRole(role);
         message.setContent(content);
         message.setModelName(modelName);

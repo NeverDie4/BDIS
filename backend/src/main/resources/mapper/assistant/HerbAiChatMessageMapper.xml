@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
@@ -12,10 +12,10 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO herb_ai_chat_message (
-            session_id, role, content, model_name, token_count, source,
-            error_message, create_time, update_time, deleted
+            session_id, user_id, role, content, model_name, token_count, source,
+            error_message, create_time, update_time, is_deleted
         ) VALUES (
-            #{sessionId}, #{role}, #{content}, #{modelName}, #{tokenCount}, #{source},
+            #{sessionId}, #{userId}, #{role}, #{content}, #{modelName}, #{tokenCount}, #{source},
             #{errorMessage}, #{createTime}, #{updateTime}, #{deleted}
         )
     </insert>
@@ -23,13 +23,13 @@
     <select id="selectBySessionId" resultMap="MessageVOResultMap">
         SELECT role, content, model_name, create_time
         FROM herb_ai_chat_message
-        WHERE session_id = #{sessionId} AND deleted = 0
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
         ORDER BY create_time ASC, id ASC
     </select>
 
     <update id="logicDeleteBySessionId">
         UPDATE herb_ai_chat_message
-        SET deleted = 1, update_time = NOW()
-        WHERE session_id = #{sessionId} AND deleted = 0
+        SET is_deleted = 1, update_time = NOW()
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
     </update>
 </mapper>

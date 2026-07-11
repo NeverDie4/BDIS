@@ -7,14 +7,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.assistant.dto.HerbAssistantChatRequest;
 import com.bdis.modules.assistant.entity.HerbAiChatMessage;
 import com.bdis.modules.assistant.entity.HerbAiChatSession;
 import com.bdis.modules.assistant.mapper.HerbAiChatMessageMapper;
 import com.bdis.modules.assistant.mapper.HerbAiChatSessionMapper;
 import com.bdis.modules.assistant.service.impl.HerbAiChatHistoryServiceImpl;
-import com.bdis.common.exception.BusinessException;
-import com.bdis.common.security.CurrentUser;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
@@ -76,7 +76,7 @@ class HerbAiChatHistoryServiceImplTest {
 
         service.deleteSession("session-1");
 
-        verify(messageMapper).logicDeleteBySessionId("session-1");
+        verify(messageMapper).logicDeleteBySessionId("session-1", 1L);
         verify(sessionMapper).logicDeleteBySessionId("session-1", 1L);
     }
 

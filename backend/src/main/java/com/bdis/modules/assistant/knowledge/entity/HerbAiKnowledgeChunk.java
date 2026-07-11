@@ -1,6 +1,7 @@
 package com.bdis.modules.assistant.knowledge.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
@@ -26,5 +27,7 @@ public class HerbAiKnowledgeChunk {
     private String metadataJson;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+
+    @TableField("is_deleted")
     private Integer deleted;
 }

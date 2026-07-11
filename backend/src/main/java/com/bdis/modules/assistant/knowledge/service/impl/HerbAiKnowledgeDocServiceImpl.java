@@ -39,9 +39,7 @@ public class HerbAiKnowledgeDocServiceImpl implements HerbAiKnowledgeDocService 
                     HerbAiKnowledgeDocTypeConstants.REPORT,
                     HerbAiKnowledgeDocTypeConstants.OTHER);
     private static final Set<String> VALID_STATUSES =
-            Set.of(
-                    HerbAiKnowledgeStatusConstants.ENABLED,
-                    HerbAiKnowledgeStatusConstants.DISABLED);
+            Set.of(HerbAiKnowledgeStatusConstants.ENABLED, HerbAiKnowledgeStatusConstants.DISABLED);
     private static final Set<String> VALID_EMBEDDING_STATUSES =
             Set.of(
                     HerbAiEmbeddingStatusConstants.PENDING,
@@ -109,6 +107,8 @@ public class HerbAiKnowledgeDocServiceImpl implements HerbAiKnowledgeDocService 
             if (!normalizedContent.equals(existing.getContentText())) {
                 existing.setContentText(normalizedContent);
                 existing.setEmbeddingStatus(HerbAiEmbeddingStatusConstants.PENDING);
+                existing.setChunkCount(0);
+                chunkMapper.logicDeleteByDocId(existing.getId(), LocalDateTime.now());
             }
         }
         if (request.getSummary() != null) {

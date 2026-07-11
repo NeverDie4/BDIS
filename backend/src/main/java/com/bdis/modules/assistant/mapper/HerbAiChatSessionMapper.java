@@ -27,6 +27,5 @@ public interface HerbAiChatSessionMapper {
             @Param("lastMessage") String lastMessage,
             @Param("lastMessageTime") LocalDateTime lastMessageTime);
 
-    int logicDeleteBySessionId(
-            @Param("sessionId") String sessionId, @Param("userId") Long userId);
+    int logicDeleteBySessionId(@Param("sessionId") String sessionId, @Param("userId") Long userId);
 }

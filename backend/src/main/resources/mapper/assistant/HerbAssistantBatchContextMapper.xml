@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+﻿<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
@@ -49,8 +49,15 @@
             b.quality_score,
             b.evaluation_summary
         FROM herb_batch b
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
         WHERE b.id = #{batchId}
           AND b.is_deleted = 0
+          AND (
+              #{dataScopeAll} = TRUE
+              OR b.created_by = #{currentUserId}
+              OR t.collector_id = #{currentUserId}
+              OR t.created_by = #{currentUserId}
+          )
         LIMIT 1
     </select>
 
@@ -66,6 +73,8 @@
             r.match_result,
             r.suggestion
         FROM herb_batch_image bi
+        INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
         LEFT JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
         LEFT JOIN herb_identification_result r
             ON r.id = COALESCE(
@@ -83,6 +92,12 @@
         WHERE bi.batch_id = #{batchId}
           AND bi.is_deleted = 0
           AND bi.bind_status = 'bound'
+          AND (
+              #{dataScopeAll} = TRUE
+              OR b.created_by = #{currentUserId}
+              OR t.collector_id = #{currentUserId}
+              OR t.created_by = #{currentUserId}
+          )
         ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
     </select>
 </mapper>
