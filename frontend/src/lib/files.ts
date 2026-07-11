@@ -37,11 +37,7 @@ export async function uploadFile(file: File, options?: UploadFileOptions) {
     formData.append("fileUsage", options.fileUsage);
   }
 
-  const response = await request.post<ApiResult<FileResource>>("/files/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const response = await request.post<ApiResult<FileResource>>("/files/upload", formData);
   return withBrowserFileUrl(response.data.data);
 }
 

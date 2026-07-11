@@ -31,5 +31,21 @@ public class DataSyncLogEntity extends LogEntity {
 
     private Long operatorId;
 
+    private String operatorName;
+
+    private Long taskId;
+
+    private Long exchangeId;
+
+    private String bizType;
+
+    private Long bizId;
+
+    private String externalNo;
+
+    private Integer successCount;
+
+    private Integer failureCount;
+
     private LocalDateTime operationTime;
 }

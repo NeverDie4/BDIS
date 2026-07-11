@@ -38,4 +38,8 @@ public class OperationLogEntity extends LogEntity {
     private String userAgent;
 
     private LocalDateTime operationTime;
+
+    private String bizType;
+
+    private Long bizId;
 }

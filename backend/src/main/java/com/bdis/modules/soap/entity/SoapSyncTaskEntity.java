@@ -15,6 +15,8 @@ public class SoapSyncTaskEntity extends BaseEntity {
 
     private String taskName;
 
+    private String resourceType;
+
     private String serviceName;
 
     private String methodName;
@@ -26,4 +28,6 @@ public class SoapSyncTaskEntity extends BaseEntity {
     private LocalDateTime lastSyncAt;
 
     private Integer retryCount;
+
+    private Boolean isMock;
 }

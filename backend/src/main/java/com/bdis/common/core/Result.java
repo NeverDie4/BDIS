@@ -1,36 +1,41 @@
 package com.bdis.common.core;
 
+import com.bdis.common.enums.ResultCodeEnum;
 import java.time.OffsetDateTime;
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
 public class Result<T> {
 
-    private String code;
+    private final String code;
 
-    private String message;
+    private final String message;
 
-    private T data;
+    private final T data;
 
-    private OffsetDateTime timestamp;
+    private final OffsetDateTime timestamp;
+
+    private Result(String code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+        this.timestamp = OffsetDateTime.now();
+    }
 
     public static <T> Result<T> success(T data) {
-        Result<T> result = new Result<>();
-        result.setCode("SUCCESS");
-        result.setMessage("操作成功");
-        result.setData(data);
-        result.setTimestamp(OffsetDateTime.now());
-        return result;
+        return new Result<>(
+                ResultCodeEnum.SUCCESS.getCode(), ResultCodeEnum.SUCCESS.getMessage(), data);
+    }
+
+    public static Result<Void> success() {
+        return success(null);
+    }
+
+    public static <T> Result<T> error(ResultCodeEnum resultCode, String message, T data) {
+        return new Result<>(resultCode.getCode(), message, data);
     }
 
     public static <T> Result<T> failure(String code, String message, T data) {
-        Result<T> result = new Result<>();
-        result.setCode(code);
-        result.setMessage(message);
-        result.setData(data);
-        result.setTimestamp(OffsetDateTime.now());
-        return result;
+        return new Result<>(code, message, data);
     }
 }

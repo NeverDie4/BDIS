@@ -15,7 +15,11 @@ public class FileAccessLogEntity extends LogEntity {
 
     private Long operatorId;
 
+    private String operatorName;
+
     private String accessType;
+
+    private String resultStatus;
 
     private String ipAddress;
 

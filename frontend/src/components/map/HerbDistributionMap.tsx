@@ -417,7 +417,7 @@ export function HerbDistributionMap() {
       city: "重庆市",
       distributionType: "cultivated",
       sourceType: "pc",
-      dataSource: "map-demo",
+      dataSource: "map",
     });
     setFormOpen(true);
   }, []);

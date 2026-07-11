@@ -1,5 +1,7 @@
 package com.bdis.modules.map.service.impl;
 
+import com.bdis.common.exception.ResourceNotFoundException;
+import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.map.dto.MapPointUpsertRequest;
@@ -39,6 +41,7 @@ public class MapPointServiceImpl implements MapPointService {
         Long speciesId = resolveSpeciesId(request);
         MapPointEntity entity = new MapPointEntity();
         fillMapPoint(entity, request, speciesId);
+        entity.setCreatedBy(SecurityUtils.currentUser().getUserId());
         mapPointMapper.insert(entity);
         return findCreatedOrUpdated(entity.getId());
     }
@@ -48,10 +51,11 @@ public class MapPointServiceImpl implements MapPointService {
     public MapPointVO updateMapPoint(Long pointId, MapPointUpsertRequest request) {
         MapPointEntity entity = mapPointMapper.selectById(pointId);
         if (entity == null) {
-            throw new IllegalArgumentException("地图点位不存在");
+            throw new ResourceNotFoundException("地图点位不存在");
         }
         Long speciesId = resolveSpeciesId(request);
         fillMapPoint(entity, request, speciesId);
+        entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
         mapPointMapper.updateById(entity);
         return findCreatedOrUpdated(pointId);
     }
@@ -59,7 +63,17 @@ public class MapPointServiceImpl implements MapPointService {
     @Override
     @Transactional
     public void deleteMapPoint(Long pointId) {
-        mapPointMapper.deleteById(pointId);
+        MapPointEntity entity = mapPointMapper.selectById(pointId);
+        if (entity == null) {
+            throw new ResourceNotFoundException("地图点位不存在");
+        }
+        Long operatorId = SecurityUtils.currentUser().getUserId();
+        entity.setDeletedBy(operatorId);
+        entity.setUpdatedBy(operatorId);
+        mapPointMapper.updateById(entity);
+        if (mapPointMapper.deleteById(pointId) == 0) {
+            throw new ResourceNotFoundException("地图点位不存在");
+        }
     }
 
     private Long resolveSpeciesId(MapPointUpsertRequest request) {
@@ -85,6 +99,7 @@ public class MapPointServiceImpl implements MapPointService {
         herb.setOriginArea(request.getOriginArea());
         herb.setGrowthCycle(request.getGrowthCycle());
         herb.setDescription(request.getHerbDescription());
+        herb.setCreatedBy(SecurityUtils.currentUser().getUserId());
         herbMapper.insert(herb);
         return herb.getId();
     }
@@ -92,33 +107,56 @@ public class MapPointServiceImpl implements MapPointService {
     private void updateHerbIfNeeded(Long speciesId, MapPointUpsertRequest request) {
         HerbEntity herb = herbMapper.selectById(speciesId);
         if (herb == null) {
-            return;
+            throw new ResourceNotFoundException("药材品种不存在");
         }
         boolean changed = false;
-        changed = applyTextUpdate(request.getHerbName(), herb.getHerbName(), herb::setHerbName) || changed;
-        changed = applyTextUpdate(request.getAliasName(), herb.getAliasName(), herb::setAliasName) || changed;
-        changed = applyTextUpdate(request.getLatinName(), herb.getLatinName(), herb::setLatinName) || changed;
         changed =
-                applyTextUpdate(request.getMedicinalPart(), herb.getMedicinalPart(), herb::setMedicinalPart)
+                applyTextUpdate(request.getHerbName(), herb.getHerbName(), herb::setHerbName)
                         || changed;
-        changed = applyTextUpdate(request.getEfficacy(), herb.getEfficacy(), herb::setEfficacy) || changed;
+        changed =
+                applyTextUpdate(request.getAliasName(), herb.getAliasName(), herb::setAliasName)
+                        || changed;
+        changed =
+                applyTextUpdate(request.getLatinName(), herb.getLatinName(), herb::setLatinName)
+                        || changed;
+        changed =
+                applyTextUpdate(
+                                request.getMedicinalPart(),
+                                herb.getMedicinalPart(),
+                                herb::setMedicinalPart)
+                        || changed;
+        changed =
+                applyTextUpdate(request.getEfficacy(), herb.getEfficacy(), herb::setEfficacy)
+                        || changed;
         changed =
                 applyTextUpdate(
                                 request.getGrowthEnvironment(),
                                 herb.getGrowthEnvironment(),
                                 herb::setGrowthEnvironment)
                         || changed;
-        changed = applyTextUpdate(request.getOriginArea(), herb.getOriginArea(), herb::setOriginArea) || changed;
-        changed = applyTextUpdate(request.getGrowthCycle(), herb.getGrowthCycle(), herb::setGrowthCycle) || changed;
         changed =
-                applyTextUpdate(request.getHerbDescription(), herb.getDescription(), herb::setDescription)
+                applyTextUpdate(request.getOriginArea(), herb.getOriginArea(), herb::setOriginArea)
+                        || changed;
+        changed =
+                applyTextUpdate(
+                                request.getGrowthCycle(),
+                                herb.getGrowthCycle(),
+                                herb::setGrowthCycle)
+                        || changed;
+        changed =
+                applyTextUpdate(
+                                request.getHerbDescription(),
+                                herb.getDescription(),
+                                herb::setDescription)
                         || changed;
         if (changed) {
+            herb.setUpdatedBy(SecurityUtils.currentUser().getUserId());
             herbMapper.updateById(herb);
         }
     }
 
-    private boolean applyTextUpdate(String nextValue, String currentValue, java.util.function.Consumer<String> setter) {
+    private boolean applyTextUpdate(
+            String nextValue, String currentValue, java.util.function.Consumer<String> setter) {
         if (!StringUtils.hasText(nextValue) || nextValue.equals(currentValue)) {
             return false;
         }
@@ -145,7 +183,7 @@ public class MapPointServiceImpl implements MapPointService {
         entity.setCoverImageUrl(request.getCoverImageUrl());
         entity.setLastCollectedAt(request.getLastCollectedAt());
         entity.setSourceType(defaultText(request.getSourceType(), "pc"));
-        entity.setDataSource(defaultText(request.getDataSource(), "map-demo"));
+        entity.setDataSource(defaultText(request.getDataSource(), "map"));
         entity.setRemark(request.getRemark());
     }
 
@@ -154,7 +192,7 @@ public class MapPointServiceImpl implements MapPointService {
         return points.stream()
                 .filter(point -> pointId.equals(point.getId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("地图点位不存在"));
+                .orElseThrow(() -> new ResourceNotFoundException("地图点位不存在"));
     }
 
     private String defaultText(String value, String defaultValue) {

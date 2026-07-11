@@ -46,5 +46,57 @@ springdoc:
     path: /swagger-ui.html
 
 bdis:
+  security:
+    jwt:
+      secret: ${BDIS_JWT_SECRET:bdis-development-secret-change-me}
+      access-token-ttl-minutes: ${BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES:120}
+      issuer: bdis-api
+  bootstrap:
+    token: ${BDIS_BOOTSTRAP_TOKEN:}
   file:
     storage-path: ${BDIS_FILE_STORAGE_PATH:./storage}
+
+file:
+  atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}
+
+herb:
+  assistant:
+    enabled: ${HERB_ASSISTANT_ENABLED:true}
+    mock-enabled: ${HERB_ASSISTANT_MOCK_ENABLED:false}
+    model: ${HERB_ASSISTANT_MODEL:}
+    base-url: ${HERB_ASSISTANT_BASE_URL:}
+    api-key: ${HERB_ASSISTANT_API_KEY:}
+    timeout-seconds: ${HERB_ASSISTANT_TIMEOUT_SECONDS:60}
+    rag:
+      enabled: ${HERB_ASSISTANT_RAG_ENABLED:true}
+      mock-embedding-enabled: ${HERB_ASSISTANT_RAG_MOCK_EMBEDDING_ENABLED:true}
+      embedding-enabled: ${HERB_ASSISTANT_RAG_EMBEDDING_ENABLED:false}
+      embedding-model: ${HERB_ASSISTANT_RAG_EMBEDDING_MODEL:}
+      embedding-base-url: ${HERB_ASSISTANT_RAG_EMBEDDING_BASE_URL:${HERB_ASSISTANT_BASE_URL:}}
+      embedding-api-key: ${HERB_ASSISTANT_RAG_EMBEDDING_API_KEY:${HERB_ASSISTANT_API_KEY:}}
+      vector-store-path: ${HERB_ASSISTANT_RAG_VECTOR_STORE_PATH:data/vector-store/herb-knowledge.json}
+      chunk-size: ${HERB_ASSISTANT_RAG_CHUNK_SIZE:800}
+      chunk-overlap: ${HERB_ASSISTANT_RAG_CHUNK_OVERLAP:100}
+      top-k: ${HERB_ASSISTANT_RAG_TOP_K:5}
+      similarity-threshold: ${HERB_ASSISTANT_RAG_SIMILARITY_THRESHOLD:0.6}
+  atlas:
+    auto-import: ${HERB_ATLAS_AUTO_IMPORT:true}
+  recognition:
+    enabled: ${HERB_RECOGNITION_ENABLED:true}
+    mock-enabled: ${HERB_RECOGNITION_MOCK_ENABLED:false}
+    service-url: ${HERB_RECOGNITION_SERVICE_URL:http://localhost:8001/recognize}
+    feature-service-url: ${HERB_FEATURE_SERVICE_URL:http://localhost:8002/feature}
+    timeout-seconds: ${HERB_RECOGNITION_TIMEOUT_SECONDS:180}
+  feature:
+    enabled: ${HERB_FEATURE_ENABLED:true}
+    service-url: ${HERB_FEATURE_EXTRACTION_SERVICE_URL:http://localhost:8002/extract-feature}
+    timeout-seconds: ${HERB_FEATURE_TIMEOUT_SECONDS:180}
+    mock-enabled: ${HERB_FEATURE_MOCK_ENABLED:false}
+    model-name: ${HERB_FEATURE_MODEL_NAME:resnet50}
+    model-version: ${HERB_FEATURE_MODEL_VERSION:v1.0}
+    mock-dimension: ${HERB_FEATURE_MOCK_DIMENSION:512}
+  identification:
+    high-threshold: ${HERB_IDENTIFICATION_HIGH_THRESHOLD:0.85}
+    middle-threshold: ${HERB_IDENTIFICATION_MIDDLE_THRESHOLD:0.60}
+    top-k: ${HERB_IDENTIFICATION_TOP_K:5}
+    enable-doubao-review: ${HERB_IDENTIFICATION_ENABLE_DOUBAO_REVIEW:true}

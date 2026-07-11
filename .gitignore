@@ -7,10 +7,41 @@ frontend/.next/
 frontend/out/
 frontend/coverage/
 frontend/.env*.local
+frontend/.next-dev*.log
+frontend/build-debug.log
+frontend/tsconfig.tsbuildinfo
+
+# mobile
+mobile/dist/
+mobile/unpackage/
 
 # backend
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
+backend/uploads/
+backend/*.log
+backend/*.err.log
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ai service runtime files
+ai_service/.venv/
+ai_service/uploads/
+ai_service/feature_uploads/
+ai_service/*.log
+ai_service/*.err.log
+ai_service/test*.jpg
+ai_service/test*.jpeg
+ai_service/test*.png
+ai_service/test*.webp
+ai_service/run_*.cmd
 
 # flyway
 flyway/target/
@@ -20,9 +51,18 @@ storage/
 logs/
 mysql-data/
 redis-data/
+imports/atlas_dataset/
+tmp/
+temp/
+*.tmp
+*.log
+build-debug.log
+*.tsbuildinfo
 
 # environment
 .env
+.env.*
+!.env.example
 .env.local
 *.local
 

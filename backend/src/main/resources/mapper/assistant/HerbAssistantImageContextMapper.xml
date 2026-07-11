@@ -1,0 +1,170 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.mapper.HerbAssistantImageContextMapper">
+    <resultMap id="ImageContextResultMap" type="com.bdis.modules.assistant.vo.HerbAssistantImageExplainContextVO">
+        <id column="image_id" property="imageId"/>
+        <result column="image_code" property="imageCode"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="collect_place" property="collectPlace"/>
+        <result column="collect_time" property="collectTime"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="final_confidence" property="finalConfidence"/>
+        <result column="result_source" property="resultSource"/>
+        <result column="match_result" property="matchResult"/>
+        <result column="need_review" property="needReview"/>
+        <result column="review_status" property="reviewStatus"/>
+        <result column="suggestion" property="suggestion"/>
+    </resultMap>
+
+    <resultMap id="MatchContextResultMap" type="com.bdis.modules.assistant.vo.HerbAssistantMatchContextVO">
+        <result column="rank_no" property="rank"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="similarity" property="similarity"/>
+        <result column="atlas_name" property="atlasName"/>
+    </resultMap>
+
+    <resultMap id="RecognitionContextResultMap" type="com.bdis.modules.assistant.vo.HerbAssistantRecognitionContextVO">
+        <result column="species_name" property="speciesName"/>
+        <result column="confidence" property="confidence"/>
+        <result column="reason" property="reason"/>
+        <result column="suggestion" property="suggestion"/>
+    </resultMap>
+
+    <select id="selectImageContextById" resultMap="ImageContextResultMap">
+        SELECT
+            i.id AS image_id,
+            i.image_no AS image_code,
+            i.image_type,
+            i.growth_stage,
+            i.health_status,
+            i.collected_location AS collect_place,
+            i.collected_at AS collect_time,
+            r.final_species_name,
+            r.final_confidence,
+            r.result_source,
+            r.match_result,
+            r.need_review,
+            r.review_status,
+            r.suggestion
+        FROM herb_image i
+        LEFT JOIN herb_identification_result r
+            ON r.id = (
+                SELECT latest.id
+                FROM herb_identification_result latest
+                WHERE latest.image_id = i.id
+                  AND latest.is_deleted = 0
+                ORDER BY latest.identify_time DESC, latest.created_at DESC
+                LIMIT 1
+            )
+            AND r.is_deleted = 0
+        WHERE i.id = #{imageId}
+          AND i.is_deleted = 0
+          AND (
+              #{dataScopeAll} = TRUE
+              OR i.uploader_id = #{currentUserId}
+              OR i.created_by = #{currentUserId}
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_batch_image bi
+                  INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+                  LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+                  WHERE bi.image_id = i.id
+                    AND bi.is_deleted = 0
+                    AND bi.bind_status = 'bound'
+                    AND (
+                        b.created_by = #{currentUserId}
+                        OR t.collector_id = #{currentUserId}
+                        OR t.created_by = #{currentUserId}
+                    )
+              )
+          )
+        LIMIT 1
+    </select>
+
+    <select id="selectTopMatchesByImageId" resultMap="MatchContextResultMap">
+        SELECT
+            m.match_rank AS rank_no,
+            COALESCE(m.herb_name, s.herb_name) AS species_name,
+            m.image_similarity AS similarity,
+            COALESCE(a.atlas_no, CONCAT('atlas-', a.id)) AS atlas_name
+        FROM herb_image_match m
+        LEFT JOIN herb_atlas a ON a.id = m.atlas_id AND a.is_deleted = 0
+        LEFT JOIN herb_species s ON s.id = COALESCE(m.species_id, a.species_id) AND s.is_deleted = 0
+        WHERE m.image_id = #{imageId}
+          AND (
+              #{dataScopeAll} = TRUE
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_image i
+                  WHERE i.id = m.image_id
+                    AND i.is_deleted = 0
+                    AND (i.uploader_id = #{currentUserId} OR i.created_by = #{currentUserId})
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_batch_image bi
+                  INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+                  LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+                  WHERE bi.image_id = m.image_id
+                    AND bi.is_deleted = 0
+                    AND bi.bind_status = 'bound'
+                    AND (
+                        b.created_by = #{currentUserId}
+                        OR t.collector_id = #{currentUserId}
+                        OR t.created_by = #{currentUserId}
+                    )
+              )
+          )
+          AND m.remark = (
+              SELECT mm.remark
+              FROM herb_image_match mm
+              WHERE mm.image_id = #{imageId}
+                AND mm.remark IS NOT NULL
+              ORDER BY mm.created_at DESC
+              LIMIT 1
+          )
+        ORDER BY m.match_rank ASC
+        LIMIT 5
+    </select>
+
+    <select id="selectLatestRecognitionByImageId" resultMap="RecognitionContextResultMap">
+        SELECT
+            COALESCE(s.herb_name, r.recognized_herb_name) AS species_name,
+            r.confidence,
+            r.reason,
+            r.suggestion
+        FROM herb_image_recognition r
+        LEFT JOIN herb_species s ON s.id = r.species_id AND s.is_deleted = 0
+        WHERE r.image_id = #{imageId}
+          AND (
+              #{dataScopeAll} = TRUE
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_image i
+                  WHERE i.id = r.image_id
+                    AND i.is_deleted = 0
+                    AND (i.uploader_id = #{currentUserId} OR i.created_by = #{currentUserId})
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM herb_batch_image bi
+                  INNER JOIN herb_batch b ON b.id = bi.batch_id AND b.is_deleted = 0
+                  LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+                  WHERE bi.image_id = r.image_id
+                    AND bi.is_deleted = 0
+                    AND bi.bind_status = 'bound'
+                    AND (
+                        b.created_by = #{currentUserId}
+                        OR t.collector_id = #{currentUserId}
+                        OR t.created_by = #{currentUserId}
+                    )
+              )
+          )
+        ORDER BY r.created_at DESC, r.rank_no ASC
+        LIMIT 1
+    </select>
+</mapper>

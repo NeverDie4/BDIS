@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.herb.mapper.HerbImageMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.herb.entity.HerbImageEntity">
+        <id column="id" property="id"/>
+        <result column="image_no" property="imageNo"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="distribution_id" property="distributionId"/>
+        <result column="growth_record_id" property="growthRecordId"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="thumbnail_url" property="thumbnailUrl"/>
+        <result column="original_filename" property="originalFilename"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="file_format" property="fileFormat"/>
+        <result column="upload_source" property="uploadSource"/>
+        <result column="image_purpose" property="imagePurpose"/>
+        <result column="uploader_id" property="uploaderId"/>
+        <result column="region_id" property="regionId"/>
+        <result column="collected_location" property="collectedLocation"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="collected_at" property="collectedAt"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="form_type" property="formType"/>
+        <result column="feature_vector" property="featureVector"/>
+        <result column="feature_dim" property="featureDim"/>
+        <result column="feature_model_id" property="featureModelId"/>
+        <result column="feature_model_code" property="featureModelCode"/>
+        <result column="feature_model_version" property="featureModelVersion"/>
+        <result column="process_status" property="processStatus"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="ImageVOResultMap" type="com.bdis.modules.herb.vo.HerbImageVO">
+        <id column="id" property="id"/>
+        <result column="image_no" property="imageCode"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="original_filename" property="imageName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="upload_source" property="uploadSource"/>
+        <result column="uploader_id" property="collectorId"/>
+        <result column="distribution_id" property="baseId"/>
+        <result column="collected_location" property="collectPlace"/>
+        <result column="collected_at" property="collectTime"/>
+        <result column="image_type" property="imageType"/>
+        <result column="growth_stage" property="growthStage"/>
+        <result column="health_status" property="healthStatus"/>
+        <result column="process_status" property="processStatus"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id,
+        image_no,
+        species_id,
+        distribution_id,
+        growth_record_id,
+        image_url,
+        thumbnail_url,
+        original_filename,
+        file_size,
+        file_format,
+        image_purpose,
+        upload_source,
+        uploader_id,
+        region_id,
+        collected_location,
+        longitude,
+        latitude,
+        collected_at,
+        image_type,
+        growth_stage,
+        health_status,
+        form_type,
+        feature_vector,
+        feature_dim,
+        feature_model_id,
+        feature_model_code,
+        feature_model_version,
+        process_status,
+        status,
+        created_at,
+        updated_at,
+        is_deleted
+    </sql>
+
+    <sql id="ImageVOColumns">
+        i.id,
+        i.image_no,
+        i.image_url,
+        i.original_filename,
+        i.species_id,
+        s.herb_name AS species_name,
+        i.upload_source,
+        i.uploader_id,
+        i.distribution_id,
+        i.collected_location,
+        i.collected_at,
+        i.image_type,
+        i.growth_stage,
+        i.health_status,
+        i.process_status
+    </sql>
+
+    <insert id="insertImage" parameterType="com.bdis.modules.herb.entity.HerbImageEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_image (
+            image_no,
+            species_id,
+            image_url,
+            original_filename,
+            upload_source,
+            uploader_id,
+            distribution_id,
+            collected_location,
+            collected_at,
+            image_type,
+            growth_stage,
+            health_status,
+            process_status,
+            created_at,
+            updated_at,
+            is_deleted
+        ) VALUES (
+            #{imageNo},
+            #{speciesId},
+            #{imageUrl},
+            #{originalFilename},
+            #{uploadSource},
+            #{uploaderId},
+            #{distributionId},
+            #{collectedLocation},
+            #{collectedAt},
+            #{imageType},
+            #{growthStage},
+            #{healthStatus},
+            #{processStatus},
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
+        )
+    </insert>
+
+    <update id="updateImage" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
+        UPDATE herb_image
+        SET species_id = #{speciesId},
+            uploader_id = #{uploaderId},
+            distribution_id = #{distributionId},
+            collected_location = #{collectedLocation},
+            collected_at = #{collectedAt},
+            image_type = #{imageType},
+            growth_stage = #{growthStage},
+            health_status = #{healthStatus},
+            process_status = #{processStatus},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateProcessStatus" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
+        UPDATE herb_image
+        SET process_status = #{processStatus},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="logicalDeleteById" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
+        UPDATE herb_image
+        SET is_deleted = 1,
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <select id="selectActiveById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_image
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectDetailById" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        WHERE i.id = #{id}
+          AND i.is_deleted = 0
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        <where>
+            i.is_deleted = 0
+            <if test="query.speciesId != null">
+                AND i.species_id = #{query.speciesId}
+            </if>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    i.image_no LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.original_filename LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.collected_location LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.uploadSource != null and query.uploadSource != ''">
+                AND i.upload_source = #{query.uploadSource}
+            </if>
+            <if test="query.imageType != null and query.imageType != ''">
+                AND i.image_type = #{query.imageType}
+            </if>
+            <if test="query.growthStage != null and query.growthStage != ''">
+                AND i.growth_stage = #{query.growthStage}
+            </if>
+            <if test="query.healthStatus != null and query.healthStatus != ''">
+                AND i.health_status = #{query.healthStatus}
+            </if>
+            <if test="query.processStatus != null and query.processStatus != ''">
+                AND i.process_status = #{query.processStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND i.collected_at &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND i.collected_at &lt;= #{query.endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        <where>
+            i.is_deleted = 0
+            <if test="query.speciesId != null">
+                AND i.species_id = #{query.speciesId}
+            </if>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    i.image_no LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.original_filename LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR i.collected_location LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.uploadSource != null and query.uploadSource != ''">
+                AND i.upload_source = #{query.uploadSource}
+            </if>
+            <if test="query.imageType != null and query.imageType != ''">
+                AND i.image_type = #{query.imageType}
+            </if>
+            <if test="query.growthStage != null and query.growthStage != ''">
+                AND i.growth_stage = #{query.growthStage}
+            </if>
+            <if test="query.healthStatus != null and query.healthStatus != ''">
+                AND i.health_status = #{query.healthStatus}
+            </if>
+            <if test="query.processStatus != null and query.processStatus != ''">
+                AND i.process_status = #{query.processStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND i.collected_at &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND i.collected_at &lt;= #{query.endTime}
+            </if>
+        </where>
+        ORDER BY i.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByCollectorId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_image
+        WHERE uploader_id = #{collectorId}
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectByCollectorId" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        WHERE i.uploader_id = #{collectorId}
+          AND i.is_deleted = 0
+        ORDER BY i.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectActiveForFeatureExtraction" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_image
+        WHERE is_deleted = 0
+          AND image_url IS NOT NULL
+          AND image_url != ''
+        <if test="speciesId != null">
+          AND species_id = #{speciesId}
+        </if>
+        ORDER BY id ASC
+    </select>
+</mapper>

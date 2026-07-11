@@ -1,0 +1,20 @@
+.drawer :global(.ant-drawer-header) {
+  border-bottom-color: var(--color-border);
+  background: var(--color-paper);
+}
+
+.drawer :global(.ant-drawer-title) {
+  color: var(--color-title);
+  font-family: var(--font-ui);
+  font-weight: 800;
+}
+
+.drawer :global(.ant-drawer-body) {
+  background: var(--color-bg);
+  padding: var(--space-lg);
+}
+
+.content {
+  display: grid;
+  gap: var(--space-md);
+}

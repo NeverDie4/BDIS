@@ -27,7 +27,11 @@ public class SoapExchangeRecordEntity extends BasicEntity {
 
     private String errorMessage;
 
+    private String parsedPayload;
+
     private Long calledBy;
+
+    private String calledByName;
 
     private LocalDateTime calledAt;
 }
