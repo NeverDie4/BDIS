@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeChunkMapper">
+    <resultMap id="ChunkResultMap" type="com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeChunk">
+        <id column="id" property="id"/>
+        <result column="doc_id" property="docId"/>
+        <result column="chunk_index" property="chunkIndex"/>
+        <result column="chunk_title" property="chunkTitle"/>
+        <result column="chunk_content" property="chunkContent"/>
+        <result column="content_hash" property="contentHash"/>
+        <result column="token_count" property="tokenCount"/>
+        <result column="embedding_status" property="embeddingStatus"/>
+        <result column="vector_id" property="vectorId"/>
+        <result column="metadata_json" property="metadataJson"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <resultMap id="ChunkVOResultMap" type="com.bdis.modules.assistant.knowledge.vo.HerbAiKnowledgeChunkVO">
+        <id column="id" property="id"/>
+        <result column="doc_id" property="docId"/>
+        <result column="chunk_index" property="chunkIndex"/>
+        <result column="chunk_title" property="chunkTitle"/>
+        <result column="chunk_content" property="chunkContent"/>
+        <result column="content_hash" property="contentHash"/>
+        <result column="token_count" property="tokenCount"/>
+        <result column="embedding_status" property="embeddingStatus"/>
+        <result column="vector_id" property="vectorId"/>
+        <result column="metadata_json" property="metadataJson"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="RagReferenceResultMap" type="com.bdis.modules.assistant.vo.HerbAssistantRagReferenceVO">
+        <result column="doc_id" property="docId"/>
+        <result column="doc_title" property="docTitle"/>
+        <result column="chunk_id" property="chunkId"/>
+        <result column="chunk_index" property="chunkIndex"/>
+        <result column="content_preview" property="contentPreview"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_ai_knowledge_chunk (
+            doc_id, chunk_index, chunk_title, chunk_content, content_hash,
+            token_count, embedding_status, vector_id, metadata_json,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{docId}, #{chunkIndex}, #{chunkTitle}, #{chunkContent}, #{contentHash},
+            #{tokenCount}, #{embeddingStatus}, #{vectorId}, #{metadataJson},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <select id="selectEntitiesByDocId" resultMap="ChunkResultMap">
+        SELECT id, doc_id, chunk_index, chunk_title, chunk_content, content_hash,
+               token_count, embedding_status, vector_id, metadata_json,
+               create_time, update_time, deleted
+        FROM herb_ai_knowledge_chunk
+        WHERE doc_id = #{docId}
+          AND deleted = 0
+        ORDER BY chunk_index ASC, id ASC
+    </select>
+
+    <select id="selectByDocId" resultMap="ChunkVOResultMap">
+        SELECT id, doc_id, chunk_index, chunk_title, chunk_content, content_hash,
+               token_count, embedding_status, vector_id, metadata_json, create_time, update_time
+        FROM herb_ai_knowledge_chunk
+        WHERE doc_id = #{docId}
+          AND deleted = 0
+          <if test="query != null and query.embeddingStatus != null and query.embeddingStatus != ''">
+              AND embedding_status = #{query.embeddingStatus}
+          </if>
+        ORDER BY chunk_index ASC, id ASC
+    </select>
+
+    <select id="selectLikeReferences" resultMap="RagReferenceResultMap">
+        SELECT c.doc_id,
+               d.doc_title,
+               c.id AS chunk_id,
+               c.chunk_index,
+               c.chunk_content AS content_preview
+        FROM herb_ai_knowledge_chunk c
+        INNER JOIN herb_ai_knowledge_doc d ON d.id = c.doc_id
+        WHERE c.deleted = 0
+          AND d.deleted = 0
+          AND d.status = 'enabled'
+          AND c.chunk_content LIKE CONCAT('%', #{keyword}, '%')
+          <if test="docType != null and docType != ''">
+              AND d.doc_type = #{docType}
+          </if>
+        ORDER BY c.update_time DESC, c.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateEmbeddingStatus">
+        UPDATE herb_ai_knowledge_chunk
+        SET embedding_status = #{embeddingStatus},
+            vector_id = #{vectorId},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <update id="resetEmbeddingStatusByDocId">
+        UPDATE herb_ai_knowledge_chunk
+        SET embedding_status = #{embeddingStatus},
+            vector_id = NULL,
+            update_time = #{updateTime}
+        WHERE doc_id = #{docId}
+          AND deleted = 0
+    </update>
+
+    <update id="logicDeleteByDocId">
+        UPDATE herb_ai_knowledge_chunk
+        SET deleted = 1, update_time = #{updateTime}
+        WHERE doc_id = #{docId} AND deleted = 0
+    </update>
+</mapper>

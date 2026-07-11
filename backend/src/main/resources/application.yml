@@ -60,6 +60,21 @@ file:
   atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}
 
 herb:
+  assistant:
+    enabled: ${HERB_ASSISTANT_ENABLED:true}
+    mock-enabled: ${HERB_ASSISTANT_MOCK_ENABLED:false}
+    model: ${HERB_ASSISTANT_MODEL:}
+    base-url: ${HERB_ASSISTANT_BASE_URL:}
+    api-key: ${HERB_ASSISTANT_API_KEY:}
+    timeout-seconds: ${HERB_ASSISTANT_TIMEOUT_SECONDS:60}
+    rag:
+      enabled: ${HERB_ASSISTANT_RAG_ENABLED:true}
+      mock-embedding-enabled: ${HERB_ASSISTANT_RAG_MOCK_EMBEDDING_ENABLED:true}
+      vector-store-path: ${HERB_ASSISTANT_RAG_VECTOR_STORE_PATH:data/vector-store/herb-knowledge.json}
+      chunk-size: ${HERB_ASSISTANT_RAG_CHUNK_SIZE:800}
+      chunk-overlap: ${HERB_ASSISTANT_RAG_CHUNK_OVERLAP:100}
+      top-k: ${HERB_ASSISTANT_RAG_TOP_K:5}
+      similarity-threshold: ${HERB_ASSISTANT_RAG_SIMILARITY_THRESHOLD:0.6}
   atlas:
     auto-import: ${HERB_ATLAS_AUTO_IMPORT:true}
   recognition:

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeDocMapper">
+    <resultMap id="DocResultMap" type="com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeDoc">
+        <id column="id" property="id"/>
+        <result column="doc_code" property="docCode"/>
+        <result column="doc_title" property="docTitle"/>
+        <result column="doc_type" property="docType"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_url" property="fileUrl"/>
+        <result column="content_text" property="contentText"/>
+        <result column="summary" property="summary"/>
+        <result column="status" property="status"/>
+        <result column="embedding_status" property="embeddingStatus"/>
+        <result column="chunk_count" property="chunkCount"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <resultMap id="DocVOResultMap" type="com.bdis.modules.assistant.knowledge.vo.HerbAiKnowledgeDocVO">
+        <id column="id" property="id"/>
+        <result column="doc_code" property="docCode"/>
+        <result column="doc_title" property="docTitle"/>
+        <result column="doc_type" property="docType"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_url" property="fileUrl"/>
+        <result column="content_text" property="contentText"/>
+        <result column="summary" property="summary"/>
+        <result column="status" property="status"/>
+        <result column="embedding_status" property="embeddingStatus"/>
+        <result column="chunk_count" property="chunkCount"/>
+        <result column="remark" property="remark"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id, doc_code, doc_title, doc_type, source_type, file_name, file_url,
+        content_text, summary, status, embedding_status, chunk_count, remark,
+        create_time, update_time, deleted
+    </sql>
+
+    <sql id="PageWhere">
+        <where>
+            deleted = 0
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    doc_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR doc_title LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR summary LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR remark LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.docType != null and query.docType != ''">
+                AND doc_type = #{query.docType}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND status = #{query.status}
+            </if>
+            <if test="query.embeddingStatus != null and query.embeddingStatus != ''">
+                AND embedding_status = #{query.embeddingStatus}
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_ai_knowledge_doc (
+            doc_code, doc_title, doc_type, source_type, file_name, file_url,
+            content_text, summary, status, embedding_status, chunk_count, remark,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{docCode}, #{docTitle}, #{docType}, #{sourceType}, #{fileName}, #{fileUrl},
+            #{contentText}, #{summary}, #{status}, #{embeddingStatus}, #{chunkCount}, #{remark},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <update id="updateById">
+        UPDATE herb_ai_knowledge_doc
+        SET doc_title = #{docTitle},
+            doc_type = #{docType},
+            content_text = #{contentText},
+            summary = #{summary},
+            status = #{status},
+            embedding_status = #{embeddingStatus},
+            remark = #{remark},
+            update_time = #{updateTime}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectById" resultMap="DocResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM herb_ai_knowledge_doc
+        WHERE id = #{id} AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDetailById" resultMap="DocVOResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM herb_ai_knowledge_doc
+        WHERE id = #{id} AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1) FROM herb_ai_knowledge_doc <include refid="PageWhere"/>
+    </select>
+
+    <select id="selectPage" resultMap="DocVOResultMap">
+        SELECT id, doc_code, doc_title, doc_type, source_type, file_name, file_url,
+               summary, status, embedding_status, chunk_count, remark, create_time, update_time
+        FROM herb_ai_knowledge_doc
+        <include refid="PageWhere"/>
+        ORDER BY create_time DESC, id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE herb_ai_knowledge_doc
+        SET status = #{status}, update_time = #{updateTime}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateChunkCountAndEmbeddingStatus">
+        UPDATE herb_ai_knowledge_doc
+        SET chunk_count = #{chunkCount},
+            embedding_status = #{embeddingStatus},
+            update_time = #{updateTime}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateEmbeddingStatus">
+        UPDATE herb_ai_knowledge_doc
+        SET embedding_status = #{embeddingStatus},
+            update_time = #{updateTime}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <select id="selectPendingEnabled" resultMap="DocResultMap">
+        SELECT <include refid="BaseColumns"/>
+        FROM herb_ai_knowledge_doc
+        WHERE deleted = 0
+          AND status = 'enabled'
+          AND embedding_status IN ('pending', 'failed')
+        ORDER BY update_time ASC, id ASC
+    </select>
+
+    <update id="logicDeleteById">
+        UPDATE herb_ai_knowledge_doc
+        SET deleted = 1, update_time = #{updateTime}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+</mapper>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.mapper.HerbAssistantBatchContextMapper">
+    <resultMap id="BatchContextResultMap" type="com.bdis.modules.assistant.vo.HerbAssistantBatchContextVO">
+        <id column="batch_id" property="batchId"/>
+        <result column="batch_code" property="batchCode"/>
+        <result column="batch_name" property="batchName"/>
+        <result column="batch_status" property="batchStatus"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="image_count" property="imageCount"/>
+        <result column="identified_count" property="identifiedCount"/>
+        <result column="reviewed_count" property="reviewedCount"/>
+        <result column="need_review_count" property="needReviewCount"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="avg_similarity" property="avgSimilarity"/>
+        <result column="quality_level" property="qualityLevel"/>
+        <result column="quality_score" property="qualityScore"/>
+        <result column="evaluation_summary" property="evaluationSummary"/>
+    </resultMap>
+
+    <resultMap id="ImageContextResultMap" type="com.bdis.modules.assistant.vo.HerbAssistantImageContextVO">
+        <result column="image_id" property="imageId"/>
+        <result column="image_role" property="imageRole"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="final_confidence" property="finalConfidence"/>
+        <result column="need_review" property="needReview"/>
+        <result column="review_status" property="reviewStatus"/>
+        <result column="result_source" property="resultSource"/>
+        <result column="match_result" property="matchResult"/>
+        <result column="suggestion" property="suggestion"/>
+    </resultMap>
+
+    <select id="selectBatchContextById" resultMap="BatchContextResultMap">
+        SELECT
+            b.id AS batch_id,
+            b.batch_code,
+            b.batch_name,
+            b.batch_status,
+            b.species_name,
+            b.image_count,
+            b.identified_count,
+            b.reviewed_count,
+            b.need_review_count,
+            b.final_species_name,
+            b.avg_similarity,
+            b.quality_level,
+            b.quality_score,
+            b.evaluation_summary
+        FROM herb_batch b
+        WHERE b.id = #{batchId}
+          AND b.is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectImageContextsByBatchId" resultMap="ImageContextResultMap">
+        SELECT
+            bi.image_id,
+            bi.image_role,
+            r.final_species_name,
+            r.final_confidence,
+            r.need_review,
+            r.review_status,
+            r.result_source,
+            r.match_result,
+            r.suggestion
+        FROM herb_batch_image bi
+        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_identification_result r
+            ON r.id = COALESCE(
+                bi.identification_result_id,
+                (
+                    SELECT latest.id
+                    FROM herb_identification_result latest
+                    WHERE latest.image_id = bi.image_id
+                      AND latest.is_deleted = 0
+                    ORDER BY latest.identify_time DESC, latest.created_at DESC
+                    LIMIT 1
+                )
+            )
+            AND r.is_deleted = 0
+        WHERE bi.batch_id = #{batchId}
+          AND bi.is_deleted = 0
+          AND bi.bind_status = 'bound'
+        ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
+    </select>
+</mapper>

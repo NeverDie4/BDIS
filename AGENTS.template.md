@@ -1,5 +1,8 @@
 # BDIS AI Agent Rule Template
 
+## 11. Security correction rules
+
+- User-private data must be scoped to the authenticated user ID from the JWT/security context. Never trust a client-supplied userId for ownership checks, and verify resource ownership before read, update, or delete operations.
 本文件是团队 AI 开发规则模板。请根据所使用的工具复制到对应位置后再使用，不要直接把个人规则文件提交到 Git。
 
 ## 1. 项目身份
@@ -102,3 +105,7 @@ pnpm clean
 4. 是否有未完成事项、风险或需要小组确认的点。
 
 如果任务失败，说明失败命令、失败原因和建议处理方式。
+
+## 11. 用户连续执行授权
+
+- 当用户明确要求后续任务无需拆分并直接连续完成时，可一次完成超过 3 个文件的修改，无需按文件数量暂停确认。
