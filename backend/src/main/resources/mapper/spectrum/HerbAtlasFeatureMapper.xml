@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.spectrum.mapper.HerbAtlasFeatureMapper">
+    <resultMap id="FeatureResultMap" type="com.bdis.modules.spectrum.entity.HerbAtlasFeatureEntity">
+        <id column="id" property="id"/>
+        <result column="atlas_id" property="atlasId"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="feature_code" property="featureCode"/>
+        <result column="feature_vector" property="featureVector"/>
+        <result column="feature_dimension" property="featureDimension"/>
+        <result column="feature_model" property="featureModel"/>
+        <result column="feature_version" property="featureVersion"/>
+        <result column="extract_status" property="extractStatus"/>
+        <result column="extract_time" property="extractTime"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="FeatureVOResultMap" type="com.bdis.modules.spectrum.vo.FeatureExtractResultVO">
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="atlas_id" property="atlasId"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="feature_code" property="featureCode"/>
+        <result column="feature_vector" property="featureVector"/>
+        <result column="feature_dimension" property="featureDimension"/>
+        <result column="feature_model" property="featureModel"/>
+        <result column="feature_version" property="featureVersion"/>
+        <result column="extract_status" property="extractStatus"/>
+        <result column="extract_time" property="extractTime"/>
+        <result column="error_message" property="errorMessage"/>
+    </resultMap>
+
+    <insert id="insertFeature" parameterType="com.bdis.modules.spectrum.entity.HerbAtlasFeatureEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_atlas_feature (
+            atlas_id,
+            species_id,
+            feature_code,
+            feature_vector,
+            feature_dimension,
+            feature_model,
+            feature_version,
+            extract_status,
+            extract_time,
+            error_message,
+            created_at,
+            updated_at,
+            is_deleted
+        ) VALUES (
+            #{atlasId},
+            #{speciesId},
+            #{featureCode},
+            #{featureVector},
+            #{featureDimension},
+            #{featureModel},
+            #{featureVersion},
+            #{extractStatus},
+            #{extractTime},
+            #{errorMessage},
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
+        )
+    </insert>
+
+    <update id="deleteActiveByAtlasIdAndModel">
+        UPDATE herb_atlas_feature
+        SET is_deleted = 1,
+            updated_at = NOW()
+        WHERE atlas_id = #{atlasId}
+          AND feature_model = #{featureModel}
+          AND feature_version = #{featureVersion}
+          AND is_deleted = 0
+    </update>
+
+    <select id="existsSuccessByAtlasIdAndModel" resultType="int">
+        SELECT COUNT(1)
+        FROM herb_atlas_feature
+        WHERE atlas_id = #{atlasId}
+          AND feature_model = #{featureModel}
+          AND feature_version = #{featureVersion}
+          AND extract_status = 'success'
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectLatestSuccessByAtlasId" resultMap="FeatureVOResultMap">
+        SELECT
+        'atlas' AS target_type,
+        atlas_id AS target_id,
+        atlas_id,
+        species_id,
+        feature_code,
+        feature_vector,
+        feature_dimension,
+        feature_model,
+        feature_version,
+        extract_status,
+        extract_time,
+        error_message
+        FROM herb_atlas_feature
+        WHERE atlas_id = #{atlasId}
+          AND extract_status = 'success'
+          AND is_deleted = 0
+        ORDER BY extract_time DESC, created_at DESC
+        LIMIT 1
+    </select>
+</mapper>

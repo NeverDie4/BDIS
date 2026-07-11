@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.spectrum.mapper.HerbIdentificationResultMapper">
+    <resultMap id="BaseResultMap"
+               type="com.bdis.modules.spectrum.entity.HerbIdentificationResultEntity">
+        <id column="id" property="id"/>
+        <result column="image_id" property="imageId"/>
+        <result column="best_match_id" property="bestMatchId"/>
+        <result column="recognition_id" property="recognitionId"/>
+        <result column="final_species_id" property="finalSpeciesId"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="final_confidence" property="finalConfidence"/>
+        <result column="result_source" property="resultSource"/>
+        <result column="match_result" property="matchResult"/>
+        <result column="need_review" property="needReview"/>
+        <result column="review_status" property="reviewStatus"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="review_comment" property="reviewComment"/>
+        <result column="reviewer_id" property="reviewerId"/>
+        <result column="reviewer_name" property="reviewerName"/>
+        <result column="review_time" property="reviewTime"/>
+        <result column="raw_summary" property="rawSummary"/>
+        <result column="identify_time" property="identifyTime"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="PageResultMap"
+               type="com.bdis.modules.spectrum.vo.HerbIdentificationPageVO">
+        <id column="id" property="id"/>
+        <result column="image_id" property="imageId"/>
+        <result column="image_code" property="imageCode"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="recognition_id" property="recognitionId"/>
+        <result column="final_species_id" property="finalSpeciesId"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="final_confidence" property="finalConfidence"/>
+        <result column="result_source" property="resultSource"/>
+        <result column="match_result" property="matchResult"/>
+        <result column="need_review" property="needReview"/>
+        <result column="review_status" property="reviewStatus"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="review_comment" property="reviewComment"/>
+        <result column="reviewer_id" property="reviewerId"/>
+        <result column="reviewer_name" property="reviewerName"/>
+        <result column="review_time" property="reviewTime"/>
+        <result column="raw_summary" property="rawSummary"/>
+        <result column="identify_time" property="identifyTime"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id,
+        image_id,
+        best_match_id,
+        recognition_id,
+        final_species_id,
+        final_species_name,
+        final_confidence,
+        result_source,
+        match_result,
+        need_review,
+        review_status,
+        suggestion,
+        review_comment,
+        reviewer_id,
+        reviewer_name,
+        review_time,
+        raw_summary,
+        identify_time,
+        created_at,
+        updated_at,
+        is_deleted
+    </sql>
+
+    <sql id="PageColumns">
+        r.id,
+        r.image_id,
+        i.image_no AS image_code,
+        i.image_url,
+        r.recognition_id,
+        r.final_species_id,
+        r.final_species_name,
+        r.final_confidence,
+        r.result_source,
+        r.match_result,
+        r.need_review,
+        r.review_status,
+        r.suggestion,
+        r.review_comment,
+        r.reviewer_id,
+        r.reviewer_name,
+        r.review_time,
+        r.raw_summary,
+        r.identify_time
+    </sql>
+
+    <insert id="insertResult"
+            parameterType="com.bdis.modules.spectrum.entity.HerbIdentificationResultEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_identification_result (
+            image_id,
+            best_match_id,
+            recognition_id,
+            final_species_id,
+            final_species_name,
+            final_confidence,
+            result_source,
+            match_result,
+            need_review,
+            review_status,
+            suggestion,
+            review_comment,
+            reviewer_id,
+            reviewer_name,
+            review_time,
+            raw_summary,
+            identify_time,
+            created_at,
+            updated_at,
+            is_deleted
+        ) VALUES (
+            #{imageId},
+            #{bestMatchId},
+            #{recognitionId},
+            #{finalSpeciesId},
+            #{finalSpeciesName},
+            #{finalConfidence},
+            #{resultSource},
+            #{matchResult},
+            #{needReview},
+            #{reviewStatus},
+            #{suggestion},
+            #{reviewComment},
+            #{reviewerId},
+            #{reviewerName},
+            #{reviewTime},
+            #{rawSummary},
+            #{identifyTime},
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
+        )
+    </insert>
+
+    <update id="updateReviewResult"
+            parameterType="com.bdis.modules.spectrum.entity.HerbIdentificationResultEntity">
+        UPDATE herb_identification_result
+        SET final_species_id = #{finalSpeciesId},
+            final_species_name = #{finalSpeciesName},
+            result_source = #{resultSource},
+            need_review = #{needReview},
+            review_status = #{reviewStatus},
+            suggestion = #{suggestion},
+            review_comment = #{reviewComment},
+            reviewer_id = #{reviewerId},
+            reviewer_name = #{reviewerName},
+            review_time = #{reviewTime},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <select id="selectActiveById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_identification_result
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectLatestByImageId" resultMap="PageResultMap">
+        SELECT
+        <include refid="PageColumns"/>
+        FROM herb_identification_result r
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        WHERE r.image_id = #{imageId}
+          AND r.is_deleted = 0
+        ORDER BY r.identify_time DESC, r.created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByImageId" resultMap="PageResultMap">
+        SELECT
+        <include refid="PageColumns"/>
+        FROM herb_identification_result r
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        WHERE r.image_id = #{imageId}
+          AND r.is_deleted = 0
+        ORDER BY r.identify_time DESC, r.created_at DESC
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_identification_result r
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        <where>
+            r.is_deleted = 0
+            <if test="query.imageId != null">
+                AND r.image_id = #{query.imageId}
+            </if>
+            <if test="query.finalSpeciesId != null">
+                AND r.final_species_id = #{query.finalSpeciesId}
+            </if>
+            <if test="query.finalSpeciesName != null and query.finalSpeciesName != ''">
+                AND r.final_species_name LIKE CONCAT('%', #{query.finalSpeciesName}, '%')
+            </if>
+            <if test="query.resultSource != null and query.resultSource != ''">
+                AND r.result_source = #{query.resultSource}
+            </if>
+            <if test="query.matchResult != null and query.matchResult != ''">
+                AND r.match_result = #{query.matchResult}
+            </if>
+            <if test="query.needReview != null">
+                AND r.need_review = #{query.needReview}
+            </if>
+            <if test="query.reviewStatus != null and query.reviewStatus != ''">
+                AND r.review_status = #{query.reviewStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND r.identify_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND r.identify_time &lt;= #{query.endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultMap="PageResultMap">
+        SELECT
+        <include refid="PageColumns"/>
+        FROM herb_identification_result r
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        <where>
+            r.is_deleted = 0
+            <if test="query.imageId != null">
+                AND r.image_id = #{query.imageId}
+            </if>
+            <if test="query.finalSpeciesId != null">
+                AND r.final_species_id = #{query.finalSpeciesId}
+            </if>
+            <if test="query.finalSpeciesName != null and query.finalSpeciesName != ''">
+                AND r.final_species_name LIKE CONCAT('%', #{query.finalSpeciesName}, '%')
+            </if>
+            <if test="query.resultSource != null and query.resultSource != ''">
+                AND r.result_source = #{query.resultSource}
+            </if>
+            <if test="query.matchResult != null and query.matchResult != ''">
+                AND r.match_result = #{query.matchResult}
+            </if>
+            <if test="query.needReview != null">
+                AND r.need_review = #{query.needReview}
+            </if>
+            <if test="query.reviewStatus != null and query.reviewStatus != ''">
+                AND r.review_status = #{query.reviewStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND r.identify_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND r.identify_time &lt;= #{query.endTime}
+            </if>
+        </where>
+        ORDER BY r.identify_time DESC, r.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+</mapper>

@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.collection.mapper.HerbBatchMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.collection.entity.HerbBatchEntity">
+        <id column="id" property="id"/>
+        <result column="batch_code" property="batchCode"/>
+        <result column="batch_name" property="batchName"/>
+        <result column="task_id" property="taskId"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="base_id" property="baseId"/>
+        <result column="base_name" property="baseName"/>
+        <result column="origin_place" property="originPlace"/>
+        <result column="collect_start_time" property="collectStartTime"/>
+        <result column="collect_end_time" property="collectEndTime"/>
+        <result column="harvest_time" property="harvestTime"/>
+        <result column="production_date" property="productionDate"/>
+        <result column="batch_status" property="batchStatus"/>
+        <result column="image_count" property="imageCount"/>
+        <result column="identified_count" property="identifiedCount"/>
+        <result column="reviewed_count" property="reviewedCount"/>
+        <result column="need_review_count" property="needReviewCount"/>
+        <result column="final_species_id" property="finalSpeciesId"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="avg_similarity" property="avgSimilarity"/>
+        <result column="quality_level" property="qualityLevel"/>
+        <result column="quality_score" property="qualityScore"/>
+        <result column="evaluation_summary" property="evaluationSummary"/>
+        <result column="trace_code" property="traceCode"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="BatchVOResultMap" type="com.bdis.modules.collection.vo.HerbBatchVO">
+        <id column="id" property="id"/>
+        <result column="batch_code" property="batchCode"/>
+        <result column="batch_name" property="batchName"/>
+        <result column="task_id" property="taskId"/>
+        <result column="task_name" property="taskName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="base_id" property="baseId"/>
+        <result column="base_name" property="baseName"/>
+        <result column="origin_place" property="originPlace"/>
+        <result column="collect_start_time" property="collectStartTime"/>
+        <result column="collect_end_time" property="collectEndTime"/>
+        <result column="harvest_time" property="harvestTime"/>
+        <result column="production_date" property="productionDate"/>
+        <result column="batch_status" property="batchStatus"/>
+        <result column="image_count" property="imageCount"/>
+        <result column="identified_count" property="identifiedCount"/>
+        <result column="reviewed_count" property="reviewedCount"/>
+        <result column="need_review_count" property="needReviewCount"/>
+        <result column="final_species_id" property="finalSpeciesId"/>
+        <result column="final_species_name" property="finalSpeciesName"/>
+        <result column="avg_similarity" property="avgSimilarity"/>
+        <result column="quality_level" property="qualityLevel"/>
+        <result column="quality_score" property="qualityScore"/>
+        <result column="evaluation_summary" property="evaluationSummary"/>
+        <result column="trace_code" property="traceCode"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="BatchListVOResultMap" type="com.bdis.modules.collection.vo.HerbBatchListVO">
+        <id column="id" property="id"/>
+        <result column="batch_code" property="batchCode"/>
+        <result column="batch_name" property="batchName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="batch_status" property="batchStatus"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id,
+        batch_code,
+        batch_name,
+        task_id,
+        species_id,
+        species_name,
+        base_id,
+        base_name,
+        origin_place,
+        collect_start_time,
+        collect_end_time,
+        harvest_time,
+        production_date,
+        batch_status,
+        image_count,
+        identified_count,
+        reviewed_count,
+        need_review_count,
+        final_species_id,
+        final_species_name,
+        avg_similarity,
+        quality_level,
+        quality_score,
+        evaluation_summary,
+        trace_code,
+        remark,
+        created_at,
+        updated_at,
+        is_deleted
+    </sql>
+
+    <sql id="BatchVOColumns">
+        b.id,
+        b.batch_code,
+        b.batch_name,
+        b.task_id,
+        t.task_name,
+        b.species_id,
+        b.species_name,
+        b.base_id,
+        b.base_name,
+        b.origin_place,
+        b.collect_start_time,
+        b.collect_end_time,
+        b.harvest_time,
+        b.production_date,
+        b.batch_status,
+        b.image_count,
+        b.identified_count,
+        b.reviewed_count,
+        b.need_review_count,
+        b.final_species_id,
+        b.final_species_name,
+        b.avg_similarity,
+        b.quality_level,
+        b.quality_score,
+        b.evaluation_summary,
+        b.trace_code,
+        b.remark,
+        b.created_at,
+        b.updated_at
+    </sql>
+
+    <sql id="PageWhere">
+        <where>
+            b.is_deleted = 0
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    b.batch_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR b.batch_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR b.species_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR b.base_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR b.origin_place LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR b.final_species_name LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.taskId != null">
+                AND b.task_id = #{query.taskId}
+            </if>
+            <if test="query.speciesId != null">
+                AND b.species_id = #{query.speciesId}
+            </if>
+            <if test="query.baseId != null">
+                AND b.base_id = #{query.baseId}
+            </if>
+            <if test="query.batchStatus != null and query.batchStatus != ''">
+                AND b.batch_status = #{query.batchStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND COALESCE(b.collect_start_time, b.created_at) &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND COALESCE(b.collect_start_time, b.created_at) &lt;= #{query.endTime}
+            </if>
+            <if test="query.excludedStatuses != null and query.excludedStatuses.size() > 0">
+                AND b.batch_status NOT IN
+                <foreach collection="query.excludedStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+        </where>
+    </sql>
+
+    <sql id="ListWhere">
+        <where>
+            b.is_deleted = 0
+            <if test="query.speciesId != null">
+                AND b.species_id = #{query.speciesId}
+            </if>
+            <if test="query.batchStatus != null and query.batchStatus != ''">
+                AND b.batch_status = #{query.batchStatus}
+            </if>
+            <if test="query.excludedStatuses != null and query.excludedStatuses.size() > 0">
+                AND b.batch_status NOT IN
+                <foreach collection="query.excludedStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_batch (
+            batch_code,
+            batch_name,
+            task_id,
+            species_id,
+            species_name,
+            base_id,
+            base_name,
+            origin_place,
+            collect_start_time,
+            collect_end_time,
+            harvest_time,
+            production_date,
+            batch_status,
+            image_count,
+            identified_count,
+            reviewed_count,
+            need_review_count,
+            final_species_id,
+            final_species_name,
+            avg_similarity,
+            quality_level,
+            quality_score,
+            evaluation_summary,
+            trace_code,
+            remark,
+            created_at,
+            updated_at,
+            is_deleted
+        ) VALUES (
+            #{batchCode},
+            #{batchName},
+            #{taskId},
+            #{speciesId},
+            #{speciesName},
+            #{baseId},
+            #{baseName},
+            #{originPlace},
+            #{collectStartTime},
+            #{collectEndTime},
+            #{harvestTime},
+            #{productionDate},
+            #{batchStatus},
+            #{imageCount},
+            #{identifiedCount},
+            #{reviewedCount},
+            #{needReviewCount},
+            #{finalSpeciesId},
+            #{finalSpeciesName},
+            #{avgSimilarity},
+            #{qualityLevel},
+            #{qualityScore},
+            #{evaluationSummary},
+            #{traceCode},
+            #{remark},
+            #{createdAt},
+            #{updatedAt},
+            #{isDeleted}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
+        UPDATE herb_batch
+        SET batch_name = #{batchName},
+            task_id = #{taskId},
+            species_id = #{speciesId},
+            species_name = #{speciesName},
+            base_id = #{baseId},
+            base_name = #{baseName},
+            origin_place = #{originPlace},
+            collect_start_time = #{collectStartTime},
+            collect_end_time = #{collectEndTime},
+            harvest_time = #{harvestTime},
+            production_date = #{productionDate},
+            batch_status = #{batchStatus},
+            trace_code = #{traceCode},
+            remark = #{remark},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateStatisticsById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
+        UPDATE herb_batch
+        SET image_count = #{imageCount},
+            identified_count = #{identifiedCount},
+            reviewed_count = #{reviewedCount},
+            need_review_count = #{needReviewCount},
+            final_species_id = #{finalSpeciesId},
+            final_species_name = #{finalSpeciesName},
+            avg_similarity = #{avgSimilarity},
+            quality_level = #{qualityLevel},
+            quality_score = #{qualityScore},
+            evaluation_summary = #{evaluationSummary},
+            batch_status = #{batchStatus},
+            remark = #{remark},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateStatusById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
+        UPDATE herb_batch
+        SET batch_status = #{batchStatus},
+            remark = #{remark},
+            evaluation_summary = #{evaluationSummary},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateRemarkById" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
+        UPDATE herb_batch
+        SET remark = #{remark},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateMobileSubmitFields" parameterType="com.bdis.modules.collection.entity.HerbBatchEntity">
+        UPDATE herb_batch
+        SET collect_end_time = #{collectEndTime},
+            remark = #{remark},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        UPDATE herb_batch
+        SET is_deleted = 1,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectBatchStatisticsById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </select>
+
+    <select id="countBoundImagesByBatchId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_batch_image
+        WHERE batch_id = #{batchId}
+          AND bind_status = 'bound'
+          AND is_deleted = 0
+    </select>
+
+    <select id="countUnfinishedByTaskId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_batch
+        WHERE task_id = #{taskId}
+          AND batch_status NOT IN ('confirmed', 'archived', 'cancelled')
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectByBatchCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_batch
+        WHERE batch_code = #{batchCode}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDetailById" resultMap="BatchVOResultMap">
+        SELECT
+        <include refid="BatchVOColumns"/>
+        FROM herb_batch b
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+        WHERE b.id = #{id}
+          AND b.is_deleted = 0
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_batch b
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+        <include refid="PageWhere"/>
+    </select>
+
+    <select id="selectPage" resultMap="BatchVOResultMap">
+        SELECT
+        <include refid="BatchVOColumns"/>
+        FROM herb_batch b
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+        <include refid="PageWhere"/>
+        ORDER BY b.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectList" resultMap="BatchListVOResultMap">
+        SELECT
+        b.id,
+        b.batch_code,
+        b.batch_name,
+        b.species_id,
+        b.species_name,
+        b.batch_status
+        FROM herb_batch b
+        <include refid="ListWhere"/>
+        ORDER BY b.created_at DESC
+    </select>
+</mapper>

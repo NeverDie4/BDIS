@@ -1,0 +1,639 @@
+.shell {
+  display: flex;
+  min-height: calc(100vh - 48px);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  min-width: 150px;
+}
+
+.contentGrid {
+  display: grid;
+  min-height: 640px;
+  flex: 1;
+  grid-template-columns: 320px minmax(520px, 1fr) 360px;
+  gap: 12px;
+}
+
+.pointListPanel,
+.detailPanel {
+  min-height: 640px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 14px;
+}
+
+.panelHeader,
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.panelHeader span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.pointList {
+  display: flex;
+  max-height: 570px;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  overflow: auto;
+}
+
+.pointItem {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  grid-template-columns: 54px 1fr auto;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  padding: 8px;
+  text-align: left;
+}
+
+.pointItem:hover,
+.pointItemActive {
+  border-color: rgba(22, 101, 52, 0.22);
+  background: rgba(240, 253, 244, 0.82);
+}
+
+.pointThumb {
+  display: flex;
+  width: 54px;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #dcfce7;
+  background-position: center;
+  background-size: cover;
+  color: #166534;
+  font-weight: 700;
+}
+
+.pointMeta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pointMeta strong,
+.pointMeta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pointMeta span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.mapWrap {
+  position: relative;
+  min-height: 640px;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-panel);
+}
+
+.detailPanel {
+  overflow: auto;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 12px;
+}
+
+.detailHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.detailHeader p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.detailSection {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  padding: 14px 0;
+}
+
+.detailSection h4 {
+  margin: 0 0 10px;
+  color: #14532d;
+  font-size: 14px;
+}
+
+.infoRows {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px 12px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.infoRows strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.detailText {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.collectionForm {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.collectionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.collectionItem {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.collectionItem div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.collectionItem strong {
+  color: #0f172a;
+}
+
+.collectionItem span,
+.collectionItem p {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.collectionItem p {
+  margin: 6px 0 0;
+}
+
+.mapCanvas {
+  width: 100%;
+  height: 100%;
+  min-height: 640px;
+}
+
+.mapWrap :global(.leaflet-bottom.leaflet-right) {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 0 10px 8px 0;
+}
+
+.mapWrap :global(.leaflet-bottom.leaflet-right .leaflet-control) {
+  margin: 0;
+}
+
+.mapWrap :global(.leaflet-control-scale) {
+  display: flex;
+  align-items: flex-end;
+}
+
+.mapWrap :global(.leaflet-control-scale-line) {
+  position: relative;
+  min-width: 58px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--map-scale-color);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 12px;
+  padding: 0 4px 8px;
+  text-align: center;
+  text-shadow: var(--map-scale-shadow);
+}
+
+.mapWrap :global(.leaflet-control-scale-line::before) {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  left: 0;
+  height: 6px;
+  border-right: 2px solid var(--map-scale-color);
+  border-bottom: 2px solid var(--map-scale-color);
+  border-left: 2px solid var(--map-scale-color);
+  content: "";
+}
+
+.mapWrap :global(.leaflet-control-attribution) {
+  border-radius: 2px;
+  background: var(--map-attribution-bg);
+  color: var(--map-attribution-color);
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 5px;
+}
+
+.lightMap {
+  --map-attribution-bg: rgba(255, 255, 255, 0.82);
+  --map-attribution-color: #374151;
+  --map-scale-color: #111827;
+  --map-scale-shadow: 0 1px 2px rgba(255, 255, 255, 0.75);
+}
+
+.satelliteMap {
+  --map-attribution-bg: rgba(15, 23, 42, 0.56);
+  --map-attribution-color: #ffffff;
+  --map-scale-color: #ffffff;
+  --map-scale-shadow: 0 1px 3px rgba(0, 0, 0, 0.68);
+}
+
+.satelliteMap :global(.leaflet-control-attribution a) {
+  color: #ffffff;
+}
+
+.measureMapButton {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 1050;
+  display: inline-flex;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.16);
+  color: #1f2937;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 12px;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.measureMapButton:hover {
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.2);
+  transform: translateY(-1px);
+}
+
+.measureMapButtonActive {
+  border-color: rgba(37, 99, 235, 0.42);
+  background: rgba(37, 99, 235, 0.96);
+  color: #ffffff;
+}
+
+.measureMapButtonActive:hover {
+  background: #2563eb;
+}
+
+.mapControls {
+  position: absolute;
+  right: 18px;
+  bottom: 54px;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.mapControlButton {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.16);
+  color: #1f2937;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.mapControlButton:hover {
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.2);
+  transform: translateY(-1px);
+}
+
+.mapControlButton:active {
+  transform: translateY(0);
+}
+
+.layerSwitcher {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  z-index: 1050;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.layerPreviewButton {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  background: #e2e8f0;
+  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.22);
+  cursor: pointer;
+  padding: 0;
+}
+
+.miniMapCanvas {
+  width: 100%;
+  height: 100%;
+  filter: saturate(0.92) contrast(0.96);
+  pointer-events: none;
+}
+
+.layerBadge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 6px;
+}
+
+.layerOptions {
+  pointer-events: none;
+  display: flex;
+  height: 80px;
+  align-items: stretch;
+  gap: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.2);
+  opacity: 0;
+  padding: 5px;
+  transform: translateX(-8px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.layerSwitcher:hover .layerOptions,
+.layerSwitcher:focus-within .layerOptions {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.layerOption {
+  width: 74px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  color: #1f2937;
+  cursor: pointer;
+  padding: 3px;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.layerOption:hover {
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.22);
+  transform: translateY(-1px);
+}
+
+.layerOptionActive {
+  border-color: var(--color-primary);
+}
+
+.layerOptionImage {
+  display: block;
+  height: 42px;
+  border-radius: 6px;
+  background-position: center;
+  background-size: cover;
+}
+
+.layerOptionText {
+  display: block;
+  overflow: hidden;
+  padding: 4px 1px 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loadingMask {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.measureHint {
+  position: absolute;
+  top: 14px;
+  left: 58px;
+  z-index: 1000;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.14);
+  color: #475569;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.measureTotal {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  z-index: 1000;
+  transform: translateX(-50%);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.16);
+  color: #334155;
+  font-size: 14px;
+  padding: 8px 18px;
+}
+
+.measureTotal strong {
+  color: var(--color-primary);
+  font-size: 16px;
+}
+
+.emptyLayer {
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 600;
+  transform: translate(-50%, -50%);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 18px 24px;
+}
+
+.emptyClose {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 1280px) {
+  .contentGrid {
+    grid-template-columns: 260px minmax(420px, 1fr);
+  }
+
+  .detailPanel {
+    min-height: auto;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filterSelect {
+    width: 100%;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pointListPanel,
+  .detailPanel {
+    min-height: auto;
+  }
+
+  .pointList {
+    max-height: 320px;
+  }
+
+  .mapWrap,
+  .mapCanvas {
+    min-height: 520px;
+  }
+
+  .measureMapButton {
+    top: 12px;
+    right: 12px;
+    height: 38px;
+    padding: 0 10px;
+  }
+
+  .mapControls {
+    right: 12px;
+    bottom: 48px;
+  }
+
+  .mapControlButton {
+    width: 38px;
+    height: 38px;
+  }
+
+  .layerSwitcher {
+    bottom: 14px;
+    left: 12px;
+  }
+
+  .layerPreviewButton {
+    width: 80px;
+    height: 80px;
+  }
+
+  .layerOptions {
+    max-width: calc(100vw - 112px);
+    overflow-x: auto;
+  }
+
+  .layerOption {
+    width: 74px;
+    flex: 0 0 auto;
+  }
+
+  .layerOptionImage {
+    height: 42px;
+  }
+}

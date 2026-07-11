@@ -8,6 +8,10 @@ public class BusinessException extends RuntimeException {
 
     private final ResultCodeEnum resultCode;
 
+    public BusinessException(String message) {
+        this(ResultCodeEnum.VALIDATION_ERROR, message);
+    }
+
     public BusinessException(ResultCodeEnum resultCode, String message) {
         super(message);
         this.resultCode = resultCode;
