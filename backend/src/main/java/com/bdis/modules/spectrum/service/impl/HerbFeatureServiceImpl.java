@@ -1,7 +1,7 @@
 package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.spectrum.client.FeatureExtractionClient;
@@ -38,7 +38,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     private final HerbAtlasFeatureMapper herbAtlasFeatureMapper;
     private final HerbImageFeatureMapper herbImageFeatureMapper;
     private final FeatureExtractionClient featureExtractionClient;
-    private final FileStorageService fileStorageService;
+    private final FileResourceService fileResourceService;
     private final ObjectMapper objectMapper;
     private final HerbFeatureProperties properties;
 
@@ -48,7 +48,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
             HerbAtlasFeatureMapper herbAtlasFeatureMapper,
             HerbImageFeatureMapper herbImageFeatureMapper,
             FeatureExtractionClient featureExtractionClient,
-            FileStorageService fileStorageService,
+            FileResourceService fileResourceService,
             ObjectMapper objectMapper,
             HerbFeatureProperties properties) {
         this.herbAtlasMapper = herbAtlasMapper;
@@ -56,7 +56,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         this.herbAtlasFeatureMapper = herbAtlasFeatureMapper;
         this.herbImageFeatureMapper = herbImageFeatureMapper;
         this.featureExtractionClient = featureExtractionClient;
-        this.fileStorageService = fileStorageService;
+        this.fileResourceService = fileResourceService;
         this.objectMapper = objectMapper;
         this.properties = properties;
     }
@@ -69,7 +69,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     }
 
     private FeatureExtractResultVO extractAtlasFeature(SpectrumEntity atlas) {
-        Path imagePath = fileStorageService.resolve(atlas.getImageUrl());
+        Path imagePath = fileResourceService.resolveLocalPath(atlas.getImageUrl());
         FeatureExtractionClientResponse response = extractValidFeature(imagePath);
         HerbAtlasFeatureEntity feature = buildAtlasFeature(atlas, response);
         herbAtlasFeatureMapper.deleteActiveByAtlasIdAndModel(
@@ -136,7 +136,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     @Transactional
     public FeatureExtractResultVO extractImageFeature(Long imageId) {
         HerbImageEntity image = getActiveImage(imageId);
-        Path imagePath = fileStorageService.resolve(image.getImageUrl());
+        Path imagePath = fileResourceService.resolveLocalPath(image.getImageUrl());
         FeatureExtractionClientResponse response = extractValidFeature(imagePath);
         HerbImageFeatureEntity feature = buildImageFeature(image, response);
         herbImageFeatureMapper.deleteActiveByImageIdAndModel(

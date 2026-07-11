@@ -1,22 +1,29 @@
 package com.bdis.dashboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.when;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.dashboard.service.impl.DashboardServiceImpl;
 import com.bdis.dashboard.vo.DashboardSummaryVO;
 import com.bdis.modules.dashboard.mapper.DashboardSnapshotMapper;
+import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.permission.service.DataScopeService;
+import com.bdis.modules.permission.vo.DataScopeResultVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,11 +32,38 @@ class DashboardServiceImplTest {
     @Mock private JdbcTemplate jdbcTemplate;
     @Mock private DashboardSnapshotMapper dashboardSnapshotMapper;
     @Mock private ObjectMapper objectMapper;
+    @Mock private DataScopeService dataScopeService;
+    @Mock private AuthorizationService authorizationService;
 
     @InjectMocks private DashboardServiceImpl dashboardService;
 
+    @BeforeEach
+    void setUpCurrentUser() {
+        CurrentUser user =
+                new CurrentUser(
+                        1L,
+                        "admin",
+                        "Administrator",
+                        null,
+                        null,
+                        Set.of("ADMIN"),
+                        Set.of(1L),
+                        Set.of("*"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, null));
+    }
+
+    @AfterEach
+    void clearCurrentUser() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void summaryShouldAggregateCountsFromBusinessTables() throws Exception {
+        DataScopeResultVO scope = new DataScopeResultVO();
+        scope.setAllIncluded(true);
+        when(dataScopeService.resolveForCurrentUser(anyString())).thenReturn(scope);
+        when(authorizationService.hasPermission("soap:exchange:view")).thenReturn(true);
         when(jdbcTemplate.queryForObject(
                         startsWith("select count(*) from information_schema.tables"),
                         eq(Integer.class),
@@ -86,9 +120,6 @@ class DashboardServiceImplTest {
                         eq(Long.class),
                         eq("FAILED")))
                 .thenReturn(2L);
-        when(dashboardSnapshotMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-        when(objectMapper.writeValueAsString(any(DashboardSummaryVO.class))).thenReturn("{}");
-
         DashboardSummaryVO summary = dashboardService.summary();
 
         assertThat(summary.getHerbCount()).isEqualTo(3L);

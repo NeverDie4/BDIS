@@ -7,6 +7,7 @@ import com.bdis.audit.dto.FileAccessRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.service.FileAccessLogService;
 import com.bdis.common.core.PageResult;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
@@ -15,10 +16,14 @@ import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
 import com.bdis.file.service.FileStorageService;
+import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.file.vo.FileContentVO;
+import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
+import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.vo.FileResourceVO;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -39,18 +44,24 @@ public class FileResourceServiceImpl implements FileResourceService {
     private final FileAccessLogService fileAccessLogService;
     private final AuditLogService auditLogService;
     private final FileBusinessService fileBusinessService;
+    private final FileBusinessMapper fileBusinessMapper;
+    private final BusinessReferenceValidator businessReferenceValidator;
 
     public FileResourceServiceImpl(
             FileResourceMapper fileResourceMapper,
             FileStorageService fileStorageService,
             FileAccessLogService fileAccessLogService,
             AuditLogService auditLogService,
-            FileBusinessService fileBusinessService) {
+            FileBusinessService fileBusinessService,
+            FileBusinessMapper fileBusinessMapper,
+            BusinessReferenceValidator businessReferenceValidator) {
         this.fileResourceMapper = fileResourceMapper;
         this.fileStorageService = fileStorageService;
         this.fileAccessLogService = fileAccessLogService;
         this.auditLogService = auditLogService;
         this.fileBusinessService = fileBusinessService;
+        this.fileBusinessMapper = fileBusinessMapper;
+        this.businessReferenceValidator = businessReferenceValidator;
     }
 
     @Override
@@ -72,6 +83,8 @@ public class FileResourceServiceImpl implements FileResourceService {
                     "image".equals(entity.getFileType()) ? storedFile.fileUrl() : null);
             entity.setStoragePath(storedFile.storagePath());
             entity.setStorageType("local");
+            entity.setAccessLevel(
+                    StringUtils.hasText(dto.getAccessLevel()) ? dto.getAccessLevel() : "private");
             entity.setContentType(dto.getFile().getContentType());
             entity.setUploaderId(CurrentUserUtils.currentUserId());
             entity.setUploaderName(CurrentUserUtils.currentUsername());
@@ -117,8 +130,11 @@ public class FileResourceServiceImpl implements FileResourceService {
                         .eq(
                                 query.getUploaderId() != null,
                                 FileResourceEntity::getUploaderId,
-                                query.getUploaderId())
-                        .orderByDesc(FileResourceEntity::getUploadedAt);
+                                query.getUploaderId());
+        if (!isAdmin()) {
+            wrapper.eq(FileResourceEntity::getUploaderId, CurrentUserUtils.currentUserId());
+        }
+        wrapper.orderByDesc(FileResourceEntity::getUploadedAt);
         Page<FileResourceEntity> result = fileResourceMapper.selectPage(page, wrapper);
         List<FileResourceVO> records = result.getRecords().stream().map(this::toVO).toList();
         return PageResult.of(records, result);
@@ -126,12 +142,15 @@ public class FileResourceServiceImpl implements FileResourceService {
 
     @Override
     public FileResourceVO detail(Long fileId) {
-        return toVO(requireFile(fileId));
+        FileResourceEntity entity = requireFile(fileId);
+        requireAuthenticatedAccess(entity);
+        return toVO(entity);
     }
 
     @Override
     public FileContentVO content(Long fileId, String disposition) {
         FileResourceEntity entity = requireFile(fileId);
+        requireAuthenticatedAccess(entity);
         FileContentVO content =
                 fileStorageService.load(
                         entity.getStoragePath(),
@@ -148,9 +167,53 @@ public class FileResourceServiceImpl implements FileResourceService {
     }
 
     @Override
+    public FileContentVO publicContent(Long fileId) {
+        FileResourceEntity entity = requireFile(fileId);
+        if (!"public".equalsIgnoreCase(entity.getAccessLevel())) {
+            throw new ResourceNotFoundException("公开文件不存在");
+        }
+        return fileStorageService.load(
+                entity.getStoragePath(),
+                entity.getOriginalFilename(),
+                entity.getContentType(),
+                entity.getFileSize());
+    }
+
+    @Override
+    public Path resolveLocalPath(String fileUrl) {
+        Long fileId = resolveFileId(fileUrl);
+        if (fileId == null) {
+            return fileStorageService.resolve(fileUrl);
+        }
+        return fileStorageService.resolve(requireFile(fileId).getFileUrl());
+    }
+
+    @Override
+    public Long resolveFileId(String fileUrl) {
+        Long contentId = contentFileId(fileUrl);
+        if (contentId != null) {
+            return contentId;
+        }
+        if (!StringUtils.hasText(fileUrl)) {
+            return null;
+        }
+        FileResourceEntity entity =
+                fileResourceMapper.selectOne(
+                        new LambdaQueryWrapper<FileResourceEntity>()
+                                .eq(FileResourceEntity::getFileUrl, fileUrl)
+                                .last("limit 1"));
+        return entity == null ? null : entity.getId();
+    }
+
+    @Override
     @Transactional
     public void delete(Long fileId) {
         FileResourceEntity entity = requireFile(fileId);
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (!isAdmin()
+                && (currentUserId == null || !currentUserId.equals(entity.getUploaderId()))) {
+            throw new ForbiddenException("只能删除本人上传的文件");
+        }
         fileBusinessService.deleteByFileId(fileId);
         fileResourceMapper.deleteById(fileId);
         fileStorageService.delete(entity.getStoragePath());
@@ -168,7 +231,59 @@ public class FileResourceServiceImpl implements FileResourceService {
     private FileResourceVO toVO(FileResourceEntity entity) {
         FileResourceVO vo = new FileResourceVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setFileUrl(
+                "public".equalsIgnoreCase(entity.getAccessLevel())
+                        ? "/api/public-files/" + entity.getId() + "/content"
+                        : "/api/files/" + entity.getId() + "/content");
+        if (entity.getThumbnailUrl() != null) {
+            vo.setThumbnailUrl(vo.getFileUrl());
+        }
         return vo;
+    }
+
+    private void requireAuthenticatedAccess(FileResourceEntity entity) {
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (isAdmin()
+                || "public".equalsIgnoreCase(entity.getAccessLevel())
+                || (currentUserId != null && currentUserId.equals(entity.getUploaderId()))) {
+            return;
+        }
+        List<FileBusinessEntity> relations =
+                fileBusinessMapper.selectList(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getFileId, entity.getId()));
+        boolean allowed =
+                relations.stream()
+                        .anyMatch(
+                                relation ->
+                                        businessReferenceValidator.canAccess(
+                                                relation.getBizType(), relation.getBizId()));
+        if (!allowed) {
+            throw new ForbiddenException("无权访问该文件");
+        }
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase);
+    }
+
+    private Long contentFileId(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl)) {
+            return null;
+        }
+        String marker = fileUrl.contains("/public-files/") ? "/public-files/" : "/files/";
+        int start = fileUrl.indexOf(marker);
+        if (start < 0 || !fileUrl.endsWith("/content")) {
+            return null;
+        }
+        String value =
+                fileUrl.substring(
+                        start + marker.length(), fileUrl.length() - "/content".length());
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private void recordAudit(String operationType, String bizType, Long bizId) {

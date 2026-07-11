@@ -2,11 +2,14 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.FileStorageService;
-import com.bdis.file.service.FileStorageService.StoredFile;
+import com.bdis.file.dto.FileBusinessBindDTO;
+import com.bdis.file.dto.FileUploadDTO;
+import com.bdis.file.service.FileBusinessService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.file.vo.FileResourceVO;
 import com.bdis.modules.spectrum.client.HerbFeatureVectorClient;
 import com.bdis.modules.spectrum.dto.HerbAtlasQueryRequest;
 import com.bdis.modules.spectrum.dto.HerbAtlasUpdateRequest;
@@ -45,7 +48,8 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     private final HerbAtlasMapper herbAtlasMapper;
     private final HerbAtlasTagMapper herbAtlasTagMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
-    private final FileStorageService fileStorageService;
+    private final FileResourceService fileResourceService;
+    private final FileBusinessService fileBusinessService;
     private final HerbFeatureVectorClient featureVectorClient;
     private final ObjectMapper objectMapper;
 
@@ -53,13 +57,15 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
             HerbAtlasMapper herbAtlasMapper,
             HerbAtlasTagMapper herbAtlasTagMapper,
             HerbSpeciesMapper herbSpeciesMapper,
-            FileStorageService fileStorageService,
+            FileResourceService fileResourceService,
+            FileBusinessService fileBusinessService,
             HerbFeatureVectorClient featureVectorClient,
             ObjectMapper objectMapper) {
         this.herbAtlasMapper = herbAtlasMapper;
         this.herbAtlasTagMapper = herbAtlasTagMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
-        this.fileStorageService = fileStorageService;
+        this.fileResourceService = fileResourceService;
+        this.fileBusinessService = fileBusinessService;
         this.featureVectorClient = featureVectorClient;
         this.objectMapper = objectMapper;
     }
@@ -69,28 +75,36 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     public HerbAtlasVO upload(MultipartFile file, HerbAtlasUploadRequest request) {
         HerbEntity species = getActiveSpecies(request == null ? null : request.getSpeciesId());
         validateImageFile(file);
-        StoredFile storedFile = fileStorageService.save(file);
+        FileResourceVO fileResource = uploadFile(file);
         LocalDateTime now = LocalDateTime.now();
 
         SpectrumEntity atlas = new SpectrumEntity();
         atlas.setSpeciesId(request.getSpeciesId());
         atlas.setHerbName(species.getHerbName());
         atlas.setAtlasNo(resolveAtlasCode(request.getAtlasCode(), now));
-        atlas.setImageUrl(storedFile.fileUrl());
+        atlas.setImageUrl(fileResource.getFileUrl());
         atlas.setAtlasTitle(file.getOriginalFilename());
         atlas.setImageType(request.getImageType());
         atlas.setGrowthStage(request.getGrowthStage());
         atlas.setMedicinalPart(request.getMedicinalPart());
         atlas.setSourceType(request.getSource());
         atlas.setIdentificationPoints(request.getDescription());
-        fillFeatureVector(atlas);
-        atlas.setStatus(request.getStatus() == null ? 1 : request.getStatus());
-        atlas.setCreatedAt(now);
-        atlas.setUpdatedAt(now);
-        atlas.setIsDeleted(0);
-        atlas.setVersion(0);
-        herbAtlasMapper.insertAtlas(atlas);
-        List<HerbAtlasTagVO> tagVOs = saveTags(atlas.getId(), request.getTags(), now);
+        List<HerbAtlasTagVO> tagVOs;
+        try {
+            atlas.setStatus(request.getStatus() == null ? 1 : request.getStatus());
+            atlas.setCreatedAt(now);
+            atlas.setUpdatedAt(now);
+            atlas.setIsDeleted(0);
+            atlas.setVersion(0);
+            herbAtlasMapper.insertAtlas(atlas);
+            bindFile(fileResource.getId(), atlas.getId());
+            fillFeatureVector(atlas);
+            herbAtlasMapper.updateAtlas(atlas);
+            tagVOs = saveTags(atlas.getId(), request.getTags(), now);
+        } catch (RuntimeException exception) {
+            cleanupFile(fileResource.getId(), exception);
+            throw exception;
+        }
 
         HerbAtlasVO vo = toVO(atlas);
         vo.setHerbName(species.getHerbName());
@@ -128,6 +142,7 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     @Transactional
     public void delete(Long id) {
         SpectrumEntity atlas = getActiveAtlas(id);
+        Long fileId = fileResourceService.resolveFileId(atlas.getImageUrl());
         LocalDateTime now = LocalDateTime.now();
         atlas.setUpdatedAt(now);
         int affected = herbAtlasMapper.logicalDeleteById(atlas);
@@ -135,6 +150,9 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
             throw new BusinessException("Herb atlas not found or already deleted");
         }
         logicalDeleteTags(atlas.getId(), now);
+        if (fileId != null) {
+            fileResourceService.delete(fileId);
+        }
     }
 
     @Override
@@ -191,6 +209,32 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
         if (!StringUtils.hasText(extension)
                 || !SUPPORTED_IMAGE_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
             throw new BusinessException("Unsupported image format");
+        }
+    }
+
+    private FileResourceVO uploadFile(MultipartFile file) {
+        FileUploadDTO dto = new FileUploadDTO();
+        dto.setFile(file);
+        dto.setFileType("atlas");
+        dto.setAccessLevel("private");
+        dto.setFileUsage("standard_atlas");
+        return fileResourceService.upload(dto);
+    }
+
+    private void bindFile(Long fileId, Long atlasId) {
+        FileBusinessBindDTO bind = new FileBusinessBindDTO();
+        bind.setFileId(fileId);
+        bind.setBizType("herb_atlas");
+        bind.setBizId(atlasId);
+        bind.setFileUsage("standard_atlas");
+        fileBusinessService.bind(bind);
+    }
+
+    private void cleanupFile(Long fileId, RuntimeException original) {
+        try {
+            fileResourceService.delete(fileId);
+        } catch (RuntimeException cleanupException) {
+            original.addSuppressed(cleanupException);
         }
     }
 

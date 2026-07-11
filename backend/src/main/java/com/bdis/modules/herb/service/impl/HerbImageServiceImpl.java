@@ -2,8 +2,12 @@ package com.bdis.modules.herb.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.FileStorageService;
-import com.bdis.file.service.FileStorageService.StoredFile;
+import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.file.dto.FileBusinessBindDTO;
+import com.bdis.file.dto.FileUploadDTO;
+import com.bdis.file.service.FileBusinessService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
@@ -13,6 +17,9 @@ import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.herb.service.HerbImageService;
 import com.bdis.modules.herb.vo.HerbImageVO;
+import com.bdis.modules.file.vo.FileResourceVO;
+import com.bdis.modules.growth.entity.GrowthRecordEntity;
+import com.bdis.modules.growth.mapper.GrowthRecordMapper;
 import com.bdis.modules.spectrum.service.HerbFeatureService;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -33,17 +40,23 @@ public class HerbImageServiceImpl implements HerbImageService {
 
     private final HerbImageMapper herbImageMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
-    private final FileStorageService fileStorageService;
+    private final GrowthRecordMapper growthRecordMapper;
+    private final FileResourceService fileResourceService;
+    private final FileBusinessService fileBusinessService;
     private final HerbFeatureService herbFeatureService;
 
     public HerbImageServiceImpl(
             HerbImageMapper herbImageMapper,
             HerbSpeciesMapper herbSpeciesMapper,
-            FileStorageService fileStorageService,
+            GrowthRecordMapper growthRecordMapper,
+            FileResourceService fileResourceService,
+            FileBusinessService fileBusinessService,
             HerbFeatureService herbFeatureService) {
         this.herbImageMapper = herbImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
-        this.fileStorageService = fileStorageService;
+        this.growthRecordMapper = growthRecordMapper;
+        this.fileResourceService = fileResourceService;
+        this.fileBusinessService = fileBusinessService;
         this.herbFeatureService = herbFeatureService;
     }
 
@@ -52,17 +65,26 @@ public class HerbImageServiceImpl implements HerbImageService {
     public HerbImageVO upload(MultipartFile file, HerbImageUploadRequest request) {
         HerbImageUploadRequest safeRequest =
                 request == null ? new HerbImageUploadRequest() : request;
+        synchronizeGrowthReference(safeRequest);
         HerbEntity species = getActiveSpeciesIfPresent(safeRequest.getSpeciesId());
         LocalDateTime now = LocalDateTime.now();
         String imageCode = generateImageCode(now);
-        StoredFile storedFile = fileStorageService.save(file);
-
-        HerbImageEntity image = buildImage(file, safeRequest, storedFile, imageCode, now);
+        FileResourceVO fileResource = uploadFile(file, "herb_image");
+        HerbImageEntity image =
+                buildImage(file, safeRequest, fileResource.getFileUrl(), imageCode, now);
         try {
             herbImageMapper.insertImage(image);
+            bindFile(fileResource.getId(), "herb_image", image.getId(), "original_image");
+            if (safeRequest.getGrowthRecordId() != null) {
+                bindFile(
+                        fileResource.getId(),
+                        "herb_growth_record",
+                        safeRequest.getGrowthRecordId(),
+                        "field_image");
+            }
             herbFeatureService.extractImageFeature(image.getId());
         } catch (RuntimeException exception) {
-            fileStorageService.delete(storedFile.storagePath());
+            cleanupFile(fileResource.getId(), exception);
             throw exception;
         }
         return toVO(image, species);
@@ -72,13 +94,23 @@ public class HerbImageServiceImpl implements HerbImageService {
     @Transactional
     public HerbImageVO update(Long id, HerbImageUpdateRequest request) {
         HerbImageEntity image = getActiveImage(id);
+        requireOwner(image);
+        Long fileId = fileResourceService.resolveFileId(image.getImageUrl());
+        Long previousGrowthRecordId = image.getGrowthRecordId();
         HerbImageUpdateRequest safeRequest =
                 request == null ? new HerbImageUpdateRequest() : request;
+        synchronizeGrowthReference(safeRequest);
         HerbEntity species = getActiveSpeciesIfPresent(safeRequest.getSpeciesId());
         LocalDateTime now = LocalDateTime.now();
         image.setSpeciesId(safeRequest.getSpeciesId());
-        image.setUploaderId(safeRequest.getCollectorId());
-        image.setDistributionId(safeRequest.getBaseId());
+        if (safeRequest.getCollectorId() != null) {
+            image.setUploaderId(resolveUploaderId(safeRequest.getCollectorId()));
+        }
+        image.setDistributionId(
+                safeRequest.getDistributionId() == null
+                        ? safeRequest.getBaseId()
+                        : safeRequest.getDistributionId());
+        image.setGrowthRecordId(safeRequest.getGrowthRecordId());
         image.setCollectedLocation(safeRequest.getCollectPlace());
         image.setCollectedAt(safeRequest.getCollectTime());
         image.setImageType(safeRequest.getImageType());
@@ -87,6 +119,7 @@ public class HerbImageServiceImpl implements HerbImageService {
         image.setProcessStatus(safeRequest.getProcessStatus());
         image.setUpdatedAt(now);
         herbImageMapper.updateImage(image);
+        syncGrowthFileRelation(fileId, previousGrowthRecordId, image.getGrowthRecordId());
         return toVO(image, species);
     }
 
@@ -94,10 +127,15 @@ public class HerbImageServiceImpl implements HerbImageService {
     @Transactional
     public void delete(Long id) {
         HerbImageEntity image = getActiveImage(id);
+        requireOwner(image);
+        Long fileId = fileResourceService.resolveFileId(image.getImageUrl());
         image.setUpdatedAt(LocalDateTime.now());
         int affected = herbImageMapper.logicalDeleteById(image);
         if (affected == 0) {
             throw new BusinessException("Herb image not found or already deleted");
+        }
+        if (fileId != null) {
+            fileResourceService.delete(fileId);
         }
     }
 
@@ -127,15 +165,21 @@ public class HerbImageServiceImpl implements HerbImageService {
 
     @Override
     public PageResult<HerbImageVO> my(Long collectorId, Integer pageNum, Integer pageSize) {
-        if (collectorId == null) {
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        Long resolvedCollectorId = collectorId == null ? currentUserId : collectorId;
+        if (resolvedCollectorId == null || resolvedCollectorId <= 0) {
             throw new BusinessException("Collector id is required");
+        }
+        if (!isAdmin() && !resolvedCollectorId.equals(currentUserId)) {
+            throw new ForbiddenException("只能查询本人上传的图片");
         }
         int normalizedPageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int normalizedPageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
-        Long total = herbImageMapper.countByCollectorId(collectorId);
+        Long total = herbImageMapper.countByCollectorId(resolvedCollectorId);
         Long offset = (long) (normalizedPageNum - 1) * normalizedPageSize;
         List<HerbImageVO> records =
-                herbImageMapper.selectByCollectorId(collectorId, offset, normalizedPageSize);
+                herbImageMapper.selectByCollectorId(
+                        resolvedCollectorId, offset, normalizedPageSize);
         return new PageResult<>(total, normalizedPageNum, normalizedPageSize, records);
     }
 
@@ -164,17 +208,23 @@ public class HerbImageServiceImpl implements HerbImageService {
     private HerbImageEntity buildImage(
             MultipartFile file,
             HerbImageUploadRequest request,
-            StoredFile storedFile,
+            String fileUrl,
             String imageCode,
             LocalDateTime now) {
         HerbImageEntity image = new HerbImageEntity();
         image.setImageNo(imageCode);
         image.setSpeciesId(request.getSpeciesId());
-        image.setImageUrl(storedFile.fileUrl());
+        image.setImageUrl(fileUrl);
         image.setOriginalFilename(file.getOriginalFilename());
+        image.setFileSize(file.getSize());
+        image.setFileFormat(StringUtils.getFilenameExtension(file.getOriginalFilename()));
         image.setUploadSource(resolveUploadSource(request.getUploadSource()));
-        image.setUploaderId(request.getCollectorId());
-        image.setDistributionId(request.getBaseId());
+        image.setUploaderId(resolveUploaderId(request.getCollectorId()));
+        image.setDistributionId(
+                request.getDistributionId() == null
+                        ? request.getBaseId()
+                        : request.getDistributionId());
+        image.setGrowthRecordId(request.getGrowthRecordId());
         image.setCollectedLocation(request.getCollectPlace());
         image.setCollectedAt(request.getCollectTime() == null ? now : request.getCollectTime());
         image.setImageType(request.getImageType());
@@ -187,6 +237,122 @@ public class HerbImageServiceImpl implements HerbImageService {
         image.setIsDeleted(0);
         image.setVersion(0);
         return image;
+    }
+
+    private FileResourceVO uploadFile(MultipartFile file, String usage) {
+        FileUploadDTO dto = new FileUploadDTO();
+        dto.setFile(file);
+        dto.setFileType("image");
+        dto.setAccessLevel("private");
+        dto.setFileUsage(usage);
+        return fileResourceService.upload(dto);
+    }
+
+    private void bindFile(Long fileId, String bizType, Long bizId, String usage) {
+        FileBusinessBindDTO bind = new FileBusinessBindDTO();
+        bind.setFileId(fileId);
+        bind.setBizType(bizType);
+        bind.setBizId(bizId);
+        bind.setFileUsage(usage);
+        fileBusinessService.bind(bind);
+    }
+
+    private void cleanupFile(Long fileId, RuntimeException original) {
+        try {
+            fileResourceService.delete(fileId);
+        } catch (RuntimeException cleanupException) {
+            original.addSuppressed(cleanupException);
+        }
+    }
+
+    private void syncGrowthFileRelation(
+            Long fileId, Long previousGrowthRecordId, Long growthRecordId) {
+        if (fileId == null || java.util.Objects.equals(previousGrowthRecordId, growthRecordId)) {
+            return;
+        }
+        if (previousGrowthRecordId != null) {
+            fileBusinessService.deleteByBusinessAndFile(
+                    "herb_growth_record", previousGrowthRecordId, fileId);
+        }
+        if (growthRecordId != null) {
+            bindFile(fileId, "herb_growth_record", growthRecordId, "field_image");
+        }
+    }
+
+    private void synchronizeGrowthReference(HerbImageUploadRequest request) {
+        if (request.getGrowthRecordId() == null) {
+            return;
+        }
+        Long distributionId =
+                request.getDistributionId() == null
+                        ? request.getBaseId()
+                        : request.getDistributionId();
+        GrowthRecordEntity growth =
+                requireCompatibleGrowthRecord(
+                        request.getGrowthRecordId(), request.getSpeciesId(), distributionId);
+        if (request.getSpeciesId() == null) {
+            request.setSpeciesId(growth.getSpeciesId());
+        }
+        if (distributionId == null) {
+            request.setDistributionId(growth.getDistributionId());
+        }
+    }
+
+    private void synchronizeGrowthReference(HerbImageUpdateRequest request) {
+        if (request.getGrowthRecordId() == null) {
+            return;
+        }
+        Long distributionId =
+                request.getDistributionId() == null
+                        ? request.getBaseId()
+                        : request.getDistributionId();
+        GrowthRecordEntity growth =
+                requireCompatibleGrowthRecord(
+                        request.getGrowthRecordId(), request.getSpeciesId(), distributionId);
+        if (request.getSpeciesId() == null) {
+            request.setSpeciesId(growth.getSpeciesId());
+        }
+        if (distributionId == null) {
+            request.setDistributionId(growth.getDistributionId());
+        }
+    }
+
+    private GrowthRecordEntity requireCompatibleGrowthRecord(
+            Long growthRecordId, Long speciesId, Long distributionId) {
+        GrowthRecordEntity growth = growthRecordMapper.selectById(growthRecordId);
+        if (growth == null) {
+            throw new BusinessException("Growth record not found");
+        }
+        if (speciesId != null && !speciesId.equals(growth.getSpeciesId())) {
+            throw new BusinessException("Image species does not match growth record");
+        }
+        if (distributionId != null && !distributionId.equals(growth.getDistributionId())) {
+            throw new BusinessException("Image distribution does not match growth record");
+        }
+        return growth;
+    }
+
+    private Long resolveUploaderId(Long requestedCollectorId) {
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (requestedCollectorId == null) {
+            return currentUserId == null || currentUserId <= 0 ? null : currentUserId;
+        }
+        if (isAdmin() || requestedCollectorId.equals(currentUserId)) {
+            return requestedCollectorId;
+        }
+        throw new ForbiddenException("不能以其他用户身份上传或修改图片");
+    }
+
+    private void requireOwner(HerbImageEntity image) {
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (!isAdmin()
+                && (currentUserId == null || !currentUserId.equals(image.getUploaderId()))) {
+            throw new ForbiddenException("只能修改或删除本人上传的图片");
+        }
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase);
     }
 
     private String resolveUploadSource(String uploadSource) {
@@ -218,6 +384,7 @@ public class HerbImageServiceImpl implements HerbImageService {
         vo.setImageName(entity.getOriginalFilename());
         vo.setSpeciesId(entity.getSpeciesId());
         vo.setSpeciesName(species == null ? null : species.getHerbName());
+        vo.setGrowthRecordId(entity.getGrowthRecordId());
         vo.setUploadSource(entity.getUploadSource());
         vo.setCollectorId(entity.getUploaderId());
         vo.setBaseId(entity.getDistributionId());

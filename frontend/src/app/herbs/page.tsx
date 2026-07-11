@@ -1,8 +1,8 @@
 "use client";
 
-import { Button, Descriptions, Modal, Select, Typography } from "antd";
+import { App, Button, Descriptions, Form, Input, Modal, Select, Typography } from "antd";
 import type { TableProps } from "antd";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActionToolbar } from "@/components/common/ActionToolbar";
 import { DataTable } from "@/components/common/DataTable";
 import { DetailDrawer } from "@/components/common/DetailDrawer";
@@ -13,38 +13,83 @@ import { StatusTag } from "@/components/common/StatusTag";
 import { HerbCard } from "@/components/feature/HerbCard";
 import { PageBanner } from "@/components/layout/PageBanner";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import { herbBases, herbCategories, herbSpeciesList } from "@/mocks/herbs";
-import type { HerbSpecies } from "@/types/herb";
+import { fetchDictionaryOptions, type DictionaryOption } from "@/lib/dictionaries";
+import {
+  createHerbSpecies,
+  fetchHerbBases,
+  fetchHerbSpecies,
+  type HerbBaseApi,
+  type HerbSpeciesApi,
+  type HerbSpeciesPayload,
+} from "@/lib/herbs";
+import { getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
+import { useAuthStore } from "@/stores/auth-store";
 import styles from "@/styles/mockPages.module.css";
 
 export default function HerbsPage() {
+  const { message } = App.useApp();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const [form] = Form.useForm<HerbSpeciesPayload>();
   const [keyword, setKeyword] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedHerb, setSelectedHerb] = useState<HerbSpecies | null>(null);
+  const [herbs, setHerbs] = useState<HerbSpeciesApi[]>([]);
+  const [bases, setBases] = useState<HerbBaseApi[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<DictionaryOption[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [selectedHerb, setSelectedHerb] = useState<HerbSpeciesApi | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const filteredHerbs = useMemo(() => {
-    return herbSpeciesList.filter((herb) => {
-      const matchedKeyword =
-        keyword.length === 0 ||
-        herb.herbName.includes(keyword) ||
-        herb.herbNo.includes(keyword) ||
-        herb.aliasNames.some((alias) => alias.includes(keyword));
-      const matchedCategory = selectedCategory === "all" || herb.categoryId === selectedCategory;
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [herbPage, basePage, dictionaryCategories] = await Promise.all([
+        fetchHerbSpecies({
+          pageNum: 1,
+          pageSize: 100,
+          keyword: keyword || undefined,
+          category: selectedCategory === "all" ? undefined : selectedCategory,
+        }),
+        fetchHerbBases(),
+        fetchDictionaryOptions("herb_category"),
+      ]);
+      setHerbs(herbPage.records);
+      setTotal(herbPage.total);
+      setBases(basePage.records);
+      setCategoryOptions(dictionaryCategories);
+    } catch (error) {
+      if (!isAuthRedirectError(error)) message.error(getApiErrorMessage(error, "药材数据加载失败"));
+    } finally {
+      setLoading(false);
+    }
+  }, [keyword, message, selectedCategory]);
 
-      return matchedKeyword && matchedCategory;
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const categories = useMemo(() => {
+    const labels = new Map(categoryOptions.map((option) => [option.value, option.label]));
+    herbs.forEach((herb) => {
+      if (herb.category && !labels.has(herb.category)) labels.set(herb.category, herb.category);
     });
-  }, [keyword, selectedCategory]);
+    return [...labels].map(([value, label]) => ({ label, value }));
+  }, [categoryOptions, herbs]);
 
-  const columns: TableProps<HerbSpecies>["columns"] = [
-    { title: "药材编号", dataIndex: "herbNo", key: "herbNo", width: 150 },
+  const columns: TableProps<HerbSpeciesApi>["columns"] = [
+    { title: "药材编号", dataIndex: "herbCode", key: "herbCode", width: 150 },
     { title: "药材名称", dataIndex: "herbName", key: "herbName" },
-    { title: "分类", dataIndex: "categoryName", key: "categoryName" },
-    { title: "药用部位", dataIndex: "medicinalPart", key: "medicinalPart" },
+    { title: "分类", dataIndex: "category", key: "category", render: (value) => value || "未分类" },
+    {
+      title: "药用部位",
+      dataIndex: "medicinalPart",
+      key: "medicinalPart",
+      render: (value) => value || "-",
+    },
     {
       title: "状态",
       key: "status",
-      render: (_, record) => <StatusTag status={record.status} />,
+      render: (_, record) => <StatusTag status={record.status === 0 ? "disabled" : "normal"} />,
     },
     {
       title: "操作",
@@ -57,33 +102,42 @@ export default function HerbsPage() {
     },
   ];
 
+  async function submit(values: HerbSpeciesPayload) {
+    try {
+      await createHerbSpecies({ ...values, status: 1 });
+      message.success("药材已创建");
+      setModalOpen(false);
+      form.resetFields();
+      await load();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "新增药材失败"));
+    }
+  }
+
   return (
     <SiteLayout>
       <div className={styles.pageStack}>
         <PageBanner
           sealText="HERBARIUM RESOURCE"
           title="中药材资源中心"
-          subtitle="以标本档案为线索，汇集中药材基础信息、分类、药用部位、产地说明和图像资源。"
+          subtitle="药材主数据、分类信息、药用部位与种植基地均来自业务接口。"
         />
-
         <div className={styles.threeGrid}>
-          {herbSpeciesList.slice(0, 3).map((herb) => (
+          {herbs.slice(0, 3).map((herb) => (
             <HerbCard
               actions={[{ label: "查看详情", onClick: () => setSelectedHerb(herb) }]}
-              alias={herb.aliasNames.join("、")}
+              alias={herb.aliasName}
               efficacy={herb.efficacy}
-              image={herb.imageUrl}
               key={herb.id}
               medicinalPart={herb.medicinalPart}
               name={herb.herbName}
-              tags={herb.tags}
+              tags={herb.category ? [herb.category] : []}
             />
           ))}
         </div>
-
         <FilterPanel
-          description="当前为前端 mock 筛选，后续接入 /api/herbs 分页查询。"
-          extra={<Typography.Text type="secondary">共 {filteredHerbs.length} 条药材</Typography.Text>}
+          description="筛选条件会直接查询后端药材分页接口。"
+          extra={<Typography.Text type="secondary">共 {total} 条药材</Typography.Text>}
           title="药材检索"
           onReset={() => {
             setKeyword("");
@@ -92,51 +146,45 @@ export default function HerbsPage() {
         >
           <SearchBar placeholder="搜索药材名称、编号或别名" value={keyword} onChange={setKeyword} />
           <Select
-            options={[
-              { label: "全部分类", value: "all" },
-              ...herbCategories.map((category) => ({
-                label: category.categoryName,
-                value: String(category.id),
-              })),
-            ]}
+            options={[{ label: "全部分类", value: "all" }, ...categories]}
             style={{ minWidth: 180 }}
             value={selectedCategory}
             onChange={setSelectedCategory}
           />
         </FilterPanel>
-
         <ActionToolbar
           actions={
-            <div className={styles.toolbarActions}>
-              <Button onClick={() => setModalOpen(true)}>导出药材目录</Button>
+            hasPermission("herb:species:create") ? (
               <Button type="primary" onClick={() => setModalOpen(true)}>
                 新增药材
               </Button>
-            </div>
+            ) : undefined
           }
-          description="展示药材主数据，点击查看详情可打开抽屉。"
+          description="数据来自 /api/herb/species/page，写操作按当前用户权限显示。"
           title="药材表格"
         />
-        <DataTable<HerbSpecies> columns={columns} dataSource={filteredHerbs} pagination={false} rowKey="id" />
-
-        <div className={styles.twoGrid}>
-          <InfoCard title="药材分类">
-            <ul className={styles.compactList}>
-              {herbCategories.map((category) => (
-                <li key={category.id}>{category.categoryName}：{category.description}</li>
-              ))}
-            </ul>
-          </InfoCard>
-          <InfoCard title="基地信息">
-            <ul className={styles.compactList}>
-              {herbBases.map((base) => (
-                <li key={base.id}>{base.baseName} / {base.district} / {base.manager}</li>
-              ))}
-            </ul>
-          </InfoCard>
-        </div>
+        <DataTable<HerbSpeciesApi>
+          columns={columns}
+          dataSource={herbs}
+          loading={loading}
+          pagination={false}
+          rowKey="id"
+        />
+        <InfoCard title="启用基地">
+          <ul className={styles.compactList}>
+            {bases.length ? (
+              bases.map((base) => (
+                <li key={base.id}>
+                  {base.baseName} / {base.regionName || base.address || "区域未配置"} /{" "}
+                  {base.contactName || "联系人未配置"}
+                </li>
+              ))
+            ) : (
+              <li>暂无基地数据</li>
+            )}
+          </ul>
+        </InfoCard>
       </div>
-
       <DetailDrawer
         open={Boolean(selectedHerb)}
         title={selectedHerb?.herbName ?? "药材详情"}
@@ -144,21 +192,66 @@ export default function HerbsPage() {
       >
         {selectedHerb ? (
           <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label="药材编号">{selectedHerb.herbNo}</Descriptions.Item>
-            <Descriptions.Item label="别名">{selectedHerb.aliasNames.join("、")}</Descriptions.Item>
-            <Descriptions.Item label="拉丁名">{selectedHerb.latinName}</Descriptions.Item>
-            <Descriptions.Item label="分类">{selectedHerb.categoryName}</Descriptions.Item>
-            <Descriptions.Item label="药用部位">{selectedHerb.medicinalPart}</Descriptions.Item>
-            <Descriptions.Item label="功效">{selectedHerb.efficacy}</Descriptions.Item>
-            <Descriptions.Item label="适宜环境">{selectedHerb.suitableEnvironment}</Descriptions.Item>
+            <Descriptions.Item label="药材编号">{selectedHerb.herbCode}</Descriptions.Item>
+            <Descriptions.Item label="别名">{selectedHerb.aliasName || "-"}</Descriptions.Item>
+            <Descriptions.Item label="拉丁名">{selectedHerb.latinName || "-"}</Descriptions.Item>
+            <Descriptions.Item label="分类">{selectedHerb.category || "未分类"}</Descriptions.Item>
+            <Descriptions.Item label="药用部位">
+              {selectedHerb.medicinalPart || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="功效">{selectedHerb.efficacy || "-"}</Descriptions.Item>
+            <Descriptions.Item label="说明">{selectedHerb.description || "-"}</Descriptions.Item>
           </Descriptions>
         ) : null}
       </DetailDrawer>
-
-      <Modal footer={null} open={modalOpen} title="功能占位" onCancel={() => setModalOpen(false)}>
-        <Typography.Paragraph className={styles.mutedText}>
-          新增、编辑、导出等操作将在后续接口联调阶段接入真实表单与权限控制。
-        </Typography.Paragraph>
+      <Modal
+        title="新增药材"
+        open={modalOpen}
+        footer={null}
+        destroyOnHidden
+        onCancel={() => setModalOpen(false)}
+      >
+        <Form form={form} layout="vertical" onFinish={submit}>
+          <Form.Item
+            name="herbCode"
+            label="药材编号"
+            rules={[{ required: true, message: "请输入药材编号" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="herbName"
+            label="药材名称"
+            rules={[{ required: true, message: "请输入药材名称" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item name="aliasName" label="别名">
+            <Input />
+          </Form.Item>
+          <Form.Item name="latinName" label="拉丁名">
+            <Input />
+          </Form.Item>
+          <Form.Item name="category" label="分类编码">
+            {categoryOptions.length ? (
+              <Select allowClear options={categoryOptions} showSearch optionFilterProp="label" />
+            ) : (
+              <Input />
+            )}
+          </Form.Item>
+          <Form.Item name="medicinalPart" label="药用部位">
+            <Input />
+          </Form.Item>
+          <Form.Item name="efficacy" label="功效">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Form.Item name="description" label="说明">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Button block htmlType="submit" type="primary">
+            保存
+          </Button>
+        </Form>
       </Modal>
     </SiteLayout>
   );

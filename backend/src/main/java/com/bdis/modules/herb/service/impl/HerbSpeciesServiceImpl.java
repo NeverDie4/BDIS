@@ -2,6 +2,7 @@ package com.bdis.modules.herb.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.modules.dictionary.support.DictionaryReferenceValidator;
 import com.bdis.modules.herb.dto.HerbSpeciesCreateRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesQueryRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesUpdateRequest;
@@ -19,15 +20,21 @@ import org.springframework.util.StringUtils;
 public class HerbSpeciesServiceImpl implements HerbSpeciesService {
 
     private final HerbSpeciesMapper herbSpeciesMapper;
+    private final DictionaryReferenceValidator dictionaryReferenceValidator;
 
-    public HerbSpeciesServiceImpl(HerbSpeciesMapper herbSpeciesMapper) {
+    public HerbSpeciesServiceImpl(
+            HerbSpeciesMapper herbSpeciesMapper,
+            DictionaryReferenceValidator dictionaryReferenceValidator) {
         this.herbSpeciesMapper = herbSpeciesMapper;
+        this.dictionaryReferenceValidator = dictionaryReferenceValidator;
     }
 
     @Override
     @Transactional
     public HerbSpeciesVO create(HerbSpeciesCreateRequest request) {
         validateCreateRequest(request);
+        dictionaryReferenceValidator.validateIfConfigured(
+                "herb_category", request.getCategory(), "药材分类");
         if (herbSpeciesMapper.selectByHerbCode(request.getHerbCode()) != null) {
             throw new BusinessException("Herb code already exists");
         }
@@ -55,6 +62,8 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
     public HerbSpeciesVO update(Long id, HerbSpeciesUpdateRequest request) {
         HerbEntity existing = getActiveEntity(id);
         validateUpdateRequest(request);
+        dictionaryReferenceValidator.validateIfConfigured(
+                "herb_category", request.getCategory(), "药材分类");
 
         existing.setHerbName(request.getHerbName());
         existing.setLatinName(request.getLatinName());

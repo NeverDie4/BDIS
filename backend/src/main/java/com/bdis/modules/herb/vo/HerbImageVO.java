@@ -16,6 +16,8 @@ public class HerbImageVO {
 
     private Long speciesId;
 
+    private Long growthRecordId;
+
     private String speciesName;
 
     private String uploadSource;

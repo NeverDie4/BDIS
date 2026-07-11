@@ -1,6 +1,7 @@
 package com.bdis.modules.collection.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.collection.dto.HerbBatchCancelRequest;
 import com.bdis.modules.collection.dto.HerbBatchConfirmStatusRequest;
 import com.bdis.modules.collection.dto.HerbBatchReopenReviewRequest;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb/batch")
+@RequirePermission("growth:record:view")
 public class HerbBatchStatusController {
 
     private final HerbBatchStatusService herbBatchStatusService;
@@ -25,26 +27,31 @@ public class HerbBatchStatusController {
     }
 
     @PutMapping("/{batchId}/start-collection")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchVO> startCollection(@PathVariable Long batchId) {
         return Result.success(herbBatchStatusService.startCollection(batchId));
     }
 
     @PutMapping("/{batchId}/submit")
+    @RequirePermission("growth:record:submit")
     public Result<HerbBatchVO> submit(@PathVariable Long batchId) {
         return Result.success(herbBatchStatusService.submit(batchId));
     }
 
     @PutMapping("/{batchId}/start-identification")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchVO> startIdentification(@PathVariable Long batchId) {
         return Result.success(herbBatchStatusService.startIdentification(batchId));
     }
 
     @PutMapping("/{batchId}/mark-reviewing")
+    @RequirePermission("growth:record:audit")
     public Result<HerbBatchVO> markReviewing(@PathVariable Long batchId) {
         return Result.success(herbBatchStatusService.markReviewing(batchId));
     }
 
     @PutMapping("/{batchId}/confirm-status")
+    @RequirePermission("growth:record:audit")
     public Result<HerbBatchVO> confirmStatus(
             @PathVariable Long batchId,
             @RequestBody(required = false) HerbBatchConfirmStatusRequest request) {
@@ -52,11 +59,13 @@ public class HerbBatchStatusController {
     }
 
     @PutMapping("/{batchId}/archive")
+    @RequirePermission("growth:record:audit")
     public Result<HerbBatchVO> archive(@PathVariable Long batchId) {
         return Result.success(herbBatchStatusService.archive(batchId));
     }
 
     @PutMapping("/{batchId}/cancel")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchVO> cancel(
             @PathVariable Long batchId,
             @RequestBody(required = false) HerbBatchCancelRequest request) {
@@ -64,6 +73,7 @@ public class HerbBatchStatusController {
     }
 
     @PutMapping("/{batchId}/reopen-review")
+    @RequirePermission("growth:record:audit")
     public Result<HerbBatchVO> reopenReview(
             @PathVariable Long batchId,
             @RequestBody(required = false) HerbBatchReopenReviewRequest request) {

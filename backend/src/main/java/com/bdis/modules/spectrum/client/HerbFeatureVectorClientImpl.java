@@ -1,7 +1,7 @@
 package com.bdis.modules.spectrum.client;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.spectrum.config.HerbRecognitionProperties;
 import java.nio.file.Path;
@@ -22,12 +22,12 @@ import org.springframework.web.client.RestTemplate;
 public class HerbFeatureVectorClientImpl implements HerbFeatureVectorClient {
 
     private final HerbRecognitionProperties properties;
-    private final FileStorageService fileStorageService;
+    private final FileResourceService fileResourceService;
 
     public HerbFeatureVectorClientImpl(
-            HerbRecognitionProperties properties, FileStorageService fileStorageService) {
+            HerbRecognitionProperties properties, FileResourceService fileResourceService) {
         this.properties = properties;
-        this.fileStorageService = fileStorageService;
+        this.fileResourceService = fileResourceService;
     }
 
     @Override
@@ -35,7 +35,7 @@ public class HerbFeatureVectorClientImpl implements HerbFeatureVectorClient {
         if (!properties.isEnabled() || properties.isMockEnabled()) {
             return Collections.emptyList();
         }
-        Path imagePath = fileStorageService.resolve(image.getImageUrl());
+        Path imagePath = fileResourceService.resolveLocalPath(image.getImageUrl());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new FileSystemResource(imagePath));
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();

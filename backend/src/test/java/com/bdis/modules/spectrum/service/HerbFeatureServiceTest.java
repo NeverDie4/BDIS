@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.impl.LocalFileStorageServiceImpl;
+import com.bdis.common.exception.FileStorageException;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.spectrum.client.FeatureExtractionClient;
@@ -27,9 +29,11 @@ import com.bdis.modules.spectrum.service.impl.HerbFeatureServiceImpl;
 import com.bdis.modules.spectrum.vo.FeatureBatchExtractResultVO;
 import com.bdis.modules.spectrum.vo.FeatureExtractResultVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,10 +57,23 @@ class HerbFeatureServiceTest {
 
     @Mock private FeatureExtractionClient featureExtractionClient;
 
+    @Mock private FileResourceService fileResourceService;
+
     private HerbFeatureService herbFeatureService;
 
     @BeforeEach
     void setUp() {
+        lenient()
+                .when(fileResourceService.resolveLocalPath(anyString()))
+                .thenAnswer(
+                        invocation -> {
+                            String fileUrl = invocation.getArgument(0);
+                            Path resolved = uploadRoot.resolve(fileUrl.replaceFirst("^/", ""));
+                            if (!Files.isRegularFile(resolved)) {
+                                throw new FileStorageException("文件不存在或已不可访问");
+                            }
+                            return resolved;
+                        });
         herbFeatureService =
                 new HerbFeatureServiceImpl(
                         herbAtlasMapper,
@@ -64,7 +81,7 @@ class HerbFeatureServiceTest {
                         herbAtlasFeatureMapper,
                         herbImageFeatureMapper,
                         featureExtractionClient,
-                        new LocalFileStorageServiceImpl(uploadRoot.toString()),
+                        fileResourceService,
                         new ObjectMapper(),
                         featureProperties());
     }
@@ -72,8 +89,7 @@ class HerbFeatureServiceTest {
     @Test
     void extractAtlasFeatureSavesSuccessfulVector() throws Exception {
         SpectrumEntity atlas = atlas(1L, "ATLAS_1", "/herb/atlas/a.jpg");
-        Files.createDirectories(uploadRoot.resolve("herb/atlas"));
-        Files.write(uploadRoot.resolve("herb/atlas/a.jpg"), new byte[] {1});
+        copyFixture("wuzhimaotao_field.jpg", uploadRoot.resolve("herb/atlas/a.jpg"));
         when(herbAtlasMapper.selectActiveById(1L)).thenReturn(atlas);
         when(featureExtractionClient.extract(any())).thenReturn(successResponse());
 
@@ -128,8 +144,7 @@ class HerbFeatureServiceTest {
         request.setForceRefresh(true);
         SpectrumEntity missing = atlas(1L, "ATLAS_1", "/herb/atlas/missing.jpg");
         SpectrumEntity ok = atlas(2L, "ATLAS_2", "/herb/atlas/ok.jpg");
-        Files.createDirectories(uploadRoot.resolve("herb/atlas"));
-        Files.write(uploadRoot.resolve("herb/atlas/ok.jpg"), new byte[] {1});
+        copyFixture("wuzhimaotao_field.jpg", uploadRoot.resolve("herb/atlas/ok.jpg"));
         when(herbAtlasMapper.selectEnabledForFeatureExtraction(null))
                 .thenReturn(List.of(missing, ok));
         when(featureExtractionClient.extract(any())).thenReturn(successResponse());
@@ -146,11 +161,10 @@ class HerbFeatureServiceTest {
     void batchExtractImageFeaturesSavesMissingFeature() throws Exception {
         ImageFeatureBatchExtractRequest request = new ImageFeatureBatchExtractRequest();
         request.setForceRefresh(false);
-        HerbImageEntity image = image(2L, "/herb/image/ok.jpg");
+        HerbImageEntity image = image(2L, "/herb/image/ok.png");
         image.setImageNo("IMG_2");
-        image.setOriginalFilename("ok.jpg");
-        Files.createDirectories(uploadRoot.resolve("herb/image"));
-        Files.write(uploadRoot.resolve("herb/image/ok.jpg"), new byte[] {1});
+        image.setOriginalFilename("ok.png");
+        copyFixture("gouqi_fruit.png", uploadRoot.resolve("herb/image/ok.png"));
         when(herbImageMapper.selectActiveForFeatureExtraction(null)).thenReturn(List.of(image));
         when(herbImageFeatureMapper.existsSuccessByImageIdAndModel(2L, "resnet50", "v1.0"))
                 .thenReturn(0);
@@ -216,5 +230,14 @@ class HerbFeatureServiceTest {
         image.setSpeciesId(9L);
         image.setImageUrl(imageUrl);
         return image;
+    }
+
+    private void copyFixture(String filename, Path target) throws Exception {
+        Files.createDirectories(target.getParent());
+        try (InputStream input =
+                Objects.requireNonNull(
+                        getClass().getResourceAsStream("/images/herb/" + filename))) {
+            Files.copy(input, target);
+        }
     }
 }

@@ -7,8 +7,8 @@
         <id column="id" property="id"/>
         <result column="image_no" property="imageNo"/>
         <result column="species_id" property="speciesId"/>
-        <result column="distribution_id" property="distributionId"/>
         <result column="growth_record_id" property="growthRecordId"/>
+        <result column="distribution_id" property="distributionId"/>
         <result column="image_url" property="imageUrl"/>
         <result column="thumbnail_url" property="thumbnailUrl"/>
         <result column="original_filename" property="originalFilename"/>
@@ -45,6 +45,7 @@
         <result column="original_filename" property="imageName"/>
         <result column="species_id" property="speciesId"/>
         <result column="species_name" property="speciesName"/>
+        <result column="growth_record_id" property="growthRecordId"/>
         <result column="upload_source" property="uploadSource"/>
         <result column="uploader_id" property="collectorId"/>
         <result column="distribution_id" property="baseId"/>
@@ -94,9 +95,14 @@
     <sql id="ImageVOColumns">
         i.id,
         i.image_no,
-        i.image_url,
+        CASE
+            WHEN fr.id IS NULL THEN i.image_url
+            WHEN fr.access_level = 'public' THEN CONCAT('/api/public-files/', fr.id, '/content')
+            ELSE CONCAT('/api/files/', fr.id, '/content')
+        END AS image_url,
         i.original_filename,
         i.species_id,
+        i.growth_record_id,
         s.herb_name AS species_name,
         i.upload_source,
         i.uploader_id,
@@ -114,8 +120,11 @@
         INSERT INTO herb_image (
             image_no,
             species_id,
+            growth_record_id,
             image_url,
             original_filename,
+            file_size,
+            file_format,
             upload_source,
             uploader_id,
             distribution_id,
@@ -131,8 +140,11 @@
         ) VALUES (
             #{imageNo},
             #{speciesId},
+            #{growthRecordId},
             #{imageUrl},
             #{originalFilename},
+            #{fileSize},
+            #{fileFormat},
             #{uploadSource},
             #{uploaderId},
             #{distributionId},
@@ -151,6 +163,7 @@
     <update id="updateImage" parameterType="com.bdis.modules.herb.entity.HerbImageEntity">
         UPDATE herb_image
         SET species_id = #{speciesId},
+            growth_record_id = #{growthRecordId},
             uploader_id = #{uploaderId},
             distribution_id = #{distributionId},
             collected_location = #{collectedLocation},
@@ -193,8 +206,20 @@
         <include refid="ImageVOColumns"/>
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
         WHERE i.id = #{id}
           AND i.is_deleted = 0
+    </select>
+
+    <select id="selectByGrowthRecordId" resultMap="ImageVOResultMap">
+        SELECT
+        <include refid="ImageVOColumns"/>
+        FROM herb_image i
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        WHERE i.growth_record_id = #{growthRecordId}
+          AND i.is_deleted = 0
+        ORDER BY i.created_at DESC
     </select>
 
     <select id="countPage" resultType="java.lang.Long">
@@ -205,6 +230,9 @@
             i.is_deleted = 0
             <if test="query.speciesId != null">
                 AND i.species_id = #{query.speciesId}
+            </if>
+            <if test="query.growthRecordId != null">
+                AND i.growth_record_id = #{query.growthRecordId}
             </if>
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
@@ -243,10 +271,14 @@
         <include refid="ImageVOColumns"/>
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
         <where>
             i.is_deleted = 0
             <if test="query.speciesId != null">
                 AND i.species_id = #{query.speciesId}
+            </if>
+            <if test="query.growthRecordId != null">
+                AND i.growth_record_id = #{query.growthRecordId}
             </if>
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
@@ -294,6 +326,7 @@
         <include refid="ImageVOColumns"/>
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
         WHERE i.uploader_id = #{collectorId}
           AND i.is_deleted = 0
         ORDER BY i.created_at DESC

@@ -21,6 +21,8 @@ public interface HerbImageMapper extends BaseMapper<HerbImageEntity> {
 
     HerbImageVO selectDetailById(@Param("id") Long id);
 
+    List<HerbImageVO> selectByGrowthRecordId(@Param("growthRecordId") Long growthRecordId);
+
     Long countPage(@Param("query") HerbImageQueryRequest query);
 
     List<HerbImageVO> selectPage(

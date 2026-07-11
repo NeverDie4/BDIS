@@ -5,6 +5,7 @@ import com.bdis.audit.service.LoginLogService;
 import com.bdis.audit.vo.LoginLogVO;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/login-logs")
+@RequirePermission("audit:log:view")
 public class LoginLogController {
 
     private final LoginLogService loginLogService;

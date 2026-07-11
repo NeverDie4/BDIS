@@ -68,7 +68,7 @@ class SoapSyncTaskServiceImplTest {
                 .insert(any(SoapExchangeRecordEntity.class));
         when(soapClient.mockResponse("GROWTH_RECORD")).thenReturn("<Envelope/>");
         SoapImportResultVO importResult = new SoapImportResultVO();
-        importResult.setStatus("IMPORTED");
+        importResult.setStatus("SUCCESS");
         importResult.setBusinessType("herb_growth_record");
         importResult.setBusinessId(30L);
         importResult.setExternalNo("SOAP-001");
@@ -92,7 +92,7 @@ class SoapSyncTaskServiceImplTest {
         assertThat(sync.getBusinessType()).isEqualTo("herb_growth_record");
         assertThat(sync.getBusinessId()).isEqualTo(30L);
         assertThat(sync.getExternalNo()).isEqualTo("SOAP-001");
-        assertThat(sync.getSyncStatus()).isEqualTo("IMPORTED");
+        assertThat(sync.getSyncStatus()).isEqualTo("SUCCESS");
         ArgumentCaptor<AuditRecordDTO> auditCaptor = ArgumentCaptor.forClass(AuditRecordDTO.class);
         verify(auditLogService, times(2)).record(auditCaptor.capture());
         assertThat(auditCaptor.getAllValues())

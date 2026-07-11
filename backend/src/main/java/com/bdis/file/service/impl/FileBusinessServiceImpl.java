@@ -79,6 +79,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         if (entity == null) {
             throw new ResourceNotFoundException("文件关联不存在");
         }
+        businessReferenceValidator.validate(entity.getBizType(), entity.getBizId());
         fileBusinessMapper.deleteById(relationId);
         recordAudit("UNBIND", entity.getBizType(), entity.getBizId());
     }
@@ -87,6 +88,23 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     public void deleteByFileId(Long fileId) {
         fileBusinessMapper.delete(
                 new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getFileId, fileId));
+    }
+
+    @Override
+    public void deleteByBusiness(String bizType, Long bizId) {
+        fileBusinessMapper.delete(
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getBizType, bizType)
+                        .eq(FileBusinessEntity::getBizId, bizId));
+    }
+
+    @Override
+    public void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId) {
+        fileBusinessMapper.delete(
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getBizType, bizType)
+                        .eq(FileBusinessEntity::getBizId, bizId)
                         .eq(FileBusinessEntity::getFileId, fileId));
     }
 
@@ -115,6 +133,13 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     private FileResourceVO toFileVO(FileResourceEntity entity) {
         FileResourceVO vo = new FileResourceVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setFileUrl(
+                "public".equalsIgnoreCase(entity.getAccessLevel())
+                        ? "/api/public-files/" + entity.getId() + "/content"
+                        : "/api/files/" + entity.getId() + "/content");
+        if (entity.getThumbnailUrl() != null) {
+            vo.setThumbnailUrl(vo.getFileUrl());
+        }
         return vo;
     }
 

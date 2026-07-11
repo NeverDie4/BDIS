@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.spectrum.dto.HerbImageMatchQueryRequest;
 import com.bdis.modules.spectrum.dto.HerbImageMatchRequest;
 import com.bdis.modules.spectrum.service.HerbImageMatchService;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb")
+@RequirePermission("herb:identification:view")
 public class HerbImageMatchController {
 
     private final HerbImageMatchService herbImageMatchService;
@@ -27,6 +29,7 @@ public class HerbImageMatchController {
     }
 
     @PostMapping("/image/{imageId}/match")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbImageMatchVO> match(
             @PathVariable Long imageId,
             @RequestBody(required = false) HerbImageMatchRequest request) {

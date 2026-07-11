@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.spectrum.dto.HerbIdentificationQueryRequest;
 import com.bdis.modules.spectrum.dto.HerbIdentificationReviewRequest;
 import com.bdis.modules.spectrum.dto.HerbIdentifyRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb")
+@RequirePermission("herb:identification:view")
 public class HerbIdentificationController {
 
     private final HerbIdentificationService herbIdentificationService;
@@ -29,6 +31,7 @@ public class HerbIdentificationController {
     }
 
     @PostMapping("/image/{imageId}/identify")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbIdentificationVO> identify(
             @PathVariable Long imageId,
             @RequestBody(required = false) HerbIdentifyRequest request) {
@@ -52,6 +55,7 @@ public class HerbIdentificationController {
     }
 
     @PutMapping("/identification/{id}/review")
+    @RequirePermission("herb:identification:review")
     public Result<HerbIdentificationVO> review(
             @PathVariable Long id,
             @RequestBody(required = false) HerbIdentificationReviewRequest request) {

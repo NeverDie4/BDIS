@@ -2,6 +2,7 @@ package com.bdis.soap.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.soap.dto.SoapRetryDTO;
 import com.bdis.soap.dto.SoapSyncTaskDTO;
 import com.bdis.soap.query.SoapSyncTaskQuery;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/soap-exchange-jobs")
+@RequirePermission("soap:exchange:view")
 public class SoapSyncTaskController {
 
     private final SoapSyncTaskService soapSyncTaskService;
@@ -27,6 +29,7 @@ public class SoapSyncTaskController {
     }
 
     @PostMapping
+    @RequirePermission("soap:exchange:execute")
     public Result<SoapExchangeRecordVO> create(@Valid @RequestBody SoapSyncTaskDTO dto) {
         return Result.success(soapSyncTaskService.createAndExecute(dto));
     }
@@ -42,6 +45,7 @@ public class SoapSyncTaskController {
     }
 
     @PostMapping("/{jobId}/retries")
+    @RequirePermission("soap:exchange:execute")
     public Result<SoapExchangeRecordVO> retry(
             @PathVariable Long jobId, @RequestBody(required = false) SoapRetryDTO dto) {
         return Result.success(soapSyncTaskService.retry(jobId, dto));

@@ -13,5 +13,9 @@ public interface FileBusinessService {
 
     void deleteByFileId(Long fileId);
 
+    void deleteByBusiness(String bizType, Long bizId);
+
+    void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId);
+
     List<FileResourceVO> listByBusiness(String bizType, Long bizId);
 }

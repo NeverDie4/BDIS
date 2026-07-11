@@ -1,6 +1,7 @@
 package com.bdis.modules.map.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.growth.dto.GrowthRecordCreateRequest;
 import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/map-points")
+@RequirePermission("map:point:view")
 public class MapPointController {
 
     private final MapPointService mapPointService;
@@ -37,17 +39,20 @@ public class MapPointController {
     }
 
     @PostMapping
+    @RequirePermission("map:point:create")
     public Result<MapPointVO> createMapPoint(@Valid @RequestBody MapPointUpsertRequest request) {
         return Result.success(mapPointService.createMapPoint(request));
     }
 
     @PutMapping("/{pointId}")
+    @RequirePermission("map:point:update")
     public Result<MapPointVO> updateMapPoint(
             @PathVariable Long pointId, @Valid @RequestBody MapPointUpsertRequest request) {
         return Result.success(mapPointService.updateMapPoint(pointId, request));
     }
 
     @DeleteMapping("/{pointId}")
+    @RequirePermission("map:point:delete")
     public Result<Void> deleteMapPoint(@PathVariable Long pointId) {
         mapPointService.deleteMapPoint(pointId);
         return Result.success(null);
@@ -59,6 +64,7 @@ public class MapPointController {
     }
 
     @PostMapping("/{pointId}/collections")
+    @RequirePermission("growth:record:create")
     public Result<GrowthRecordVO> createCollectionRecord(
             @PathVariable Long pointId, @Valid @RequestBody GrowthRecordCreateRequest request) {
         return Result.success(growthRecordService.createForPoint(pointId, request));

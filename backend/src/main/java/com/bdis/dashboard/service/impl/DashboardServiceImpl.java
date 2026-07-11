@@ -10,6 +10,9 @@ import com.bdis.dashboard.vo.DashboardSummaryVO;
 import com.bdis.dashboard.vo.DashboardTodoVO;
 import com.bdis.modules.dashboard.entity.DashboardSnapshotEntity;
 import com.bdis.modules.dashboard.mapper.DashboardSnapshotMapper;
+import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.permission.service.DataScopeService;
+import com.bdis.modules.permission.vo.DataScopeResultVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
@@ -30,14 +33,20 @@ public class DashboardServiceImpl implements DashboardService {
     private final JdbcTemplate jdbcTemplate;
     private final DashboardSnapshotMapper dashboardSnapshotMapper;
     private final ObjectMapper objectMapper;
+    private final DataScopeService dataScopeService;
+    private final AuthorizationService authorizationService;
 
     public DashboardServiceImpl(
             JdbcTemplate jdbcTemplate,
             DashboardSnapshotMapper dashboardSnapshotMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            DataScopeService dataScopeService,
+            AuthorizationService authorizationService) {
         this.jdbcTemplate = jdbcTemplate;
         this.dashboardSnapshotMapper = dashboardSnapshotMapper;
         this.objectMapper = objectMapper;
+        this.dataScopeService = dataScopeService;
+        this.authorizationService = authorizationService;
     }
 
     @Override
@@ -46,22 +55,40 @@ public class DashboardServiceImpl implements DashboardService {
         vo.setHerbCount(count("herb_species"));
         vo.setBaseCount(count("herb_base"));
         vo.setMapPointCount(count("herb_distribution"));
-        vo.setGrowthRecordCount(count("herb_growth_record"));
+        vo.setGrowthRecordCount(
+                countScoped("herb_growth_record", "collector_id", "herb_growth_record"));
         vo.setPendingGrowthReviewCount(
-                countByStatus("herb_growth_record", "review_status", "SUBMITTED"));
+                countScopedByStatus(
+                        "herb_growth_record",
+                        "review_status",
+                        "SUBMITTED",
+                        "collector_id",
+                        "herb_growth_record"));
         vo.setPendingDeclarationReviewCount(
-                countByStatus("eval_application", "review_status", "SUBMITTED"));
+                countScopedByStatus(
+                        "eval_application",
+                        "review_status",
+                        "SUBMITTED",
+                        "applicant_id",
+                        "eval_application"));
         vo.setPendingPerformanceReviewCount(
-                countByStatus("perf_record", "identify_status", "SUBMITTED"));
-        vo.setCourseCount(count("edu_course"));
-        vo.setFileCount(count("sys_file_resource"));
-        vo.setSoapFailedCount(countByStatus("soap_sync_task", "sync_status", "FAILED"));
+                countScopedByStatus(
+                        "perf_record",
+                        "identify_status",
+                        "SUBMITTED",
+                        "user_id",
+                        "perf_record"));
+        vo.setCourseCount(countVisibleCourses());
+        vo.setFileCount(countVisibleFiles());
+        vo.setSoapFailedCount(
+                authorizationService.hasPermission("soap:exchange:view")
+                        ? countByStatus("soap_sync_task", "sync_status", "FAILED")
+                        : 0);
         vo.setTotalPendingTaskCount(
                 vo.getPendingGrowthReviewCount()
                         + vo.getPendingDeclarationReviewCount()
                         + vo.getPendingPerformanceReviewCount()
                         + vo.getSoapFailedCount());
-        writeTodaySnapshot(vo);
         return vo;
     }
 
@@ -70,6 +97,7 @@ public class DashboardServiceImpl implements DashboardService {
         if (!tableExists("herb_growth_record")) {
             return Collections.emptyList();
         }
+        List<Object> params = new ArrayList<>();
         String sql =
                 """
                 select r.id,
@@ -83,11 +111,12 @@ public class DashboardServiceImpl implements DashboardService {
                 left join herb_distribution d on d.id = r.distribution_id and d.is_deleted = 0
                 left join herb_base b on b.id = d.base_id and b.is_deleted = 0
                 where r.is_deleted = 0
-                order by r.collected_at desc
-                limit ?
                 """;
+        sql = sql + dataScopeFilter("herb_growth_record", "collector_id", "r.collector_id", params);
+        sql = sql + " order by r.collected_at desc limit ?";
+        params.add(query.getLimit());
         try {
-            return jdbcTemplate.query(sql, this::toRecentGrowthRecordVO, query.getLimit());
+            return jdbcTemplate.query(sql, this::toRecentGrowthRecordVO, params.toArray());
         } catch (DataAccessException exception) {
             return Collections.emptyList();
         }
@@ -106,7 +135,8 @@ public class DashboardServiceImpl implements DashboardService {
         if (query.getType() == null || "PERFORMANCE_REVIEW".equalsIgnoreCase(query.getType())) {
             todos.addAll(pendingPerformanceReviewTasks(query, limit));
         }
-        if (query.getType() == null || "SOAP_FAILED".equalsIgnoreCase(query.getType())) {
+        if ((query.getType() == null || "SOAP_FAILED".equalsIgnoreCase(query.getType()))
+                && authorizationService.hasPermission("soap:exchange:view")) {
             todos.addAll(pendingSoapFailedTasks(limit));
         }
         return todos.stream().limit(limit).toList();
@@ -124,7 +154,10 @@ public class DashboardServiceImpl implements DashboardService {
                 left join herb_species s on s.id = r.species_id and s.is_deleted = 0
                 where r.is_deleted = 0 and lower(r.review_status) = 'submitted'
                 """;
-        sql = sql + ownerFilter("herb_growth_record", "collector_id", "r.collector_id", params);
+        sql =
+                sql
+                        + dataScopeFilter(
+                                "herb_growth_record", "collector_id", "r.collector_id", params);
         sql = sql + " order by r.updated_at desc limit ?";
         params.add(limit);
         try {
@@ -146,7 +179,13 @@ public class DashboardServiceImpl implements DashboardService {
                 from eval_application
                 where coalesce(is_deleted, 0) = 0 and lower(review_status) = 'submitted'
                 """;
-        sql = sql + ownerFilter("eval_application", "applicant_id", "applicant_id", params);
+        sql =
+                sql
+                        + dataScopeFilter(
+                                "eval_application",
+                                "applicant_id",
+                                "applicant_id",
+                                params);
         sql = sql + " order by coalesce(submitted_at, updated_at) desc limit ?";
         params.add(limit);
         try {
@@ -168,7 +207,7 @@ public class DashboardServiceImpl implements DashboardService {
                 from perf_record
                 where coalesce(is_deleted, 0) = 0 and lower(identify_status) = 'submitted'
                 """;
-        sql = sql + ownerFilter("perf_record", "user_id", "user_id", params);
+        sql = sql + dataScopeFilter("perf_record", "user_id", "user_id", params);
         sql = sql + " order by coalesce(submitted_at, updated_at) desc limit ?";
         params.add(limit);
         try {
@@ -184,7 +223,7 @@ public class DashboardServiceImpl implements DashboardService {
         }
         String sql =
                 """
-                select id, resource_type, sync_status, updated_at
+                select id, task_name, sync_status, updated_at
                 from soap_sync_task
                 where coalesce(is_deleted, 0) = 0 and lower(sync_status) = 'failed'
                 order by updated_at desc
@@ -233,6 +272,11 @@ public class DashboardServiceImpl implements DashboardService {
         return vo;
     }
 
+    @Override
+    public void refreshSnapshot() {
+        writeTodaySnapshot(summary());
+    }
+
     private long count(String tableName) {
         if (!tableExists(tableName)) {
             return 0;
@@ -269,6 +313,93 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
+    private long countScoped(String tableName, String ownerColumn, String resourceType) {
+        if (!tableExists(tableName)) {
+            return 0;
+        }
+        List<Object> params = new ArrayList<>();
+        String sql =
+                "select count(*) from "
+                        + tableName
+                        + " where coalesce(is_deleted, 0) = 0"
+                        + dataScopeFilter(
+                                tableName, ownerColumn, ownerColumn, params, resourceType);
+        return queryCount(sql, params);
+    }
+
+    private long countScopedByStatus(
+            String tableName,
+            String statusColumn,
+            String statusValue,
+            String ownerColumn,
+            String resourceType) {
+        if (!tableExists(tableName)) {
+            return 0;
+        }
+        List<Object> params = new ArrayList<>();
+        params.add(statusValue);
+        String sql =
+                "select count(*) from "
+                        + tableName
+                        + " where coalesce(is_deleted, 0) = 0 and lower("
+                        + statusColumn
+                        + ") = lower(?)"
+                        + dataScopeFilter(tableName, ownerColumn, ownerColumn, params, resourceType);
+        return queryCount(sql, params);
+    }
+
+    private long countVisibleCourses() {
+        if (!tableExists("edu_course")) {
+            return 0;
+        }
+        if (isAdmin()) {
+            return count("edu_course");
+        }
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (authorizationService.hasPermission("course:manage")
+                && currentUserId != null
+                && currentUserId > 0) {
+            return queryCount(
+                    "select count(*) from edu_course where is_deleted = 0 and (publish_status = 'published' or teacher_id = ?)",
+                    List.of(currentUserId));
+        }
+        return queryCount(
+                "select count(*) from edu_course where is_deleted = 0 and publish_status = 'published'",
+                List.of());
+    }
+
+    private long countVisibleFiles() {
+        if (!tableExists("sys_file_resource")) {
+            return 0;
+        }
+        if (isAdmin()) {
+            return count("sys_file_resource");
+        }
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (currentUserId == null || currentUserId <= 0) {
+            return 0;
+        }
+        return queryCount(
+                "select count(*) from sys_file_resource where is_deleted = 0 and uploader_id = ?",
+                List.of(currentUserId));
+    }
+
+    private long queryCount(String sql, List<Object> params) {
+        try {
+            Long value =
+                    params.isEmpty()
+                            ? jdbcTemplate.queryForObject(sql, Long.class)
+                            : jdbcTemplate.queryForObject(sql, Long.class, params.toArray());
+            return value == null ? 0 : value;
+        } catch (DataAccessException exception) {
+            return 0;
+        }
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase);
+    }
+
     private boolean tableExists(String tableName) {
         try {
             Integer count =
@@ -293,33 +424,59 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
-    private String ownerFilter(
+    private String dataScopeFilter(
             String tableName,
             String ownerColumn,
             String qualifiedOwnerColumn,
             List<Object> params) {
-        if (isPrivilegedRole()) {
+        return dataScopeFilter(tableName, ownerColumn, qualifiedOwnerColumn, params, tableName);
+    }
+
+    private String dataScopeFilter(
+            String tableName,
+            String ownerColumn,
+            String qualifiedOwnerColumn,
+            List<Object> params,
+            String resourceType) {
+        DataScopeResultVO scope = dataScopeService.resolveForCurrentUser(resourceType);
+        if (scope.isAllIncluded()) {
             return "";
         }
         if (!tableExists(tableName) || !columnExists(tableName, ownerColumn)) {
-            return "";
-        }
-        Long currentUserId = CurrentUserUtils.currentUserId();
-        if (currentUserId == null || currentUserId <= 0) {
             return " and 1 = 0";
         }
-        params.add(currentUserId);
-        return " and " + qualifiedOwnerColumn + " = ?";
+        List<String> clauses = new ArrayList<>();
+        if (scope.isSelfIncluded()) {
+            Long currentUserId = CurrentUserUtils.currentUserId();
+            if (currentUserId != null && currentUserId > 0) {
+                clauses.add(qualifiedOwnerColumn + " = ?");
+                params.add(currentUserId);
+            }
+        }
+        if (!scope.getOrganizationIds().isEmpty()) {
+            clauses.add(
+                    qualifiedOwnerColumn
+                            + " in (select id from sys_user where is_deleted = 0 and organization_id in ("
+                            + placeholders(scope.getOrganizationIds().size())
+                            + "))");
+            params.addAll(scope.getOrganizationIds());
+        }
+        if (!scope.getDepartmentIds().isEmpty()) {
+            clauses.add(
+                    qualifiedOwnerColumn
+                            + " in (select id from sys_user where is_deleted = 0 and department_id in ("
+                            + placeholders(scope.getDepartmentIds().size())
+                            + "))");
+            params.addAll(scope.getDepartmentIds());
+        }
+        if (clauses.isEmpty()) {
+            return " and 1 = 0";
+        }
+        return " and (" + String.join(" or ", clauses) + ")";
     }
 
-    private boolean isPrivilegedRole() {
-        return CurrentUserUtils.currentRoleCodes().stream()
-                .anyMatch(
-                        roleCode ->
-                                "ADMIN".equalsIgnoreCase(roleCode)
-                                        || "REVIEWER".equalsIgnoreCase(roleCode)
-                                        || "AUDITOR".equalsIgnoreCase(roleCode)
-                                        || "TEACHER".equalsIgnoreCase(roleCode));
+    private String placeholders(int size) {
+        return String.join(",", Collections.nCopies(size, "?"));
     }
 
     private boolean columnExists(String tableName, String columnName) {
@@ -355,6 +512,7 @@ public class DashboardServiceImpl implements DashboardService {
         entity.setBaseCount(toInt(summary.getBaseCount()));
         entity.setDistributionCount(toInt(summary.getMapPointCount()));
         entity.setGrowthRecordCount(toInt(summary.getGrowthRecordCount()));
+        entity.setCourseCount(toInt(summary.getCourseCount()));
         entity.setPendingReviewCount(toInt(summary.getTotalPendingTaskCount()));
         entity.setDashboardData(toJson(summary));
         entity.setUpdatedAt(LocalDateTime.now());
@@ -426,7 +584,7 @@ public class DashboardServiceImpl implements DashboardService {
         DashboardTodoVO vo = new DashboardTodoVO();
         vo.setTodoType("SOAP_FAILED");
         vo.setBizId(rs.getLong("id"));
-        vo.setTitle("SOAP 同步失败：" + rs.getString("resource_type"));
+        vo.setTitle("SOAP 同步失败：" + rs.getString("task_name"));
         vo.setStatus(rs.getString("sync_status"));
         vo.setSubmittedAt(toLocalDateTime(rs, "updated_at"));
         vo.setRoute("/soap-exchange-jobs/" + rs.getLong("id"));
