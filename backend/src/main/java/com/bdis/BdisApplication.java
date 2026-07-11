@@ -10,7 +10,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.bdis.modules.herb.mapper",
     "com.bdis.modules.map.mapper",
     "com.bdis.modules.file.mapper",
-    "com.bdis.modules.growth.mapper"
+    "com.bdis.modules.growth.mapper",
+    "com.bdis.modules.evaluation.mapper",
+    "com.bdis.modules.declaration.mapper",
+    "com.bdis.modules.performance.mapper"
 })
 @SpringBootApplication
 public class BdisApplication {
