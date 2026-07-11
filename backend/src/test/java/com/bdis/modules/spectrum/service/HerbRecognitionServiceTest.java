@@ -10,10 +10,12 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.client.HerbRecognitionClient;
 import com.bdis.modules.spectrum.client.HerbRecognitionClientResponse;
 import com.bdis.modules.spectrum.dto.HerbRecognitionQueryRequest;
@@ -48,6 +50,8 @@ class HerbRecognitionServiceTest {
 
     @Mock private SpectrumComparisonMapper spectrumComparisonMapper;
 
+    @Mock private HerbImageAccessService herbImageAccessService;
+
     private HerbRecognitionService herbRecognitionService;
 
     @BeforeEach
@@ -59,7 +63,8 @@ class HerbRecognitionServiceTest {
                         imageRecognitionMapper,
                         herbRecognitionClient,
                         herbAtlasMatchService,
-                        spectrumComparisonMapper);
+                        spectrumComparisonMapper,
+                        herbImageAccessService);
     }
 
     @Test
@@ -218,8 +223,10 @@ class HerbRecognitionServiceTest {
         HerbRecognitionQueryRequest request = new HerbRecognitionQueryRequest();
         request.setPageNum(0);
         request.setPageSize(0);
-        when(imageRecognitionMapper.countPage(request)).thenReturn(1L);
-        when(imageRecognitionMapper.selectPage(request, 0L, 10))
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(9L));
+        when(herbImageAccessService.currentScope()).thenReturn(scope);
+        when(imageRecognitionMapper.countPage(request, scope)).thenReturn(1L);
+        when(imageRecognitionMapper.selectPage(request, scope, 0L, 10))
                 .thenReturn(List.of(new HerbRecognitionVO()));
 
         PageResult<HerbRecognitionVO> result = herbRecognitionService.page(request);

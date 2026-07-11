@@ -9,9 +9,15 @@ public interface FileBusinessService {
 
     FileBusinessVO bind(FileBusinessBindDTO dto);
 
+    FileBusinessVO bindSystem(FileBusinessBindDTO dto);
+
     void unbind(Long relationId);
 
     void deleteByFileId(Long fileId);
+
+    void deleteByBusiness(String bizType, Long bizId);
+
+    void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId);
 
     List<FileResourceVO> listByBusiness(String bizType, Long bizId);
 }

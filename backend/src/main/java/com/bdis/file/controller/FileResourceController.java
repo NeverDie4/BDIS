@@ -2,6 +2,7 @@ package com.bdis.file.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.file.dto.FileUploadDTO;
 import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileResourceService;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/files")
+@RequirePermission("file:resource:view")
 public class FileResourceController {
 
     private final FileResourceService fileResourceService;
@@ -36,6 +38,7 @@ public class FileResourceController {
     @PostMapping(
             path = {"", "/upload"},
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequirePermission("file:resource:upload")
     public Result<FileResourceVO> upload(@Valid @ModelAttribute FileUploadDTO dto) {
         return Result.success(fileResourceService.upload(dto));
     }
@@ -71,6 +74,7 @@ public class FileResourceController {
     }
 
     @DeleteMapping("/{fileId}")
+    @RequirePermission("file:resource:delete")
     public Result<Void> delete(@PathVariable Long fileId) {
         fileResourceService.delete(fileId);
         return Result.success();

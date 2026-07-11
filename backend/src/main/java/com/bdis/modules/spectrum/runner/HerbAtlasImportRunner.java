@@ -22,6 +22,7 @@ public class HerbAtlasImportRunner implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (autoImport) {
+            herbAtlasImportService.reconcileFileResources();
             herbAtlasImportService.importAtlas(new HerbAtlasImportRequest());
         }
     }

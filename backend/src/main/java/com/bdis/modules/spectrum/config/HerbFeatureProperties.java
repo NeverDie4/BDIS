@@ -13,13 +13,15 @@ public class HerbFeatureProperties {
 
     private String serviceUrl = "http://localhost:8002/extract-feature";
 
-    private Integer timeoutSeconds = 180;
+    private Integer timeoutSeconds = 30;
 
     private boolean mockEnabled = false;
 
     private String modelName = "resnet50";
 
-    private String modelVersion = "v1.0";
+    private String modelVersion = "resnet50-imagenet-v1";
 
     private Integer mockDimension = 512;
+
+    private boolean recoveryEnabled = true;
 }

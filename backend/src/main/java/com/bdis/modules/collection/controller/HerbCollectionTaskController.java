@@ -2,6 +2,7 @@ package com.bdis.modules.collection.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.collection.dto.HerbCollectionTaskCreateRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskMyQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskQueryRequest;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb/collection-task")
+@RequirePermission("growth:record:view")
 public class HerbCollectionTaskController {
 
     private final HerbCollectionTaskService herbCollectionTaskService;
@@ -32,18 +34,21 @@ public class HerbCollectionTaskController {
     }
 
     @PostMapping
+    @RequirePermission("growth:record:create")
     public Result<HerbCollectionTaskVO> create(
             @Valid @RequestBody HerbCollectionTaskCreateRequest request) {
         return Result.success(herbCollectionTaskService.create(request));
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("growth:record:update")
     public Result<HerbCollectionTaskVO> update(
             @PathVariable Long id, @Valid @RequestBody HerbCollectionTaskUpdateRequest request) {
         return Result.success(herbCollectionTaskService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("growth:record:delete")
     public Result<Void> delete(@PathVariable Long id) {
         herbCollectionTaskService.delete(id);
         return Result.success();
@@ -73,21 +78,25 @@ public class HerbCollectionTaskController {
     }
 
     @PutMapping("/{id}/publish")
+    @RequirePermission("growth:record:submit")
     public Result<HerbCollectionTaskVO> publish(@PathVariable Long id) {
         return Result.success(herbCollectionTaskService.publish(id));
     }
 
     @PutMapping("/{id}/start")
+    @RequirePermission("growth:record:update")
     public Result<HerbCollectionTaskVO> start(@PathVariable Long id) {
         return Result.success(herbCollectionTaskService.start(id));
     }
 
     @PutMapping("/{id}/complete")
+    @RequirePermission("growth:record:update")
     public Result<HerbCollectionTaskVO> complete(@PathVariable Long id) {
         return Result.success(herbCollectionTaskService.complete(id));
     }
 
     @PutMapping("/{id}/cancel")
+    @RequirePermission("growth:record:update")
     public Result<HerbCollectionTaskVO> cancel(@PathVariable Long id) {
         return Result.success(herbCollectionTaskService.cancel(id));
     }

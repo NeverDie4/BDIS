@@ -14,6 +14,7 @@ import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.service.impl.HerbBatchSummaryServiceImpl;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchImageVO;
 import com.bdis.modules.collection.vo.HerbBatchSummaryVO;
 import com.bdis.modules.herb.entity.HerbEntity;
@@ -36,13 +37,18 @@ class HerbBatchSummaryServiceTest {
 
     @Mock private HerbSpeciesMapper herbSpeciesMapper;
 
+    @Mock private CollectionAccessService collectionAccessService;
+
     private HerbBatchSummaryService herbBatchSummaryService;
 
     @BeforeEach
     void setUp() {
         herbBatchSummaryService =
                 new HerbBatchSummaryServiceImpl(
-                        herbBatchMapper, herbBatchImageMapper, herbSpeciesMapper);
+                        herbBatchMapper,
+                        herbBatchImageMapper,
+                        herbSpeciesMapper,
+                        collectionAccessService);
     }
 
     @Test
@@ -161,8 +167,9 @@ class HerbBatchSummaryServiceTest {
         request.setQualityLevel(HerbQualityLevelConstants.GOOD);
         request.setQualityScore(new BigDecimal("88.75"));
         request.setEvaluationSummary("人工确认该批次为黄连，批次质量良好。");
-        request.setReviewerName("Admin");
         request.setRemark("批次人工确认");
+        when(collectionAccessService.currentUserId()).thenReturn(9L);
+        when(collectionAccessService.currentUserDisplayName()).thenReturn("Admin");
         HerbEntity species = new HerbEntity();
         species.setId(1L);
         species.setHerbName("Huanglian");

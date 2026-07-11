@@ -28,6 +28,8 @@ public class FileResourceVO {
 
     private String storageType;
 
+    private String accessLevel;
+
     private String contentType;
 
     private LocalDateTime uploadedAt;

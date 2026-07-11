@@ -12,6 +12,7 @@ interface FileUploadFieldProps {
   accept?: string;
   maxSizeMB?: number;
   bizType?: string;
+  bizId?: number;
   fileUsage?: string;
   buttonText?: string;
   onUploaded?: (file: FileResource) => void;
@@ -23,6 +24,7 @@ export function FileUploadField({
   accept = "image/*",
   maxSizeMB = 10,
   bizType,
+  bizId,
   fileUsage,
   buttonText = "上传文件",
   onUploaded,
@@ -44,7 +46,7 @@ export function FileUploadField({
   const customRequest: UploadProps["customRequest"] = async (options) => {
     try {
       const file = options.file as File;
-      const uploaded = await uploadFile(file, { bizType, fileUsage });
+      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage });
       onChange?.(uploaded.fileUrl);
       onUploaded?.(uploaded);
       options.onSuccess?.(uploaded);

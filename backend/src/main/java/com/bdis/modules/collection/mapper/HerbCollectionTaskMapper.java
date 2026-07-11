@@ -3,6 +3,7 @@ package com.bdis.modules.collection.mapper;
 import com.bdis.modules.collection.dto.HerbCollectionTaskMyQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskQueryRequest;
 import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.collection.vo.HerbCollectionTaskListVO;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
 import java.util.List;
@@ -20,14 +21,19 @@ public interface HerbCollectionTaskMapper {
 
     HerbCollectionTaskEntity selectByTaskCode(@Param("taskCode") String taskCode);
 
-    Long countPage(@Param("query") HerbCollectionTaskQueryRequest query);
+    Long countPage(
+            @Param("query") HerbCollectionTaskQueryRequest query,
+            @Param("scope") CollectionAccessScope scope);
 
     List<HerbCollectionTaskVO> selectPage(
             @Param("query") HerbCollectionTaskQueryRequest query,
+            @Param("scope") CollectionAccessScope scope,
             @Param("offset") Long offset,
             @Param("pageSize") Integer pageSize);
 
-    List<HerbCollectionTaskListVO> selectList(@Param("query") HerbCollectionTaskQueryRequest query);
+    List<HerbCollectionTaskListVO> selectList(
+            @Param("query") HerbCollectionTaskQueryRequest query,
+            @Param("scope") CollectionAccessScope scope);
 
     Long countMyTasks(@Param("query") HerbCollectionTaskMyQueryRequest query);
 

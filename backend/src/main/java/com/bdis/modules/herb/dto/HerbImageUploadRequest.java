@@ -15,6 +15,10 @@ public class HerbImageUploadRequest {
 
     private Long baseId;
 
+    private Long distributionId;
+
+    private Long growthRecordId;
+
     private String collectPlace;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")

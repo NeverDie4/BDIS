@@ -6,4 +6,6 @@ import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
 public interface HerbAtlasImportService {
 
     HerbAtlasImportResultVO importAtlas(HerbAtlasImportRequest request);
+
+    int reconcileFileResources();
 }

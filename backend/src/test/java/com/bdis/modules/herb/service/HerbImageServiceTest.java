@@ -9,7 +9,12 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.impl.LocalFileStorageServiceImpl;
+import com.bdis.common.security.CurrentUser;
+import com.bdis.file.service.FileBusinessService;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.file.vo.FileResourceVO;
+import com.bdis.modules.growth.mapper.GrowthRecordMapper;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
@@ -18,42 +23,65 @@ import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.herb.service.impl.HerbImageServiceImpl;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.herb.vo.HerbImageVO;
-import com.bdis.modules.spectrum.service.HerbFeatureService;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class HerbImageServiceTest {
-
-    @TempDir private Path uploadRoot;
-
     @Mock private HerbImageMapper herbImageMapper;
 
     @Mock private HerbSpeciesMapper herbSpeciesMapper;
 
-    @Mock private HerbFeatureService herbFeatureService;
+    @Mock private GrowthRecordMapper growthRecordMapper;
+
+    @Mock private FileResourceService fileResourceService;
+
+    @Mock private FileBusinessService fileBusinessService;
+
+    @Mock private HerbImageAccessService herbImageAccessService;
 
     private HerbImageService herbImageService;
 
-    private LocalFileStorageServiceImpl localFileStorage;
-
     @BeforeEach
     void setUp() {
-        localFileStorage = new LocalFileStorageServiceImpl(uploadRoot.toString());
+        CurrentUser user =
+                new CurrentUser(
+                        9L,
+                        "collector",
+                        "Collector",
+                        null,
+                        null,
+                        Set.of("COLLECTOR"),
+                        Set.of(3L),
+                        Set.of("herb:identification:execute"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, null));
         herbImageService =
                 new HerbImageServiceImpl(
-                        herbImageMapper, herbSpeciesMapper, localFileStorage, herbFeatureService);
+                        herbImageMapper,
+                        herbSpeciesMapper,
+                        growthRecordMapper,
+                        fileResourceService,
+                        fileBusinessService,
+                        herbImageAccessService);
+    }
+
+    @AfterEach
+    void clearCurrentUser() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -69,6 +97,10 @@ class HerbImageServiceTest {
         species.setId(1L);
         species.setHerbName("Huanglian");
         when(herbSpeciesMapper.selectActiveById(1L)).thenReturn(species);
+        FileResourceVO fileResource = new FileResourceVO();
+        fileResource.setId(21L);
+        fileResource.setFileUrl("/api/files/21/content");
+        when(fileResourceService.upload(any())).thenReturn(fileResource);
         doAnswer(
                         invocation -> {
                             HerbImageEntity image = invocation.getArgument(0);
@@ -87,8 +119,7 @@ class HerbImageServiceTest {
         verify(herbImageMapper).insertImage(imageCaptor.capture());
         HerbImageEntity inserted = imageCaptor.getValue();
         assertThat(inserted.getImageNo()).startsWith("IMG_");
-        assertThat(inserted.getImageUrl()).startsWith("/api/files/uploads/");
-        assertThat(inserted.getImageUrl()).endsWith(".jpg");
+        assertThat(inserted.getImageUrl()).isEqualTo("/api/files/21/content");
         assertThat(inserted.getOriginalFilename()).isEqualTo("huanglian_leaf.jpg");
         assertThat(inserted.getUploadSource()).isEqualTo("mobile");
         assertThat(inserted.getProcessStatus()).isEqualTo("uploaded");
@@ -96,11 +127,10 @@ class HerbImageServiceTest {
         assertThat(inserted.getCreatedAt()).isNotNull();
         assertThat(inserted.getUpdatedAt()).isNotNull();
         assertThat(inserted.getIsDeleted()).isZero();
-        assertThat(Files.exists(localFileStorage.resolve(inserted.getImageUrl()))).isTrue();
         assertThat(result.getImageCode()).isEqualTo(inserted.getImageNo());
         assertThat(result.getSpeciesName()).isEqualTo("Huanglian");
         assertThat(result.getProcessStatus()).isEqualTo("uploaded");
-        verify(herbFeatureService).extractImageFeature(11L);
+        verify(fileBusinessService).bind(any());
     }
 
     @Test
@@ -182,8 +212,11 @@ class HerbImageServiceTest {
         HerbImageQueryRequest request = new HerbImageQueryRequest();
         request.setPageNum(0);
         request.setPageSize(0);
-        when(herbImageMapper.countPage(request)).thenReturn(1L);
-        when(herbImageMapper.selectPage(request, 0L, 10)).thenReturn(List.of(new HerbImageVO()));
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(9L));
+        when(herbImageAccessService.currentScope()).thenReturn(scope);
+        when(herbImageMapper.countPage(request, scope)).thenReturn(1L);
+        when(herbImageMapper.selectPage(request, scope, 0L, 10))
+                .thenReturn(List.of(new HerbImageVO()));
 
         PageResult<HerbImageVO> result = herbImageService.page(request);
 
@@ -213,6 +246,7 @@ class HerbImageServiceTest {
         image.setImageUrl("/api/files/uploads/2026-07-08/IMG_1.jpg");
         image.setOriginalFilename("leaf.jpg");
         image.setSpeciesId(1L);
+        image.setUploaderId(9L);
         image.setUploadSource("mobile");
         image.setCollectedAt(LocalDateTime.now());
         image.setProcessStatus("uploaded");

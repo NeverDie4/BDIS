@@ -32,6 +32,8 @@
         <result column="remark" property="remark"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_by" property="updatedBy"/>
         <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
@@ -105,6 +107,8 @@
         remark,
         created_at,
         updated_at,
+        created_by,
+        updated_by,
         is_deleted
     </sql>
 
@@ -177,6 +181,22 @@
                     #{status}
                 </foreach>
             </if>
+            <if test="!scope.allIncluded">
+                AND (
+                    b.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR t.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR t.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
         </where>
     </sql>
 
@@ -194,6 +214,30 @@
                 <foreach collection="query.excludedStatuses" item="status" open="(" separator="," close=")">
                     #{status}
                 </foreach>
+            </if>
+            <if test="!scope.allIncluded">
+                AND (
+                    b.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR EXISTS (
+                        SELECT 1
+                        FROM herb_collection_task scoped_task
+                        WHERE scoped_task.id = b.task_id
+                          AND scoped_task.is_deleted = 0
+                          AND (
+                              scoped_task.created_by IN
+                              <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                                  #{ownerId}
+                              </foreach>
+                              OR scoped_task.collector_id IN
+                              <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                                  #{ownerId}
+                              </foreach>
+                          )
+                    )
+                )
             </if>
         </where>
     </sql>
@@ -228,6 +272,8 @@
             remark,
             created_at,
             updated_at,
+            created_by,
+            updated_by,
             is_deleted
         ) VALUES (
             #{batchCode},
@@ -257,6 +303,8 @@
             #{remark},
             #{createdAt},
             #{updatedAt},
+            #{createdBy},
+            #{updatedBy},
             #{isDeleted}
         )
     </insert>
@@ -277,7 +325,8 @@
             batch_status = #{batchStatus},
             trace_code = #{traceCode},
             remark = #{remark},
-            updated_at = #{updatedAt}
+            updated_at = #{updatedAt},
+            updated_by = #{updatedBy}
         WHERE id = #{id}
           AND is_deleted = 0
     </update>
@@ -296,7 +345,8 @@
             evaluation_summary = #{evaluationSummary},
             batch_status = #{batchStatus},
             remark = #{remark},
-            updated_at = #{updatedAt}
+            updated_at = #{updatedAt},
+            updated_by = #{updatedBy}
         WHERE id = #{id}
           AND is_deleted = 0
     </update>
@@ -306,7 +356,8 @@
         SET batch_status = #{batchStatus},
             remark = #{remark},
             evaluation_summary = #{evaluationSummary},
-            updated_at = #{updatedAt}
+            updated_at = #{updatedAt},
+            updated_by = #{updatedBy}
         WHERE id = #{id}
           AND is_deleted = 0
     </update>

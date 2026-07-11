@@ -7,6 +7,8 @@ import com.bdis.audit.dto.FileAccessRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.service.FileAccessLogService;
 import com.bdis.common.core.PageResult;
+import com.bdis.common.exception.FileStorageException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
@@ -15,10 +17,14 @@ import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
 import com.bdis.file.service.FileStorageService;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.vo.FileResourceVO;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -39,18 +45,21 @@ public class FileResourceServiceImpl implements FileResourceService {
     private final FileAccessLogService fileAccessLogService;
     private final AuditLogService auditLogService;
     private final FileBusinessService fileBusinessService;
+    private final FileAccessGuard fileAccessGuard;
 
     public FileResourceServiceImpl(
             FileResourceMapper fileResourceMapper,
             FileStorageService fileStorageService,
             FileAccessLogService fileAccessLogService,
             AuditLogService auditLogService,
-            FileBusinessService fileBusinessService) {
+            FileBusinessService fileBusinessService,
+            FileAccessGuard fileAccessGuard) {
         this.fileResourceMapper = fileResourceMapper;
         this.fileStorageService = fileStorageService;
         this.fileAccessLogService = fileAccessLogService;
         this.auditLogService = auditLogService;
         this.fileBusinessService = fileBusinessService;
+        this.fileAccessGuard = fileAccessGuard;
     }
 
     @Override
@@ -72,6 +81,8 @@ public class FileResourceServiceImpl implements FileResourceService {
                     "image".equals(entity.getFileType()) ? storedFile.fileUrl() : null);
             entity.setStoragePath(storedFile.storagePath());
             entity.setStorageType("local");
+            entity.setAccessLevel(
+                    StringUtils.hasText(dto.getAccessLevel()) ? dto.getAccessLevel() : "private");
             entity.setContentType(dto.getFile().getContentType());
             entity.setUploaderId(CurrentUserUtils.currentUserId());
             entity.setUploaderName(CurrentUserUtils.currentUsername());
@@ -98,14 +109,50 @@ public class FileResourceServiceImpl implements FileResourceService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FileResourceVO importPublic(Path sourceFile, String originalFilename, String remark) {
+        FileStorageService.StoredFile storedFile = fileStorageService.save(sourceFile);
+        try {
+            Path storedPath = fileStorageService.resolve(storedFile.storagePath());
+            return createSystemFileResource(
+                    storedFile, storedPath, originalFilename, "public", remark);
+        } catch (RuntimeException exception) {
+            fileStorageService.delete(storedFile.storagePath());
+            throw exception;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FileResourceVO registerPublic(
+            String existingFileUrl, String originalFilename, String remark) {
+        if (!StringUtils.hasText(existingFileUrl)
+                || !existingFileUrl.startsWith("/api/files/uploads/")) {
+            throw new FileStorageException("只能登记本地历史上传文件");
+        }
+        FileResourceEntity existing =
+                fileResourceMapper.selectOne(
+                        new LambdaQueryWrapper<FileResourceEntity>()
+                                .eq(FileResourceEntity::getFileUrl, existingFileUrl)
+                                .last("limit 1"));
+        if (existing != null) {
+            return toVO(existing);
+        }
+        Path storedPath = fileStorageService.resolve(existingFileUrl);
+        String storagePath = existingFileUrl.substring("/api/files/".length());
+        FileStorageService.StoredFile storedFile =
+                new FileStorageService.StoredFile(
+                        storedPath.getFileName().toString(), storagePath, existingFileUrl);
+        return createSystemFileResource(storedFile, storedPath, originalFilename, "public", remark);
+    }
+
+    @Override
     public PageResult<FileResourceVO> page(FileResourceQuery query) {
         String bizType = firstNonBlank(query.getBizType(), query.getBusinessType());
         Long bizId = query.getBizId() == null ? query.getBusinessId() : query.getBizId();
         if (bizType != null && bizId != null) {
             List<FileResourceVO> records = fileBusinessService.listByBusiness(bizType, bizId);
-            Page<FileResourceEntity> page = new Page<>(query.getPage(), query.getSize());
-            page.setTotal(records.size());
-            return PageResult.of(records, page);
+            return paginate(records, query.getPage(), query.getSize());
         }
         Page<FileResourceEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<FileResourceEntity> wrapper =
@@ -117,8 +164,11 @@ public class FileResourceServiceImpl implements FileResourceService {
                         .eq(
                                 query.getUploaderId() != null,
                                 FileResourceEntity::getUploaderId,
-                                query.getUploaderId())
-                        .orderByDesc(FileResourceEntity::getUploadedAt);
+                                query.getUploaderId());
+        if (!isAdmin()) {
+            wrapper.eq(FileResourceEntity::getUploaderId, CurrentUserUtils.currentUserId());
+        }
+        wrapper.orderByDesc(FileResourceEntity::getUploadedAt);
         Page<FileResourceEntity> result = fileResourceMapper.selectPage(page, wrapper);
         List<FileResourceVO> records = result.getRecords().stream().map(this::toVO).toList();
         return PageResult.of(records, result);
@@ -126,12 +176,15 @@ public class FileResourceServiceImpl implements FileResourceService {
 
     @Override
     public FileResourceVO detail(Long fileId) {
-        return toVO(requireFile(fileId));
+        FileResourceEntity entity = requireFile(fileId);
+        fileAccessGuard.requireAuthenticatedAccess(entity);
+        return toVO(entity);
     }
 
     @Override
     public FileContentVO content(Long fileId, String disposition) {
         FileResourceEntity entity = requireFile(fileId);
+        fileAccessGuard.requireAuthenticatedAccess(entity);
         FileContentVO content =
                 fileStorageService.load(
                         entity.getStoragePath(),
@@ -148,11 +201,109 @@ public class FileResourceServiceImpl implements FileResourceService {
     }
 
     @Override
+    public FileContentVO publicContent(Long fileId) {
+        FileResourceEntity entity = requireFile(fileId);
+        if (!"public".equalsIgnoreCase(entity.getAccessLevel())) {
+            throw new ResourceNotFoundException("公开文件不存在");
+        }
+        return fileStorageService.load(
+                entity.getStoragePath(),
+                entity.getOriginalFilename(),
+                entity.getContentType(),
+                entity.getFileSize());
+    }
+
+    @Override
+    public Path resolveLocalPath(String fileUrl) {
+        Long fileId = resolveFileId(fileUrl);
+        if (fileId == null) {
+            return fileStorageService.resolve(fileUrl);
+        }
+        return fileStorageService.resolve(requireFile(fileId).getFileUrl());
+    }
+
+    @Override
+    public Long resolveFileId(String fileUrl) {
+        Long contentId = contentFileId(fileUrl);
+        if (contentId != null) {
+            return contentId;
+        }
+        if (!StringUtils.hasText(fileUrl)) {
+            return null;
+        }
+        FileResourceEntity entity =
+                fileResourceMapper.selectOne(
+                        new LambdaQueryWrapper<FileResourceEntity>()
+                                .eq(FileResourceEntity::getFileUrl, fileUrl)
+                                .last("limit 1"));
+        return entity == null ? null : entity.getId();
+    }
+
+    @Override
     @Transactional
     public void delete(Long fileId) {
         FileResourceEntity entity = requireFile(fileId);
-        fileBusinessService.deleteByFileId(fileId);
-        fileResourceMapper.deleteById(fileId);
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (!isAdmin()
+                && (currentUserId == null || !currentUserId.equals(entity.getUploaderId()))) {
+            throw new ForbiddenException("只能删除本人上传的文件");
+        }
+        deleteEntity(entity);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSystem(Long fileId) {
+        deleteEntity(requireFile(fileId));
+    }
+
+    private FileResourceVO createSystemFileResource(
+            FileStorageService.StoredFile storedFile,
+            Path storedPath,
+            String originalFilename,
+            String accessLevel,
+            String remark) {
+        try {
+            String safeOriginalFilename =
+                    StringUtils.hasText(originalFilename)
+                            ? originalFilename
+                            : storedPath.getFileName().toString();
+            String extension = StringUtils.getFilenameExtension(safeOriginalFilename);
+            String contentType = Files.probeContentType(storedPath);
+            FileResourceEntity entity = new FileResourceEntity();
+            entity.setFileNo("FILE-" + UUID.randomUUID());
+            entity.setFileName(storedFile.storedName());
+            entity.setOriginalFilename(safeOriginalFilename);
+            entity.setFileType(
+                    contentType != null && contentType.startsWith("image/") ? "image" : "file");
+            entity.setFileFormat(extension);
+            entity.setFileSize(Files.size(storedPath));
+            entity.setFileUrl(storedFile.fileUrl());
+            entity.setThumbnailUrl(
+                    "image".equals(entity.getFileType()) ? storedFile.fileUrl() : null);
+            entity.setStoragePath(storedFile.storagePath());
+            entity.setStorageType("local");
+            entity.setAccessLevel(accessLevel);
+            entity.setContentType(contentType);
+            entity.setUploaderName("system");
+            entity.setUploadedAt(LocalDateTime.now());
+            entity.setStatus(1);
+            entity.setIsDeleted(0);
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            entity.setRemark(remark);
+            entity.setVersion(0);
+            fileResourceMapper.insert(entity);
+            recordAudit("IMPORT", "file_resource", entity.getId());
+            return toVO(entity);
+        } catch (IOException exception) {
+            throw new FileStorageException("读取导入文件信息失败", exception);
+        }
+    }
+
+    private void deleteEntity(FileResourceEntity entity) {
+        fileBusinessService.deleteByFileId(entity.getId());
+        fileResourceMapper.deleteById(entity.getId());
         fileStorageService.delete(entity.getStoragePath());
         recordAudit("DELETE", "file_resource", entity.getId());
     }
@@ -168,7 +319,47 @@ public class FileResourceServiceImpl implements FileResourceService {
     private FileResourceVO toVO(FileResourceEntity entity) {
         FileResourceVO vo = new FileResourceVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setFileUrl(
+                "public".equalsIgnoreCase(entity.getAccessLevel())
+                        ? "/api/public-files/" + entity.getId() + "/content"
+                        : "/api/files/" + entity.getId() + "/content");
+        if (entity.getThumbnailUrl() != null) {
+            vo.setThumbnailUrl(vo.getFileUrl());
+        }
         return vo;
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase);
+    }
+
+    private <T> PageResult<T> paginate(List<T> records, long requestedPage, long requestedSize) {
+        long page = Math.max(1, requestedPage);
+        long size = Math.max(1, requestedSize);
+        long pageIndex = page - 1;
+        long offset = pageIndex > records.size() / size ? records.size() : pageIndex * size;
+        int fromIndex = (int) offset;
+        int length = (int) Math.min(size, records.size() - fromIndex);
+        int toIndex = fromIndex + length;
+        return new PageResult<>(records.subList(fromIndex, toIndex), page, size, records.size());
+    }
+
+    private Long contentFileId(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl)) {
+            return null;
+        }
+        String marker = fileUrl.contains("/public-files/") ? "/public-files/" : "/files/";
+        int start = fileUrl.indexOf(marker);
+        if (start < 0 || !fileUrl.endsWith("/content")) {
+            return null;
+        }
+        String value =
+                fileUrl.substring(start + marker.length(), fileUrl.length() - "/content".length());
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private void recordAudit(String operationType, String bizType, Long bizId) {

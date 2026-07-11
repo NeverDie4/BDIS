@@ -2,10 +2,12 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.client.HerbRecognitionClient;
 import com.bdis.modules.spectrum.client.HerbRecognitionClientResponse;
 import com.bdis.modules.spectrum.dto.HerbRecognitionQueryRequest;
@@ -44,6 +46,7 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
     private final HerbRecognitionClient herbRecognitionClient;
     private final HerbAtlasMatchService herbAtlasMatchService;
     private final SpectrumComparisonMapper spectrumComparisonMapper;
+    private final HerbImageAccessService herbImageAccessService;
 
     public HerbRecognitionServiceImpl(
             HerbImageMapper herbImageMapper,
@@ -51,13 +54,15 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
             ImageRecognitionMapper imageRecognitionMapper,
             HerbRecognitionClient herbRecognitionClient,
             HerbAtlasMatchService herbAtlasMatchService,
-            SpectrumComparisonMapper spectrumComparisonMapper) {
+            SpectrumComparisonMapper spectrumComparisonMapper,
+            HerbImageAccessService herbImageAccessService) {
         this.herbImageMapper = herbImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.imageRecognitionMapper = imageRecognitionMapper;
         this.herbRecognitionClient = herbRecognitionClient;
         this.herbAtlasMatchService = herbAtlasMatchService;
         this.spectrumComparisonMapper = spectrumComparisonMapper;
+        this.herbImageAccessService = herbImageAccessService;
     }
 
     @Override
@@ -123,10 +128,12 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         HerbRecognitionQueryRequest safeRequest =
                 request == null ? new HerbRecognitionQueryRequest() : request;
         normalizePageRequest(safeRequest);
-        Long total = imageRecognitionMapper.countPage(safeRequest);
+        CollectionAccessScope scope = herbImageAccessService.currentScope();
+        Long total = imageRecognitionMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbRecognitionVO> records =
-                imageRecognitionMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
+                imageRecognitionMapper.selectPage(
+                        safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -139,6 +146,7 @@ public class HerbRecognitionServiceImpl implements HerbRecognitionService {
         if (image == null) {
             throw new BusinessException("Herb image not found");
         }
+        herbImageAccessService.requireAccess(image);
         return image;
     }
 

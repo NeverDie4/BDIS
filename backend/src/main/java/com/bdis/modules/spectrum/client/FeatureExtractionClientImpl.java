@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.client;
 
 import com.bdis.common.exception.BusinessException;
 import com.bdis.modules.spectrum.config.HerbFeatureProperties;
+import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -28,7 +29,10 @@ public class FeatureExtractionClientImpl implements FeatureExtractionClient {
 
     @Override
     public FeatureExtractionClientResponse extract(Path imagePath) {
-        if (!properties.isEnabled() || properties.isMockEnabled()) {
+        if (!properties.isEnabled()) {
+            throw new BusinessException("Feature extraction is disabled");
+        }
+        if (properties.isMockEnabled()) {
             return mockResponse(imagePath);
         }
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -44,6 +48,23 @@ public class FeatureExtractionClientImpl implements FeatureExtractionClient {
         } catch (RuntimeException exception) {
             throw new BusinessException(
                     "Feature extraction service call failed: " + exception.getMessage());
+        }
+    }
+
+    @Override
+    public boolean isAvailable() {
+        if (!properties.isEnabled()) {
+            return false;
+        }
+        if (properties.isMockEnabled()) {
+            return true;
+        }
+        try {
+            URI healthUrl = URI.create(properties.getServiceUrl()).resolve("/health");
+            ResponseEntity<Map> response = restTemplate().getForEntity(healthUrl, Map.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (RuntimeException exception) {
+            return false;
         }
     }
 

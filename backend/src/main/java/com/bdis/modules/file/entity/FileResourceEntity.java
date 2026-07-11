@@ -31,6 +31,8 @@ public class FileResourceEntity extends BaseEntity {
 
     private String storageType;
 
+    private String accessLevel;
+
     private String contentType;
 
     private Long uploaderId;
