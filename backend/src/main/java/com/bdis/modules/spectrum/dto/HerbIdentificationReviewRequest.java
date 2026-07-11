@@ -11,9 +11,5 @@ public class HerbIdentificationReviewRequest {
 
     private String reviewStatus;
 
-    private Long reviewerId;
-
-    private String reviewerName;
-
     private String reviewComment;
 }

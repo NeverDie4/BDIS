@@ -46,7 +46,19 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     @Override
     @Transactional
     public FileBusinessVO bind(FileBusinessBindDTO dto) {
-        businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
+        return bindInternal(dto, true);
+    }
+
+    @Override
+    @Transactional
+    public FileBusinessVO bindSystem(FileBusinessBindDTO dto) {
+        return bindInternal(dto, false);
+    }
+
+    private FileBusinessVO bindInternal(FileBusinessBindDTO dto, boolean validateAccess) {
+        if (validateAccess) {
+            businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
+        }
         if (fileResourceMapper.selectById(dto.getFileId()) == null) {
             throw new ResourceNotFoundException("文件不存在");
         }

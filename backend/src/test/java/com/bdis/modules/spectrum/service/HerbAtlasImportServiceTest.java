@@ -3,13 +3,15 @@ package com.bdis.modules.spectrum.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bdis.file.service.impl.LocalFileStorageServiceImpl;
+import com.bdis.file.service.FileBusinessService;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.modules.file.vo.FileResourceVO;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
-import com.bdis.modules.spectrum.client.HerbFeatureVectorClient;
 import com.bdis.modules.spectrum.dto.HerbAtlasImportRequest;
 import com.bdis.modules.spectrum.entity.SpectrumEntity;
 import com.bdis.modules.spectrum.entity.SpectrumTagEntity;
@@ -17,7 +19,6 @@ import com.bdis.modules.spectrum.mapper.HerbAtlasMapper;
 import com.bdis.modules.spectrum.mapper.HerbAtlasTagMapper;
 import com.bdis.modules.spectrum.service.impl.HerbAtlasImportServiceImpl;
 import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -40,26 +41,39 @@ class HerbAtlasImportServiceTest {
 
     @Mock private HerbSpeciesMapper herbSpeciesMapper;
 
-    @Mock private HerbFeatureVectorClient featureVectorClient;
+    @Mock private FileResourceService fileResourceService;
+
+    @Mock private FileBusinessService fileBusinessService;
 
     private HerbAtlasImportService herbAtlasImportService;
 
     private Path importRoot;
 
-    private Path uploadRoot;
-
     @BeforeEach
     void setUp() throws Exception {
         importRoot = workspace.resolve("import").resolve("herb_atlas");
-        uploadRoot = workspace.resolve("uploads");
+        FileResourceVO file = new FileResourceVO();
+        file.setId(11L);
+        file.setFileUrl("/api/public-files/11/content");
+        lenient()
+                .when(fileResourceService.importPublic(any(Path.class), any(), any()))
+                .thenReturn(file);
+        lenient()
+                .doAnswer(
+                        invocation -> {
+                            SpectrumEntity atlas = invocation.getArgument(0);
+                            atlas.setId(101L);
+                            return 1;
+                        })
+                .when(herbAtlasMapper)
+                .insertAtlas(any(SpectrumEntity.class));
         herbAtlasImportService =
                 new HerbAtlasImportServiceImpl(
                         herbAtlasMapper,
                         herbAtlasTagMapper,
                         herbSpeciesMapper,
-                        new LocalFileStorageServiceImpl(uploadRoot.toString()),
-                        featureVectorClient,
-                        new ObjectMapper(),
+                        fileResourceService,
+                        fileBusinessService,
                         importRoot.toString(),
                         false);
     }
@@ -79,7 +93,6 @@ class HerbAtlasImportServiceTest {
         when(herbSpeciesMapper.selectByHerbCode("HUANGLIAN")).thenReturn(species);
         when(herbAtlasMapper.existsBySpeciesIdAndImageName(1L, "huanglian_001.jpg")).thenReturn(0);
         when(herbAtlasMapper.countByAtlasCode("ATLAS_HUANGLIAN_001")).thenReturn(0);
-        when(featureVectorClient.extract(any())).thenReturn(List.of(0.1D, 0.2D));
 
         HerbAtlasImportResultVO result =
                 herbAtlasImportService.importAtlas(new HerbAtlasImportRequest());
@@ -97,18 +110,41 @@ class HerbAtlasImportServiceTest {
         assertThat(atlas.getAtlasNo()).isEqualTo("ATLAS_HUANGLIAN_001");
         assertThat(atlas.getAtlasTitle()).isEqualTo("huanglian_001.jpg");
         assertThat(atlas.getImageType()).isEqualTo("standard");
-        assertThat(atlas.getFeatureVector()).isEqualTo("[0.1,0.2]");
-        assertThat(atlas.getFeatureDim()).isEqualTo(2);
+        assertThat(atlas.getFeatureVector()).isNull();
+        assertThat(atlas.getFeatureDim()).isNull();
         assertThat(atlas.getGrowthStage()).isEqualTo("unknown");
         assertThat(atlas.getMedicinalPart()).isEqualTo("rhizome");
-        assertThat(atlas.getImageUrl()).startsWith("/api/files/uploads/");
+        assertThat(atlas.getImageUrl()).isEqualTo("/api/public-files/11/content");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<SpectrumTagEntity>> tagsCaptor = ArgumentCaptor.forClass(List.class);
         verify(herbAtlasTagMapper).insertTags(tagsCaptor.capture());
+        verify(fileBusinessService).bindSystem(any());
         assertThat(tagsCaptor.getValue())
                 .extracting(SpectrumTagEntity::getTagName)
                 .containsExactly("standard", "batch_import", "huanglian");
+    }
+
+    @Test
+    void reconcileLegacyAtlasRegistersAndBindsExistingFile() {
+        SpectrumEntity atlas = new SpectrumEntity();
+        atlas.setId(101L);
+        atlas.setAtlasTitle("legacy.jpg");
+        atlas.setImageUrl("/api/files/uploads/2026-07-11/legacy.jpg");
+        FileResourceVO file = new FileResourceVO();
+        file.setId(22L);
+        file.setFileUrl("/api/public-files/22/content");
+        when(herbAtlasMapper.selectLegacyFileCandidates()).thenReturn(List.of(atlas));
+        when(fileResourceService.registerPublic(
+                        "/api/files/uploads/2026-07-11/legacy.jpg", "legacy.jpg", "历史图谱文件资源迁移"))
+                .thenReturn(file);
+        when(herbAtlasMapper.updateImageUrl(101L, "/api/public-files/22/content")).thenReturn(1);
+
+        int migrated = herbAtlasImportService.reconcileFileResources();
+
+        assertThat(migrated).isEqualTo(1);
+        verify(fileBusinessService).bindSystem(any());
+        verify(herbAtlasMapper).updateImageUrl(101L, "/api/public-files/22/content");
     }
 
     @Test
@@ -233,7 +269,7 @@ class HerbAtlasImportServiceTest {
         verify(herbAtlasMapper).insertAtlas(atlasCaptor.capture());
         SpectrumEntity atlas = atlasCaptor.getValue();
         assertThat(atlas.getAtlasNo()).isEqualTo("ATLAS_HUANGLIAN_001");
-        assertThat(atlas.getImageUrl()).startsWith("/api/files/uploads/");
+        assertThat(atlas.getImageUrl()).isEqualTo("/api/public-files/11/content");
     }
 
     private HerbEntity species(Long id, String herbCode, String herbName, String medicinalPart) {

@@ -2,10 +2,14 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.CurrentUser;
+import com.bdis.common.security.SecurityUtils;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.config.HerbIdentificationProperties;
 import com.bdis.modules.spectrum.constant.HerbMatchResultConstants;
 import com.bdis.modules.spectrum.constant.HerbProcessStatusConstants;
@@ -54,6 +58,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     private final HerbRecognitionService herbRecognitionService;
     private final HerbIdentificationProperties properties;
     private final ObjectMapper objectMapper;
+    private final HerbImageAccessService herbImageAccessService;
 
     public HerbIdentificationServiceImpl(
             HerbImageMapper herbImageMapper,
@@ -65,7 +70,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             HerbImageMatchService herbImageMatchService,
             HerbRecognitionService herbRecognitionService,
             HerbIdentificationProperties properties,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            HerbImageAccessService herbImageAccessService) {
         this.herbImageMapper = herbImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.herbImageFeatureMapper = herbImageFeatureMapper;
@@ -76,6 +82,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         this.herbRecognitionService = herbRecognitionService;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.herbImageAccessService = herbImageAccessService;
     }
 
     @Override
@@ -125,11 +132,12 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         HerbIdentificationQueryRequest safeRequest =
                 request == null ? new HerbIdentificationQueryRequest() : request;
         normalizePageRequest(safeRequest);
-        Long total = identificationResultMapper.countPage(safeRequest);
+        CollectionAccessScope scope = herbImageAccessService.currentScope();
+        Long total = identificationResultMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbIdentificationPageVO> records =
                 identificationResultMapper.selectPage(
-                        safeRequest, offset, safeRequest.getPageSize());
+                        safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -141,6 +149,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         if (result == null) {
             throw new BusinessException("Identification result not found");
         }
+        HerbImageEntity image = getActiveImage(result.getImageId());
         HerbIdentificationReviewRequest safeRequest =
                 request == null ? new HerbIdentificationReviewRequest() : request;
         HerbEntity species = resolveReviewSpecies(safeRequest);
@@ -149,12 +158,15 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         result.setFinalSpeciesName(resolveReviewSpeciesName(safeRequest, species));
         applyReviewStatus(result, safeRequest);
         result.setReviewComment(safeRequest.getReviewComment());
-        result.setReviewerId(safeRequest.getReviewerId());
-        result.setReviewerName(safeRequest.getReviewerName());
+        CurrentUser reviewer = SecurityUtils.currentUser();
+        result.setReviewerId(reviewer.getUserId());
+        result.setReviewerName(
+                StringUtils.hasText(reviewer.getRealName())
+                        ? reviewer.getRealName()
+                        : reviewer.getUsername());
         result.setReviewTime(LocalDateTime.now());
         result.setUpdatedAt(result.getReviewTime());
         identificationResultMapper.updateReviewResult(result);
-        HerbImageEntity image = getActiveImage(result.getImageId());
         updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.REVIEWED);
         return latest(image.getId());
     }
@@ -167,6 +179,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         if (image == null) {
             throw new BusinessException("Herb image not found");
         }
+        herbImageAccessService.requireAccess(image);
         return image;
     }
 
@@ -267,7 +280,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             case HerbMatchResultConstants.MATCHED ->
                     "Local atlas similarity is high and can be used as a preliminary result";
             case HerbMatchResultConstants.UNCERTAIN ->
-                    "Local atlas has candidates but confidence is insufficient, manual review is required";
+                    "Local atlas has candidates but confidence is insufficient, manual review is"
+                            + " required";
             default -> "Local atlas cannot make a reliable judgment, manual review is required";
         };
     }
@@ -434,9 +448,11 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             HerbImageMatchVO localMatch, HerbRecognitionVO doubaoRecognition) {
         if (doubaoAgreedWithLocalCandidate(localMatch, doubaoRecognition)) {
             markDoubaoAgreedCandidate(localMatch, doubaoRecognition);
-            return "Doubao auxiliary recognition agrees with a local atlas candidate; manual review should focus on that herb";
+            return "Doubao auxiliary recognition agrees with a local atlas candidate; manual review"
+                    + " should focus on that herb";
         }
-        return "Doubao auxiliary recognition differs from local atlas candidates; manual review is required";
+        return "Doubao auxiliary recognition differs from local atlas candidates; manual review is"
+                + " required";
     }
 
     private String lowConfidenceSuggestion(String doubaoError) {

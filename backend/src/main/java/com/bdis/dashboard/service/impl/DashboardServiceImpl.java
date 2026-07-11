@@ -73,12 +73,8 @@ public class DashboardServiceImpl implements DashboardService {
                         "eval_application"));
         vo.setPendingPerformanceReviewCount(
                 countScopedByStatus(
-                        "perf_record",
-                        "identify_status",
-                        "SUBMITTED",
-                        "user_id",
-                        "perf_record"));
-        vo.setCourseCount(countVisibleCourses());
+                        "perf_record", "identify_status", "SUBMITTED", "user_id", "perf_record"));
+        vo.setCourseCount(count("edu_course"));
         vo.setFileCount(countVisibleFiles());
         vo.setSoapFailedCount(
                 authorizationService.hasPermission("soap:exchange:view")
@@ -154,10 +150,7 @@ public class DashboardServiceImpl implements DashboardService {
                 left join herb_species s on s.id = r.species_id and s.is_deleted = 0
                 where r.is_deleted = 0 and lower(r.review_status) = 'submitted'
                 """;
-        sql =
-                sql
-                        + dataScopeFilter(
-                                "herb_growth_record", "collector_id", "r.collector_id", params);
+        sql = sql + dataScopeFilter("herb_growth_record", "collector_id", "r.collector_id", params);
         sql = sql + " order by r.updated_at desc limit ?";
         params.add(limit);
         try {
@@ -179,13 +172,7 @@ public class DashboardServiceImpl implements DashboardService {
                 from eval_application
                 where coalesce(is_deleted, 0) = 0 and lower(review_status) = 'submitted'
                 """;
-        sql =
-                sql
-                        + dataScopeFilter(
-                                "eval_application",
-                                "applicant_id",
-                                "applicant_id",
-                                params);
+        sql = sql + dataScopeFilter("eval_application", "applicant_id", "applicant_id", params);
         sql = sql + " order by coalesce(submitted_at, updated_at) desc limit ?";
         params.add(limit);
         try {
@@ -344,28 +331,9 @@ public class DashboardServiceImpl implements DashboardService {
                         + " where coalesce(is_deleted, 0) = 0 and lower("
                         + statusColumn
                         + ") = lower(?)"
-                        + dataScopeFilter(tableName, ownerColumn, ownerColumn, params, resourceType);
+                        + dataScopeFilter(
+                                tableName, ownerColumn, ownerColumn, params, resourceType);
         return queryCount(sql, params);
-    }
-
-    private long countVisibleCourses() {
-        if (!tableExists("edu_course")) {
-            return 0;
-        }
-        if (isAdmin()) {
-            return count("edu_course");
-        }
-        Long currentUserId = CurrentUserUtils.currentUserId();
-        if (authorizationService.hasPermission("course:manage")
-                && currentUserId != null
-                && currentUserId > 0) {
-            return queryCount(
-                    "select count(*) from edu_course where is_deleted = 0 and (publish_status = 'published' or teacher_id = ?)",
-                    List.of(currentUserId));
-        }
-        return queryCount(
-                "select count(*) from edu_course where is_deleted = 0 and publish_status = 'published'",
-                List.of());
     }
 
     private long countVisibleFiles() {
@@ -512,7 +480,6 @@ public class DashboardServiceImpl implements DashboardService {
         entity.setBaseCount(toInt(summary.getBaseCount()));
         entity.setDistributionCount(toInt(summary.getMapPointCount()));
         entity.setGrowthRecordCount(toInt(summary.getGrowthRecordCount()));
-        entity.setCourseCount(toInt(summary.getCourseCount()));
         entity.setPendingReviewCount(toInt(summary.getTotalPendingTaskCount()));
         entity.setDashboardData(toJson(summary));
         entity.setUpdatedAt(LocalDateTime.now());

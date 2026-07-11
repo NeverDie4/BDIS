@@ -11,6 +11,10 @@ public interface FileResourceService {
 
     FileResourceVO upload(FileUploadDTO dto);
 
+    FileResourceVO importPublic(Path sourceFile, String originalFilename, String remark);
+
+    FileResourceVO registerPublic(String existingFileUrl, String originalFilename, String remark);
+
     PageResult<FileResourceVO> page(FileResourceQuery query);
 
     FileResourceVO detail(Long fileId);
@@ -24,4 +28,6 @@ public interface FileResourceService {
     Long resolveFileId(String fileUrl);
 
     void delete(Long fileId);
+
+    void deleteSystem(Long fileId);
 }

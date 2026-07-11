@@ -1,7 +1,23 @@
 "use client";
 
-import { App, Button, Descriptions, Form, Input, InputNumber, Modal, Select, Upload } from "antd";
-import { ImageUp } from "lucide-react";
+import {
+  Alert,
+  App,
+  Button,
+  Descriptions,
+  Form,
+  Input,
+  InputNumber,
+  List,
+  Modal,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+  Upload,
+} from "antd";
+import { ImageUp, ScanSearch } from "lucide-react";
 import type { TableProps } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActionToolbar } from "@/components/common/ActionToolbar";
@@ -24,9 +40,16 @@ import {
   uploadGrowthImage,
   type GrowthRecordApi,
   type GrowthRecordPayload,
+  type GrowthImageApi,
   type GrowthTraceEventApi,
 } from "@/lib/growth-records";
 import { fetchEnabledHerbs, type HerbSpeciesApi } from "@/lib/herbs";
+import {
+  fetchLatestIdentification,
+  identifyImage,
+  reviewIdentification,
+  type IdentificationApi,
+} from "@/lib/identifications";
 import { getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import styles from "@/styles/mockPages.module.css";
@@ -44,10 +67,17 @@ function traceStatus(status?: string): TraceStatus {
   return "recorded";
 }
 
+type IdentificationReviewForm = {
+  finalSpeciesId: number;
+  reviewStatus: "confirmed" | "rejected";
+  reviewComment?: string;
+};
+
 export default function GrowthPage() {
   const { message } = App.useApp();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const [form] = Form.useForm<GrowthRecordPayload>();
+  const [reviewForm] = Form.useForm<IdentificationReviewForm>();
   const [records, setRecords] = useState<GrowthRecordApi[]>([]);
   const [herbs, setHerbs] = useState<HerbSpeciesApi[]>([]);
   const [growthStageOptions, setGrowthStageOptions] = useState<DictionaryOption[]>([]);
@@ -59,6 +89,10 @@ export default function GrowthPage() {
   const [selectedRecord, setSelectedRecord] = useState<GrowthRecordApi | null>(null);
   const [trace, setTrace] = useState<GrowthTraceEventApi[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [identificationOpen, setIdentificationOpen] = useState(false);
+  const [identificationLoading, setIdentificationLoading] = useState(false);
+  const [activeImage, setActiveImage] = useState<GrowthImageApi | null>(null);
+  const [identification, setIdentification] = useState<IdentificationApi | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,6 +209,61 @@ export default function GrowthPage() {
       message.error(getApiErrorMessage(error, "现场图片上传失败"));
     }
     return false;
+  }
+
+  async function openIdentification(image: GrowthImageApi) {
+    setActiveImage(image);
+    setIdentificationOpen(true);
+    setIdentificationLoading(true);
+    try {
+      const latest = await fetchLatestIdentification(image.id);
+      setIdentification(latest);
+      reviewForm.setFieldsValue({
+        finalSpeciesId: latest.finalSpeciesId,
+        reviewStatus: "confirmed",
+        reviewComment: latest.reviewComment,
+      });
+    } catch (error) {
+      setIdentification(null);
+      message.error(getApiErrorMessage(error, "识别结果加载失败"));
+    } finally {
+      setIdentificationLoading(false);
+    }
+  }
+
+  async function runIdentification() {
+    if (!activeImage) return;
+    setIdentificationLoading(true);
+    try {
+      const result = await identifyImage(activeImage.id, Boolean(identification?.id));
+      setIdentification(result);
+      reviewForm.setFieldsValue({
+        finalSpeciesId: result.finalSpeciesId,
+        reviewStatus: "confirmed",
+      });
+      if (selectedRecord) {
+        setSelectedRecord(await fetchGrowthRecordDetail(selectedRecord.id));
+      }
+      message.success("图谱匹配与识别已完成");
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "图谱识别失败"));
+    } finally {
+      setIdentificationLoading(false);
+    }
+  }
+
+  async function submitIdentificationReview(values: IdentificationReviewForm) {
+    if (!identification?.id) return;
+    setIdentificationLoading(true);
+    try {
+      const reviewed = await reviewIdentification(identification.id, values);
+      setIdentification(reviewed);
+      message.success("人工复核结论已保存");
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "人工复核失败"));
+    } finally {
+      setIdentificationLoading(false);
+    }
   }
 
   async function submit(values: GrowthRecordPayload) {
@@ -324,11 +413,23 @@ export default function GrowthPage() {
               </div>
               <div className={styles.imageGrid}>
                 {(selectedRecord.images || []).map((image) => (
-                  <SecureImageThumb
-                    alt={image.imageName || image.imageCode}
-                    key={image.id}
-                    src={image.imageUrl}
-                  />
+                  <div className={styles.imageActionCard} key={image.id}>
+                    <SecureImageThumb
+                      alt={image.imageName || image.imageCode}
+                      src={image.imageUrl}
+                    />
+                    <Tag>{image.processStatus || "uploaded"}</Tag>
+                    {hasPermission("herb:identification:view") ? (
+                      <Button
+                        block
+                        icon={<ScanSearch size={14} />}
+                        size="small"
+                        onClick={() => void openIdentification(image)}
+                      >
+                        识别与复核
+                      </Button>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             </div>
@@ -396,6 +497,190 @@ export default function GrowthPage() {
             保存草稿
           </Button>
         </Form>
+      </Modal>
+      <Modal
+        title={activeImage ? `图片识别：${activeImage.imageName || activeImage.imageCode}` : "图片识别"}
+        open={identificationOpen}
+        width={760}
+        destroyOnHidden
+        footer={
+          <Space>
+            <Button
+              onClick={() => {
+                setIdentificationOpen(false);
+                setActiveImage(null);
+                setIdentification(null);
+                reviewForm.resetFields();
+              }}
+            >
+              关闭
+            </Button>
+            {hasPermission("herb:identification:execute") ? (
+              <Button
+                type="primary"
+                loading={identificationLoading}
+                onClick={() => void runIdentification()}
+              >
+                {identification?.id ? "重新识别" : "执行识别"}
+              </Button>
+            ) : null}
+          </Space>
+        }
+        onCancel={() => {
+          setIdentificationOpen(false);
+          setActiveImage(null);
+          setIdentification(null);
+          reviewForm.resetFields();
+        }}
+      >
+        <Spin spinning={identificationLoading}>
+          <div className={styles.sectionStack}>
+            {!identification?.id ? (
+              <Alert
+                showIcon
+                type="info"
+                message="该图片尚无识别结论"
+                description="特征会由后台任务自动生成，也可以点击“执行识别”立即完成特征提取、图谱匹配和候选生成。"
+              />
+            ) : (
+              <Descriptions bordered column={2} size="small">
+                <Descriptions.Item label="最终药材">
+                  {identification.finalSpeciesName || "待人工确认"}
+                </Descriptions.Item>
+                <Descriptions.Item label="置信度">
+                  {identification.finalConfidence == null
+                    ? "-"
+                    : `${(Number(identification.finalConfidence) * 100).toFixed(2)}%`}
+                </Descriptions.Item>
+                <Descriptions.Item label="匹配状态">
+                  <Tag color={identification.needReview ? "orange" : "green"}>
+                    {identification.matchResult || "unknown"}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="复核状态">
+                  <Tag>{identification.reviewStatus || "pending"}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="结果来源">
+                  {identification.resultSource || "local_match"}
+                </Descriptions.Item>
+                <Descriptions.Item label="复核人">
+                  {identification.reviewerName || "-"}
+                </Descriptions.Item>
+                <Descriptions.Item label="处理建议" span={2}>
+                  {identification.suggestion || "-"}
+                </Descriptions.Item>
+              </Descriptions>
+            )}
+
+            {identification?.doubaoRecognition ? (
+              <Alert
+                showIcon
+                type="warning"
+                message="外部模型辅助意见"
+                description={`${
+                  identification.doubaoRecognition.predictedSpeciesName ||
+                  identification.doubaoRecognition.predictedName ||
+                  "未知药材"
+                }（置信度 ${
+                  identification.doubaoRecognition.confidence == null
+                    ? "-"
+                    : `${(Number(identification.doubaoRecognition.confidence) * 100).toFixed(2)}%`
+                }）`}
+              />
+            ) : null}
+
+            {identification?.localCandidates?.length ? (
+              <div>
+                <Typography.Title level={5}>本地图谱候选</Typography.Title>
+                <List
+                  bordered
+                  dataSource={identification.localCandidates}
+                  renderItem={(candidate) => (
+                    <List.Item
+                      actions={
+                        hasPermission("herb:identification:review") && candidate.speciesId
+                          ? [
+                              <Button
+                                key="select"
+                                type="link"
+                                onClick={() =>
+                                  reviewForm.setFieldValue("finalSpeciesId", candidate.speciesId)
+                                }
+                              >
+                                采用候选
+                              </Button>,
+                            ]
+                          : undefined
+                      }
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          candidate.atlasImageUrl ? (
+                            <SecureImageThumb
+                              alt={candidate.atlasCode || candidate.speciesName || "图谱候选"}
+                              src={candidate.atlasImageUrl}
+                            />
+                          ) : null
+                        }
+                        title={`${candidate.rank}. ${candidate.speciesName || "未知药材"}`}
+                        description={
+                          <Space wrap>
+                            <Typography.Text type="secondary">
+                              {candidate.atlasCode || `图谱 #${candidate.atlasId}`}
+                            </Typography.Text>
+                            <Tag color="blue">
+                              相似度 {((Number(candidate.similarity) || 0) * 100).toFixed(2)}%
+                            </Tag>
+                            {candidate.doubaoAgreed ? <Tag color="green">外部模型一致</Tag> : null}
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              </div>
+            ) : null}
+
+            {hasPermission("herb:identification:review") && identification?.id ? (
+              <Form
+                form={reviewForm}
+                layout="vertical"
+                initialValues={{ reviewStatus: "confirmed" }}
+                onFinish={submitIdentificationReview}
+              >
+                <Typography.Title level={5}>人工复核</Typography.Title>
+                <Form.Item
+                  name="finalSpeciesId"
+                  label="最终药材"
+                  rules={[{ required: true, message: "请选择最终药材" }]}
+                >
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    options={herbs.map((herb) => ({
+                      label: `${herb.herbName}（${herb.herbCode}）`,
+                      value: herb.id,
+                    }))}
+                  />
+                </Form.Item>
+                <Form.Item name="reviewStatus" label="复核结论">
+                  <Select
+                    options={[
+                      { label: "确认", value: "confirmed" },
+                      { label: "驳回", value: "rejected" },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item name="reviewComment" label="复核意见">
+                  <Input.TextArea rows={3} />
+                </Form.Item>
+                <Button htmlType="submit" loading={identificationLoading} type="primary">
+                  保存复核结论
+                </Button>
+              </Form>
+            ) : null}
+          </div>
+        </Spin>
       </Modal>
     </SiteLayout>
   );

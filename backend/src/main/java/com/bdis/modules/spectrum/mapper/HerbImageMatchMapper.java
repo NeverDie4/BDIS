@@ -1,6 +1,7 @@
 package com.bdis.modules.spectrum.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.spectrum.dto.HerbImageMatchQueryRequest;
 import com.bdis.modules.spectrum.entity.SpectrumComparisonEntity;
 import com.bdis.modules.spectrum.vo.HerbAtlasFeatureCandidateVO;
@@ -23,10 +24,13 @@ public interface HerbImageMatchMapper extends BaseMapper<SpectrumComparisonEntit
 
     List<HerbImageMatchPageVO> selectByImageId(@Param("imageId") Long imageId);
 
-    Long countPage(@Param("query") HerbImageMatchQueryRequest query);
+    Long countPage(
+            @Param("query") HerbImageMatchQueryRequest query,
+            @Param("scope") CollectionAccessScope scope);
 
     List<HerbImageMatchPageVO> selectPage(
             @Param("query") HerbImageMatchQueryRequest query,
+            @Param("scope") CollectionAccessScope scope,
             @Param("offset") Long offset,
             @Param("pageSize") Integer pageSize);
 }

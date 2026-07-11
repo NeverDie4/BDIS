@@ -16,9 +16,5 @@ public class HerbBatchConfirmRequest {
 
     private String evaluationSummary;
 
-    private Long reviewerId;
-
-    private String reviewerName;
-
     private String remark;
 }

@@ -22,8 +22,8 @@ import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
 import com.bdis.modules.herb.entity.HerbEntity;
-import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
+import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.map.entity.MapPointEntity;
 import com.bdis.modules.map.mapper.MapPointMapper;
 import com.bdis.modules.permission.service.DataScopeService;
@@ -363,10 +363,8 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                 request.getGrowthStage(), request.getSoilType(), request.getWeather());
     }
 
-    private void validateGrowthDictionaries(
-            String growthStage, String soilType, String weather) {
-        dictionaryReferenceValidator.validateIfConfigured(
-                "growth_stage", growthStage, "生长阶段");
+    private void validateGrowthDictionaries(String growthStage, String soilType, String weather) {
+        dictionaryReferenceValidator.validateIfConfigured("growth_stage", growthStage, "生长阶段");
         dictionaryReferenceValidator.validateIfConfigured("soil_type", soilType, "土壤类型");
         dictionaryReferenceValidator.validateIfConfigured("weather", weather, "天气");
     }

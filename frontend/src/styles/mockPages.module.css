@@ -118,6 +118,16 @@
   gap: var(--space-sm);
 }
 
+.imageActionCard {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: 1px solid rgba(var(--color-border-rgb), 0.82);
+  border-radius: var(--radius-button);
+  background: rgba(var(--color-texture-rgb), 0.64);
+}
+
 .toolbarActions {
   display: flex;
   flex-wrap: wrap;

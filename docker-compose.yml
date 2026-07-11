@@ -46,8 +46,8 @@ services:
     command: uvicorn recognize_app:app --host 0.0.0.0 --port 8001
     environment:
       ARK_API_KEY: ${ARK_API_KEY:-}
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 10s
@@ -63,8 +63,8 @@ services:
     command: uvicorn feature_app:app --host 0.0.0.0 --port 8002
     volumes:
       - ai-model-cache:/root/.cache/torch
-    ports:
-      - "8002:8002"
+    expose:
+      - "8002"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
       interval: 20s
@@ -100,6 +100,11 @@ services:
       HERB_RECOGNITION_ENABLED: ${HERB_RECOGNITION_ENABLED:-false}
       HERB_RECOGNITION_SERVICE_URL: http://ai-recognition:8001/recognize
       HERB_FEATURE_ENABLED: ${HERB_FEATURE_ENABLED:-true}
+      HERB_FEATURE_TIMEOUT_SECONDS: ${HERB_FEATURE_TIMEOUT_SECONDS:-30}
+      HERB_FEATURE_MODEL_VERSION: ${HERB_FEATURE_MODEL_VERSION:-resnet50-imagenet-v1}
+      HERB_FEATURE_RECOVERY_ENABLED: ${HERB_FEATURE_RECOVERY_ENABLED:-true}
+      HERB_FEATURE_RECOVERY_INITIAL_DELAY_MS: ${HERB_FEATURE_RECOVERY_INITIAL_DELAY_MS:-5000}
+      HERB_FEATURE_RECOVERY_INTERVAL_MS: ${HERB_FEATURE_RECOVERY_INTERVAL_MS:-60000}
       HERB_FEATURE_SERVICE_URL: http://ai-feature:8002/feature
       HERB_FEATURE_EXTRACTION_SERVICE_URL: http://ai-feature:8002/extract-feature
     volumes:

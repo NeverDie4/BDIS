@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.controller;
 
 import com.bdis.common.core.Result;
 import com.bdis.common.security.RequirePermission;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.dto.AtlasFeatureBatchExtractRequest;
 import com.bdis.modules.spectrum.dto.ImageFeatureBatchExtractRequest;
 import com.bdis.modules.spectrum.service.HerbFeatureService;
@@ -21,9 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class HerbFeatureController {
 
     private final HerbFeatureService herbFeatureService;
+    private final HerbImageAccessService herbImageAccessService;
 
-    public HerbFeatureController(HerbFeatureService herbFeatureService) {
+    public HerbFeatureController(
+            HerbFeatureService herbFeatureService, HerbImageAccessService herbImageAccessService) {
         this.herbFeatureService = herbFeatureService;
+        this.herbImageAccessService = herbImageAccessService;
     }
 
     @PostMapping("/atlas/{atlasId}/feature/extract")
@@ -43,12 +47,14 @@ public class HerbFeatureController {
     @RequirePermission("herb:identification:execute")
     public Result<FeatureBatchExtractResultVO> batchExtractImageFeatures(
             @RequestBody(required = false) ImageFeatureBatchExtractRequest request) {
+        herbImageAccessService.requireAllScope();
         return Result.success(herbFeatureService.batchExtractImageFeatures(request));
     }
 
     @PostMapping("/image/{imageId}/feature/extract")
     @RequirePermission("herb:identification:execute")
     public Result<FeatureExtractResultVO> extractImageFeature(@PathVariable Long imageId) {
+        herbImageAccessService.requireAccess(imageId);
         return Result.success(herbFeatureService.extractImageFeature(imageId));
     }
 
@@ -63,6 +69,7 @@ public class HerbFeatureController {
     public Result<FeatureExtractResultVO> getImageFeature(
             @PathVariable Long imageId,
             @RequestParam(defaultValue = "false") boolean includeVector) {
+        herbImageAccessService.requireAccess(imageId);
         return Result.success(herbFeatureService.getImageFeature(imageId, includeVector));
     }
 }

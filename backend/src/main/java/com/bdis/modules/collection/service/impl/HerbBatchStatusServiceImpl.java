@@ -8,6 +8,7 @@ import com.bdis.modules.collection.dto.HerbBatchReopenReviewRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.service.HerbBatchStatusService;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.util.HerbBatchStatusFlowUtils;
 import com.bdis.modules.collection.vo.HerbBatchStatusVO;
 import com.bdis.modules.collection.vo.HerbBatchVO;
@@ -20,15 +21,19 @@ import org.springframework.util.StringUtils;
 public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
 
     private final HerbBatchMapper herbBatchMapper;
+    private final CollectionAccessService collectionAccessService;
 
-    public HerbBatchStatusServiceImpl(HerbBatchMapper herbBatchMapper) {
+    public HerbBatchStatusServiceImpl(
+            HerbBatchMapper herbBatchMapper, CollectionAccessService collectionAccessService) {
         this.herbBatchMapper = herbBatchMapper;
+        this.collectionAccessService = collectionAccessService;
     }
 
     @Override
     @Transactional
     public HerbBatchVO startCollection(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
         updateStatus(batch, HerbBatchStatusConstants.COLLECTING, null, null);
         return latest(batchId);
     }
@@ -37,6 +42,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO submit(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
         requireTransition(batch, HerbBatchStatusConstants.SUBMITTED);
         Long count = herbBatchMapper.countBoundImagesByBatchId(batch.getId());
         if (count == null || count == 0) {
@@ -50,6 +56,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO startIdentification(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
         updateStatus(batch, HerbBatchStatusConstants.IDENTIFYING, null, null);
         return latest(batchId);
     }
@@ -58,6 +65,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO markReviewing(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchReview(batch);
         updateStatus(batch, HerbBatchStatusConstants.REVIEWING, null, null);
         return latest(batchId);
     }
@@ -66,6 +74,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO confirmStatus(Long batchId, HerbBatchConfirmStatusRequest request) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchReview(batch);
         HerbBatchConfirmStatusRequest safeRequest =
                 request == null ? new HerbBatchConfirmStatusRequest() : request;
         requireTransition(batch, HerbBatchStatusConstants.CONFIRMED);
@@ -84,6 +93,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO archive(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchReview(batch);
         requireTransition(batch, HerbBatchStatusConstants.ARCHIVED);
         if (!StringUtils.hasText(batch.getFinalSpeciesName())) {
             throw new BusinessException("Batch final species name is required before archive");
@@ -102,6 +112,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO cancel(Long batchId, HerbBatchCancelRequest request) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
         if (HerbBatchStatusConstants.ARCHIVED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Archived batch cannot be cancelled");
         }
@@ -118,6 +129,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Transactional
     public HerbBatchVO reopenReview(Long batchId, HerbBatchReopenReviewRequest request) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchReview(batch);
         if (!HerbBatchStatusConstants.CONFIRMED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Only confirmed batch can be reopened for review");
         }
@@ -130,6 +142,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
     @Override
     public HerbBatchStatusVO status(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchAccess(batch);
         HerbBatchStatusVO vo = new HerbBatchStatusVO();
         vo.setBatchId(batch.getId());
         vo.setBatchCode(batch.getBatchCode());
@@ -165,6 +178,7 @@ public class HerbBatchStatusServiceImpl implements HerbBatchStatusService {
             batch.setEvaluationSummary(appendText(batch.getEvaluationSummary(), evaluationSummary));
         }
         batch.setUpdatedAt(LocalDateTime.now());
+        batch.setUpdatedBy(collectionAccessService.currentUserId());
         int affected = herbBatchMapper.updateStatusById(batch);
         if (affected == 0) {
             throw new BusinessException("Failed to update batch status");

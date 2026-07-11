@@ -15,6 +15,8 @@ import com.bdis.modules.collection.dto.HerbCollectionTaskUpdateRequest;
 import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.service.impl.HerbCollectionTaskServiceImpl;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbCollectionTaskListVO;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
 import com.bdis.modules.herb.entity.HerbEntity;
@@ -35,12 +37,15 @@ class HerbCollectionTaskServiceTest {
 
     @Mock private HerbSpeciesMapper herbSpeciesMapper;
 
+    @Mock private CollectionAccessService collectionAccessService;
+
     private HerbCollectionTaskService herbCollectionTaskService;
 
     @BeforeEach
     void setUp() {
         herbCollectionTaskService =
-                new HerbCollectionTaskServiceImpl(herbCollectionTaskMapper, herbSpeciesMapper);
+                new HerbCollectionTaskServiceImpl(
+                        herbCollectionTaskMapper, herbSpeciesMapper, collectionAccessService);
     }
 
     @Test
@@ -119,8 +124,11 @@ class HerbCollectionTaskServiceTest {
         HerbCollectionTaskQueryRequest request = new HerbCollectionTaskQueryRequest();
         request.setPageNum(0);
         request.setPageSize(0);
-        when(herbCollectionTaskMapper.countPage(request)).thenReturn(1L);
-        when(herbCollectionTaskMapper.selectPage(request, 0L, 10)).thenReturn(List.of(activeVO()));
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(1001L));
+        when(collectionAccessService.currentScope()).thenReturn(scope);
+        when(herbCollectionTaskMapper.countPage(request, scope)).thenReturn(1L);
+        when(herbCollectionTaskMapper.selectPage(request, scope, 0L, 10))
+                .thenReturn(List.of(activeVO()));
 
         PageResult<HerbCollectionTaskVO> result = herbCollectionTaskService.page(request);
 
@@ -133,7 +141,8 @@ class HerbCollectionTaskServiceTest {
     @Test
     void myTasksUsePublishedAndInProgressByDefault() {
         HerbCollectionTaskMyQueryRequest request = new HerbCollectionTaskMyQueryRequest();
-        request.setCollectorId(1001L);
+        request.setCollectorId(9999L);
+        when(collectionAccessService.currentUserId()).thenReturn(1001L);
         when(herbCollectionTaskMapper.countMyTasks(request)).thenReturn(1L);
         when(herbCollectionTaskMapper.selectMyTasks(request, 0L, 10))
                 .thenReturn(List.of(activeVO()));
@@ -144,6 +153,7 @@ class HerbCollectionTaskServiceTest {
                 .containsExactly(
                         HerbCollectionTaskStatusConstants.PUBLISHED,
                         HerbCollectionTaskStatusConstants.IN_PROGRESS);
+        assertThat(request.getCollectorId()).isEqualTo(1001L);
         assertThat(result.getRecords()).hasSize(1);
     }
 
@@ -175,7 +185,10 @@ class HerbCollectionTaskServiceTest {
     @Test
     void listSelectableTasksExcludesCompletedAndCancelledByDefault() {
         HerbCollectionTaskQueryRequest request = new HerbCollectionTaskQueryRequest();
-        when(herbCollectionTaskMapper.selectList(request)).thenReturn(List.of(activeListVO()));
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(1001L));
+        when(collectionAccessService.currentScope()).thenReturn(scope);
+        when(herbCollectionTaskMapper.selectList(request, scope))
+                .thenReturn(List.of(activeListVO()));
 
         List<HerbCollectionTaskListVO> result = herbCollectionTaskService.list(request);
 

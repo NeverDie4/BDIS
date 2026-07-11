@@ -32,7 +32,6 @@ public class BusinessReferenceValidator {
                     Map.entry(
                             "herb_batch",
                             new BusinessReference("herb_batch", "growth:record:view")),
-                    Map.entry("edu_course", new BusinessReference("edu_course", "course:view")),
                     Map.entry(
                             "eval_application",
                             new BusinessReference("eval_application", "file:resource:view")),
@@ -104,47 +103,64 @@ public class BusinessReferenceValidator {
         if (CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase)) {
             return true;
         }
-        if ("edu_course".equals(bizType)) {
-            Long count =
-                    jdbcTemplate.queryForObject(
-                            """
-                            select count(*) from edu_course
-                            where id = ? and is_deleted = 0
-                              and (publish_status = 'published' or teacher_id = ?)
-                            """,
-                            Long.class,
-                            bizId,
-                            CurrentUserUtils.currentUserId());
-            return count != null && count > 0;
-        }
         if ("herb_growth_record".equals(bizType)) {
             Long collectorId =
                     jdbcTemplate.queryForObject(
-                            "select collector_id from herb_growth_record where id = ? and is_deleted = 0",
+                            "select collector_id from herb_growth_record where id = ? and"
+                                    + " is_deleted = 0",
                             Long.class,
                             bizId);
             return canAccessGrowthCollector(collectorId);
         }
-        if ("herb_batch".equals(bizType)) {
-            Long collectorId =
-                    jdbcTemplate.queryForObject(
+        if ("herb_image".equals(bizType)) {
+            List<Map<String, Object>> owners =
+                    jdbcTemplate.queryForList(
                             """
-                            select coalesce(task.collector_id, batch.created_by)
+                            select image.uploader_id,
+                                   growth.collector_id as growth_collector_id
+                            from herb_image image
+                            left join herb_growth_record growth
+                              on growth.id = image.growth_record_id and growth.is_deleted = 0
+                            where image.id = ? and image.is_deleted = 0
+                            """,
+                            bizId);
+            if (owners.isEmpty()) {
+                return false;
+            }
+            Map<String, Object> owner = owners.getFirst();
+            return canAccessGrowthCollector(number(owner.get("uploader_id")))
+                    || canAccessGrowthCollector(number(owner.get("growth_collector_id")));
+        }
+        if ("herb_batch".equals(bizType)) {
+            List<Map<String, Object>> owners =
+                    jdbcTemplate.queryForList(
+                            """
+                            select batch.created_by as batch_created_by,
+                                   task.created_by as task_created_by,
+                                   task.collector_id as task_collector_id
                             from herb_batch batch
                             left join herb_collection_task task
                               on task.id = batch.task_id and task.is_deleted = 0
                             where batch.id = ? and batch.is_deleted = 0
                             """,
-                            Long.class,
                             bizId);
-            return canAccessGrowthCollector(collectorId);
+            if (owners.isEmpty()) {
+                return false;
+            }
+            Map<String, Object> owner = owners.getFirst();
+            return canAccessGrowthCollector(number(owner.get("batch_created_by")))
+                    || canAccessGrowthCollector(number(owner.get("task_created_by")))
+                    || canAccessGrowthCollector(number(owner.get("task_collector_id")));
         }
         return true;
     }
 
     private boolean canAccessGrowthCollector(Long collectorId) {
-        if (collectorId == null || collectorId.equals(CurrentUserUtils.currentUserId())) {
+        if (collectorId != null && collectorId.equals(CurrentUserUtils.currentUserId())) {
             return true;
+        }
+        if (collectorId == null) {
+            return false;
         }
         DataScopeResultVO scope = dataScopeService.resolveForCurrentUser("herb_growth_record");
         if (scope.isAllIncluded()) {
@@ -152,7 +168,8 @@ public class BusinessReferenceValidator {
         }
         List<Map<String, Object>> users =
                 jdbcTemplate.queryForList(
-                        "select organization_id, department_id from sys_user where id = ? and is_deleted = 0",
+                        "select organization_id, department_id from sys_user where id = ? and"
+                                + " is_deleted = 0",
                         collectorId);
         if (users.isEmpty()) {
             return false;

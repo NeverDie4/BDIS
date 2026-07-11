@@ -36,4 +36,8 @@ public interface HerbAtlasMapper extends BaseMapper<SpectrumEntity> {
     List<SpectrumEntity> selectFeatureCandidates();
 
     List<SpectrumEntity> selectEnabledForFeatureExtraction(@Param("speciesId") Long speciesId);
+
+    List<SpectrumEntity> selectLegacyFileCandidates();
+
+    int updateImageUrl(@Param("id") Long id, @Param("imageUrl") String imageUrl);
 }

@@ -12,6 +12,7 @@ import com.bdis.common.exception.BusinessException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.file.vo.FileResourceVO;
 import com.bdis.modules.growth.mapper.GrowthRecordMapper;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
@@ -22,8 +23,8 @@ import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.herb.service.impl.HerbImageServiceImpl;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.herb.vo.HerbImageVO;
-import com.bdis.modules.spectrum.service.HerbFeatureService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -34,9 +35,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.mock.web.MockMultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class HerbImageServiceTest {
@@ -50,7 +51,7 @@ class HerbImageServiceTest {
 
     @Mock private FileBusinessService fileBusinessService;
 
-    @Mock private HerbFeatureService herbFeatureService;
+    @Mock private HerbImageAccessService herbImageAccessService;
 
     private HerbImageService herbImageService;
 
@@ -75,7 +76,7 @@ class HerbImageServiceTest {
                         growthRecordMapper,
                         fileResourceService,
                         fileBusinessService,
-                        herbFeatureService);
+                        herbImageAccessService);
     }
 
     @AfterEach
@@ -130,7 +131,6 @@ class HerbImageServiceTest {
         assertThat(result.getSpeciesName()).isEqualTo("Huanglian");
         assertThat(result.getProcessStatus()).isEqualTo("uploaded");
         verify(fileBusinessService).bind(any());
-        verify(herbFeatureService).extractImageFeature(11L);
     }
 
     @Test
@@ -212,8 +212,11 @@ class HerbImageServiceTest {
         HerbImageQueryRequest request = new HerbImageQueryRequest();
         request.setPageNum(0);
         request.setPageSize(0);
-        when(herbImageMapper.countPage(request)).thenReturn(1L);
-        when(herbImageMapper.selectPage(request, 0L, 10)).thenReturn(List.of(new HerbImageVO()));
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(9L));
+        when(herbImageAccessService.currentScope()).thenReturn(scope);
+        when(herbImageMapper.countPage(request, scope)).thenReturn(1L);
+        when(herbImageMapper.selectPage(request, scope, 0L, 10))
+                .thenReturn(List.of(new HerbImageVO()));
 
         PageResult<HerbImageVO> result = herbImageService.page(request);
 

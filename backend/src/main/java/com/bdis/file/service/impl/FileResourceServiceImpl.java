@@ -7,6 +7,7 @@ import com.bdis.audit.dto.FileAccessRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.service.FileAccessLogService;
 import com.bdis.common.core.PageResult;
+import com.bdis.common.exception.FileStorageException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
@@ -23,6 +24,8 @@ import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.vo.FileResourceVO;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -108,6 +111,44 @@ public class FileResourceServiceImpl implements FileResourceService {
             }
             throw exception;
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FileResourceVO importPublic(Path sourceFile, String originalFilename, String remark) {
+        FileStorageService.StoredFile storedFile = fileStorageService.save(sourceFile);
+        try {
+            Path storedPath = fileStorageService.resolve(storedFile.storagePath());
+            return createSystemFileResource(
+                    storedFile, storedPath, originalFilename, "public", remark);
+        } catch (RuntimeException exception) {
+            fileStorageService.delete(storedFile.storagePath());
+            throw exception;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FileResourceVO registerPublic(
+            String existingFileUrl, String originalFilename, String remark) {
+        if (!StringUtils.hasText(existingFileUrl)
+                || !existingFileUrl.startsWith("/api/files/uploads/")) {
+            throw new FileStorageException("只能登记本地历史上传文件");
+        }
+        FileResourceEntity existing =
+                fileResourceMapper.selectOne(
+                        new LambdaQueryWrapper<FileResourceEntity>()
+                                .eq(FileResourceEntity::getFileUrl, existingFileUrl)
+                                .last("limit 1"));
+        if (existing != null) {
+            return toVO(existing);
+        }
+        Path storedPath = fileStorageService.resolve(existingFileUrl);
+        String storagePath = existingFileUrl.substring("/api/files/".length());
+        FileStorageService.StoredFile storedFile =
+                new FileStorageService.StoredFile(
+                        storedPath.getFileName().toString(), storagePath, existingFileUrl);
+        return createSystemFileResource(storedFile, storedPath, originalFilename, "public", remark);
     }
 
     @Override
@@ -214,8 +255,62 @@ public class FileResourceServiceImpl implements FileResourceService {
                 && (currentUserId == null || !currentUserId.equals(entity.getUploaderId()))) {
             throw new ForbiddenException("只能删除本人上传的文件");
         }
-        fileBusinessService.deleteByFileId(fileId);
-        fileResourceMapper.deleteById(fileId);
+        deleteEntity(entity);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSystem(Long fileId) {
+        deleteEntity(requireFile(fileId));
+    }
+
+    private FileResourceVO createSystemFileResource(
+            FileStorageService.StoredFile storedFile,
+            Path storedPath,
+            String originalFilename,
+            String accessLevel,
+            String remark) {
+        try {
+            String safeOriginalFilename =
+                    StringUtils.hasText(originalFilename)
+                            ? originalFilename
+                            : storedPath.getFileName().toString();
+            String extension = StringUtils.getFilenameExtension(safeOriginalFilename);
+            String contentType = Files.probeContentType(storedPath);
+            FileResourceEntity entity = new FileResourceEntity();
+            entity.setFileNo("FILE-" + UUID.randomUUID());
+            entity.setFileName(storedFile.storedName());
+            entity.setOriginalFilename(safeOriginalFilename);
+            entity.setFileType(
+                    contentType != null && contentType.startsWith("image/") ? "image" : "file");
+            entity.setFileFormat(extension);
+            entity.setFileSize(Files.size(storedPath));
+            entity.setFileUrl(storedFile.fileUrl());
+            entity.setThumbnailUrl(
+                    "image".equals(entity.getFileType()) ? storedFile.fileUrl() : null);
+            entity.setStoragePath(storedFile.storagePath());
+            entity.setStorageType("local");
+            entity.setAccessLevel(accessLevel);
+            entity.setContentType(contentType);
+            entity.setUploaderName("system");
+            entity.setUploadedAt(LocalDateTime.now());
+            entity.setStatus(1);
+            entity.setIsDeleted(0);
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            entity.setRemark(remark);
+            entity.setVersion(0);
+            fileResourceMapper.insert(entity);
+            recordAudit("IMPORT", "file_resource", entity.getId());
+            return toVO(entity);
+        } catch (IOException exception) {
+            throw new FileStorageException("读取导入文件信息失败", exception);
+        }
+    }
+
+    private void deleteEntity(FileResourceEntity entity) {
+        fileBusinessService.deleteByFileId(entity.getId());
+        fileResourceMapper.deleteById(entity.getId());
         fileStorageService.delete(entity.getStoragePath());
         recordAudit("DELETE", "file_resource", entity.getId());
     }
@@ -277,8 +372,7 @@ public class FileResourceServiceImpl implements FileResourceService {
             return null;
         }
         String value =
-                fileUrl.substring(
-                        start + marker.length(), fileUrl.length() - "/content".length());
+                fileUrl.substring(start + marker.length(), fileUrl.length() - "/content".length());
         try {
             return Long.valueOf(value);
         } catch (NumberFormatException exception) {

@@ -19,5 +19,9 @@ public interface HerbAtlasFeatureMapper extends BaseMapper<HerbAtlasFeatureEntit
             @Param("featureModel") String featureModel,
             @Param("featureVersion") String featureVersion);
 
+    int updateActiveFailure(HerbAtlasFeatureEntity feature);
+
     FeatureExtractResultVO selectLatestSuccessByAtlasId(@Param("atlasId") Long atlasId);
+
+    FeatureExtractResultVO selectLatestByAtlasId(@Param("atlasId") Long atlasId);
 }

@@ -118,7 +118,11 @@ class HerbFeatureServiceTest {
                 .hasMessageContaining("文件不存在");
 
         verify(featureExtractionClient, never()).extract(any());
-        verify(herbImageFeatureMapper, never()).insertFeature(any());
+        ArgumentCaptor<HerbImageFeatureEntity> captor =
+                ArgumentCaptor.forClass(HerbImageFeatureEntity.class);
+        verify(herbImageFeatureMapper).insertFeature(captor.capture());
+        assertThat(captor.getValue().getExtractStatus()).isEqualTo("failed");
+        assertThat(captor.getValue().getErrorMessage()).contains("文件不存在");
     }
 
     @Test
@@ -189,7 +193,7 @@ class HerbFeatureServiceTest {
         saved.setTargetType("atlas");
         saved.setTargetId(1L);
         saved.setFeatureVector("[0.1,0.2]");
-        when(herbAtlasFeatureMapper.selectLatestSuccessByAtlasId(1L)).thenReturn(saved);
+        when(herbAtlasFeatureMapper.selectLatestByAtlasId(1L)).thenReturn(saved);
 
         assertThat(herbFeatureService.getAtlasFeature(1L, false).getFeatureVector()).isNull();
         assertThat(herbFeatureService.getAtlasFeature(1L, true).getFeatureVector())

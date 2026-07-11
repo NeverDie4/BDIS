@@ -29,10 +29,7 @@ VALUES
 ('dictionary:view', '查看数据字典', 'api', '查询字典类型、字典项和区域树', 1),
 ('dictionary:manage', '维护数据字典', 'api', '新增、编辑和删除字典数据', 1),
 ('map:base:view', '查看药材基地', 'api', '查询药材基地', 1),
-('map:base:manage', '维护药材基地', 'api', '新增、编辑和删除药材基地', 1),
-('course:view', '查看实验课程', 'api', '查询实验课程、步骤和资源', 1),
-('course:manage', '维护实验课程', 'api', '新增、编辑课程、步骤和资源', 1),
-('course:publish', '发布实验课程', 'api', '发布和下架实验课程', 1);
+('map:base:manage', '维护药材基地', 'api', '新增、编辑和删除药材基地', 1);
 
 INSERT IGNORE INTO `rel_role_permission` (`role_id`, `permission_id`)
 SELECT role.id, permission.id
@@ -46,8 +43,7 @@ JOIN `auth_permission` permission
     'file:resource:view',
     'herb:identification:view',
     'dictionary:view',
-    'map:base:view',
-    'course:view'
+    'map:base:view'
   )
 WHERE role.role_code IN ('TEACHER', 'STUDENT', 'COLLECTOR', 'REVIEWER');
 
@@ -64,9 +60,7 @@ JOIN `auth_permission` permission
     'growth:record:update',
     'growth:record:submit',
     'file:resource:upload',
-    'file:resource:update',
-    'course:manage',
-    'course:publish'
+    'file:resource:update'
   )
 WHERE role.role_code = 'TEACHER';
 

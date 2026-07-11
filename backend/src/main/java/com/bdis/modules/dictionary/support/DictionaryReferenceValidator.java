@@ -46,8 +46,7 @@ public class DictionaryReferenceValidator {
                                                         .eq(DictItemEntity::getItemValue, value)));
         if (count == null || count == 0) {
             throw new BusinessException(
-                    ResultCodeEnum.VALIDATION_ERROR,
-                    fieldName + "不在已启用字典 " + typeCode + " 中");
+                    ResultCodeEnum.VALIDATION_ERROR, fieldName + "不在已启用字典 " + typeCode + " 中");
         }
     }
 }

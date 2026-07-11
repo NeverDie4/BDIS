@@ -226,8 +226,22 @@
         SELECT COUNT(1)
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN herb_growth_record gr
+          ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <where>
             i.is_deleted = 0
+            <if test="scope != null and !scope.allIncluded">
+                AND (
+                    i.uploader_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR gr.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
             <if test="query.speciesId != null">
                 AND i.species_id = #{query.speciesId}
             </if>
@@ -272,8 +286,22 @@
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
         LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN herb_growth_record gr
+          ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <where>
             i.is_deleted = 0
+            <if test="scope != null and !scope.allIncluded">
+                AND (
+                    i.uploader_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR gr.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
             <if test="query.speciesId != null">
                 AND i.species_id = #{query.speciesId}
             </if>

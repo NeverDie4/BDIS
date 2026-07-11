@@ -19,5 +19,9 @@ public interface HerbImageFeatureMapper extends BaseMapper<HerbImageFeatureEntit
             @Param("featureModel") String featureModel,
             @Param("featureVersion") String featureVersion);
 
+    int updateActiveFailure(HerbImageFeatureEntity feature);
+
     FeatureExtractResultVO selectLatestSuccessByImageId(@Param("imageId") Long imageId);
+
+    FeatureExtractResultVO selectLatestByImageId(@Param("imageId") Long imageId);
 }

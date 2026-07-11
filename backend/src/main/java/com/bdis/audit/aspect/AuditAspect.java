@@ -105,9 +105,6 @@ public class AuditAspect {
         if (uri.contains("/herb/") || uri.contains("/map-points")) {
             return "M07_M10_HERB";
         }
-        if (uri.contains("/courses")) {
-            return "M12_COURSE";
-        }
         if (uri.contains("/dictionaries") || uri.contains("/regions")) {
             return "M04_DICTIONARY";
         }

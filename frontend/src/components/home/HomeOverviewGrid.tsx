@@ -2,7 +2,6 @@
 
 import { App } from "antd";
 import { useEffect, useState } from "react";
-import { fetchCoursePage, type CourseApi } from "@/lib/courses";
 import {
   fetchDashboardMap,
   fetchDashboardRecentGrowth,
@@ -25,7 +24,6 @@ export function HomeOverviewGrid() {
   const [map, setMap] = useState<DashboardMap | null>(null);
   const [recentGrowth, setRecentGrowth] = useState<DashboardRecentGrowth[]>([]);
   const [herbs, setHerbs] = useState<HerbSpeciesApi[]>([]);
-  const [courses, setCourses] = useState<CourseApi[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -33,14 +31,12 @@ export function HomeOverviewGrid() {
       fetchDashboardMap(),
       fetchDashboardRecentGrowth(),
       fetchEnabledHerbs(),
-      fetchCoursePage(),
     ])
-      .then(([nextSummary, nextMap, growth, species, coursePage]) => {
+      .then(([nextSummary, nextMap, growth, species]) => {
         setSummary(nextSummary);
         setMap(nextMap);
         setRecentGrowth(growth);
         setHerbs(species.slice(0, 4));
-        setCourses(coursePage.records.slice(0, 4));
       })
       .catch((error) => {
         if (!isAuthRedirectError(error)) message.error(getApiErrorMessage(error, "首页数据加载失败"));
@@ -51,7 +47,7 @@ export function HomeOverviewGrid() {
     <section aria-label="首页功能摘要" className={styles.overview}>
       <FeaturedHerbsPanel herbs={herbs} />
       <MapOverviewPanel map={map} summary={summary} />
-      <ResearchTeachingPanel courses={courses} />
+      <ResearchTeachingPanel />
       <GrowthObservationPanel records={recentGrowth} summary={summary} />
     </section>
   );

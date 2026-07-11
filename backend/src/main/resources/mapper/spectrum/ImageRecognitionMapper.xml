@@ -113,8 +113,20 @@
 
     <sql id="RecognitionWhere">
         <where>
+            <if test="scope != null and !scope.allIncluded">
+                (
+                    i.uploader_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR gr.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
             <if test="query.imageId != null">
-                r.image_id = #{query.imageId}
+                AND r.image_id = #{query.imageId}
             </if>
             <if test="query.predictedSpeciesId != null">
                 AND r.species_id = #{query.predictedSpeciesId}
@@ -169,6 +181,9 @@
     <select id="countPage" resultType="java.lang.Long">
         SELECT COUNT(1)
         FROM herb_image_recognition r
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_growth_record gr
+          ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <include refid="RecognitionWhere"/>
     </select>
 
@@ -176,8 +191,10 @@
         SELECT
         <include refid="RecognitionVOColumns"/>
         FROM herb_image_recognition r
-        LEFT JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
         LEFT JOIN herb_species s ON s.id = r.species_id AND s.is_deleted = 0
+        LEFT JOIN herb_growth_record gr
+          ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <include refid="RecognitionWhere"/>
         ORDER BY r.created_at DESC, r.rank_no ASC
         LIMIT #{offset}, #{pageSize}

@@ -12,6 +12,8 @@ import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.service.HerbBatchService;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchListVO;
 import com.bdis.modules.collection.vo.HerbBatchVO;
 import com.bdis.modules.herb.entity.HerbEntity;
@@ -41,16 +43,19 @@ public class HerbBatchServiceImpl implements HerbBatchService {
     private final HerbCollectionTaskMapper herbCollectionTaskMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
     private final HerbBatchImageMapper herbBatchImageMapper;
+    private final CollectionAccessService collectionAccessService;
 
     public HerbBatchServiceImpl(
             HerbBatchMapper herbBatchMapper,
             HerbCollectionTaskMapper herbCollectionTaskMapper,
             HerbSpeciesMapper herbSpeciesMapper,
-            HerbBatchImageMapper herbBatchImageMapper) {
+            HerbBatchImageMapper herbBatchImageMapper,
+            CollectionAccessService collectionAccessService) {
         this.herbBatchMapper = herbBatchMapper;
         this.herbCollectionTaskMapper = herbCollectionTaskMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.herbBatchImageMapper = herbBatchImageMapper;
+        this.collectionAccessService = collectionAccessService;
     }
 
     @Override
@@ -60,7 +65,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         if (herbBatchMapper.selectByBatchCode(request.getBatchCode()) != null) {
             throw new BusinessException("Batch code already exists");
         }
-        validateTask(request.getTaskId());
+        validateTaskForExecution(request.getTaskId());
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
         String batchStatus =
                 normalizeStatus(request.getBatchStatus(), HerbBatchStatusConstants.DRAFT);
@@ -91,6 +96,8 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         entity.setIsDeleted(0);
         entity.setStatus(1);
         entity.setVersion(0);
+        entity.setCreatedBy(collectionAccessService.currentUserId());
+        entity.setUpdatedBy(collectionAccessService.currentUserId());
         herbBatchMapper.insert(entity);
         return entity.getId() == null ? toVO(entity) : getById(entity.getId());
     }
@@ -99,9 +106,10 @@ public class HerbBatchServiceImpl implements HerbBatchService {
     @Transactional
     public HerbBatchVO update(Long id, HerbBatchUpdateRequest request) {
         HerbBatchEntity existing = getActiveEntity(id);
+        collectionAccessService.requireBatchOwner(existing);
         ensureEditable(existing);
         validateUpdateRequest(request);
-        validateTask(request.getTaskId());
+        validateTaskForExecution(request.getTaskId());
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
         validateNoDirectStatusChange(request.getBatchStatus(), existing.getBatchStatus());
 
@@ -120,6 +128,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         existing.setTraceCode(request.getTraceCode());
         existing.setRemark(request.getRemark());
         existing.setUpdatedAt(LocalDateTime.now());
+        existing.setUpdatedBy(collectionAccessService.currentUserId());
         int affected = herbBatchMapper.updateById(existing);
         if (affected == 0) {
             throw new BusinessException("Batch not found or already deleted");
@@ -131,6 +140,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
     @Transactional
     public void delete(Long id) {
         HerbBatchEntity existing = getActiveEntity(id);
+        collectionAccessService.requireBatchOwner(existing);
         Long imageCount = herbBatchImageMapper.countByBatchId(id);
         if (imageCount != null && imageCount > 0) {
             throw new BusinessException(
@@ -144,6 +154,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
 
     @Override
     public HerbBatchVO getById(Long id) {
+        collectionAccessService.requireBatchAccess(getActiveEntity(id));
         HerbBatchVO detail = herbBatchMapper.selectDetailById(id);
         if (detail == null) {
             throw new BusinessException("Batch not found");
@@ -155,10 +166,11 @@ public class HerbBatchServiceImpl implements HerbBatchService {
     public PageResult<HerbBatchVO> page(HerbBatchQueryRequest request) {
         HerbBatchQueryRequest safeRequest = request == null ? new HerbBatchQueryRequest() : request;
         normalizePageRequest(safeRequest);
-        Long total = herbBatchMapper.countPage(safeRequest);
+        CollectionAccessScope scope = collectionAccessService.currentScope();
+        Long total = herbBatchMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbBatchVO> records =
-                herbBatchMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
+                herbBatchMapper.selectPage(safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -172,7 +184,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         } else {
             safeRequest.setExcludedStatuses(null);
         }
-        return herbBatchMapper.selectList(safeRequest);
+        return herbBatchMapper.selectList(safeRequest, collectionAccessService.currentScope());
     }
 
     private HerbBatchEntity getActiveEntity(Long id) {
@@ -200,7 +212,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         }
     }
 
-    private void validateTask(Long taskId) {
+    private void validateTaskForExecution(Long taskId) {
         if (taskId == null) {
             return;
         }
@@ -208,6 +220,7 @@ public class HerbBatchServiceImpl implements HerbBatchService {
         if (task == null) {
             throw new BusinessException("Collection task not found");
         }
+        collectionAccessService.requireTaskExecution(task);
     }
 
     private String resolveSpeciesName(Long speciesId, String speciesName) {

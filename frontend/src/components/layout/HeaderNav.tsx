@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { href: "/herbs", label: "中药材资源", permission: "herb:species:view" },
   { href: "/map", label: "分布地图", permission: "map:point:view" },
   { href: "/growth", label: "生长数据", permission: "growth:record:view" },
-  { href: "/teaching", label: "教学科研", permission: "course:view" },
+  { href: "/teaching", label: "教学科研" },
   { href: "/evaluation", label: "评价申报" },
   { href: "/about", label: "关于我们" },
 ];

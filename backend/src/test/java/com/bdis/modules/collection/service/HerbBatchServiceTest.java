@@ -16,6 +16,8 @@ import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.service.impl.HerbBatchServiceImpl;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchListVO;
 import com.bdis.modules.collection.vo.HerbBatchVO;
 import com.bdis.modules.herb.entity.HerbEntity;
@@ -39,6 +41,8 @@ class HerbBatchServiceTest {
 
     @Mock private HerbBatchImageMapper herbBatchImageMapper;
 
+    @Mock private CollectionAccessService collectionAccessService;
+
     private HerbBatchService herbBatchService;
 
     @BeforeEach
@@ -48,7 +52,8 @@ class HerbBatchServiceTest {
                         herbBatchMapper,
                         herbCollectionTaskMapper,
                         herbSpeciesMapper,
-                        herbBatchImageMapper);
+                        herbBatchImageMapper,
+                        collectionAccessService);
     }
 
     @Test
@@ -149,8 +154,10 @@ class HerbBatchServiceTest {
         HerbBatchQueryRequest request = new HerbBatchQueryRequest();
         request.setPageNum(0);
         request.setPageSize(0);
-        when(herbBatchMapper.countPage(request)).thenReturn(1L);
-        when(herbBatchMapper.selectPage(request, 0L, 10)).thenReturn(List.of(activeVO()));
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(1001L));
+        when(collectionAccessService.currentScope()).thenReturn(scope);
+        when(herbBatchMapper.countPage(request, scope)).thenReturn(1L);
+        when(herbBatchMapper.selectPage(request, scope, 0L, 10)).thenReturn(List.of(activeVO()));
 
         PageResult<HerbBatchVO> result = herbBatchService.page(request);
 
@@ -163,7 +170,9 @@ class HerbBatchServiceTest {
     @Test
     void listSelectableBatchesExcludesArchivedAndCancelledByDefault() {
         HerbBatchQueryRequest request = new HerbBatchQueryRequest();
-        when(herbBatchMapper.selectList(request)).thenReturn(List.of(activeListVO()));
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(1001L));
+        when(collectionAccessService.currentScope()).thenReturn(scope);
+        when(herbBatchMapper.selectList(request, scope)).thenReturn(List.of(activeListVO()));
 
         List<HerbBatchListVO> result = herbBatchService.list(request);
 

@@ -6,10 +6,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.config.HerbIdentificationProperties;
 import com.bdis.modules.spectrum.dto.HerbIdentificationReviewRequest;
 import com.bdis.modules.spectrum.dto.HerbIdentifyRequest;
@@ -25,12 +27,16 @@ import com.bdis.modules.spectrum.vo.HerbRecognitionVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class HerbIdentificationServiceTest {
@@ -51,10 +57,24 @@ class HerbIdentificationServiceTest {
 
     @Mock private HerbRecognitionService herbRecognitionService;
 
+    @Mock private HerbImageAccessService herbImageAccessService;
+
     private HerbIdentificationService herbIdentificationService;
 
     @BeforeEach
     void setUp() {
+        CurrentUser reviewer =
+                new CurrentUser(
+                        9L,
+                        "reviewer",
+                        "Reviewer A",
+                        null,
+                        null,
+                        Set.of("REVIEWER"),
+                        Set.of(4L),
+                        Set.of("herb:identification:review"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(reviewer, null));
         herbIdentificationService =
                 new HerbIdentificationServiceImpl(
                         herbImageMapper,
@@ -66,7 +86,13 @@ class HerbIdentificationServiceTest {
                         herbImageMatchService,
                         herbRecognitionService,
                         identificationProperties(),
-                        new ObjectMapper());
+                        new ObjectMapper(),
+                        herbImageAccessService);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -166,6 +192,8 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getResultSource()).isEqualTo("manual_review");
         assertThat(captor.getValue().getNeedReview()).isZero();
         assertThat(captor.getValue().getReviewStatus()).isEqualTo("confirmed");
+        assertThat(captor.getValue().getReviewerId()).isEqualTo(9L);
+        assertThat(captor.getValue().getReviewerName()).isEqualTo("Reviewer A");
     }
 
     private HerbIdentificationProperties identificationProperties() {

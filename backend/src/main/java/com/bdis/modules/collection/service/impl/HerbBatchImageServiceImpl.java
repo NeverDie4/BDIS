@@ -13,6 +13,7 @@ import com.bdis.modules.collection.entity.HerbBatchImageEntity;
 import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.service.HerbBatchImageService;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchImageBindResultVO;
 import com.bdis.modules.collection.vo.HerbBatchImageStatisticsVO;
 import com.bdis.modules.collection.vo.HerbBatchImageVO;
@@ -39,16 +40,19 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
     private final HerbBatchMapper herbBatchMapper;
     private final HerbImageMapper herbImageMapper;
     private final HerbIdentificationResultMapper herbIdentificationResultMapper;
+    private final CollectionAccessService collectionAccessService;
 
     public HerbBatchImageServiceImpl(
             HerbBatchImageMapper herbBatchImageMapper,
             HerbBatchMapper herbBatchMapper,
             HerbImageMapper herbImageMapper,
-            HerbIdentificationResultMapper herbIdentificationResultMapper) {
+            HerbIdentificationResultMapper herbIdentificationResultMapper,
+            CollectionAccessService collectionAccessService) {
         this.herbBatchImageMapper = herbBatchImageMapper;
         this.herbBatchMapper = herbBatchMapper;
         this.herbImageMapper = herbImageMapper;
         this.herbIdentificationResultMapper = herbIdentificationResultMapper;
+        this.collectionAccessService = collectionAccessService;
     }
 
     @Override
@@ -122,7 +126,7 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
 
     @Override
     public List<HerbBatchImageVO> listByBatch(Long batchId, HerbBatchImageQueryRequest request) {
-        getActiveBatch(batchId);
+        collectionAccessService.requireBatchAccess(getActiveBatch(batchId));
         HerbBatchImageQueryRequest safeRequest =
                 request == null ? new HerbBatchImageQueryRequest() : request;
         if (!StringUtils.hasText(safeRequest.getBindStatus())) {
@@ -137,7 +141,11 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         if (imageId == null || herbImageMapper.selectActiveById(imageId) == null) {
             throw new BusinessException("Herb image not found");
         }
-        return herbBatchImageMapper.selectBatchInfoByImageId(imageId);
+        HerbImageBatchVO batch = herbBatchImageMapper.selectBatchInfoByImageId(imageId);
+        if (batch != null && batch.getBatchId() != null) {
+            collectionAccessService.requireBatchAccess(getActiveBatch(batch.getBatchId()));
+        }
+        return batch;
     }
 
     @Override
@@ -215,6 +223,8 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         entity.setIsDeleted(0);
         entity.setStatus(1);
         entity.setVersion(0);
+        entity.setCreatedBy(collectionAccessService.currentUserId());
+        entity.setUpdatedBy(collectionAccessService.currentUserId());
         return entity;
     }
 
@@ -257,6 +267,7 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
 
     private HerbBatchEntity getEditableBatch(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
         if (HerbBatchStatusConstants.ARCHIVED.equals(batch.getBatchStatus())
                 || HerbBatchStatusConstants.CANCELLED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Archived or cancelled batch cannot maintain images");
@@ -295,6 +306,7 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
         int imageCount = count == null ? 0 : count.intValue();
         batch.setImageCount(imageCount);
         batch.setUpdatedAt(LocalDateTime.now());
+        batch.setUpdatedBy(collectionAccessService.currentUserId());
         herbBatchMapper.updateStatisticsById(batch);
         return imageCount;
     }

@@ -8,6 +8,10 @@ import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.dto.FileUploadDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.file.vo.FileResourceVO;
+import com.bdis.modules.growth.entity.GrowthRecordEntity;
+import com.bdis.modules.growth.mapper.GrowthRecordMapper;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
@@ -16,11 +20,8 @@ import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.herb.service.HerbImageService;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.herb.vo.HerbImageVO;
-import com.bdis.modules.file.vo.FileResourceVO;
-import com.bdis.modules.growth.entity.GrowthRecordEntity;
-import com.bdis.modules.growth.mapper.GrowthRecordMapper;
-import com.bdis.modules.spectrum.service.HerbFeatureService;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -43,7 +44,7 @@ public class HerbImageServiceImpl implements HerbImageService {
     private final GrowthRecordMapper growthRecordMapper;
     private final FileResourceService fileResourceService;
     private final FileBusinessService fileBusinessService;
-    private final HerbFeatureService herbFeatureService;
+    private final HerbImageAccessService herbImageAccessService;
 
     public HerbImageServiceImpl(
             HerbImageMapper herbImageMapper,
@@ -51,13 +52,13 @@ public class HerbImageServiceImpl implements HerbImageService {
             GrowthRecordMapper growthRecordMapper,
             FileResourceService fileResourceService,
             FileBusinessService fileBusinessService,
-            HerbFeatureService herbFeatureService) {
+            HerbImageAccessService herbImageAccessService) {
         this.herbImageMapper = herbImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.growthRecordMapper = growthRecordMapper;
         this.fileResourceService = fileResourceService;
         this.fileBusinessService = fileBusinessService;
-        this.herbFeatureService = herbFeatureService;
+        this.herbImageAccessService = herbImageAccessService;
     }
 
     @Override
@@ -82,7 +83,6 @@ public class HerbImageServiceImpl implements HerbImageService {
                         safeRequest.getGrowthRecordId(),
                         "field_image");
             }
-            herbFeatureService.extractImageFeature(image.getId());
         } catch (RuntimeException exception) {
             cleanupFile(fileResource.getId(), exception);
             throw exception;
@@ -141,9 +141,7 @@ public class HerbImageServiceImpl implements HerbImageService {
 
     @Override
     public HerbImageVO getById(Long id) {
-        if (id == null) {
-            throw new BusinessException("Herb image id is required");
-        }
+        herbImageAccessService.requireAccess(id);
         HerbImageVO vo = herbImageMapper.selectDetailById(id);
         if (vo == null) {
             throw new BusinessException("Herb image not found");
@@ -155,10 +153,11 @@ public class HerbImageServiceImpl implements HerbImageService {
     public PageResult<HerbImageVO> page(HerbImageQueryRequest request) {
         HerbImageQueryRequest safeRequest = request == null ? new HerbImageQueryRequest() : request;
         normalizePageRequest(safeRequest);
-        Long total = herbImageMapper.countPage(safeRequest);
+        CollectionAccessScope scope = herbImageAccessService.currentScope();
+        Long total = herbImageMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbImageVO> records =
-                herbImageMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
+                herbImageMapper.selectPage(safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -290,6 +289,7 @@ public class HerbImageServiceImpl implements HerbImageService {
         GrowthRecordEntity growth =
                 requireCompatibleGrowthRecord(
                         request.getGrowthRecordId(), request.getSpeciesId(), distributionId);
+        herbImageAccessService.requireGrowthRecordAccess(growth);
         if (request.getSpeciesId() == null) {
             request.setSpeciesId(growth.getSpeciesId());
         }
@@ -309,6 +309,7 @@ public class HerbImageServiceImpl implements HerbImageService {
         GrowthRecordEntity growth =
                 requireCompatibleGrowthRecord(
                         request.getGrowthRecordId(), request.getSpeciesId(), distributionId);
+        herbImageAccessService.requireGrowthRecordAccess(growth);
         if (request.getSpeciesId() == null) {
             request.setSpeciesId(growth.getSpeciesId());
         }
@@ -345,8 +346,7 @@ public class HerbImageServiceImpl implements HerbImageService {
 
     private void requireOwner(HerbImageEntity image) {
         Long currentUserId = CurrentUserUtils.currentUserId();
-        if (!isAdmin()
-                && (currentUserId == null || !currentUserId.equals(image.getUploaderId()))) {
+        if (!isAdmin() && (currentUserId == null || !currentUserId.equals(image.getUploaderId()))) {
             throw new ForbiddenException("只能修改或删除本人上传的图片");
         }
     }
