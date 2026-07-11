@@ -64,6 +64,15 @@
         ORDER BY chunk_index ASC, id ASC
     </select>
 
+    <select id="selectAllEntitiesByDocId" resultMap="ChunkResultMap">
+        SELECT id, doc_id, chunk_index, chunk_title, chunk_content, content_hash,
+               token_count, embedding_status, vector_id, metadata_json,
+               create_time, update_time, is_deleted
+        FROM herb_ai_knowledge_chunk
+        WHERE doc_id = #{docId}
+        ORDER BY chunk_index ASC, id ASC
+    </select>
+
     <select id="selectActiveById" resultMap="ChunkResultMap">
         SELECT id, doc_id, chunk_index, chunk_title, chunk_content, content_hash,
                token_count, embedding_status, vector_id, metadata_json,

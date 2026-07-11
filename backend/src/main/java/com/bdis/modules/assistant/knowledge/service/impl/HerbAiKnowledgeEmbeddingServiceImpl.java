@@ -152,7 +152,7 @@ public class HerbAiKnowledgeEmbeddingServiceImpl implements HerbAiKnowledgeEmbed
     }
 
     private void removeVectors(Long docId) {
-        List<HerbAiKnowledgeChunk> chunks = chunkMapper.selectEntitiesByDocId(docId);
+        List<HerbAiKnowledgeChunk> chunks = chunkMapper.selectAllEntitiesByDocId(docId);
         SimpleVectorStore vectorStore = vectorStoreProvider.getIfAvailable();
         if (vectorStore != null) {
             List<String> vectorIds =

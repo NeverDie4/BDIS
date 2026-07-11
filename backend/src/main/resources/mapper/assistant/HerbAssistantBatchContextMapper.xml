@@ -32,6 +32,15 @@
         <result column="suggestion" property="suggestion"/>
     </resultMap>
 
+    <resultMap id="BatchListResultMap" type="com.bdis.modules.collection.vo.HerbBatchListVO">
+        <id column="id" property="id"/>
+        <result column="batch_code" property="batchCode"/>
+        <result column="batch_name" property="batchName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="batch_status" property="batchStatus"/>
+    </resultMap>
+
     <select id="selectBatchContextById" resultMap="BatchContextResultMap">
         SELECT
             b.id AS batch_id,
@@ -99,5 +108,26 @@
               OR t.created_by = #{currentUserId}
           )
         ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
+    </select>
+
+    <select id="selectReviewingBatchSummaries" resultMap="BatchListResultMap">
+        SELECT
+            b.id,
+            b.batch_code,
+            b.batch_name,
+            b.species_id,
+            b.species_name,
+            b.batch_status
+        FROM herb_batch b
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+        WHERE b.is_deleted = 0
+          AND b.batch_status = 'reviewing'
+          AND (
+              #{dataScopeAll} = TRUE
+              OR b.created_by = #{currentUserId}
+              OR t.collector_id = #{currentUserId}
+              OR t.created_by = #{currentUserId}
+          )
+        ORDER BY b.created_at DESC
     </select>
 </mapper>

@@ -29,12 +29,13 @@ class HerbAiKnowledgeDocServiceImplTest {
 
     @Mock private HerbAiKnowledgeDocMapper docMapper;
     @Mock private HerbAiKnowledgeChunkMapper chunkMapper;
+    @Mock private HerbAiKnowledgeEmbeddingService embeddingService;
 
     private HerbAiKnowledgeDocService service;
 
     @BeforeEach
     void setUp() {
-        service = new HerbAiKnowledgeDocServiceImpl(docMapper, chunkMapper);
+        service = new HerbAiKnowledgeDocServiceImpl(docMapper, chunkMapper, embeddingService);
     }
 
     @Test
@@ -81,6 +82,7 @@ class HerbAiKnowledgeDocServiceImplTest {
         ArgumentCaptor<HerbAiKnowledgeDoc> captor =
                 ArgumentCaptor.forClass(HerbAiKnowledgeDoc.class);
         verify(docMapper).updateById(captor.capture());
+        verify(embeddingService).deleteEmbedding(1L);
         assertThat(captor.getValue().getContentText()).isEqualTo("修改后的内容");
         assertThat(captor.getValue().getEmbeddingStatus()).isEqualTo("pending");
     }
@@ -92,6 +94,7 @@ class HerbAiKnowledgeDocServiceImplTest {
 
         service.delete(1L);
 
+        verify(embeddingService).deleteEmbedding(1L);
         verify(chunkMapper).logicDeleteByDocId(eq(1L), any());
         verify(docMapper).logicDeleteById(eq(1L), any());
     }

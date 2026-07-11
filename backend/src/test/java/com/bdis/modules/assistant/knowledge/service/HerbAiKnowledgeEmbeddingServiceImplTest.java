@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -31,6 +32,7 @@ class HerbAiKnowledgeEmbeddingServiceImplTest {
     @Mock private HerbAiKnowledgeDocMapper docMapper;
     @Mock private HerbAiKnowledgeChunkMapper chunkMapper;
     @Mock private ObjectProvider<SimpleVectorStore> vectorStoreProvider;
+    @Mock private SimpleVectorStore vectorStore;
 
     private HerbAssistantRagProperties properties;
     private HerbAiKnowledgeEmbeddingService service;
@@ -41,6 +43,7 @@ class HerbAiKnowledgeEmbeddingServiceImplTest {
         properties.setChunkSize(20);
         properties.setChunkOverlap(5);
         properties.setMockEmbeddingEnabled(true);
+        properties.setVectorStorePath(null);
         service =
                 new HerbAiKnowledgeEmbeddingServiceImpl(
                         docMapper,
@@ -116,13 +119,54 @@ class HerbAiKnowledgeEmbeddingServiceImplTest {
     @Test
     void deleteEmbeddingResetsDatabaseStatusWhenVectorStoreUnavailable() {
         when(docMapper.selectById(1L)).thenReturn(doc());
-        when(chunkMapper.selectEntitiesByDocId(1L)).thenReturn(List.of(chunk(11L)));
+        when(chunkMapper.selectAllEntitiesByDocId(1L)).thenReturn(List.of(chunk(11L)));
         when(vectorStoreProvider.getIfAvailable()).thenReturn(null);
 
         service.deleteEmbedding(1L);
 
         verify(chunkMapper).resetEmbeddingStatusByDocId(eq(1L), eq("pending"), any());
         verify(docMapper).updateEmbeddingStatus(eq(1L), eq("pending"), any());
+    }
+
+    @Test
+    void deleteEmbeddingDeletesStoredVectorsIncludingDeletedChunks() {
+        HerbAiKnowledgeChunk active = chunk(11L);
+        active.setVectorId("chunk-11");
+        HerbAiKnowledgeChunk deleted = chunk(12L);
+        deleted.setVectorId("chunk-12");
+        deleted.setDeleted(1);
+        when(docMapper.selectById(1L)).thenReturn(doc());
+        when(chunkMapper.selectAllEntitiesByDocId(1L)).thenReturn(List.of(active, deleted));
+        when(vectorStoreProvider.getIfAvailable()).thenReturn(vectorStore);
+
+        service.deleteEmbedding(1L);
+
+        verify(vectorStore).delete(List.of("chunk-11", "chunk-12"));
+        verify(chunkMapper).resetEmbeddingStatusByDocId(eq(1L), eq("pending"), any());
+        verify(docMapper).updateEmbeddingStatus(eq(1L), eq("pending"), any());
+    }
+
+    @Test
+    void realVectorStoreBuildWritesSearchableDocuments() {
+        properties.setMockEmbeddingEnabled(false);
+        SimpleVectorStore realVectorStore =
+                SimpleVectorStore.builder(new FixedEmbeddingModel()).build();
+        when(docMapper.selectById(1L)).thenReturn(doc());
+        when(chunkMapper.selectEntitiesByDocId(1L)).thenReturn(List.of(chunk(11L)));
+        when(vectorStoreProvider.getIfAvailable()).thenReturn(realVectorStore);
+
+        var result = service.buildEmbedding(1L);
+
+        assertThat(result.getSuccess()).isEqualTo(1);
+        List<org.springframework.ai.document.Document> documents =
+                realVectorStore.similaritySearch(
+                        SearchRequest.builder()
+                                .query("向量化")
+                                .topK(1)
+                                .similarityThreshold(0.0)
+                                .build());
+        assertThat(documents).hasSize(1);
+        assertThat(documents.get(0).getMetadata()).containsEntry("chunkId", 11L);
     }
 
     private HerbAiKnowledgeDoc doc() {
@@ -147,5 +191,31 @@ class HerbAiKnowledgeEmbeddingServiceImplTest {
         chunk.setChunkContent("第一段内容用于向量化。");
         chunk.setEmbeddingStatus("pending");
         return chunk;
+    }
+
+    private static class FixedEmbeddingModel
+            implements org.springframework.ai.embedding.EmbeddingModel {
+
+        @Override
+        public org.springframework.ai.embedding.EmbeddingResponse call(
+                org.springframework.ai.embedding.EmbeddingRequest request) {
+            List<org.springframework.ai.embedding.Embedding> embeddings =
+                    request.getInstructions().stream()
+                            .map(
+                                    instruction ->
+                                            new org.springframework.ai.embedding.Embedding(
+                                                    vector(instruction), 0))
+                            .toList();
+            return new org.springframework.ai.embedding.EmbeddingResponse(embeddings);
+        }
+
+        @Override
+        public float[] embed(org.springframework.ai.document.Document document) {
+            return vector(document == null ? "" : document.getText());
+        }
+
+        private static float[] vector(String text) {
+            return new float[] {1.0f, text == null ? 0.0f : Math.min(text.length(), 10) / 10.0f};
+        }
     }
 }

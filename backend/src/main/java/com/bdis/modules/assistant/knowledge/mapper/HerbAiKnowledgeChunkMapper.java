@@ -16,6 +16,8 @@ public interface HerbAiKnowledgeChunkMapper {
 
     List<HerbAiKnowledgeChunk> selectEntitiesByDocId(@Param("docId") Long docId);
 
+    List<HerbAiKnowledgeChunk> selectAllEntitiesByDocId(@Param("docId") Long docId);
+
     HerbAiKnowledgeChunk selectActiveById(@Param("id") Long id);
 
     List<HerbAiKnowledgeChunkVO> selectByDocId(

@@ -2,13 +2,12 @@ package com.bdis.modules.assistant.tool;
 
 import com.bdis.common.security.CurrentUser;
 import com.bdis.common.security.SecurityUtils;
+import com.bdis.modules.assistant.mapper.HerbAssistantBatchContextMapper;
 import com.bdis.modules.assistant.mapper.HerbAssistantImageContextMapper;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantBatchToolResult;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantImageToolResult;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantTaskToolResult;
 import com.bdis.modules.assistant.vo.HerbAssistantImageExplainContextVO;
-import com.bdis.modules.collection.constant.HerbBatchStatusConstants;
-import com.bdis.modules.collection.dto.HerbBatchQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskMyQueryRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
@@ -17,8 +16,6 @@ import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.vo.HerbBatchListVO;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
 import java.util.List;
-import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -28,21 +25,22 @@ public class HerbAssistantTools {
     private static final int MAX_MY_TASKS = 20;
 
     private final HerbBatchMapper batchMapper;
+    private final HerbAssistantBatchContextMapper batchContextMapper;
     private final HerbAssistantImageContextMapper imageContextMapper;
     private final HerbCollectionTaskMapper taskMapper;
 
     public HerbAssistantTools(
             HerbBatchMapper batchMapper,
+            HerbAssistantBatchContextMapper batchContextMapper,
             HerbAssistantImageContextMapper imageContextMapper,
             HerbCollectionTaskMapper taskMapper) {
         this.batchMapper = batchMapper;
+        this.batchContextMapper = batchContextMapper;
         this.imageContextMapper = imageContextMapper;
         this.taskMapper = taskMapper;
     }
 
-    @Tool(description = "根据批次 ID 查询批次状态、识别结果、复核数量和质量摘要")
-    public HerbAssistantBatchToolResult getBatchSummaryById(
-            @ToolParam(description = "批次 ID，必须为正整数") Long batchId) {
+    public HerbAssistantBatchToolResult getBatchSummaryById(Long batchId) {
         if (batchId == null || batchId <= 0) {
             return batchError("请提供有效的批次 ID");
         }
@@ -56,9 +54,7 @@ public class HerbAssistantTools {
         }
     }
 
-    @Tool(description = "根据批次编码查询批次状态、识别结果、复核数量和质量摘要")
-    public HerbAssistantBatchToolResult getBatchSummaryByCode(
-            @ToolParam(description = "完整批次编码，例如 BATCH_20260710_001") String batchCode) {
+    public HerbAssistantBatchToolResult getBatchSummaryByCode(String batchCode) {
         if (!StringUtils.hasText(batchCode)) {
             return batchError("请提供有效的批次编码");
         }
@@ -73,9 +69,7 @@ public class HerbAssistantTools {
         }
     }
 
-    @Tool(description = "根据图片 ID 查询图片的最终识别结果、置信度和复核状态")
-    public HerbAssistantImageToolResult getImageIdentificationById(
-            @ToolParam(description = "采集图片 ID，必须为正整数") Long imageId) {
+    public HerbAssistantImageToolResult getImageIdentificationById(Long imageId) {
         if (imageId == null || imageId <= 0) {
             return imageError("请提供有效的图片 ID");
         }
@@ -91,20 +85,21 @@ public class HerbAssistantTools {
         }
     }
 
-    @Tool(description = "查询当前所有处于复核中状态的批次摘要")
     public List<HerbAssistantBatchToolResult> listReviewingBatches() {
         try {
-            HerbBatchQueryRequest query = new HerbBatchQueryRequest();
-            query.setBatchStatus(HerbBatchStatusConstants.REVIEWING);
-            return batchMapper.selectList(query).stream().map(this::toBatchListResult).toList();
+            CurrentUser currentUser = SecurityUtils.currentUser();
+            return batchContextMapper
+                    .selectReviewingBatchSummaries(
+                            currentUser.getUserId(), hasAllAssistantDataScope(currentUser))
+                    .stream()
+                    .map(this::toBatchListResult)
+                    .toList();
         } catch (RuntimeException exception) {
             return List.of(batchError("复核中批次查询失败，请稍后重试"));
         }
     }
 
-    @Tool(description = "根据采集任务 ID 查询任务状态、计划时间、采集人和批次数量")
-    public HerbAssistantTaskToolResult getTaskSummaryById(
-            @ToolParam(description = "采集任务 ID，必须为正整数") Long taskId) {
+    public HerbAssistantTaskToolResult getTaskSummaryById(Long taskId) {
         if (taskId == null || taskId <= 0) {
             return taskError("请提供有效的采集任务 ID");
         }
@@ -118,7 +113,6 @@ public class HerbAssistantTools {
         }
     }
 
-    @Tool(description = "查询当前登录用户负责的采集任务，最多返回 20 条摘要")
     public List<HerbAssistantTaskToolResult> listMyTasks() {
         try {
             HerbCollectionTaskMyQueryRequest query = new HerbCollectionTaskMyQueryRequest();

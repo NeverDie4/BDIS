@@ -13,6 +13,7 @@ import com.bdis.modules.assistant.knowledge.entity.HerbAiKnowledgeDoc;
 import com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeChunkMapper;
 import com.bdis.modules.assistant.knowledge.mapper.HerbAiKnowledgeDocMapper;
 import com.bdis.modules.assistant.knowledge.service.HerbAiKnowledgeDocService;
+import com.bdis.modules.assistant.knowledge.service.HerbAiKnowledgeEmbeddingService;
 import com.bdis.modules.assistant.knowledge.vo.HerbAiKnowledgeChunkVO;
 import com.bdis.modules.assistant.knowledge.vo.HerbAiKnowledgeDocVO;
 import java.time.LocalDateTime;
@@ -51,11 +52,15 @@ public class HerbAiKnowledgeDocServiceImpl implements HerbAiKnowledgeDocService 
 
     private final HerbAiKnowledgeDocMapper docMapper;
     private final HerbAiKnowledgeChunkMapper chunkMapper;
+    private final HerbAiKnowledgeEmbeddingService embeddingService;
 
     public HerbAiKnowledgeDocServiceImpl(
-            HerbAiKnowledgeDocMapper docMapper, HerbAiKnowledgeChunkMapper chunkMapper) {
+            HerbAiKnowledgeDocMapper docMapper,
+            HerbAiKnowledgeChunkMapper chunkMapper,
+            HerbAiKnowledgeEmbeddingService embeddingService) {
         this.docMapper = docMapper;
         this.chunkMapper = chunkMapper;
+        this.embeddingService = embeddingService;
     }
 
     @Override
@@ -105,6 +110,7 @@ public class HerbAiKnowledgeDocServiceImpl implements HerbAiKnowledgeDocService 
             }
             String normalizedContent = request.getContentText().trim();
             if (!normalizedContent.equals(existing.getContentText())) {
+                embeddingService.deleteEmbedding(existing.getId());
                 existing.setContentText(normalizedContent);
                 existing.setEmbeddingStatus(HerbAiEmbeddingStatusConstants.PENDING);
                 existing.setChunkCount(0);
@@ -132,6 +138,7 @@ public class HerbAiKnowledgeDocServiceImpl implements HerbAiKnowledgeDocService 
     public void delete(Long id) {
         HerbAiKnowledgeDoc existing = getActiveDoc(id);
         LocalDateTime now = LocalDateTime.now();
+        embeddingService.deleteEmbedding(existing.getId());
         chunkMapper.logicDeleteByDocId(existing.getId(), now);
         if (docMapper.logicDeleteById(existing.getId(), now) == 0) {
             throw new BusinessException("知识库文档不存在或已删除");

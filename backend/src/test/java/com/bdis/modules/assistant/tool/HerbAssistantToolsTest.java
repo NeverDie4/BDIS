@@ -6,12 +6,12 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.CurrentUser;
+import com.bdis.modules.assistant.mapper.HerbAssistantBatchContextMapper;
 import com.bdis.modules.assistant.mapper.HerbAssistantImageContextMapper;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantBatchToolResult;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantImageToolResult;
 import com.bdis.modules.assistant.tool.dto.HerbAssistantTaskToolResult;
 import com.bdis.modules.assistant.vo.HerbAssistantImageExplainContextVO;
-import com.bdis.modules.collection.dto.HerbBatchQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskMyQueryRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
@@ -35,6 +35,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class HerbAssistantToolsTest {
 
     @Mock private HerbBatchMapper batchMapper;
+    @Mock private HerbAssistantBatchContextMapper batchContextMapper;
     @Mock private HerbAssistantImageContextMapper imageContextMapper;
     @Mock private HerbCollectionTaskMapper taskMapper;
 
@@ -42,20 +43,10 @@ class HerbAssistantToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new HerbAssistantTools(batchMapper, imageContextMapper, taskMapper);
-        CurrentUser currentUser =
-                new CurrentUser(
-                        1L,
-                        "user-1",
-                        "User One",
-                        null,
-                        null,
-                        Set.of("ADMIN"),
-                        Set.of(1L),
-                        Set.of("*"));
-        SecurityContextHolder.getContext()
-                .setAuthentication(
-                        new UsernamePasswordAuthenticationToken(currentUser, null, List.of()));
+        tools =
+                new HerbAssistantTools(
+                        batchMapper, batchContextMapper, imageContextMapper, taskMapper);
+        setCurrentUser(Set.of("ADMIN"), Set.of("*"));
     }
 
     @AfterEach
@@ -106,18 +97,17 @@ class HerbAssistantToolsTest {
 
     @Test
     void listReviewingBatchesUsesReviewingStatus() {
+        setCurrentUser(Set.of("COLLECTOR"), Set.of("herb:assistant:chat"));
         HerbBatchListVO batch = new HerbBatchListVO();
         batch.setId(1L);
         batch.setBatchCode("BATCH_001");
         batch.setBatchStatus("reviewing");
-        when(batchMapper.selectList(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(batch));
+        when(batchContextMapper.selectReviewingBatchSummaries(1L, false))
+                .thenReturn(List.of(batch));
 
         List<HerbAssistantBatchToolResult> results = tools.listReviewingBatches();
 
-        ArgumentCaptor<HerbBatchQueryRequest> queryCaptor =
-                ArgumentCaptor.forClass(HerbBatchQueryRequest.class);
-        org.mockito.Mockito.verify(batchMapper).selectList(queryCaptor.capture());
-        assertThat(queryCaptor.getValue().getBatchStatus()).isEqualTo("reviewing");
+        org.mockito.Mockito.verify(batchContextMapper).selectReviewingBatchSummaries(1L, false);
         assertThat(results).hasSize(1);
     }
 
@@ -168,6 +158,15 @@ class HerbAssistantToolsTest {
         batch.setFinalSpeciesName("黄连");
         batch.setAvgSimilarity(new BigDecimal("0.9123"));
         return batch;
+    }
+
+    private void setCurrentUser(Set<String> roleCodes, Set<String> permissions) {
+        CurrentUser currentUser =
+                new CurrentUser(
+                        1L, "user-1", "User One", null, null, roleCodes, Set.of(1L), permissions);
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken(currentUser, null, List.of()));
     }
 
     private HerbCollectionTaskVO taskVO() {
