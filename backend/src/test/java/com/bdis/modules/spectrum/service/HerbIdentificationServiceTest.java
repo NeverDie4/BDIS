@@ -1,11 +1,13 @@
 package com.bdis.modules.spectrum.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
@@ -182,6 +184,7 @@ class HerbIdentificationServiceTest {
         when(herbSpeciesMapper.selectActiveById(2L)).thenReturn(species);
         HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
         request.setFinalSpeciesId(2L);
+        request.setReviewStatus("confirmed");
         request.setReviewComment("confirmed");
 
         herbIdentificationService.review(9L, request);
@@ -192,8 +195,59 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getResultSource()).isEqualTo("manual_review");
         assertThat(captor.getValue().getNeedReview()).isZero();
         assertThat(captor.getValue().getReviewStatus()).isEqualTo("confirmed");
+        assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(captor.getValue().getReviewerId()).isEqualTo(9L);
         assertThat(captor.getValue().getReviewerName()).isEqualTo("Reviewer A");
+    }
+
+    @Test
+    void reviewRejectsNullRequest() {
+        assertThatThrownBy(() -> herbIdentificationService.review(9L, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Review request is required");
+    }
+
+    @Test
+    void reviewRejectsUnknownStatus() {
+        HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
+        request.setFinalSpeciesId(2L);
+        request.setReviewStatus("confirmd");
+
+        assertThatThrownBy(() -> herbIdentificationService.review(9L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Review status must be confirmed or rejected");
+    }
+
+    @Test
+    void reviewRequiresSpeciesWhenConfirmed() {
+        HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
+        request.setReviewStatus("confirmed");
+
+        assertThatThrownBy(() -> herbIdentificationService.review(9L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Final species is required for confirmed review");
+    }
+
+    @Test
+    void reviewAllowsRejectionWithoutSpecies() {
+        HerbIdentificationResultEntity existing = new HerbIdentificationResultEntity();
+        existing.setId(9L);
+        existing.setImageId(1L);
+        when(identificationResultMapper.selectActiveById(9L)).thenReturn(existing);
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(image());
+        HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
+        request.setReviewStatus("rejected");
+        request.setReviewComment("wrong image");
+
+        herbIdentificationService.review(9L, request);
+
+        ArgumentCaptor<HerbIdentificationResultEntity> captor =
+                ArgumentCaptor.forClass(HerbIdentificationResultEntity.class);
+        verify(identificationResultMapper).updateReviewResult(captor.capture());
+        assertThat(captor.getValue().getReviewStatus()).isEqualTo("rejected");
+        assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
+        assertThat(captor.getValue().getFinalSpeciesId()).isNull();
+        assertThat(captor.getValue().getFinalSpeciesName()).isNull();
     }
 
     private HerbIdentificationProperties identificationProperties() {

@@ -145,19 +145,17 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     @Override
     @Transactional
     public HerbIdentificationVO review(Long id, HerbIdentificationReviewRequest request) {
+        validateReviewRequest(request);
         HerbIdentificationResultEntity result = identificationResultMapper.selectActiveById(id);
         if (result == null) {
             throw new BusinessException("Identification result not found");
         }
         HerbImageEntity image = getActiveImage(result.getImageId());
-        HerbIdentificationReviewRequest safeRequest =
-                request == null ? new HerbIdentificationReviewRequest() : request;
-        HerbEntity species = resolveReviewSpecies(safeRequest);
-        result.setFinalSpeciesId(
-                species == null ? safeRequest.getFinalSpeciesId() : species.getId());
-        result.setFinalSpeciesName(resolveReviewSpeciesName(safeRequest, species));
-        applyReviewStatus(result, safeRequest);
-        result.setReviewComment(safeRequest.getReviewComment());
+        HerbEntity species = resolveReviewSpecies(request);
+        result.setFinalSpeciesId(species == null ? null : species.getId());
+        result.setFinalSpeciesName(species == null ? null : species.getHerbName());
+        applyReviewStatus(result, request);
+        result.setReviewComment(request.getReviewComment());
         CurrentUser reviewer = SecurityUtils.currentUser();
         result.setReviewerId(reviewer.getUserId());
         result.setReviewerName(
@@ -169,6 +167,21 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         identificationResultMapper.updateReviewResult(result);
         updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.REVIEWED);
         return latest(image.getId());
+    }
+
+    private void validateReviewRequest(HerbIdentificationReviewRequest request) {
+        if (request == null) {
+            throw new BusinessException("Review request is required");
+        }
+        String reviewStatus = request.getReviewStatus();
+        if (!HerbReviewStatusConstants.CONFIRMED.equals(reviewStatus)
+                && !HerbReviewStatusConstants.REJECTED.equals(reviewStatus)) {
+            throw new BusinessException("Review status must be confirmed or rejected");
+        }
+        if (HerbReviewStatusConstants.CONFIRMED.equals(reviewStatus)
+                && (request.getFinalSpeciesId() == null || request.getFinalSpeciesId() <= 0)) {
+            throw new BusinessException("Final species is required for confirmed review");
+        }
     }
 
     private HerbImageEntity getActiveImage(Long imageId) {
@@ -304,14 +317,6 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             throw new BusinessException("Herb species not found");
         }
         return species;
-    }
-
-    private String resolveReviewSpeciesName(
-            HerbIdentificationReviewRequest request, HerbEntity species) {
-        if (StringUtils.hasText(request.getFinalSpeciesName())) {
-            return request.getFinalSpeciesName();
-        }
-        return species == null ? null : species.getHerbName();
     }
 
     private String rawSummary(

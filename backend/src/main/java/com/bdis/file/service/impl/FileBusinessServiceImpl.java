@@ -8,6 +8,7 @@ import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.file.vo.FileBusinessVO;
 import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
@@ -30,16 +31,19 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     private final FileBusinessMapper fileBusinessMapper;
     private final FileResourceMapper fileResourceMapper;
     private final BusinessReferenceValidator businessReferenceValidator;
+    private final FileAccessGuard fileAccessGuard;
     private final AuditLogService auditLogService;
 
     public FileBusinessServiceImpl(
             FileBusinessMapper fileBusinessMapper,
             FileResourceMapper fileResourceMapper,
             BusinessReferenceValidator businessReferenceValidator,
+            FileAccessGuard fileAccessGuard,
             AuditLogService auditLogService) {
         this.fileBusinessMapper = fileBusinessMapper;
         this.fileResourceMapper = fileResourceMapper;
         this.businessReferenceValidator = businessReferenceValidator;
+        this.fileAccessGuard = fileAccessGuard;
         this.auditLogService = auditLogService;
     }
 
@@ -59,8 +63,12 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         if (validateAccess) {
             businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
         }
-        if (fileResourceMapper.selectById(dto.getFileId()) == null) {
+        FileResourceEntity file = fileResourceMapper.selectById(dto.getFileId());
+        if (file == null) {
             throw new ResourceNotFoundException("文件不存在");
+        }
+        if (validateAccess) {
+            fileAccessGuard.requireAuthenticatedAccess(file);
         }
         LambdaQueryWrapper<FileBusinessEntity> wrapper =
                 new LambdaQueryWrapper<FileBusinessEntity>()
@@ -127,7 +135,9 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                 fileBusinessMapper.selectList(
                         new LambdaQueryWrapper<FileBusinessEntity>()
                                 .eq(FileBusinessEntity::getBizType, bizType)
-                                .eq(FileBusinessEntity::getBizId, bizId));
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByDesc(FileBusinessEntity::getId));
         return relations.stream()
                 .map(FileBusinessEntity::getFileId)
                 .map(fileResourceMapper::selectById)

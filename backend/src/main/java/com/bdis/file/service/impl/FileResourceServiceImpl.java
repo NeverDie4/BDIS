@@ -17,11 +17,9 @@ import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
 import com.bdis.file.service.FileStorageService;
-import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.file.vo.FileContentVO;
-import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
-import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.vo.FileResourceVO;
 import java.io.IOException;
@@ -47,8 +45,7 @@ public class FileResourceServiceImpl implements FileResourceService {
     private final FileAccessLogService fileAccessLogService;
     private final AuditLogService auditLogService;
     private final FileBusinessService fileBusinessService;
-    private final FileBusinessMapper fileBusinessMapper;
-    private final BusinessReferenceValidator businessReferenceValidator;
+    private final FileAccessGuard fileAccessGuard;
 
     public FileResourceServiceImpl(
             FileResourceMapper fileResourceMapper,
@@ -56,15 +53,13 @@ public class FileResourceServiceImpl implements FileResourceService {
             FileAccessLogService fileAccessLogService,
             AuditLogService auditLogService,
             FileBusinessService fileBusinessService,
-            FileBusinessMapper fileBusinessMapper,
-            BusinessReferenceValidator businessReferenceValidator) {
+            FileAccessGuard fileAccessGuard) {
         this.fileResourceMapper = fileResourceMapper;
         this.fileStorageService = fileStorageService;
         this.fileAccessLogService = fileAccessLogService;
         this.auditLogService = auditLogService;
         this.fileBusinessService = fileBusinessService;
-        this.fileBusinessMapper = fileBusinessMapper;
-        this.businessReferenceValidator = businessReferenceValidator;
+        this.fileAccessGuard = fileAccessGuard;
     }
 
     @Override
@@ -157,9 +152,7 @@ public class FileResourceServiceImpl implements FileResourceService {
         Long bizId = query.getBizId() == null ? query.getBusinessId() : query.getBizId();
         if (bizType != null && bizId != null) {
             List<FileResourceVO> records = fileBusinessService.listByBusiness(bizType, bizId);
-            Page<FileResourceEntity> page = new Page<>(query.getPage(), query.getSize());
-            page.setTotal(records.size());
-            return PageResult.of(records, page);
+            return paginate(records, query.getPage(), query.getSize());
         }
         Page<FileResourceEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<FileResourceEntity> wrapper =
@@ -184,14 +177,14 @@ public class FileResourceServiceImpl implements FileResourceService {
     @Override
     public FileResourceVO detail(Long fileId) {
         FileResourceEntity entity = requireFile(fileId);
-        requireAuthenticatedAccess(entity);
+        fileAccessGuard.requireAuthenticatedAccess(entity);
         return toVO(entity);
     }
 
     @Override
     public FileContentVO content(Long fileId, String disposition) {
         FileResourceEntity entity = requireFile(fileId);
-        requireAuthenticatedAccess(entity);
+        fileAccessGuard.requireAuthenticatedAccess(entity);
         FileContentVO content =
                 fileStorageService.load(
                         entity.getStoragePath(),
@@ -336,30 +329,19 @@ public class FileResourceServiceImpl implements FileResourceService {
         return vo;
     }
 
-    private void requireAuthenticatedAccess(FileResourceEntity entity) {
-        Long currentUserId = CurrentUserUtils.currentUserId();
-        if (isAdmin()
-                || "public".equalsIgnoreCase(entity.getAccessLevel())
-                || (currentUserId != null && currentUserId.equals(entity.getUploaderId()))) {
-            return;
-        }
-        List<FileBusinessEntity> relations =
-                fileBusinessMapper.selectList(
-                        new LambdaQueryWrapper<FileBusinessEntity>()
-                                .eq(FileBusinessEntity::getFileId, entity.getId()));
-        boolean allowed =
-                relations.stream()
-                        .anyMatch(
-                                relation ->
-                                        businessReferenceValidator.canAccess(
-                                                relation.getBizType(), relation.getBizId()));
-        if (!allowed) {
-            throw new ForbiddenException("无权访问该文件");
-        }
-    }
-
     private boolean isAdmin() {
         return CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase);
+    }
+
+    private <T> PageResult<T> paginate(List<T> records, long requestedPage, long requestedSize) {
+        long page = Math.max(1, requestedPage);
+        long size = Math.max(1, requestedSize);
+        long pageIndex = page - 1;
+        long offset = pageIndex > records.size() / size ? records.size() : pageIndex * size;
+        int fromIndex = (int) offset;
+        int length = (int) Math.min(size, records.size() - fromIndex);
+        int toIndex = fromIndex + length;
+        return new PageResult<>(records.subList(fromIndex, toIndex), page, size, records.size());
     }
 
     private Long contentFileId(String fileUrl) {

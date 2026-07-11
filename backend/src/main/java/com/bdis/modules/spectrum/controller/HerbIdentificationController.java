@@ -9,6 +9,7 @@ import com.bdis.modules.spectrum.dto.HerbIdentifyRequest;
 import com.bdis.modules.spectrum.service.HerbIdentificationService;
 import com.bdis.modules.spectrum.vo.HerbIdentificationPageVO;
 import com.bdis.modules.spectrum.vo.HerbIdentificationVO;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -57,8 +58,7 @@ public class HerbIdentificationController {
     @PutMapping("/identification/{id}/review")
     @RequirePermission("herb:identification:review")
     public Result<HerbIdentificationVO> review(
-            @PathVariable Long id,
-            @RequestBody(required = false) HerbIdentificationReviewRequest request) {
+            @PathVariable Long id, @Valid @RequestBody HerbIdentificationReviewRequest request) {
         return Result.success(herbIdentificationService.review(id, request));
     }
 }
