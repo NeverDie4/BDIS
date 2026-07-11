@@ -17,9 +17,9 @@ import com.bdis.modules.spectrum.service.HerbAtlasImportService;
 import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -41,6 +41,10 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
     private static final String DEFAULT_SOURCE = "batch_import";
     private static final String DEFAULT_DESCRIPTION = "Batch imported standard atlas image";
     private static final String DEFAULT_CATEGORY = "HERB";
+    private static final int MAX_IMPORT_ROOT_ENTRIES = 200;
+    private static final int MAX_IMPORT_DEPTH = 4;
+    private static final int MAX_SCANNED_ENTRIES_PER_SPECIES = 5000;
+    private static final int MAX_IMAGES_PER_SPECIES = 1000;
     private static final Map<String, KnownSpecies> KNOWN_SPECIES =
             Map.of(
                     "HUANGLIAN_COPTIS_CHINENSIS",
@@ -59,7 +63,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
     private final HerbSpeciesMapper herbSpeciesMapper;
     private final FileResourceService fileResourceService;
     private final FileBusinessService fileBusinessService;
-    private final String defaultImportPath;
+    private final Path defaultImportRoot;
 
     public HerbAtlasImportServiceImpl(
             HerbAtlasMapper herbAtlasMapper,
@@ -74,7 +78,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.fileResourceService = fileResourceService;
         this.fileBusinessService = fileBusinessService;
-        this.defaultImportPath = defaultImportPath;
+        this.defaultImportRoot = Path.of(defaultImportPath).toAbsolutePath().normalize();
     }
 
     @Override
@@ -86,10 +90,20 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         }
 
         try (Stream<Path> speciesDirectories = Files.list(importRoot)) {
-            speciesDirectories
-                    .filter(Files::isDirectory)
-                    .sorted()
-                    .forEach(speciesDirectory -> importSpeciesDirectory(speciesDirectory, result));
+            List<Path> rootEntries =
+                    speciesDirectories.limit(MAX_IMPORT_ROOT_ENTRIES + 1L).toList();
+            if (rootEntries.size() > MAX_IMPORT_ROOT_ENTRIES) {
+                throw new BusinessException("Atlas import contains too many root entries");
+            }
+            List<Path> directories =
+                    rootEntries.stream()
+                            .filter(Files::isDirectory)
+                            .map(path -> requireContainedDirectory(importRoot, path))
+                            .sorted()
+                            .toList();
+            directories.forEach(
+                    speciesDirectory ->
+                            importSpeciesDirectory(importRoot, speciesDirectory, result));
         } catch (IOException exception) {
             throw new BusinessException("Failed to scan atlas import path");
         }
@@ -120,15 +134,68 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
     }
 
     private Path resolveImportRoot(HerbAtlasImportRequest request) {
-        if (request != null && StringUtils.hasText(request.getImportPath())) {
-            return Path.of(request.getImportPath()).normalize();
+        Path allowedRoot = requireDirectory(defaultImportRoot, "Atlas import root does not exist");
+        if (request == null || !StringUtils.hasText(request.getImportPath())) {
+            return allowedRoot;
         }
-        return Path.of(defaultImportPath).normalize();
+        Path relativePath;
+        try {
+            relativePath = Path.of(request.getImportPath());
+        } catch (InvalidPathException exception) {
+            throw new BusinessException("Atlas import path is invalid");
+        }
+        if (relativePath.isAbsolute()) {
+            throw new BusinessException(
+                    "Atlas import path must be relative to the configured root");
+        }
+        Path candidate = allowedRoot.resolve(relativePath).normalize();
+        if (!candidate.startsWith(allowedRoot)) {
+            throw new BusinessException("Atlas import path exceeds the configured root");
+        }
+        Path realCandidate = requireDirectory(candidate, "Atlas import path does not exist");
+        if (!realCandidate.startsWith(allowedRoot)) {
+            throw new BusinessException("Atlas import path exceeds the configured root");
+        }
+        return realCandidate;
     }
 
-    private void importSpeciesDirectory(Path speciesDirectory, HerbAtlasImportResultVO result) {
+    private Path requireDirectory(Path path, String message) {
+        try {
+            Path realPath = path.toRealPath();
+            if (!Files.isDirectory(realPath)) {
+                throw new BusinessException(message);
+            }
+            return realPath;
+        } catch (IOException exception) {
+            throw new BusinessException(message);
+        }
+    }
+
+    private Path requireContainedDirectory(Path importRoot, Path directory) {
+        Path realDirectory =
+                requireDirectory(directory, "Atlas species directory is not accessible");
+        if (!realDirectory.startsWith(importRoot)) {
+            throw new BusinessException("Atlas species directory exceeds the configured root");
+        }
+        return realDirectory;
+    }
+
+    private Path requireContainedFile(Path importRoot, Path file) {
+        try {
+            Path realFile = file.toRealPath();
+            if (!realFile.startsWith(importRoot) || !Files.isRegularFile(realFile)) {
+                throw new BusinessException("Atlas image exceeds the configured root");
+            }
+            return realFile;
+        } catch (IOException exception) {
+            throw new BusinessException("Atlas image is not accessible");
+        }
+    }
+
+    private void importSpeciesDirectory(
+            Path importRoot, Path speciesDirectory, HerbAtlasImportResultVO result) {
         String directoryName = speciesDirectory.getFileName().toString();
-        List<Path> images = listImages(speciesDirectory);
+        List<Path> images = listImages(importRoot, speciesDirectory);
         if (images.isEmpty()) {
             result.addSkip(directoryName, normalizeCode(directoryName), "Empty directory");
             return;
@@ -202,17 +269,26 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         return species;
     }
 
-    private List<Path> listImages(Path speciesDirectory) {
-        List<Path> images = new ArrayList<>();
-        try (Stream<Path> paths = Files.walk(speciesDirectory)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(this::isSupportedImage)
-                    .sorted(Comparator.comparing(Path::toString))
-                    .forEach(images::add);
-        } catch (IOException exception) {
+    private List<Path> listImages(Path importRoot, Path speciesDirectory) {
+        try (Stream<Path> paths = Files.walk(speciesDirectory, MAX_IMPORT_DEPTH)) {
+            List<Path> entries = paths.limit(MAX_SCANNED_ENTRIES_PER_SPECIES + 1L).toList();
+            if (entries.size() > MAX_SCANNED_ENTRIES_PER_SPECIES) {
+                throw new BusinessException("Atlas species directory contains too many entries");
+            }
+            List<Path> images =
+                    entries.stream()
+                            .filter(Files::isRegularFile)
+                            .filter(this::isSupportedImage)
+                            .map(path -> requireContainedFile(importRoot, path))
+                            .sorted(Comparator.comparing(Path::toString))
+                            .toList();
+            if (images.size() > MAX_IMAGES_PER_SPECIES) {
+                throw new BusinessException("Atlas species directory contains too many images");
+            }
             return images;
+        } catch (IOException exception) {
+            return List.of();
         }
-        return images;
     }
 
     protected void importImage(Path image, HerbEntity species, HerbAtlasImportResultVO result) {

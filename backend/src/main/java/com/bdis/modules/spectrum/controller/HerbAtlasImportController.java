@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb/atlas")
-@RequirePermission("herb:identification:execute")
+@RequirePermission("herb:atlas:import")
 public class HerbAtlasImportController {
 
     private final HerbAtlasImportService herbAtlasImportService;

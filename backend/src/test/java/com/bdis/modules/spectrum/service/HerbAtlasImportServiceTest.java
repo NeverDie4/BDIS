@@ -1,12 +1,14 @@
 package com.bdis.modules.spectrum.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bdis.common.exception.BusinessException;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.file.vo.FileResourceVO;
@@ -19,6 +21,7 @@ import com.bdis.modules.spectrum.mapper.HerbAtlasMapper;
 import com.bdis.modules.spectrum.mapper.HerbAtlasTagMapper;
 import com.bdis.modules.spectrum.service.impl.HerbAtlasImportServiceImpl;
 import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -76,6 +79,60 @@ class HerbAtlasImportServiceTest {
                         fileBusinessService,
                         importRoot.toString(),
                         false);
+    }
+
+    @Test
+    void importAtlasRejectsAbsolutePath() throws Exception {
+        Files.createDirectories(importRoot);
+        Path outside = workspace.resolve("outside");
+        Files.createDirectories(outside);
+        HerbAtlasImportRequest request = new HerbAtlasImportRequest();
+        request.setImportPath(outside.toString());
+
+        assertThatThrownBy(() -> herbAtlasImportService.importAtlas(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Atlas import path must be relative to the configured root");
+    }
+
+    @Test
+    void importAtlasRejectsDirectoryTraversal() throws Exception {
+        Files.createDirectories(importRoot);
+        HerbAtlasImportRequest request = new HerbAtlasImportRequest();
+        request.setImportPath("../outside");
+
+        assertThatThrownBy(() -> herbAtlasImportService.importAtlas(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Atlas import path exceeds the configured root");
+    }
+
+    @Test
+    void importAtlasAllowsRelativeDirectoryInsideConfiguredRoot() throws Exception {
+        Files.createDirectories(importRoot.resolve("batch-20260712"));
+        HerbAtlasImportRequest request = new HerbAtlasImportRequest();
+        request.setImportPath("batch-20260712");
+
+        HerbAtlasImportResultVO result = herbAtlasImportService.importAtlas(request);
+
+        assertThat(result.getTotalCount()).isZero();
+    }
+
+    @Test
+    void importAtlasRejectsSymbolicLinkOutsideConfiguredRoot() throws Exception {
+        Files.createDirectories(importRoot);
+        Path outside = workspace.resolve("outside");
+        Files.createDirectories(outside);
+        Path link = importRoot.resolve("outside-link");
+        try {
+            Files.createSymbolicLink(link, outside);
+        } catch (UnsupportedOperationException | IOException | SecurityException exception) {
+            return;
+        }
+        HerbAtlasImportRequest request = new HerbAtlasImportRequest();
+        request.setImportPath("outside-link");
+
+        assertThatThrownBy(() -> herbAtlasImportService.importAtlas(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Atlas import path exceeds the configured root");
     }
 
     @Test
