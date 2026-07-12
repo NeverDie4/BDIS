@@ -23,11 +23,15 @@ export function AppearanceSettings() {
   const setCommonDirty = useSettingsDirty("appearance-common");
   const setAppearanceDirty = useSettingsDirty("appearance-ui");
   useEffect(() => {
-    if (setting.data) form.setFieldsValue(setting.data.values);
-  }, [form, setting.data]);
+    if (!setting.isLoading && !common.isLoading && setting.data) {
+      form.setFieldsValue(setting.data.values);
+    }
+  }, [common.isLoading, form, setting.data, setting.isLoading]);
   useEffect(() => {
-    if (common.data) commonForm.setFieldsValue(common.data.values);
-  }, [common.data, commonForm]);
+    if (!setting.isLoading && !common.isLoading && common.data) {
+      commonForm.setFieldsValue(common.data.values);
+    }
+  }, [common.data, common.isLoading, commonForm, setting.isLoading]);
   if (setting.isLoading || common.isLoading) return <Skeleton active />;
   return (
     <div style={{ display: "grid", gap: 18 }}>
