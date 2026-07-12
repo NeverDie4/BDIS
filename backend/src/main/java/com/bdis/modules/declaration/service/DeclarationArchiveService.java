@@ -8,5 +8,6 @@ public interface DeclarationArchiveService {
 
     DeclarationArchiveEntity generateArchive(Long declarationId);
 
-    DeclarationArchiveItemEntity addArchiveItem(Long archiveId, DeclarationArchiveItemRequest request);
+    DeclarationArchiveItemEntity addArchiveItem(
+            Long archiveId, DeclarationArchiveItemRequest request);
 }

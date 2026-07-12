@@ -1,7 +1,6 @@
 package com.bdis.modules.declaration.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,7 +8,6 @@ import lombok.Setter;
 @Setter
 public class DeclarationReviewRequest {
 
-    @NotNull(message = "审核人ID不能为空")
     private Long reviewerId;
 
     @NotBlank(message = "审核动作不能为空")
@@ -19,6 +17,5 @@ public class DeclarationReviewRequest {
     private String reviewStatus;
 
     private String reviewComment;
-
     private String remark;
 }

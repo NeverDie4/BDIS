@@ -29,7 +29,8 @@ public class EvaluationTaskController {
     }
 
     @PostMapping
-    public Result<EvaluationTaskEntity> createTask(@Valid @RequestBody EvaluationTaskRequest request) {
+    public Result<EvaluationTaskEntity> createTask(
+            @Valid @RequestBody EvaluationTaskRequest request) {
         return Result.success(evaluationTaskService.createTask(request));
     }
 

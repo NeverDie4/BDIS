@@ -5,5 +5,4 @@ import com.bdis.modules.declaration.entity.DeclarationReviewRecordEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface DeclarationReviewRecordMapper
-        extends BaseMapper<DeclarationReviewRecordEntity> {}
+public interface DeclarationReviewRecordMapper extends BaseMapper<DeclarationReviewRecordEntity> {}

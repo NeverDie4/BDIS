@@ -3,6 +3,7 @@ package com.bdis.modules.performance.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.performance.dto.PerformanceRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
@@ -31,37 +32,44 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class PerformanceServiceImpl implements PerformanceService {
 
-    private static final DateTimeFormatter NO_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-    private static final Set<String> IDENTIFY_STATUSES = Set.of("draft", "submitted", "approved", "rejected");
+    private static final DateTimeFormatter NO_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final Set<String> IDENTIFY_STATUSES =
+            Set.of("draft", "submitted", "approved", "rejected");
 
     private final PerformanceMapper performanceMapper;
     private final PerformanceStandardMapper standardMapper;
     private final PerformanceAuditMapper auditMapper;
     private final PerformanceMaterialService materialService;
+    private final BusinessAccessService accessService;
 
     @Override
     public IPage<PerformanceEntity> listPerformances(PerformanceQuery query) {
         PerformanceQuery safeQuery = query == null ? new PerformanceQuery() : query;
-        LambdaQueryWrapper<PerformanceEntity> wrapper = buildListWrapper(safeQuery).orderByDesc(PerformanceEntity::getUpdatedAt);
-        return performanceMapper.selectPage(page(safeQuery.getPageNum(), safeQuery.getPageSize()), wrapper);
+        LambdaQueryWrapper<PerformanceEntity> wrapper =
+                buildListWrapper(safeQuery).orderByDesc(PerformanceEntity::getUpdatedAt);
+        accessService.requirePermission("performance:record:view");
+        accessService.applyOwnerScope(wrapper, "perf_record", PerformanceEntity::getUserId);
+        return performanceMapper.selectPage(
+                page(safeQuery.getPageNum(), safeQuery.getPageSize()), wrapper);
     }
 
     @Override
     public PerformanceEntity createPerformance(PerformanceRequest request) {
-        String identifyStatus = defaultText(request.getIdentifyStatus(), "draft");
-        assertIdentifyStatus(identifyStatus);
+        accessService.requirePermission("performance:record:create");
+        Long userId = accessService.currentUserId();
         validateStandard(request.getStandardId());
         PerformanceEntity entity = new PerformanceEntity();
         entity.setPerformanceNo(defaultText(request.getPerformanceNo(), generateNo()));
-        entity.setUserId(request.getUserId());
+        entity.setUserId(userId);
         entity.setPerformanceTitle(request.getPerformanceTitle());
         entity.setPerformanceType(request.getPerformanceType());
         entity.setStandardId(request.getStandardId());
         entity.setSourceType(request.getSourceType());
         entity.setSourceId(request.getSourceId());
-        entity.setIdentifyStatus(identifyStatus);
+        entity.setIdentifyStatus("draft");
         entity.setStatus(1);
-        entity.setCreatedBy(request.getUserId());
+        entity.setCreatedBy(userId);
         entity.setRemark(request.getRemark());
         performanceMapper.insert(entity);
         return performanceMapper.selectById(entity.getId());
@@ -70,9 +78,14 @@ public class PerformanceServiceImpl implements PerformanceService {
     @Override
     public PerformanceDetailVO getPerformanceDetail(Long performanceId) {
         PerformanceEntity performance = findPerformance(performanceId);
+        accessService.requireResourceAccess(
+                "perf_record", performanceId, "performance:record:view", performance.getUserId());
         PerformanceDetailVO detail = new PerformanceDetailVO();
         detail.setPerformance(performance);
-        detail.setStandard(performance.getStandardId() == null ? null : standardMapper.selectById(performance.getStandardId()));
+        detail.setStandard(
+                performance.getStandardId() == null
+                        ? null
+                        : standardMapper.selectById(performance.getStandardId()));
         detail.setMaterials(materialService.listMaterials(performanceId));
         detail.setAuditRecords(
                 auditMapper.selectList(
@@ -85,17 +98,19 @@ public class PerformanceServiceImpl implements PerformanceService {
     @Override
     public PerformanceEntity updatePerformance(Long performanceId, PerformanceRequest request) {
         PerformanceEntity entity = findPerformance(performanceId);
-        if (!"draft".equals(entity.getIdentifyStatus()) && !"rejected".equals(entity.getIdentifyStatus())) {
+        accessService.requireResourceAccess(
+                "perf_record", performanceId, "performance:record:update", entity.getUserId());
+        if (!"draft".equals(entity.getIdentifyStatus())
+                && !"rejected".equals(entity.getIdentifyStatus())) {
             throw new IllegalArgumentException("只有草稿或退回状态的业绩可以修改");
         }
         validateStandard(request.getStandardId());
-        entity.setUserId(request.getUserId());
         entity.setPerformanceTitle(request.getPerformanceTitle());
         entity.setPerformanceType(request.getPerformanceType());
         entity.setStandardId(request.getStandardId());
         entity.setSourceType(request.getSourceType());
         entity.setSourceId(request.getSourceId());
-        entity.setUpdatedBy(request.getUserId());
+        entity.setUpdatedBy(accessService.currentUserId());
         entity.setRemark(request.getRemark());
         performanceMapper.updateById(entity);
         return performanceMapper.selectById(performanceId);
@@ -105,7 +120,11 @@ public class PerformanceServiceImpl implements PerformanceService {
     @Transactional
     public PerformanceEntity submitPerformance(Long performanceId, Long userId) {
         PerformanceEntity entity = findPerformance(performanceId);
-        if (!"draft".equals(entity.getIdentifyStatus()) && !"rejected".equals(entity.getIdentifyStatus())) {
+        userId = accessService.currentUserId();
+        accessService.requireResourceAccess(
+                "perf_record", performanceId, "performance:record:submit", entity.getUserId());
+        if (!"draft".equals(entity.getIdentifyStatus())
+                && !"rejected".equals(entity.getIdentifyStatus())) {
             throw new IllegalArgumentException("只有草稿或退回状态的业绩可以提交");
         }
         if (userId == null || !userId.equals(entity.getUserId())) {
@@ -121,8 +140,12 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     public PerformanceStatisticsVO getStatistics(PerformanceStatisticsQuery query) {
-        PerformanceStatisticsQuery safeQuery = query == null ? new PerformanceStatisticsQuery() : query;
-        List<PerformanceEntity> records = performanceMapper.selectList(buildStatisticsWrapper(safeQuery));
+        accessService.requirePermission("performance:record:view");
+        PerformanceStatisticsQuery safeQuery =
+                query == null ? new PerformanceStatisticsQuery() : query;
+        LambdaQueryWrapper<PerformanceEntity> wrapper = buildStatisticsWrapper(safeQuery);
+        accessService.applyOwnerScope(wrapper, "perf_record", PerformanceEntity::getUserId);
+        List<PerformanceEntity> records = performanceMapper.selectList(wrapper);
         PerformanceStatisticsVO statistics = new PerformanceStatisticsVO();
         statistics.setTotalCount((long) records.size());
         statistics.setDraftCount(countStatus(records, "draft"));
@@ -135,19 +158,41 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     private LambdaQueryWrapper<PerformanceEntity> buildListWrapper(PerformanceQuery query) {
         return new LambdaQueryWrapper<PerformanceEntity>()
-                .like(StringUtils.hasText(query.getKeyword()), PerformanceEntity::getPerformanceTitle, query.getKeyword())
+                .like(
+                        StringUtils.hasText(query.getKeyword()),
+                        PerformanceEntity::getPerformanceTitle,
+                        query.getKeyword())
                 .eq(query.getUserId() != null, PerformanceEntity::getUserId, query.getUserId())
-                .eq(StringUtils.hasText(query.getPerformanceType()), PerformanceEntity::getPerformanceType, query.getPerformanceType())
-                .eq(StringUtils.hasText(query.getIdentifyStatus()), PerformanceEntity::getIdentifyStatus, query.getIdentifyStatus())
-                .eq(query.getStandardId() != null, PerformanceEntity::getStandardId, query.getStandardId())
-                .eq(StringUtils.hasText(query.getSourceType()), PerformanceEntity::getSourceType, query.getSourceType());
+                .eq(
+                        StringUtils.hasText(query.getPerformanceType()),
+                        PerformanceEntity::getPerformanceType,
+                        query.getPerformanceType())
+                .eq(
+                        StringUtils.hasText(query.getIdentifyStatus()),
+                        PerformanceEntity::getIdentifyStatus,
+                        query.getIdentifyStatus())
+                .eq(
+                        query.getStandardId() != null,
+                        PerformanceEntity::getStandardId,
+                        query.getStandardId())
+                .eq(
+                        StringUtils.hasText(query.getSourceType()),
+                        PerformanceEntity::getSourceType,
+                        query.getSourceType());
     }
 
-    private LambdaQueryWrapper<PerformanceEntity> buildStatisticsWrapper(PerformanceStatisticsQuery query) {
+    private LambdaQueryWrapper<PerformanceEntity> buildStatisticsWrapper(
+            PerformanceStatisticsQuery query) {
         return new LambdaQueryWrapper<PerformanceEntity>()
                 .eq(query.getUserId() != null, PerformanceEntity::getUserId, query.getUserId())
-                .eq(StringUtils.hasText(query.getPerformanceType()), PerformanceEntity::getPerformanceType, query.getPerformanceType())
-                .eq(StringUtils.hasText(query.getIdentifyStatus()), PerformanceEntity::getIdentifyStatus, query.getIdentifyStatus());
+                .eq(
+                        StringUtils.hasText(query.getPerformanceType()),
+                        PerformanceEntity::getPerformanceType,
+                        query.getPerformanceType())
+                .eq(
+                        StringUtils.hasText(query.getIdentifyStatus()),
+                        PerformanceEntity::getIdentifyStatus,
+                        query.getIdentifyStatus());
     }
 
     private Long countStatus(List<PerformanceEntity> records, String status) {
@@ -163,7 +208,13 @@ public class PerformanceServiceImpl implements PerformanceService {
         return counts;
     }
 
-    private void saveAuditRecord(Long performanceId, Long identifierId, String action, String result, String comment, String remark) {
+    private void saveAuditRecord(
+            Long performanceId,
+            Long identifierId,
+            String action,
+            String result,
+            String comment,
+            String remark) {
         PerformanceAuditEntity audit = new PerformanceAuditEntity();
         audit.setPerformanceId(performanceId);
         audit.setIdentifierId(identifierId);
@@ -197,7 +248,9 @@ public class PerformanceServiceImpl implements PerformanceService {
     }
 
     private Page<PerformanceEntity> page(Long pageNum, Long pageSize) {
-        return new Page<>(pageNum == null || pageNum < 1 ? 1 : pageNum, pageSize == null || pageSize < 1 ? 10 : pageSize);
+        return new Page<>(
+                pageNum == null || pageNum < 1 ? 1 : pageNum,
+                pageSize == null || pageSize < 1 ? 10 : pageSize);
     }
 
     private String defaultText(String value, String defaultValue) {

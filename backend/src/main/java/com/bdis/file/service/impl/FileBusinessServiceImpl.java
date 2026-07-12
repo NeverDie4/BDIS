@@ -106,6 +106,21 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                 .toList();
     }
 
+    @Override
+    public List<FileBusinessVO> listBindingsByBusiness(String bizType, Long bizId) {
+        businessReferenceValidator.validate(bizType, bizId);
+        return fileBusinessMapper
+                .selectList(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByAsc(FileBusinessEntity::getId))
+                .stream()
+                .map(this::toVO)
+                .toList();
+    }
+
     private FileBusinessVO toVO(FileBusinessEntity entity) {
         FileBusinessVO vo = new FileBusinessVO();
         BeanUtils.copyProperties(entity, vo);

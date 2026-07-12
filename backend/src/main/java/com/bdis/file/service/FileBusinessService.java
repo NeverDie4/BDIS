@@ -14,4 +14,6 @@ public interface FileBusinessService {
     void deleteByFileId(Long fileId);
 
     List<FileResourceVO> listByBusiness(String bizType, Long bizId);
+
+    List<FileBusinessVO> listBindingsByBusiness(String bizType, Long bizId);
 }

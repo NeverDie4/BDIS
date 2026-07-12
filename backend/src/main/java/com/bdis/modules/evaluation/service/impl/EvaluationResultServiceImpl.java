@@ -1,6 +1,7 @@
 package com.bdis.modules.evaluation.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.evaluation.dto.EvaluationConfirmationRequest;
 import com.bdis.modules.evaluation.entity.EvaluationIndicatorEntity;
 import com.bdis.modules.evaluation.entity.EvaluationResultEntity;
@@ -16,6 +17,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,8 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
 
     private final EvaluationTaskMapper taskMapper;
 
+    private final BusinessAccessService accessService;
+
     @Override
     @Transactional
     public EvaluationResultEntity confirmByScoreRecord(
@@ -47,11 +51,13 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
         if (task == null) {
             throw new IllegalArgumentException("评价任务不存在");
         }
+        accessService.requireResourceAccess(
+                "eval_task", task.getId(), "evaluation:result:confirm", task.getOwnerId());
+        if ("confirmed".equals(task.getTaskStatus())) {
+            throw new IllegalArgumentException("评价任务已确认，不能重复确认");
+        }
 
-        BigDecimal totalScore =
-                request.getTotalScore() == null
-                        ? calculateTotalScore(record.getTaskId())
-                        : request.getTotalScore();
+        BigDecimal totalScore = calculateTotalScore(record.getTaskId());
 
         EvaluationResultEntity result =
                 resultMapper.selectOne(
@@ -62,11 +68,12 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
             result.setTaskId(record.getTaskId());
         }
         result.setTotalScore(totalScore);
-        result.setResultLevel(defaultText(request.getResultLevel(), inferLevel(totalScore)));
+        result.setResultLevel(inferLevel(totalScore));
         result.setResultDesc(request.getResultDesc());
-        result.setConfirmedBy(request.getConfirmedBy());
+        result.setConfirmedBy(accessService.currentUserId());
         result.setConfirmedAt(LocalDateTime.now());
         result.setRemark(request.getRemark());
+        result.setCreatedBy(accessService.currentUserId());
 
         if (result.getId() == null) {
             resultMapper.insert(result);
@@ -107,20 +114,39 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
                                                 && indicator.getWeight().compareTo(BigDecimal.ZERO)
                                                         > 0);
 
+        Map<Long, BigDecimal> averageScores =
+                scores.stream()
+                        .filter(score -> score.getScore() != null)
+                        .collect(
+                                Collectors.groupingBy(
+                                        EvaluationScoreRecordEntity::getIndicatorId,
+                                        Collectors.collectingAndThen(
+                                                Collectors.mapping(
+                                                        EvaluationScoreRecordEntity::getScore,
+                                                        Collectors.toList()),
+                                                values ->
+                                                        values.stream()
+                                                                .filter(Objects::nonNull)
+                                                                .reduce(
+                                                                        BigDecimal.ZERO,
+                                                                        BigDecimal::add)
+                                                                .divide(
+                                                                        BigDecimal.valueOf(
+                                                                                values.size()),
+                                                                        4,
+                                                                        RoundingMode.HALF_UP))));
+
         BigDecimal total = BigDecimal.ZERO;
-        for (EvaluationScoreRecordEntity score : scores) {
-            if (score.getScore() == null) {
-                continue;
-            }
-            EvaluationIndicatorEntity indicator = indicators.get(score.getIndicatorId());
+        for (Map.Entry<Long, BigDecimal> entry : averageScores.entrySet()) {
+            EvaluationIndicatorEntity indicator = indicators.get(entry.getKey());
             if (hasWeight && indicator != null && indicator.getWeight() != null) {
                 total =
                         total.add(
-                                score.getScore()
+                                entry.getValue()
                                         .multiply(indicator.getWeight())
                                         .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP));
             } else {
-                total = total.add(score.getScore());
+                total = total.add(entry.getValue());
             }
         }
         return total.setScale(2, RoundingMode.HALF_UP);

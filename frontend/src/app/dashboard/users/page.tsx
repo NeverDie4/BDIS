@@ -48,7 +48,8 @@ export default function UsersPage() {
   }, [message]);
 
   useEffect(() => {
-    void load();
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
   }, [load]);
 
   const columns = useMemo<ColumnsType<User>>(

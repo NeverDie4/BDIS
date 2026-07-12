@@ -5,5 +5,4 @@ import com.bdis.modules.declaration.entity.DeclarationArchiveItemEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface DeclarationArchiveItemMapper
-        extends BaseMapper<DeclarationArchiveItemEntity> {}
+public interface DeclarationArchiveItemMapper extends BaseMapper<DeclarationArchiveItemEntity> {}

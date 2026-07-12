@@ -1,6 +1,6 @@
 package com.bdis.modules.performance.vo;
 
-import com.bdis.modules.file.entity.FileBusinessEntity;
+import com.bdis.file.vo.FileBusinessVO;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,7 +24,7 @@ public class PerformanceMaterialVO {
 
     private String remark;
 
-    public static PerformanceMaterialVO fromEntity(FileBusinessEntity entity) {
+    public static PerformanceMaterialVO fromFileBusiness(FileBusinessVO entity) {
         PerformanceMaterialVO vo = new PerformanceMaterialVO();
         vo.setId(entity.getId());
         vo.setFileId(entity.getFileId());

@@ -3,6 +3,7 @@ package com.bdis.modules.declaration.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.declaration.dto.DeclarationRequest;
 import com.bdis.modules.declaration.dto.DeclarationReviewRequest;
 import com.bdis.modules.declaration.entity.DeclarationArchiveEntity;
@@ -34,8 +35,10 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class DeclarationServiceImpl implements DeclarationService {
 
-    private static final DateTimeFormatter NO_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-    private static final Set<String> REVIEW_STATUSES = Set.of("draft", "submitted", "approved", "rejected", "archived");
+    private static final DateTimeFormatter NO_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final Set<String> REVIEW_STATUSES =
+            Set.of("draft", "submitted", "approved", "rejected", "archived");
 
     private final DeclarationMapper declarationMapper;
     private final DeclarationReviewRecordMapper reviewRecordMapper;
@@ -43,33 +46,50 @@ public class DeclarationServiceImpl implements DeclarationService {
     private final DeclarationArchiveMapper archiveMapper;
     private final DeclarationArchiveItemMapper archiveItemMapper;
     private final DeclarationArchiveService archiveService;
+    private final BusinessAccessService accessService;
 
     @Override
     public IPage<DeclarationEntity> listDeclarations(DeclarationQuery query) {
         DeclarationQuery safeQuery = query == null ? new DeclarationQuery() : query;
         LambdaQueryWrapper<DeclarationEntity> wrapper =
                 new LambdaQueryWrapper<DeclarationEntity>()
-                        .like(StringUtils.hasText(safeQuery.getKeyword()), DeclarationEntity::getApplicationTitle, safeQuery.getKeyword())
-                        .eq(StringUtils.hasText(safeQuery.getApplicationType()), DeclarationEntity::getApplicationType, safeQuery.getApplicationType())
-                        .eq(StringUtils.hasText(safeQuery.getStatus()), DeclarationEntity::getReviewStatus, safeQuery.getStatus())
-                        .eq(safeQuery.getApplicantId() != null, DeclarationEntity::getApplicantId, safeQuery.getApplicantId())
+                        .like(
+                                StringUtils.hasText(safeQuery.getKeyword()),
+                                DeclarationEntity::getApplicationTitle,
+                                safeQuery.getKeyword())
+                        .eq(
+                                StringUtils.hasText(safeQuery.getApplicationType()),
+                                DeclarationEntity::getApplicationType,
+                                safeQuery.getApplicationType())
+                        .eq(
+                                StringUtils.hasText(safeQuery.getStatus()),
+                                DeclarationEntity::getReviewStatus,
+                                safeQuery.getStatus())
+                        .eq(
+                                safeQuery.getApplicantId() != null,
+                                DeclarationEntity::getApplicantId,
+                                safeQuery.getApplicantId())
                         .orderByDesc(DeclarationEntity::getUpdatedAt);
-        return declarationMapper.selectPage(page(safeQuery.getPageNum(), safeQuery.getPageSize()), wrapper);
+        accessService.requirePermission("declaration:application:view");
+        accessService.applyOwnerScope(
+                wrapper, "eval_application", DeclarationEntity::getApplicantId);
+        return declarationMapper.selectPage(
+                page(safeQuery.getPageNum(), safeQuery.getPageSize()), wrapper);
     }
 
     @Override
     public DeclarationEntity createDeclaration(DeclarationRequest request) {
-        String reviewStatus = defaultText(request.getReviewStatus(), "draft");
-        assertReviewStatus(reviewStatus);
+        accessService.requirePermission("declaration:application:create");
+        Long applicantId = accessService.currentUserId();
         DeclarationEntity entity = new DeclarationEntity();
         entity.setApplicationNo(defaultText(request.getApplicationNo(), generateNo("DECL")));
         entity.setApplicationTitle(request.getApplicationTitle());
         entity.setApplicationType(request.getApplicationType());
-        entity.setApplicantId(request.getApplicantId());
-        entity.setReviewStatus(reviewStatus);
+        entity.setApplicantId(applicantId);
+        entity.setReviewStatus("draft");
         entity.setStatus(1);
         entity.setRemark(request.getRemark());
-        entity.setCreatedBy(request.getApplicantId());
+        entity.setCreatedBy(applicantId);
         declarationMapper.insert(entity);
         return declarationMapper.selectById(entity.getId());
     }
@@ -77,6 +97,11 @@ public class DeclarationServiceImpl implements DeclarationService {
     @Override
     public DeclarationDetailVO getDeclarationDetail(Long declarationId) {
         DeclarationEntity declaration = findDeclaration(declarationId);
+        accessService.requireResourceAccess(
+                "eval_application",
+                declarationId,
+                "declaration:application:view",
+                declaration.getApplicantId());
         DeclarationArchiveEntity archive = findArchiveByDeclarationId(declarationId);
         DeclarationDetailVO detail = new DeclarationDetailVO();
         detail.setDeclaration(declaration);
@@ -91,7 +116,14 @@ public class DeclarationServiceImpl implements DeclarationService {
     @Transactional
     public DeclarationEntity submitDeclaration(Long declarationId, Long applicantId) {
         DeclarationEntity declaration = findDeclaration(declarationId);
-        if (!"draft".equals(declaration.getReviewStatus()) && !"rejected".equals(declaration.getReviewStatus())) {
+        applicantId = accessService.currentUserId();
+        accessService.requireResourceAccess(
+                "eval_application",
+                declarationId,
+                "declaration:application:submit",
+                declaration.getApplicantId());
+        if (!"draft".equals(declaration.getReviewStatus())
+                && !"rejected".equals(declaration.getReviewStatus())) {
             throw new IllegalArgumentException("只有草稿或退回状态的申报可以提交");
         }
         if (applicantId == null || !applicantId.equals(declaration.getApplicantId())) {
@@ -102,22 +134,33 @@ public class DeclarationServiceImpl implements DeclarationService {
         declaration.setSubmittedAt(LocalDateTime.now());
         declaration.setUpdatedBy(applicantId);
         declarationMapper.updateById(declaration);
-        saveReviewRecord(declarationId, applicantId, "submit", beforeStatus, "submitted", "申报提交", null);
+        saveReviewRecord(
+                declarationId, applicantId, "submit", beforeStatus, "submitted", "申报提交", null);
         return declarationMapper.selectById(declarationId);
     }
 
     @Override
     @Transactional
-    public DeclarationReviewRecordEntity reviewDeclaration(Long declarationId, DeclarationReviewRequest request) {
+    public DeclarationReviewRecordEntity reviewDeclaration(
+            Long declarationId, DeclarationReviewRequest request) {
         DeclarationEntity declaration = findDeclaration(declarationId);
+        Long reviewerId = accessService.currentUserId();
+        accessService.requireResourceAccess(
+                "eval_application",
+                declarationId,
+                "declaration:application:audit",
+                declaration.getApplicantId());
         assertReviewStatus(request.getReviewStatus());
-        if (!"approve".equals(request.getReviewAction()) && !"reject".equals(request.getReviewAction())) {
+        if (!"approve".equals(request.getReviewAction())
+                && !"reject".equals(request.getReviewAction())) {
             throw new IllegalArgumentException("审核动作只能是 approve 或 reject");
         }
-        if ("approve".equals(request.getReviewAction()) && !"approved".equals(request.getReviewStatus())) {
+        if ("approve".equals(request.getReviewAction())
+                && !"approved".equals(request.getReviewStatus())) {
             throw new IllegalArgumentException("approve 动作对应的审核状态必须是 approved");
         }
-        if ("reject".equals(request.getReviewAction()) && !"rejected".equals(request.getReviewStatus())) {
+        if ("reject".equals(request.getReviewAction())
+                && !"rejected".equals(request.getReviewStatus())) {
             throw new IllegalArgumentException("reject 动作对应的审核状态必须是 rejected");
         }
         if (!"submitted".equals(declaration.getReviewStatus())) {
@@ -125,24 +168,51 @@ public class DeclarationServiceImpl implements DeclarationService {
         }
         String beforeStatus = declaration.getReviewStatus();
         declaration.setReviewStatus(request.getReviewStatus());
-        declaration.setReviewerId(request.getReviewerId());
+        declaration.setReviewerId(reviewerId);
         declaration.setReviewedAt(LocalDateTime.now());
         declaration.setReviewComment(request.getReviewComment());
-        declaration.setUpdatedBy(request.getReviewerId());
+        declaration.setUpdatedBy(reviewerId);
         declarationMapper.updateById(declaration);
         if ("approved".equals(request.getReviewStatus())) {
             archiveService.generateArchive(declarationId);
         }
-        return saveReviewRecord(declarationId, request.getReviewerId(), request.getReviewAction(), beforeStatus, request.getReviewStatus(), request.getReviewComment(), request.getRemark());
+        return saveReviewRecord(
+                declarationId,
+                reviewerId,
+                request.getReviewAction(),
+                beforeStatus,
+                request.getReviewStatus(),
+                request.getReviewComment(),
+                request.getRemark());
     }
 
     @Override
     public DeclarationSummaryVO getDeclarationSummary(Long declarationId) {
         DeclarationEntity declaration = findDeclaration(declarationId);
-        Long materialCount = materialMapper.selectCount(new LambdaQueryWrapper<DeclarationMaterialEntity>().eq(DeclarationMaterialEntity::getApplicationId, declarationId));
-        Long reviewRecordCount = reviewRecordMapper.selectCount(new LambdaQueryWrapper<DeclarationReviewRecordEntity>().eq(DeclarationReviewRecordEntity::getApplicationId, declarationId));
+        accessService.requireResourceAccess(
+                "eval_application",
+                declarationId,
+                "declaration:application:view",
+                declaration.getApplicantId());
+        Long materialCount =
+                materialMapper.selectCount(
+                        new LambdaQueryWrapper<DeclarationMaterialEntity>()
+                                .eq(DeclarationMaterialEntity::getApplicationId, declarationId));
+        Long reviewRecordCount =
+                reviewRecordMapper.selectCount(
+                        new LambdaQueryWrapper<DeclarationReviewRecordEntity>()
+                                .eq(
+                                        DeclarationReviewRecordEntity::getApplicationId,
+                                        declarationId));
         DeclarationArchiveEntity archive = findArchiveByDeclarationId(declarationId);
-        Long archiveItemCount = archive == null ? 0L : archiveItemMapper.selectCount(new LambdaQueryWrapper<DeclarationArchiveItemEntity>().eq(DeclarationArchiveItemEntity::getArchiveId, archive.getId()));
+        Long archiveItemCount =
+                archive == null
+                        ? 0L
+                        : archiveItemMapper.selectCount(
+                                new LambdaQueryWrapper<DeclarationArchiveItemEntity>()
+                                        .eq(
+                                                DeclarationArchiveItemEntity::getArchiveId,
+                                                archive.getId()));
         DeclarationSummaryVO summary = new DeclarationSummaryVO();
         summary.setDeclarationId(declarationId);
         summary.setApplicationTitle(declaration.getApplicationTitle());
@@ -155,7 +225,14 @@ public class DeclarationServiceImpl implements DeclarationService {
         return summary;
     }
 
-    private DeclarationReviewRecordEntity saveReviewRecord(Long declarationId, Long reviewerId, String reviewAction, String beforeStatus, String reviewStatus, String reviewComment, String remark) {
+    private DeclarationReviewRecordEntity saveReviewRecord(
+            Long declarationId,
+            Long reviewerId,
+            String reviewAction,
+            String beforeStatus,
+            String reviewStatus,
+            String reviewComment,
+            String remark) {
         DeclarationReviewRecordEntity record = new DeclarationReviewRecordEntity();
         record.setApplicationId(declarationId);
         record.setReviewerId(reviewerId);
@@ -179,29 +256,44 @@ public class DeclarationServiceImpl implements DeclarationService {
     }
 
     private DeclarationArchiveEntity findArchiveByDeclarationId(Long declarationId) {
-        return archiveMapper.selectOne(new LambdaQueryWrapper<DeclarationArchiveEntity>().eq(DeclarationArchiveEntity::getApplicationId, declarationId));
+        return archiveMapper.selectOne(
+                new LambdaQueryWrapper<DeclarationArchiveEntity>()
+                        .eq(DeclarationArchiveEntity::getApplicationId, declarationId));
     }
 
     private List<DeclarationMaterialEntity> listMaterials(Long declarationId) {
-        return materialMapper.selectList(new LambdaQueryWrapper<DeclarationMaterialEntity>().eq(DeclarationMaterialEntity::getApplicationId, declarationId).orderByDesc(DeclarationMaterialEntity::getUploadedAt));
+        return materialMapper.selectList(
+                new LambdaQueryWrapper<DeclarationMaterialEntity>()
+                        .eq(DeclarationMaterialEntity::getApplicationId, declarationId)
+                        .orderByDesc(DeclarationMaterialEntity::getUploadedAt));
     }
 
     private List<DeclarationReviewRecordEntity> listReviewRecords(Long declarationId) {
-        return reviewRecordMapper.selectList(new LambdaQueryWrapper<DeclarationReviewRecordEntity>().eq(DeclarationReviewRecordEntity::getApplicationId, declarationId).orderByDesc(DeclarationReviewRecordEntity::getReviewedAt));
+        return reviewRecordMapper.selectList(
+                new LambdaQueryWrapper<DeclarationReviewRecordEntity>()
+                        .eq(DeclarationReviewRecordEntity::getApplicationId, declarationId)
+                        .orderByDesc(DeclarationReviewRecordEntity::getReviewedAt));
     }
 
     private List<DeclarationArchiveItemEntity> listArchiveItems(Long archiveId) {
-        return archiveItemMapper.selectList(new LambdaQueryWrapper<DeclarationArchiveItemEntity>().eq(DeclarationArchiveItemEntity::getArchiveId, archiveId).orderByAsc(DeclarationArchiveItemEntity::getSortOrder).orderByAsc(DeclarationArchiveItemEntity::getId));
+        return archiveItemMapper.selectList(
+                new LambdaQueryWrapper<DeclarationArchiveItemEntity>()
+                        .eq(DeclarationArchiveItemEntity::getArchiveId, archiveId)
+                        .orderByAsc(DeclarationArchiveItemEntity::getSortOrder)
+                        .orderByAsc(DeclarationArchiveItemEntity::getId));
     }
 
     private void assertReviewStatus(String reviewStatus) {
         if (!REVIEW_STATUSES.contains(reviewStatus)) {
-            throw new IllegalArgumentException("审核状态只能是 draft、submitted、approved、rejected、archived");
+            throw new IllegalArgumentException(
+                    "审核状态只能是 draft、submitted、approved、rejected、archived");
         }
     }
 
     private Page<DeclarationEntity> page(Long pageNum, Long pageSize) {
-        return new Page<>(pageNum == null || pageNum < 1 ? 1 : pageNum, pageSize == null || pageSize < 1 ? 10 : pageSize);
+        return new Page<>(
+                pageNum == null || pageNum < 1 ? 1 : pageNum,
+                pageSize == null || pageSize < 1 ? 10 : pageSize);
     }
 
     private String defaultText(String value, String defaultValue) {

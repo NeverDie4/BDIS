@@ -1,6 +1,7 @@
 package com.bdis.modules.declaration.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.declaration.dto.DeclarationArchiveItemRequest;
 import com.bdis.modules.declaration.entity.DeclarationArchiveEntity;
 import com.bdis.modules.declaration.entity.DeclarationArchiveItemEntity;
@@ -34,6 +35,7 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
     private final DeclarationArchiveMapper archiveMapper;
 
     private final DeclarationArchiveItemMapper archiveItemMapper;
+    private final BusinessAccessService accessService;
 
     @Override
     @Transactional
@@ -41,6 +43,14 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
         DeclarationEntity declaration = declarationMapper.selectById(declarationId);
         if (declaration == null) {
             throw new IllegalArgumentException("申报档案不存在");
+        }
+        accessService.requireResourceAccess(
+                "eval_application",
+                declarationId,
+                "declaration:application:archive",
+                declaration.getApplicantId());
+        if (!"approved".equals(declaration.getReviewStatus())) {
+            throw new IllegalArgumentException("只有审核通过的申报可以生成档案");
         }
 
         DeclarationArchiveEntity archive =
@@ -53,12 +63,12 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
             archive.setApplicationId(declarationId);
             archive.setArchiveTitle(declaration.getApplicationTitle() + "档案袋");
             archive.setOwnerId(declaration.getApplicantId());
-            archive.setCreatedBy(declaration.getApplicantId());
+            archive.setCreatedBy(accessService.currentUserId());
         }
         archive.setArchiveStatus("generated");
         archive.setGeneratedAt(LocalDateTime.now());
         archive.setStatus(1);
-        archive.setUpdatedBy(declaration.getReviewerId());
+        archive.setUpdatedBy(accessService.currentUserId());
         archive.setRemark("由申报档案生成");
 
         if (archive.getId() == null) {
@@ -78,6 +88,11 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
         if (archive == null) {
             throw new IllegalArgumentException("申报档案袋不存在");
         }
+        accessService.requireResourceAccess(
+                "eval_application",
+                archive.getApplicationId(),
+                "declaration:application:archive",
+                archive.getOwnerId());
         DeclarationArchiveItemEntity item = new DeclarationArchiveItemEntity();
         item.setArchiveId(archiveId);
         item.setSourceType(request.getSourceType());
@@ -85,7 +100,7 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
         item.setItemName(defaultText(request.getItemName(), request.getSourceType()));
         item.setItemDesc(request.getItemDesc());
         item.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
-        item.setCreatedBy(request.getCreatedBy());
+        item.setCreatedBy(accessService.currentUserId());
         item.setRemark(request.getRemark());
         archiveItemMapper.insert(item);
         return archiveItemMapper.selectById(item.getId());

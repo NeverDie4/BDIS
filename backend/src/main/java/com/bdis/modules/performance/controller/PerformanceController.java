@@ -35,7 +35,8 @@ public class PerformanceController {
     }
 
     @PostMapping
-    public Result<PerformanceEntity> createPerformance(@Valid @RequestBody PerformanceRequest request) {
+    public Result<PerformanceEntity> createPerformance(
+            @Valid @RequestBody PerformanceRequest request) {
         return Result.success(performanceService.createPerformance(request));
     }
 
@@ -45,17 +46,22 @@ public class PerformanceController {
     }
 
     @PutMapping("/{performanceId}")
-    public Result<PerformanceEntity> updatePerformance(@PathVariable Long performanceId, @Valid @RequestBody PerformanceRequest request) {
+    public Result<PerformanceEntity> updatePerformance(
+            @PathVariable Long performanceId, @Valid @RequestBody PerformanceRequest request) {
         return Result.success(performanceService.updatePerformance(performanceId, request));
     }
 
     @PostMapping("/{performanceId}/submissions")
-    public Result<PerformanceEntity> submitPerformance(@PathVariable Long performanceId, @Valid @RequestBody PerformanceSubmitRequest request) {
-        return Result.success(performanceService.submitPerformance(performanceId, request.getUserId()));
+    public Result<PerformanceEntity> submitPerformance(
+            @PathVariable Long performanceId,
+            @Valid @RequestBody PerformanceSubmitRequest request) {
+        return Result.success(
+                performanceService.submitPerformance(performanceId, request.getUserId()));
     }
 
     @PostMapping("/{performanceId}/audit-records")
-    public Result<PerformanceAuditEntity> auditPerformance(@PathVariable Long performanceId, @Valid @RequestBody PerformanceAuditRequest request) {
+    public Result<PerformanceAuditEntity> auditPerformance(
+            @PathVariable Long performanceId, @Valid @RequestBody PerformanceAuditRequest request) {
         return Result.success(performanceAuditService.auditPerformance(performanceId, request));
     }
 }

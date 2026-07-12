@@ -1,5 +1,6 @@
 package com.bdis.modules.performance.service.impl;
 
+import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.performance.dto.PerformanceAuditRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
@@ -22,14 +23,19 @@ public class PerformanceAuditServiceImpl implements PerformanceAuditService {
     private final PerformanceMapper performanceMapper;
 
     private final PerformanceAuditMapper auditMapper;
+    private final BusinessAccessService accessService;
 
     @Override
     @Transactional
-    public PerformanceAuditEntity auditPerformance(Long performanceId, PerformanceAuditRequest request) {
+    public PerformanceAuditEntity auditPerformance(
+            Long performanceId, PerformanceAuditRequest request) {
         PerformanceEntity performance = performanceMapper.selectById(performanceId);
         if (performance == null) {
             throw new IllegalArgumentException("业绩记录不存在");
         }
+        accessService.requireResourceAccess(
+                "perf_record", performanceId, "performance:record:audit", performance.getUserId());
+        Long identifierId = accessService.currentUserId();
         if (!"submitted".equals(performance.getIdentifyStatus())) {
             throw new IllegalArgumentException("只有已提交状态的业绩可以审核认定");
         }
@@ -42,17 +48,17 @@ public class PerformanceAuditServiceImpl implements PerformanceAuditService {
         }
 
         performance.setIdentifyStatus(result);
-        performance.setUpdatedBy(request.getIdentifierId());
+        performance.setUpdatedBy(identifierId);
         performanceMapper.updateById(performance);
 
         PerformanceAuditEntity audit = new PerformanceAuditEntity();
         audit.setPerformanceId(performanceId);
-        audit.setIdentifierId(request.getIdentifierId());
+        audit.setIdentifierId(identifierId);
         audit.setIdentifyAction(request.resolvedAction());
         audit.setIdentifyResult(result);
         audit.setIdentifyComment(request.resolvedComment());
         audit.setIdentifiedAt(LocalDateTime.now());
-        audit.setCreatedBy(request.getIdentifierId());
+        audit.setCreatedBy(identifierId);
         audit.setRemark(request.getRemark());
         auditMapper.insert(audit);
         return auditMapper.selectById(audit.getId());

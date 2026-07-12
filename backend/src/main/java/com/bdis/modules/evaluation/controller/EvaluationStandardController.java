@@ -29,12 +29,14 @@ public class EvaluationStandardController {
     }
 
     @PostMapping
-    public Result<EvaluationIndicatorEntity> createStandard(@Valid @RequestBody EvaluationStandardRequest request) {
+    public Result<EvaluationIndicatorEntity> createStandard(
+            @Valid @RequestBody EvaluationStandardRequest request) {
         return Result.success(evaluationStandardService.createStandard(request));
     }
 
     @PutMapping("/{standardId}")
-    public Result<EvaluationIndicatorEntity> updateStandard(@PathVariable Long standardId, @Valid @RequestBody EvaluationStandardRequest request) {
+    public Result<EvaluationIndicatorEntity> updateStandard(
+            @PathVariable Long standardId, @Valid @RequestBody EvaluationStandardRequest request) {
         return Result.success(evaluationStandardService.updateStandard(standardId, request));
     }
 }

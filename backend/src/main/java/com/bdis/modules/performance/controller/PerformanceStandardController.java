@@ -29,12 +29,14 @@ public class PerformanceStandardController {
     }
 
     @PostMapping
-    public Result<PerformanceStandardEntity> createStandard(@Valid @RequestBody PerformanceStandardRequest request) {
+    public Result<PerformanceStandardEntity> createStandard(
+            @Valid @RequestBody PerformanceStandardRequest request) {
         return Result.success(performanceStandardService.createStandard(request));
     }
 
     @PutMapping("/{standardId}")
-    public Result<PerformanceStandardEntity> updateStandard(@PathVariable Long standardId, @Valid @RequestBody PerformanceStandardRequest request) {
+    public Result<PerformanceStandardEntity> updateStandard(
+            @PathVariable Long standardId, @Valid @RequestBody PerformanceStandardRequest request) {
         return Result.success(performanceStandardService.updateStandard(standardId, request));
     }
 }

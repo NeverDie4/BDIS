@@ -415,25 +415,6 @@ time {
   }
 }
 
-.map-test-page {
-  min-height: 100vh;
-  padding: 24px;
-}
-
-.map-test-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.map-test-header h1 {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.35;
-}
-
 .map-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -33,7 +33,8 @@ public class DeclarationController {
     }
 
     @PostMapping
-    public Result<DeclarationEntity> createDeclaration(@Valid @RequestBody DeclarationRequest request) {
+    public Result<DeclarationEntity> createDeclaration(
+            @Valid @RequestBody DeclarationRequest request) {
         return Result.success(declarationService.createDeclaration(request));
     }
 
@@ -43,12 +44,17 @@ public class DeclarationController {
     }
 
     @PostMapping("/{declarationId}/submissions")
-    public Result<DeclarationEntity> submitDeclaration(@PathVariable Long declarationId, @Valid @RequestBody DeclarationSubmitRequest request) {
-        return Result.success(declarationService.submitDeclaration(declarationId, request.getApplicantId()));
+    public Result<DeclarationEntity> submitDeclaration(
+            @PathVariable Long declarationId,
+            @Valid @RequestBody DeclarationSubmitRequest request) {
+        return Result.success(
+                declarationService.submitDeclaration(declarationId, request.getApplicantId()));
     }
 
     @PostMapping("/{declarationId}/reviews")
-    public Result<DeclarationReviewRecordEntity> reviewDeclaration(@PathVariable Long declarationId, @Valid @RequestBody DeclarationReviewRequest request) {
+    public Result<DeclarationReviewRecordEntity> reviewDeclaration(
+            @PathVariable Long declarationId,
+            @Valid @RequestBody DeclarationReviewRequest request) {
         return Result.success(declarationService.reviewDeclaration(declarationId, request));
     }
 

@@ -19,7 +19,8 @@ public interface DeclarationService {
 
     DeclarationEntity submitDeclaration(Long declarationId, Long applicantId);
 
-    DeclarationReviewRecordEntity reviewDeclaration(Long declarationId, DeclarationReviewRequest request);
+    DeclarationReviewRecordEntity reviewDeclaration(
+            Long declarationId, DeclarationReviewRequest request);
 
     DeclarationSummaryVO getDeclarationSummary(Long declarationId);
 }

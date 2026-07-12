@@ -5,5 +5,6 @@ import com.bdis.modules.evaluation.entity.EvaluationResultEntity;
 
 public interface EvaluationResultService {
 
-    EvaluationResultEntity confirmByScoreRecord(Long recordId, EvaluationConfirmationRequest request);
+    EvaluationResultEntity confirmByScoreRecord(
+            Long recordId, EvaluationConfirmationRequest request);
 }

@@ -1,6 +1,7 @@
 package com.bdis.modules.declaration.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.declaration.dto.DeclarationMaterialRequest;
 import com.bdis.modules.declaration.entity.DeclarationArchiveEntity;
 import com.bdis.modules.declaration.entity.DeclarationArchiveItemEntity;
@@ -27,6 +28,7 @@ public class DeclarationMaterialServiceImpl implements DeclarationMaterialServic
     private final DeclarationArchiveMapper archiveMapper;
 
     private final DeclarationArchiveItemMapper archiveItemMapper;
+    private final BusinessAccessService accessService;
 
     @Override
     @Transactional
@@ -36,6 +38,16 @@ public class DeclarationMaterialServiceImpl implements DeclarationMaterialServic
         if (declaration == null) {
             throw new IllegalArgumentException("申报档案不存在");
         }
+        accessService.requireResourceAccess(
+                "eval_application",
+                declarationId,
+                "declaration:application:update",
+                declaration.getApplicantId());
+        if (!"draft".equals(declaration.getReviewStatus())
+                && !"rejected".equals(declaration.getReviewStatus())) {
+            throw new IllegalArgumentException("只有草稿或退回状态的申报可以添加材料");
+        }
+        Long uploaderId = accessService.currentUserId();
 
         DeclarationMaterialEntity entity = new DeclarationMaterialEntity();
         entity.setApplicationId(declarationId);
@@ -44,10 +56,10 @@ public class DeclarationMaterialServiceImpl implements DeclarationMaterialServic
         entity.setFileType(request.getFileType());
         entity.setFileUrl(request.getFileUrl());
         entity.setFileSize(request.getFileSize());
-        entity.setUploaderId(request.getUploaderId());
+        entity.setUploaderId(uploaderId);
         entity.setUploadedAt(LocalDateTime.now());
         entity.setStatus(1);
-        entity.setCreatedBy(request.getUploaderId());
+        entity.setCreatedBy(uploaderId);
         entity.setRemark(request.getRemark());
         materialMapper.insert(entity);
 
