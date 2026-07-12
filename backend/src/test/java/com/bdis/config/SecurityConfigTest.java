@@ -11,6 +11,7 @@ import com.bdis.modules.auth.service.CurrentUserService;
 import com.bdis.modules.herb.controller.HerbSpeciesController;
 import com.bdis.modules.herb.service.HerbSpeciesService;
 import com.bdis.modules.settings.service.UserSessionService;
+import com.bdis.modules.user.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -38,6 +39,8 @@ class SecurityConfigTest {
     @MockBean private CurrentUserService currentUserService;
 
     @MockBean private UserSessionService userSessionService;
+
+    @MockBean private UserMapper userMapper;
 
     @Test
     void herbApiRequiresAuthentication() throws Exception {

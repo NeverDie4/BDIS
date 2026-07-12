@@ -114,10 +114,34 @@ public class AuditAspect {
                 || uri.contains("/menus")) {
             return "M02_M03_AUTH";
         }
+        if (uri.contains("/me/profile")) {
+            return "M02_USER_PROFILE";
+        }
+        if (uri.contains("/me/password")) {
+            return "M02_ACCOUNT_SECURITY";
+        }
+        if (uri.contains("/me/settings")) {
+            return "M02_PERSONAL_SETTINGS";
+        }
+        if (uri.contains("/me/sessions") || uri.contains("/auth/sessions")) {
+            return "M02_AUTH_SESSION";
+        }
         return "SYSTEM";
     }
 
     private String resolveBizType(String uri) {
+        if (uri.contains("/me/profile")) {
+            return "user_profile";
+        }
+        if (uri.contains("/me/password")) {
+            return "user_password";
+        }
+        if (uri.contains("/me/settings")) {
+            return "user_setting";
+        }
+        if (uri.contains("/me/sessions") || uri.contains("/auth/sessions")) {
+            return "auth_session";
+        }
         String path = uri.replaceFirst("^/api/?", "");
         int separator = path.indexOf('/');
         return separator < 0 ? path : path.substring(0, separator);

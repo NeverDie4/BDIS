@@ -1,9 +1,9 @@
 "use client";
 
 import { Badge, Button, Drawer, Space, Tooltip, Typography } from "antd";
-import { BellOutlined, SafetyCertificateOutlined, SettingOutlined } from "@ant-design/icons";
+import { BellOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { getPortalNavigationRoutes } from "@/config/routes";
 import { useAuthStore } from "@/stores/auth-store";
@@ -35,7 +35,6 @@ function isActivePath(pathname: string, href: string) {
 
 export function HeaderNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const [notificationOpen, setNotificationOpen] = useState(false);
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
@@ -79,16 +78,6 @@ export function HeaderNav() {
               onClick={() => setNotificationOpen(true)}
             />
           </Badge>
-        </Tooltip>
-        <Tooltip title="设置">
-          <Button
-            aria-label="进入设置"
-            className={styles.iconButton}
-            icon={<SettingOutlined />}
-            shape="circle"
-            type="text"
-            onClick={() => router.push("/settings")}
-          />
         </Tooltip>
         <UserMenu />
       </Space>

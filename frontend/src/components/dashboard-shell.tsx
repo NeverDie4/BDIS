@@ -22,6 +22,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./dashboard-shell.module.css";
+import { useSettingNamespace } from "@/hooks/settings/useSettingNamespace";
+import type { AppearanceSettings } from "@/types/settings";
 
 const { Header, Sider, Content } = Layout;
 
@@ -47,6 +49,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [loadError, setLoadError] = useState<string>();
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const appearance = useSettingNamespace<AppearanceSettings>("appearance", Boolean(user));
+  const sidebarMode = appearance.data?.values.sidebarMode ?? "auto";
+
+  useEffect(() => {
+    if (mobile) {
+      setCollapsed(true);
+      return;
+    }
+    setCollapsed(sidebarMode === "collapsed");
+  }, [mobile, sidebarMode]);
 
   const loadMenus = useCallback(async () => {
     if (!user) {
@@ -115,7 +127,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         trigger={null}
         onBreakpoint={(broken) => {
           setMobile(broken);
-          setCollapsed(broken);
+          setCollapsed(broken || sidebarMode === "collapsed");
         }}
       >
         <Link href="/dashboard" className={styles.brand}>

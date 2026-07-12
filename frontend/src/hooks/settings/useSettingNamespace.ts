@@ -4,12 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPut } from "@/lib/request";
 import type { SettingNamespace } from "@/types/settings";
 
-export function useSettingNamespace<T extends object>(namespace: string) {
+export function useSettingNamespace<T extends object>(namespace: string, enabled = true) {
   const queryClient = useQueryClient();
   const queryKey = ["settings", namespace] as const;
   const query = useQuery({
     queryKey,
     queryFn: () => apiGet<SettingNamespace<T>>(`/me/settings/${namespace}`),
+    enabled,
   });
   const save = useMutation({
     mutationFn: (values: T) =>

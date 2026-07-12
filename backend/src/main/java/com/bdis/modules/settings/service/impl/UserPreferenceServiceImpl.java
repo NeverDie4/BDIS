@@ -2,8 +2,8 @@ package com.bdis.modules.settings.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.exception.DuplicateResourceException;
 import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.ResourceConflictException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.common.security.SecurityUtils;
@@ -82,7 +82,7 @@ public class UserPreferenceServiceImpl implements UserPreferenceService {
         UserPreferenceEntity existing = find(user.getUserId(), namespace);
         if (existing == null) {
             if (request.getVersion() != 0) {
-                throw new DuplicateResourceException("设置已被其他请求修改，请刷新后重试");
+                throw new ResourceConflictException("设置已被其他请求修改，请刷新后重试");
             }
             UserPreferenceEntity entity = new UserPreferenceEntity();
             entity.setUserId(user.getUserId());
@@ -93,17 +93,17 @@ public class UserPreferenceServiceImpl implements UserPreferenceService {
             try {
                 preferenceMapper.insert(entity);
             } catch (DuplicateKeyException exception) {
-                throw new DuplicateResourceException("设置已被其他请求修改，请刷新后重试");
+                throw new ResourceConflictException("设置已被其他请求修改，请刷新后重试");
             }
             return toVO(entity.getVersion(), entity.getSchemaVersion(), normalized);
         }
         if (!existing.getVersion().equals(request.getVersion())) {
-            throw new DuplicateResourceException("设置已被其他请求修改，请刷新后重试");
+            throw new ResourceConflictException("设置已被其他请求修改，请刷新后重试");
         }
         existing.setPreferenceData(data);
         existing.setSchemaVersion(handler.schemaVersion());
         if (preferenceMapper.updateById(existing) != 1) {
-            throw new DuplicateResourceException("设置已被其他请求修改，请刷新后重试");
+            throw new ResourceConflictException("设置已被其他请求修改，请刷新后重试");
         }
         return toVO(existing.getVersion(), existing.getSchemaVersion(), normalized);
     }

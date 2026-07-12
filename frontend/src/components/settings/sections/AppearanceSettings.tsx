@@ -12,6 +12,7 @@ import { SettingSelectRow } from "../SettingSelectRow";
 import { SettingSwitchRow } from "../SettingSwitchRow";
 import { SettingsFormActions } from "../SettingsFormActions";
 import { SettingsSection } from "../SettingsSection";
+import { useSettingsDirty } from "../SettingsDirtyContext";
 
 export function AppearanceSettings() {
   const { message } = App.useApp();
@@ -19,6 +20,8 @@ export function AppearanceSettings() {
   const [commonForm] = Form.useForm<CommonValues>();
   const setting = useSettingNamespace<AppearanceValues>("appearance");
   const common = useSettingNamespace<CommonValues>("common");
+  const setCommonDirty = useSettingsDirty("appearance-common");
+  const setAppearanceDirty = useSettingsDirty("appearance-ui");
   useEffect(() => {
     if (setting.data) form.setFieldsValue(setting.data.values);
   }, [form, setting.data]);
@@ -31,9 +34,13 @@ export function AppearanceSettings() {
       <SettingsSection title="常规偏好">
         <Form
           form={commonForm}
+          onValuesChange={() => setCommonDirty(true)}
           onFinish={(values) =>
             common.save.mutate(values, {
-              onSuccess: () => message.success("常规偏好已保存"),
+              onSuccess: () => {
+                setCommonDirty(false);
+                message.success("常规偏好已保存");
+              },
               onError: (error) => message.error(getApiErrorMessage(error)),
             })
           }
@@ -63,7 +70,10 @@ export function AppearanceSettings() {
             saving={common.save.isPending}
             onReset={() =>
               common.reset.mutate(undefined, {
-                onSuccess: (data) => commonForm.setFieldsValue(data.values),
+                onSuccess: (data) => {
+                  commonForm.setFieldsValue(data.values);
+                  setCommonDirty(false);
+                },
               })
             }
           />
@@ -72,9 +82,13 @@ export function AppearanceSettings() {
       <SettingsSection title="界面偏好">
         <Form
           form={form}
+          onValuesChange={() => setAppearanceDirty(true)}
           onFinish={(values) =>
             setting.save.mutate(values, {
-              onSuccess: () => message.success("界面偏好已保存"),
+              onSuccess: () => {
+                setAppearanceDirty(false);
+                message.success("界面偏好已保存");
+              },
               onError: (error) => message.error(getApiErrorMessage(error)),
             })
           }
@@ -102,7 +116,10 @@ export function AppearanceSettings() {
             saving={setting.save.isPending}
             onReset={() =>
               setting.reset.mutate(undefined, {
-                onSuccess: (data) => form.setFieldsValue(data.values),
+                onSuccess: (data) => {
+                  form.setFieldsValue(data.values);
+                  setAppearanceDirty(false);
+                },
               })
             }
           />

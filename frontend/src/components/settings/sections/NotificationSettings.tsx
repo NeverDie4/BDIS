@@ -8,12 +8,14 @@ import type { NotificationSettings as NotificationValues } from "@/types/setting
 import { SettingSwitchRow } from "../SettingSwitchRow";
 import { SettingsFormActions } from "../SettingsFormActions";
 import { SettingsSection } from "../SettingsSection";
+import { useSettingsDirty } from "../SettingsDirtyContext";
 import styles from "../settings.module.css";
 
 export function NotificationSettings() {
   const { message } = App.useApp();
   const [form] = Form.useForm<NotificationValues>();
   const setting = useSettingNamespace<NotificationValues>("notification");
+  const setDirty = useSettingsDirty("notification");
   useEffect(() => {
     if (setting.data) form.setFieldsValue(setting.data.values);
   }, [form, setting.data]);
@@ -22,9 +24,13 @@ export function NotificationSettings() {
     <SettingsSection title="通知偏好">
       <Form
         form={form}
+        onValuesChange={() => setDirty(true)}
         onFinish={(values) =>
           setting.save.mutate(values, {
-            onSuccess: () => message.success("通知偏好已保存"),
+            onSuccess: () => {
+              setDirty(false);
+              message.success("通知偏好已保存");
+            },
             onError: (error) => message.error(getApiErrorMessage(error)),
           })
         }
@@ -47,7 +53,10 @@ export function NotificationSettings() {
           saving={setting.save.isPending}
           onReset={() =>
             setting.reset.mutate(undefined, {
-              onSuccess: (data) => form.setFieldsValue(data.values),
+              onSuccess: (data) => {
+                form.setFieldsValue(data.values);
+                setDirty(false);
+              },
             })
           }
         />

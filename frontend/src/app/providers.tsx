@@ -6,6 +6,7 @@ import zhCN from "antd/locale/zh_CN";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { RouteAccessBoundary } from "@/components/auth/RouteAccessBoundary";
+import { AppearancePreferenceBridge } from "@/components/settings/AppearancePreferenceBridge";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -62,6 +63,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <App>
         <QueryClientProvider client={queryClient}>
+          <AppearancePreferenceBridge />
           <RouteAccessBoundary>{children}</RouteAccessBoundary>
         </QueryClientProvider>
       </App>

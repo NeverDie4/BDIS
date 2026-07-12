@@ -11,6 +11,7 @@ public class AuditLogQuery extends BaseQuery {
     private Long operatorId;
     private String operationModule;
     private String operationType;
+    private String operationResult;
     private String bizType;
     private Long bizId;
 }

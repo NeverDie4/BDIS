@@ -6,7 +6,16 @@ import {
   DashboardPanel,
 } from "@/components/dashboard/DashboardPage";
 import { useAuthStore } from "@/stores/auth-store";
-import { ArrowRight, Building2, IdCard, KeyRound, Network, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  ClipboardList,
+  IdCard,
+  KeyRound,
+  Network,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import styles from "./page.module.css";
 
@@ -45,6 +54,13 @@ const adminEntries = [
     title: "部门管理",
     description: "维护部门层级、所属机构和排序状态。",
     icon: Network,
+  },
+  {
+    path: "/dashboard/audit",
+    permission: "audit:log:view",
+    title: "操作审计",
+    description: "查询后台操作、个人设置和认证会话的执行结果。",
+    icon: ClipboardList,
   },
 ];
 

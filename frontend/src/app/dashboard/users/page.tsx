@@ -17,7 +17,7 @@ import {
 } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { Department, Organization, PageResult, Role, User } from "@/types/api";
-import { App, Button, Form, Input, Popconfirm, Select, Space, Table, Tag } from "antd";
+import { App, Button, Form, Input, Popconfirm, Select, Space, Switch, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Pencil, Plus, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -32,6 +32,13 @@ type UserForm = {
   departmentId?: number;
   status?: number;
   roleIds?: number[];
+  mustChangePassword?: boolean;
+};
+
+type PasswordResetForm = {
+  newPassword: string;
+  confirmPassword: string;
+  mustChangePassword: boolean;
 };
 
 export default function UsersPage() {
@@ -43,8 +50,10 @@ export default function UsersPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
   const [form] = Form.useForm<UserForm>();
+  const [passwordForm] = Form.useForm<PasswordResetForm>();
 
   const canUpdate = hasPermission("auth:user:update");
   const canAssignRole = hasPermission("auth:user:assign-role");
@@ -91,7 +100,7 @@ export default function UsersPage() {
   function openCreate() {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ status: 1 });
+    form.setFieldsValue({ status: 1, mustChangePassword: true });
     setOpen(true);
   }
 
@@ -142,6 +151,13 @@ export default function UsersPage() {
       render: (value?: number) => <DashboardStatus enabled={value === 1} />,
     },
     {
+      title: "首次改密",
+      dataIndex: "mustChangePassword",
+      width: 100,
+      render: (value?: boolean) =>
+        value ? <Tag color="orange">待修改</Tag> : <Tag>已完成</Tag>,
+    },
+    {
       title: "操作",
       key: "action",
       width: 176,
@@ -151,6 +167,18 @@ export default function UsersPage() {
           {canUpdate || canAssignRole ? (
             <Button size="small" icon={<Pencil size={14} />} onClick={() => openEdit(record)}>
               {canUpdate ? "编辑" : "分配角色"}
+            </Button>
+          ) : null}
+          {canUpdate ? (
+            <Button
+              size="small"
+              onClick={() => {
+                setPasswordUser(record);
+                passwordForm.resetFields();
+                passwordForm.setFieldsValue({ mustChangePassword: true });
+              }}
+            >
+              重置密码
             </Button>
           ) : null}
           {canDelete ? (
@@ -253,6 +281,13 @@ export default function UsersPage() {
             >
               <Input.Password />
             </Form.Item>
+            <Form.Item
+              name="mustChangePassword"
+              label="首次登录修改密码"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
           </>
         ) : null}
         {canUpdate || !editing ? (
@@ -316,6 +351,57 @@ export default function UsersPage() {
             />
           </Form.Item>
         ) : null}
+      </DashboardFormModal>
+      <DashboardFormModal<PasswordResetForm>
+        title={`重置密码${passwordUser ? `：${passwordUser.username}` : ""}`}
+        open={Boolean(passwordUser)}
+        form={passwordForm}
+        submitText="确认重置"
+        errorMessage="密码重置失败"
+        onCancel={() => setPasswordUser(null)}
+        onFinish={async (values) => {
+          if (!passwordUser) return;
+          await apiPut<void>(`/users/${passwordUser.id}/password`, {
+            newPassword: values.newPassword,
+            mustChangePassword: values.mustChangePassword,
+          });
+          message.success("密码已重置，原有会话已撤销");
+          setPasswordUser(null);
+          passwordForm.resetFields();
+          await load();
+        }}
+      >
+        <Form.Item
+          label="新密码"
+          name="newPassword"
+          rules={[{ required: true }, { min: 8, max: 72 }]}
+        >
+          <Input.Password autoComplete="new-password" />
+        </Form.Item>
+        <Form.Item
+          dependencies={["newPassword"]}
+          label="确认新密码"
+          name="confirmPassword"
+          rules={[
+            { required: true },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                return !value || getFieldValue("newPassword") === value
+                  ? Promise.resolve()
+                  : Promise.reject(new Error("两次输入的密码不一致"));
+              },
+            }),
+          ]}
+        >
+          <Input.Password autoComplete="new-password" />
+        </Form.Item>
+        <Form.Item
+          label="下次登录强制修改密码"
+          name="mustChangePassword"
+          valuePropName="checked"
+        >
+          <Switch />
+        </Form.Item>
       </DashboardFormModal>
     </DashboardPage>
   );

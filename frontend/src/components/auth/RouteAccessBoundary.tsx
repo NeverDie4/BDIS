@@ -52,12 +52,20 @@ export function RouteAccessBoundary({ children }: { children: React.ReactNode })
   }, [initializeSession, retryVersion, status]);
 
   useEffect(() => {
+    if (
+      status === "authenticated" &&
+      user?.mustChangePassword &&
+      pathname !== "/settings"
+    ) {
+      router.replace("/settings?tab=security");
+      return;
+    }
     if (access === "anonymous") {
       router.replace(buildLoginUrl(getCurrentRelativeUrl()));
     } else if (access === "forbidden" && pathname !== "/forbidden") {
       router.replace(`/forbidden?from=${encodeURIComponent(pathname)}`);
     }
-  }, [access, pathname, router]);
+  }, [access, pathname, router, status, user?.mustChangePassword]);
 
   if (route?.public) {
     return children;

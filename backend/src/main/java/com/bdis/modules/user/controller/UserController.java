@@ -3,6 +3,7 @@ package com.bdis.modules.user.controller;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.user.dto.AdminPasswordResetDTO;
 import com.bdis.modules.user.dto.RoleAssignDTO;
 import com.bdis.modules.user.dto.UserCreateDTO;
 import com.bdis.modules.user.dto.UserUpdateDTO;
@@ -80,6 +81,14 @@ public class UserController {
             @PathVariable Long userId, @Valid @RequestBody RoleAssignDTO dto) {
         authorizationService.requirePermission("auth:user:assign-role");
         userService.assignRoles(userId, dto);
+        return Result.success();
+    }
+
+    @PutMapping("/{userId}/password")
+    public Result<Void> resetPassword(
+            @PathVariable Long userId, @Valid @RequestBody AdminPasswordResetDTO dto) {
+        authorizationService.requirePermission("auth:user:update");
+        userService.resetPassword(userId, dto);
         return Result.success();
     }
 

@@ -66,6 +66,10 @@ public class AuditLogServiceImpl implements AuditLogService {
                                 OperationLogEntity::getOperationType,
                                 query.getOperationType())
                         .eq(
+                                query.getOperationResult() != null,
+                                OperationLogEntity::getResultStatus,
+                                query.getOperationResult())
+                        .eq(
                                 query.getBizType() != null,
                                 OperationLogEntity::getBizType,
                                 query.getBizType())

@@ -81,6 +81,7 @@ export type User = {
   departmentId?: number;
   status?: number;
   lastLoginAt?: string;
+  mustChangePassword?: boolean;
   roles?: Role[];
 };
 

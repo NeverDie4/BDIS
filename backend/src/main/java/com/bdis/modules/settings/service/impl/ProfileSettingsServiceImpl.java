@@ -2,6 +2,7 @@ package com.bdis.modules.settings.service.impl;
 
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.PasswordVerificationException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.common.security.SecurityUtils;
@@ -115,7 +116,7 @@ public class ProfileSettingsServiceImpl implements ProfileSettingsService {
     public void updatePassword(PasswordUpdateRequest request) {
         UserEntity user = requireCurrentUser();
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new BusinessException("当前密码不正确");
+            throw new PasswordVerificationException();
         }
         if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
             throw new BusinessException("新密码不能与当前密码相同");

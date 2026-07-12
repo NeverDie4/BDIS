@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.user.dto.AdminPasswordResetDTO;
 import com.bdis.modules.user.dto.UserCreateDTO;
 import com.bdis.modules.user.dto.UserUpdateDTO;
 import com.bdis.modules.user.service.UserService;
@@ -71,5 +72,17 @@ class UserControllerTest {
         verify(authorizationService).requirePermission("auth:user:update");
         verify(authorizationService).requirePermission("auth:user:assign-role");
         verify(userService).patch(8L, dto);
+    }
+
+    @Test
+    void passwordResetShouldRequireUserUpdatePermission() {
+        AdminPasswordResetDTO dto = new AdminPasswordResetDTO();
+        dto.setNewPassword("NewPassword123");
+
+        controller.resetPassword(8L, dto);
+
+        InOrder order = inOrder(authorizationService, userService);
+        order.verify(authorizationService).requirePermission("auth:user:update");
+        order.verify(userService).resetPassword(8L, dto);
     }
 }

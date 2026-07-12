@@ -9,6 +9,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { UserSession } from "@/types/settings";
 import { SettingsFormActions } from "../SettingsFormActions";
 import { SettingsSection } from "../SettingsSection";
+import { useSettingsDirty } from "../SettingsDirtyContext";
 import styles from "../settings.module.css";
 
 export function SecuritySettings() {
@@ -17,6 +18,7 @@ export function SecuritySettings() {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const queryClient = useQueryClient();
+  const setDirty = useSettingsDirty("security-password");
   const sessions = useQuery({
     queryKey: ["settings", "sessions"],
     queryFn: () => apiGet<UserSession[]>("/me/sessions"),
@@ -25,6 +27,7 @@ export function SecuritySettings() {
     mutationFn: (values: { currentPassword: string; newPassword: string }) =>
       apiPut<void>("/me/password", { ...values, revokeOtherSessions: true }),
     onSuccess: () => {
+      setDirty(false);
       message.success("密码已修改，请重新登录");
       clearAuth();
       router.push("/login");
@@ -58,6 +61,7 @@ export function SecuritySettings() {
           form={form}
           className={styles.passwordForm}
           layout="vertical"
+          onValuesChange={() => setDirty(true)}
           onFinish={(values) => changePassword.mutate(values)}
         >
           <Form.Item label="当前密码" name="currentPassword" rules={[{ required: true }]}>

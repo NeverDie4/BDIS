@@ -7,15 +7,20 @@ import { ImageUp, Trash2, UserRound } from "lucide-react";
 import { useEffect } from "react";
 import { uploadFile } from "@/lib/files";
 import { apiDelete, apiGet, apiPatch, apiPut, getApiErrorMessage } from "@/lib/request";
+import { useAuthStore } from "@/stores/auth-store";
 import type { ProfileSettings as ProfileSettingsData } from "@/types/settings";
 import { SettingsFormActions } from "../SettingsFormActions";
 import { SettingsSection } from "../SettingsSection";
+import { useSettingsDirty } from "../SettingsDirtyContext";
 import styles from "../settings.module.css";
 
 export function ProfileSettings() {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const setDirty = useSettingsDirty("profile");
+  const authUser = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
   const profile = useQuery({
     queryKey: ["settings", "profile"],
     queryFn: () => apiGet<ProfileSettingsData>("/me/profile"),
@@ -28,6 +33,8 @@ export function ProfileSettings() {
       apiPatch<ProfileSettingsData>("/me/profile", values),
     onSuccess: (data) => {
       queryClient.setQueryData(["settings", "profile"], data);
+      if (authUser) setUser({ ...authUser, realName: data.realName });
+      setDirty(false);
       message.success("个人资料已保存");
     },
     onError: (error) => message.error(getApiErrorMessage(error, "保存失败")),
@@ -85,7 +92,12 @@ export function ProfileSettings() {
             ) : null}
           </Space>
         </div>
-        <Form form={form} layout="vertical" onFinish={(values) => save.mutate(values)}>
+        <Form
+          form={form}
+          layout="vertical"
+          onValuesChange={() => setDirty(true)}
+          onFinish={(values) => save.mutate(values)}
+        >
           <div className={styles.formGrid}>
             <Form.Item label="姓名" name="realName" rules={[{ max: 50 }]}>
               <Input />
