@@ -1,0 +1,237 @@
+.shell {
+  min-height: 100vh;
+  background: #f7f3e9;
+}
+
+.sider {
+  z-index: 10;
+  overflow: hidden;
+  border-right: 1px solid #ded5c5;
+  background: rgba(251, 248, 240, 0.98) !important;
+  box-shadow: 6px 0 24px rgba(65, 53, 37, 0.055);
+}
+
+.brand {
+  display: flex;
+  min-height: 84px;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e3dacb;
+  color: var(--color-primary);
+}
+
+.brandMark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 5px;
+  background: rgba(var(--color-primary-rgb), 0.07);
+  color: #55705f;
+}
+
+.brandText {
+  min-width: 0;
+}
+
+.brandSub {
+  display: block;
+  margin-top: 4px;
+  color: #7b766d;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.brandName {
+  display: block;
+  overflow: hidden;
+  color: var(--color-primary);
+  font-family: var(--font-brand);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu {
+  padding: 14px 10px;
+  border-inline-end: 0 !important;
+  background: transparent !important;
+  color: #424b44;
+  font-family: var(--font-ui);
+}
+
+.menu :global(.ant-menu-item),
+.menu :global(.ant-menu-submenu-title) {
+  position: relative;
+  height: 44px;
+  margin: 3px 0;
+  border-radius: 6px;
+  color: #424b44 !important;
+  line-height: 44px;
+}
+
+.menu :global(.ant-menu-item:hover),
+.menu :global(.ant-menu-submenu-title:hover) {
+  background: #f0ece2 !important;
+  color: var(--color-primary) !important;
+}
+
+.menu :global(.ant-menu-item-selected) {
+  background: #e4eee4 !important;
+  color: var(--color-primary) !important;
+  font-weight: 700;
+}
+
+.menu :global(.ant-menu-item-selected)::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-primary);
+  content: "";
+}
+
+.menu :global(.ant-menu-sub) {
+  background: rgba(237, 232, 220, 0.55) !important;
+}
+
+.body {
+  min-width: 0;
+  background: #f7f3e9 !important;
+}
+
+.header {
+  display: flex;
+  height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #ded5c5;
+  background: rgba(251, 248, 240, 0.94) !important;
+  padding: 0 24px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(119, 102, 77, 0.04);
+}
+
+.headerLeft,
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menuButton {
+  display: none;
+}
+
+.portalLink,
+.userInfo {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: #4b574f;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.portalLink:hover {
+  background: #efebe2;
+  color: var(--color-primary);
+}
+
+.userName {
+  color: #4b574f;
+  font-weight: 700;
+}
+
+.userDivider {
+  width: 1px;
+  height: 14px;
+  background: #cfc6b7;
+}
+
+.roleText {
+  color: #7a766d;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.logoutButton {
+  min-height: 36px;
+  padding: 0 10px !important;
+  border-radius: 6px !important;
+  color: #8b493f !important;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.logoutButton:hover {
+  background: #f2e8e3 !important;
+  color: #9f382e !important;
+}
+
+.content {
+  position: relative;
+  min-height: calc(100vh - 68px);
+  padding: 30px 28px 42px;
+  background-color: #f4f1e9;
+  background-image:
+    linear-gradient(rgba(126, 105, 73, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(126, 105, 73, 0.018) 1px, transparent 1px),
+    linear-gradient(180deg, #f8f5ee 0, #f2efe7 240px, #f5f2eb 100%);
+  background-size:
+    64px 64px,
+    64px 64px,
+    100% 100%;
+}
+
+.loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #f7f3e9;
+}
+
+@media (max-width: 991px) {
+  .sider {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    height: 100vh;
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+
+  .roleText,
+  .portalLabel {
+    display: none;
+  }
+
+  .userDivider {
+    display: none;
+  }
+
+  .header {
+    padding: 0 16px;
+  }
+
+  .content {
+    padding: 18px 14px 28px;
+  }
+}

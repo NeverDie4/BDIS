@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import type { ApiResult } from "@/types/api";
+import { buildLoginUrl, getCurrentRelativeUrl } from "./auth-navigation";
 import { clearStoredToken, getStoredToken } from "./auth-token";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
@@ -34,7 +35,7 @@ request.interceptors.response.use(
       clearStoredToken();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         (error as AuthRedirectError)[AUTH_REDIRECT_FLAG] = true;
-        window.location.href = "/login";
+        window.location.href = buildLoginUrl(getCurrentRelativeUrl());
       }
     }
     return Promise.reject(error);

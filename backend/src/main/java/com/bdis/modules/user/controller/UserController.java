@@ -42,6 +42,7 @@ public class UserController {
     @PostMapping
     public Result<Long> create(@Valid @RequestBody UserCreateDTO dto) {
         authorizationService.requirePermission("auth:user:create");
+        authorizationService.requirePermission("auth:user:assign-role");
         return Result.success(userService.create(dto));
     }
 
@@ -54,6 +55,7 @@ public class UserController {
     @PutMapping("/{userId}")
     public Result<Void> update(@PathVariable Long userId, @Valid @RequestBody UserUpdateDTO dto) {
         authorizationService.requirePermission("auth:user:update");
+        requireRoleAssignmentPermission(dto);
         userService.update(userId, dto);
         return Result.success();
     }
@@ -61,6 +63,7 @@ public class UserController {
     @PatchMapping("/{userId}")
     public Result<Void> patch(@PathVariable Long userId, @Valid @RequestBody UserUpdateDTO dto) {
         authorizationService.requirePermission("auth:user:update");
+        requireRoleAssignmentPermission(dto);
         userService.patch(userId, dto);
         return Result.success();
     }
@@ -78,5 +81,11 @@ public class UserController {
         authorizationService.requirePermission("auth:user:assign-role");
         userService.assignRoles(userId, dto);
         return Result.success();
+    }
+
+    private void requireRoleAssignmentPermission(UserUpdateDTO dto) {
+        if (dto.getRoleIds() != null) {
+            authorizationService.requirePermission("auth:user:assign-role");
+        }
     }
 }

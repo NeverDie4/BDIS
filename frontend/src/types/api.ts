@@ -36,6 +36,7 @@ export type MenuItem = {
   menuCode: string;
   menuName: string;
   routePath?: string;
+  componentPath?: string;
   icon?: string;
   visible?: number;
   sortOrder?: number;

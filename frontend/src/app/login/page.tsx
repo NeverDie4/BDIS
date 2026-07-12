@@ -1,6 +1,7 @@
 "use client";
 
 import { apiPost, getApiErrorMessage } from "@/lib/request";
+import { resolvePostLoginPath } from "@/config/routes";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CurrentUser, LoginResult } from "@/types/api";
 import { LockKeyhole, UserRound } from "lucide-react";
@@ -29,7 +30,13 @@ export default function LoginPage() {
       const result = await apiPost<LoginResult>("/auth/sessions", values);
       setAuth(result.accessToken, result.user);
       message.success("登录成功");
-      router.replace("/dashboard");
+      const returnUrl = resolvePostLoginPath(
+        result.user,
+        typeof window === "undefined"
+          ? undefined
+          : new URLSearchParams(window.location.search).get("returnUrl"),
+      );
+      router.replace(returnUrl);
     } catch (error) {
       message.error(getApiErrorMessage(error, "登录失败"));
     }

@@ -1,8 +1,8 @@
 "use client";
 
-import { UserOutlined } from "@ant-design/icons";
 import { App, Avatar, Dropdown } from "antd";
 import type { MenuProps } from "antd";
+import { LogOut, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiDelete } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
@@ -13,11 +13,22 @@ export function UserMenu() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const displayName = user?.realName || user?.username || "当前用户";
+  const roleText = user?.roleCodes.length ? user.roleCodes.join(" / ") : "未分配角色";
 
   const items: MenuProps["items"] = [
-    { key: "profile", label: user?.realName || user?.username || "个人主页" },
+    {
+      key: "profile",
+      icon: <UserRound size={16} />,
+      label: "个人主页",
+    },
     { type: "divider" },
-    { key: "logout", danger: true, label: "退出登录" },
+    {
+      key: "logout",
+      danger: true,
+      icon: <LogOut size={16} />,
+      label: "退出登录",
+    },
   ];
 
   async function onClick({ key }: { key: string }) {
@@ -36,9 +47,29 @@ export function UserMenu() {
   }
 
   return (
-    <Dropdown menu={{ items, onClick }} placement="bottomRight" trigger={["click"]}>
+    <Dropdown
+      menu={{ items, onClick, className: styles.menu }}
+      placement="bottomRight"
+      trigger={["click"]}
+      popupRender={(menu) => (
+        <div className={styles.popup}>
+          <div className={styles.identity}>
+            <Avatar className={styles.identityAvatar} icon={<UserRound size={19} />} size={42} />
+            <div className={styles.identityText}>
+              <strong>{displayName}</strong>
+              <span>{user?.username || "-"}</span>
+            </div>
+          </div>
+          <div className={styles.roleLine}>
+            <span>当前角色</span>
+            <strong>{roleText}</strong>
+          </div>
+          {menu}
+        </div>
+      )}
+    >
       <button aria-label="打开用户菜单" className={styles.avatarButton} type="button">
-        <Avatar icon={<UserOutlined />} size={34} />
+        <Avatar icon={<UserRound size={18} />} size={34} />
       </button>
     </Dropdown>
   );
