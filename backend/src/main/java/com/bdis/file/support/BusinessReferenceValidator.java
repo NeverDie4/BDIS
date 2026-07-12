@@ -21,6 +21,9 @@ public class BusinessReferenceValidator {
                             "herb_species",
                             new BusinessReference("herb_species", "herb:species:view")),
                     Map.entry(
+                            "sys_file_resource",
+                            new BusinessReference("sys_file_resource", "file:resource:view")),
+                    Map.entry(
                             "herb_image",
                             new BusinessReference("herb_image", "herb:identification:view")),
                     Map.entry(
@@ -34,10 +37,21 @@ public class BusinessReferenceValidator {
                             new BusinessReference("herb_batch", "growth:record:view")),
                     Map.entry(
                             "eval_application",
-                            new BusinessReference("eval_application", "file:resource:view")),
+                            new BusinessReference(
+                                    "eval_application", "declaration:application:view")),
+                    Map.entry(
+                            "eval_attachment",
+                            new BusinessReference(
+                                    "eval_attachment", "declaration:application:view")),
+                    Map.entry(
+                            "eval_archive",
+                            new BusinessReference("eval_archive", "declaration:application:view")),
+                    Map.entry(
+                            "eval_task",
+                            new BusinessReference("eval_task", "evaluation:task:view")),
                     Map.entry(
                             "perf_record",
-                            new BusinessReference("perf_record", "file:resource:view")),
+                            new BusinessReference("perf_record", "performance:record:view")),
                     Map.entry(
                             "research_project",
                             new BusinessReference("research_project", "file:resource:view")),
@@ -68,7 +82,8 @@ public class BusinessReferenceValidator {
         if (bizId == null || bizId <= 0) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "业务 ID 不合法");
         }
-        BusinessReference reference = REFERENCES.get(bizType);
+        String normalizedType = normalizeType(bizType);
+        BusinessReference reference = REFERENCES.get(normalizedType);
         if (reference == null) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "不支持的业务类型");
         }
@@ -85,7 +100,7 @@ public class BusinessReferenceValidator {
         if (count == null || count == 0) {
             throw new BusinessException(ResultCodeEnum.NOT_FOUND, "关联业务对象不存在");
         }
-        if (!hasRowAccess(bizType, bizId)) {
+        if (!hasRowAccess(normalizedType, bizId)) {
             throw new ForbiddenException("业务对象超出当前数据范围");
         }
     }
@@ -152,7 +167,70 @@ public class BusinessReferenceValidator {
                     || canAccessGrowthCollector(number(owner.get("task_created_by")))
                     || canAccessGrowthCollector(number(owner.get("task_collector_id")));
         }
+        if ("eval_application".equals(bizType)) {
+            return canAccessOwner(
+                    ownerId("select applicant_id from eval_application where id = ?", bizId),
+                    "eval_application");
+        }
+        if ("eval_attachment".equals(bizType)) {
+            return canAccessOwner(
+                    ownerId(
+                            """
+                            select application.applicant_id
+                            from eval_attachment attachment
+                            join eval_application application
+                              on application.id = attachment.application_id
+                             and application.is_deleted = 0
+                            where attachment.id = ? and attachment.is_deleted = 0
+                            """,
+                            bizId),
+                    "eval_application");
+        }
+        if ("eval_archive".equals(bizType)) {
+            return canAccessOwner(
+                    ownerId("select owner_id from eval_archive where id = ?", bizId),
+                    "eval_application");
+        }
+        if ("eval_task".equals(bizType)) {
+            return canAccessOwner(
+                    ownerId("select owner_id from eval_task where id = ?", bizId), "eval_task");
+        }
+        if ("perf_record".equals(bizType)) {
+            return canAccessOwner(
+                    ownerId("select user_id from perf_record where id = ?", bizId), "perf_record");
+        }
         return true;
+    }
+
+    private Long ownerId(String sql, Long bizId) {
+        List<Long> owners = jdbcTemplate.queryForList(sql, Long.class, bizId);
+        return owners.isEmpty() ? null : owners.getFirst();
+    }
+
+    private boolean canAccessOwner(Long ownerId, String resourceType) {
+        if (ownerId != null && ownerId.equals(CurrentUserUtils.currentUserId())) {
+            return true;
+        }
+        if (ownerId == null) {
+            return false;
+        }
+        DataScopeResultVO scope = dataScopeService.resolveForCurrentUser(resourceType);
+        if (scope.isAllIncluded()) {
+            return true;
+        }
+        List<Map<String, Object>> users =
+                jdbcTemplate.queryForList(
+                        "select organization_id, department_id from sys_user where id = ? and"
+                                + " is_deleted = 0",
+                        ownerId);
+        if (users.isEmpty()) {
+            return false;
+        }
+        Map<String, Object> user = users.getFirst();
+        Long organizationId = number(user.get("organization_id"));
+        Long departmentId = number(user.get("department_id"));
+        return (organizationId != null && scope.getOrganizationIds().contains(organizationId))
+                || (departmentId != null && scope.getDepartmentIds().contains(departmentId));
     }
 
     private boolean canAccessGrowthCollector(Long collectorId) {
@@ -183,6 +261,19 @@ public class BusinessReferenceValidator {
 
     private Long number(Object value) {
         return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private String normalizeType(String bizType) {
+        return switch (bizType) {
+            case "herb" -> "herb_species";
+            case "declaration", "application" -> "eval_application";
+            case "attachment" -> "eval_attachment";
+            case "archive" -> "eval_archive";
+            case "evaluation_task" -> "eval_task";
+            case "performance" -> "perf_record";
+            case "file" -> "sys_file_resource";
+            default -> bizType;
+        };
     }
 
     private record BusinessReference(String tableName, String permissionCode) {}
