@@ -21,6 +21,7 @@ export type CurrentUser = {
   roleCodes: string[];
   roleIds: number[];
   permissions: string[];
+  mustChangePassword?: boolean;
 };
 
 export type LoginResult = {
@@ -28,6 +29,8 @@ export type LoginResult = {
   tokenType: "Bearer";
   expiresIn: number;
   user: CurrentUser;
+  preferredLandingPath?: string;
+  mustChangePassword?: boolean;
 };
 
 export type MenuItem = {

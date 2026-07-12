@@ -5,6 +5,8 @@ import com.bdis.common.core.Result;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.UnauthorizedException;
 import com.bdis.modules.auth.service.CurrentUserService;
+import com.bdis.modules.settings.entity.UserSessionEntity;
+import com.bdis.modules.settings.service.UserSessionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,16 +30,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final CurrentUserService currentUserService;
 
+    private final UserSessionService userSessionService;
+
     private final ObjectMapper objectMapper;
 
     public JwtAuthenticationFilter(
             JwtUtils jwtUtils,
             TokenBlacklistService tokenBlacklistService,
             CurrentUserService currentUserService,
+            UserSessionService userSessionService,
             ObjectMapper objectMapper) {
         this.jwtUtils = jwtUtils;
         this.tokenBlacklistService = tokenBlacklistService;
         this.currentUserService = currentUserService;
+        this.userSessionService = userSessionService;
         this.objectMapper = objectMapper;
     }
 
@@ -56,6 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (tokenBlacklistService.isBlacklisted(claims.jti())) {
                 throw new UnauthorizedException("Token 已退出登录");
             }
+            UserSessionEntity session = userSessionService.validate(claims);
             CurrentUser user = currentUserService.load(claims.userId());
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
@@ -64,6 +71,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             user.getPermissions().stream()
                                     .map(SimpleGrantedAuthority::new)
                                     .toList());
+            authentication.setDetails(
+                    new SessionAuthenticationDetails(
+                            session.getSessionId(),
+                            claims.jti(),
+                            claims.issuedAt(),
+                            claims.expiresAt()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
         } catch (UnauthorizedException exception) {

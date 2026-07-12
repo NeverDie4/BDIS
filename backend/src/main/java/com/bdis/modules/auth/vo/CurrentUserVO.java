@@ -23,4 +23,6 @@ public class CurrentUserVO {
     private Set<Long> roleIds;
 
     private Set<String> permissions;
+
+    private Boolean mustChangePassword;
 }

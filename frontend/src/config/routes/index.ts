@@ -63,10 +63,18 @@ export function getPortalNavigationRoutes(status: AuthStatus, user: CurrentUser 
     .sort((left, right) => (left.navOrder ?? 0) - (right.navOrder ?? 0));
 }
 
-export function resolvePostLoginPath(user: CurrentUser, requestedPath: string | null | undefined) {
+export function resolvePostLoginPath(
+  user: CurrentUser,
+  requestedPath: string | null | undefined,
+  preferredPath?: string,
+) {
   const safeRequestedPath = resolveSafeReturnUrl(requestedPath, "");
   if (safeRequestedPath && canAccessPath(user, safeRequestedPath)) {
     return safeRequestedPath;
+  }
+
+  if (preferredPath && canAccessPath(user, preferredPath)) {
+    return preferredPath;
   }
 
   if (hasUserPermission(user, "auth:center:view")) {

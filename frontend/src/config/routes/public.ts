@@ -4,6 +4,7 @@ export const publicRoutes: RouteMeta[] = [
   { path: "/login", title: "登录", owner: "auth", public: true },
   { path: "/forbidden", title: "访问受限", owner: "platform" },
   { path: "/profile", title: "个人主页", owner: "auth" },
+  { path: "/settings", title: "个人设置", owner: "auth" },
   {
     path: "/about",
     title: "关于我们",

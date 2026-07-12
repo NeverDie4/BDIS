@@ -7,6 +7,7 @@ import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.UnauthorizedException;
 import com.bdis.common.security.BootstrapProperties;
 import com.bdis.common.security.CurrentUser;
+import com.bdis.common.security.IssuedToken;
 import com.bdis.common.security.JwtClaims;
 import com.bdis.common.security.JwtProperties;
 import com.bdis.common.security.JwtUtils;
@@ -20,6 +21,8 @@ import com.bdis.modules.auth.service.AuthService;
 import com.bdis.modules.auth.service.CurrentUserService;
 import com.bdis.modules.auth.vo.CurrentUserVO;
 import com.bdis.modules.auth.vo.LoginVO;
+import com.bdis.modules.settings.service.UserPreferenceService;
+import com.bdis.modules.settings.service.UserSessionService;
 import com.bdis.modules.user.entity.RoleEntity;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.entity.UserRoleEntity;
@@ -57,6 +60,10 @@ public class AuthServiceImpl implements AuthService {
 
     private final CurrentUserService currentUserService;
 
+    private final UserSessionService userSessionService;
+
+    private final UserPreferenceService userPreferenceService;
+
     public AuthServiceImpl(
             UserMapper userMapper,
             RoleMapper roleMapper,
@@ -67,7 +74,9 @@ public class AuthServiceImpl implements AuthService {
             JwtProperties jwtProperties,
             BootstrapProperties bootstrapProperties,
             TokenBlacklistService tokenBlacklistService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            UserSessionService userSessionService,
+            UserPreferenceService userPreferenceService) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
@@ -78,6 +87,8 @@ public class AuthServiceImpl implements AuthService {
         this.bootstrapProperties = bootstrapProperties;
         this.tokenBlacklistService = tokenBlacklistService;
         this.currentUserService = currentUserService;
+        this.userSessionService = userSessionService;
+        this.userPreferenceService = userPreferenceService;
     }
 
     @Override
@@ -111,6 +122,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public LoginVO login(LoginDTO dto, HttpServletRequest request) {
         UserEntity user =
                 userMapper.selectOne(
@@ -127,11 +139,14 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(user);
         CurrentUser currentUser = currentUserService.load(user.getId());
-        String accessToken = jwtUtils.generate(currentUser);
+        IssuedToken issuedToken = jwtUtils.generate(currentUser);
+        userSessionService.create(user.getId(), issuedToken, request);
         LoginVO vo = new LoginVO();
-        vo.setAccessToken(accessToken);
+        vo.setAccessToken(issuedToken.accessToken());
         vo.setExpiresIn(jwtProperties.getAccessTokenTtlMinutes() * 60);
         vo.setUser(toCurrentUserVO(currentUser));
+        vo.setPreferredLandingPath(userPreferenceService.preferredLandingPath(currentUser));
+        vo.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
         recordLogin(user.getId(), user.getUsername(), "success", null, request);
         return vo;
     }
@@ -144,6 +159,7 @@ public class AuthServiceImpl implements AuthService {
         }
         String token = authorizationHeader.substring(SecurityConstants.BEARER_PREFIX.length());
         JwtClaims claims = jwtUtils.parse(token);
+        userSessionService.revokeByJti(claims.jti(), "logout");
         tokenBlacklistService.blacklist(claims);
     }
 
@@ -182,6 +198,9 @@ public class AuthServiceImpl implements AuthService {
         vo.setRoleCodes(user.getRoleCodes());
         vo.setRoleIds(user.getRoleIds());
         vo.setPermissions(user.getPermissions());
+        UserEntity userEntity = userMapper.selectById(user.getUserId());
+        vo.setMustChangePassword(
+                userEntity != null && Boolean.TRUE.equals(userEntity.getMustChangePassword()));
         return vo;
     }
 

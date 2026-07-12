@@ -87,7 +87,7 @@ export function HeaderNav() {
             icon={<SettingOutlined />}
             shape="circle"
             type="text"
-            onClick={() => router.push("/profile")}
+            onClick={() => router.push("/settings")}
           />
         </Tooltip>
         <UserMenu />

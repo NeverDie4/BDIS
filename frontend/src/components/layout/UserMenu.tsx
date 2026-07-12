@@ -2,7 +2,7 @@
 
 import { App, Avatar, Dropdown } from "antd";
 import type { MenuProps } from "antd";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, Settings, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiDelete } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,6 +22,11 @@ export function UserMenu() {
       icon: <UserRound size={16} />,
       label: "个人主页",
     },
+    {
+      key: "settings",
+      icon: <Settings size={16} />,
+      label: "个人设置",
+    },
     { type: "divider" },
     {
       key: "logout",
@@ -34,6 +39,10 @@ export function UserMenu() {
   async function onClick({ key }: { key: string }) {
     if (key === "profile") {
       router.push("/profile");
+      return;
+    }
+    if (key === "settings") {
+      router.push("/settings");
       return;
     }
     try {

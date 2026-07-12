@@ -1,0 +1,113 @@
+"use client";
+
+import { App, Form, Skeleton } from "antd";
+import { useEffect } from "react";
+import { getApiErrorMessage } from "@/lib/request";
+import { useSettingNamespace } from "@/hooks/settings/useSettingNamespace";
+import type {
+  AppearanceSettings as AppearanceValues,
+  CommonSettings as CommonValues,
+} from "@/types/settings";
+import { SettingSelectRow } from "../SettingSelectRow";
+import { SettingSwitchRow } from "../SettingSwitchRow";
+import { SettingsFormActions } from "../SettingsFormActions";
+import { SettingsSection } from "../SettingsSection";
+
+export function AppearanceSettings() {
+  const { message } = App.useApp();
+  const [form] = Form.useForm<AppearanceValues>();
+  const [commonForm] = Form.useForm<CommonValues>();
+  const setting = useSettingNamespace<AppearanceValues>("appearance");
+  const common = useSettingNamespace<CommonValues>("common");
+  useEffect(() => {
+    if (setting.data) form.setFieldsValue(setting.data.values);
+  }, [form, setting.data]);
+  useEffect(() => {
+    if (common.data) commonForm.setFieldsValue(common.data.values);
+  }, [common.data, commonForm]);
+  if (setting.isLoading || common.isLoading) return <Skeleton active />;
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <SettingsSection title="常规偏好">
+        <Form
+          form={commonForm}
+          onFinish={(values) =>
+            common.save.mutate(values, {
+              onSuccess: () => message.success("常规偏好已保存"),
+              onError: (error) => message.error(getApiErrorMessage(error)),
+            })
+          }
+        >
+          <SettingSelectRow
+            label="登录后进入"
+            name="defaultLandingPath"
+            options={[
+              { label: "门户首页", value: "/" },
+              { label: "个人主页", value: "/profile" },
+              { label: "个人设置", value: "/settings" },
+              { label: "权限后台", value: "/dashboard" },
+            ]}
+          />
+          <SettingSelectRow
+            label="显示时区"
+            name="timezone"
+            options={[{ label: "Asia/Shanghai", value: "Asia/Shanghai" }]}
+          />
+          <SettingSelectRow
+            label="界面语言"
+            name="locale"
+            options={[{ label: "简体中文", value: "zh-CN" }]}
+          />
+          <SettingsFormActions
+            resetting={common.reset.isPending}
+            saving={common.save.isPending}
+            onReset={() =>
+              common.reset.mutate(undefined, {
+                onSuccess: (data) => commonForm.setFieldsValue(data.values),
+              })
+            }
+          />
+        </Form>
+      </SettingsSection>
+      <SettingsSection title="界面偏好">
+        <Form
+          form={form}
+          onFinish={(values) =>
+            setting.save.mutate(values, {
+              onSuccess: () => message.success("界面偏好已保存"),
+              onError: (error) => message.error(getApiErrorMessage(error)),
+            })
+          }
+        >
+          <SettingSelectRow
+            label="内容密度"
+            name="contentDensity"
+            options={[
+              { label: "舒适", value: "comfortable" },
+              { label: "紧凑", value: "compact" },
+            ]}
+          />
+          <SettingSelectRow
+            label="后台侧栏"
+            name="sidebarMode"
+            options={[
+              { label: "自动", value: "auto" },
+              { label: "展开", value: "expanded" },
+              { label: "收起", value: "collapsed" },
+            ]}
+          />
+          <SettingSwitchRow label="减少动态效果" name="reduceMotion" />
+          <SettingsFormActions
+            resetting={setting.reset.isPending}
+            saving={setting.save.isPending}
+            onReset={() =>
+              setting.reset.mutate(undefined, {
+                onSuccess: (data) => form.setFieldsValue(data.values),
+              })
+            }
+          />
+        </Form>
+      </SettingsSection>
+    </div>
+  );
+}

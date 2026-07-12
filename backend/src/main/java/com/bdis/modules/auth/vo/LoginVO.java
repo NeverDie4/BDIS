@@ -14,4 +14,8 @@ public class LoginVO {
     private long expiresIn;
 
     private CurrentUserVO user;
+
+    private String preferredLandingPath;
+
+    private Boolean mustChangePassword;
 }

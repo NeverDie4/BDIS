@@ -30,11 +30,16 @@ export default function LoginPage() {
       const result = await apiPost<LoginResult>("/auth/sessions", values);
       setAuth(result.accessToken, result.user);
       message.success("登录成功");
+      if (result.mustChangePassword || result.user.mustChangePassword) {
+        router.replace("/settings?tab=security");
+        return;
+      }
       const returnUrl = resolvePostLoginPath(
         result.user,
         typeof window === "undefined"
           ? undefined
           : new URLSearchParams(window.location.search).get("returnUrl"),
+        result.preferredLandingPath,
       );
       router.replace(returnUrl);
     } catch (error) {
