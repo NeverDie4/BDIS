@@ -39,6 +39,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class HerbIdentificationServiceTest {
@@ -113,6 +114,8 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getResultSource()).isEqualTo("local_match");
         assertThat(captor.getValue().getMatchResult()).isEqualTo("matched");
         assertThat(captor.getValue().getNeedReview()).isZero();
+        assertThat(captor.getValue().getSuggestion())
+                .isEqualTo("本地图谱相似度较高，可作为初步识别结果");
         assertThat(result.getNeedReview()).isFalse();
         verify(herbRecognitionService, never()).recognizeByDoubao(any());
     }
@@ -136,6 +139,8 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(captor.getValue().getFinalConfidence()).isEqualByComparingTo("0.5100");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
+        assertThat(captor.getValue().getSuggestion())
+                .isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
         assertThat(result.getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(result.getDoubaoRecognition().getPredictedName()).isEqualTo("Wuzhimaotao");
     }
@@ -167,8 +172,20 @@ class HerbIdentificationServiceTest {
         verify(identificationResultMapper).insertResult(captor.capture());
         assertThat(captor.getValue().getResultSource()).isEqualTo("local_match");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
-        assertThat(captor.getValue().getSuggestion()).contains("timeout");
+        assertThat(captor.getValue().getSuggestion()).contains("豆包辅助识别失败").contains("timeout");
         assertThat(captor.getValue().getRawSummary()).contains("timeout");
+    }
+
+    @Test
+    void translatesLegacyEnglishSuggestionForExistingResults() {
+        String suggestion =
+                ReflectionTestUtils.invokeMethod(
+                        herbIdentificationService,
+                        "localizedSuggestion",
+                        "Doubao auxiliary recognition differs from local atlas candidates; manual"
+                                + " review is required");
+
+        assertThat(suggestion).isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
     }
 
     @Test

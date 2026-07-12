@@ -1,6 +1,6 @@
 <template>
-  <view class="page">
-    <view class="card">
+  <view class="page detail-page image-upload-page">
+    <view class="herb-card batch-summary-card">
       <view class="section-header">
         <text class="section-title">上传到批次</text>
         <text class="status-tag" :class="`status-${batchInfo.batchStatus || 'unknown'}`">
@@ -15,9 +15,9 @@
         <text class="label">批次名称</text>
         <text class="value">{{ displayText(batchInfo.batchName) }}</text>
       </view>
-      <view class="info-row">
-        <text class="label">批次编码</text>
-        <text class="value">{{ displayText(batchInfo.batchCode) }}</text>
+      <view class="info-block">
+        <text class="info-block-label">批次编码</text>
+        <text class="info-block-value code-text">{{ displayText(batchInfo.batchCode) }}</text>
       </view>
       <view class="info-row">
         <text class="label">药材</text>
@@ -33,7 +33,7 @@
       </view>
     </view>
 
-    <view class="card">
+    <view class="herb-card image-picker-card">
       <text class="section-title">图片选择</text>
       <view class="image-picker">
         <image v-if="imagePath" class="preview-image" mode="aspectFill" :src="imagePath" @click="previewImage" />
@@ -45,7 +45,7 @@
       </view>
     </view>
 
-    <view class="card">
+    <view class="herb-card collect-form-card">
       <text class="section-title">采集信息</text>
 
       <view class="form-item">
@@ -81,12 +81,12 @@
 
       <view class="switch-row">
         <text class="form-label">设为主图</text>
-        <switch :checked="form.isPrimary" color="#1677ff" @change="onPrimaryChange" />
+        <switch :checked="form.isPrimary" color="#166534" @change="onPrimaryChange" />
       </view>
 
       <view class="switch-row">
         <text class="form-label">上传后自动识别</text>
-        <switch :checked="form.autoIdentify" color="#1677ff" @change="onAutoIdentifyChange" />
+        <switch :checked="form.autoIdentify" color="#166534" @change="onAutoIdentifyChange" />
       </view>
       <text class="form-tip">
         建议先上传并绑定批次，再到批次详情中点击“识别”或“识别未完成图片”。开启自动识别时，上传会等待完整识别流程，耗时可能较长。
@@ -100,7 +100,7 @@
       <button class="primary-btn upload-btn" :loading="uploading" @click="handleUpload">上传图片</button>
     </view>
 
-    <view v-if="uploadError" class="card error-card">
+    <view v-if="uploadError" class="herb-card error-card">
       <text class="result-title">上传失败</text>
       <text class="error-message">{{ uploadError }}</text>
       <view class="button-row">
@@ -109,11 +109,11 @@
       </view>
     </view>
 
-    <view v-if="uploadResult" class="card result-card">
+    <view v-if="uploadResult" class="herb-card result-card">
       <text class="result-title">上传成功</text>
-      <view class="info-row">
-        <text class="label">图片编码</text>
-        <text class="value">{{ displayText(uploadResult.imageCode) }}</text>
+      <view class="info-block">
+        <text class="info-block-label">图片编码</text>
+        <text class="info-block-value code-text">{{ displayText(uploadResult.imageCode) }}</text>
       </view>
       <view class="info-row">
         <text class="label">图片角色</text>
@@ -150,6 +150,7 @@
         <button v-if="uploadResult.imageId" class="primary-btn picker-btn" @click="goResult">查看识别结果</button>
       </view>
     </view>
+    <AssistantFloat />
   </view>
 </template>
 
@@ -165,10 +166,9 @@ import {
   IMAGE_ROLE_OPTIONS
 } from '../../utils/constants'
 import { formatPercent, formatStatus, getNowDateTime } from '../../utils/format'
-import { getCurrentCollector } from '../../utils/user'
+import { getAuthUser } from '../../utils/auth'
 
 const batchId = ref('')
-const collector = ref(getCurrentCollector())
 const batchInfo = ref({})
 const batchError = ref('')
 const imagePath = ref('')
@@ -188,7 +188,7 @@ const form = reactive({
   collectPlace: '',
   collectTime: getNowDateTime(),
   isPrimary: false,
-  autoIdentify: false,
+  autoIdentify: true,
   remark: ''
 })
 
@@ -213,13 +213,10 @@ onLoad((options) => {
 })
 
 async function loadBatchInfo() {
-  collector.value = getCurrentCollector()
   batchError.value = ''
 
   try {
-    const data = await getBatchDetail(batchId.value, {
-      collectorId: collector.value.collectorId
-    })
+    const data = await getBatchDetail(batchId.value)
     batchInfo.value = normalizeBatchDetail(data)
     applyBatchDefaults(batchInfo.value)
   } catch (error) {
@@ -336,12 +333,12 @@ async function handleUpload() {
 
   uploading.value = true
   uploadError.value = ''
-  collector.value = getCurrentCollector()
+  const authUser = getAuthUser()
 
   try {
     const formData = {
-      collectorId: collector.value.collectorId,
-      collectorName: collector.value.collectorName,
+      collectorId: authUser?.userId || '',
+      collectorName: authUser?.realName || authUser?.username || '',
       collectPlace: form.collectPlace,
       collectTime: form.collectTime,
       imageType: form.imageType || form.imageRole,
@@ -462,6 +459,10 @@ function showToast(title) {
 </script>
 
 <style scoped>
+.detail-page {
+  padding-top: 32rpx;
+}
+
 .section-header {
   display: flex;
   align-items: flex-start;
@@ -473,7 +474,7 @@ function showToast(title) {
 .section-title,
 .result-title {
   display: block;
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -486,8 +487,8 @@ function showToast(title) {
   flex-shrink: 0;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
   font-size: 23rpx;
   line-height: 1;
 }
@@ -507,12 +508,12 @@ function showToast(title) {
 
 .status-confirmed,
 .status-archived {
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
 }
 
 .status-cancelled {
-  background: #f1f5f9;
+  background: #f4eadf;
   color: #64748b;
 }
 
@@ -542,7 +543,7 @@ function showToast(title) {
 .value {
   min-width: 0;
   flex: 1;
-  color: #111827;
+  color: #1f2933;
   text-align: right;
   word-break: break-all;
 }
@@ -556,7 +557,7 @@ function showToast(title) {
   width: 100%;
   height: 420rpx;
   border-radius: 16rpx;
-  background: #f1f5f9;
+  background: #f4eadf;
 }
 
 .preview-placeholder {
@@ -601,8 +602,8 @@ function showToast(title) {
   margin-top: 12rpx;
   padding: 20rpx 22rpx;
   border-radius: 12rpx;
-  background: #f8fafc;
-  color: #111827;
+  background: #fffaf2;
+  color: #1f2933;
   font-size: 28rpx;
 }
 
@@ -646,8 +647,165 @@ function showToast(title) {
 .result-message {
   display: block;
   margin-top: 18rpx;
-  color: #475569;
+  color: #5f5548;
   font-size: 26rpx;
   line-height: 1.5;
+}
+
+.section-title,
+.result-title {
+  color: #0f3d2e;
+}
+
+.status-tag,
+.status-draft,
+.status-collecting,
+.status-confirmed {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.status-submitted,
+.status-identifying,
+.status-reviewing {
+  background: #fff4df;
+  color: #d97706;
+}
+
+.status-archived {
+  background: #f4ead8;
+  color: #8a5a2b;
+}
+
+.warn-box {
+  border: 1rpx solid #f3d39a;
+  background: #fff4df;
+  color: #d97706;
+}
+
+.label,
+.form-label {
+  color: #7c6f5c;
+}
+
+.value {
+  color: #1f2933;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.info-block {
+  margin-bottom: 22rpx;
+}
+
+.info-block-label,
+.info-block-value {
+  display: block;
+  text-align: left;
+}
+
+.info-block-label {
+  margin-bottom: 8rpx;
+  color: #7c6f5c;
+  font-size: 26rpx;
+}
+
+.info-block-value {
+  color: #1f2933;
+  font-size: 28rpx;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.code-text {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 25rpx;
+  line-height: 1.45;
+  overflow-wrap: normal;
+  word-break: break-all;
+}
+
+.preview-image,
+.preview-placeholder {
+  border: 1rpx solid #eadfcd;
+  background: #fffaf2;
+}
+
+.preview-placeholder {
+  color: #8b7e6b;
+}
+
+.picker-value,
+.form-input,
+.form-textarea {
+  border: 1rpx solid #eadfcd;
+  background: #fffaf2;
+  color: #1f2933;
+}
+
+.picker-value:focus,
+.form-input:focus,
+.form-textarea:focus {
+  border-color: #0f5132;
+}
+
+.result-message {
+  color: #5f5548;
+}
+
+.image-upload-page {
+  padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
+}
+
+.herb-card {
+  box-sizing: border-box;
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 24rpx;
+  background: #fffaf2;
+  background: rgba(255, 250, 242, 0.96);
+  box-shadow: 0 10rpx 28rpx rgba(63, 45, 24, 0.06);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  color: #0f3d2e;
+}
+
+.section-title::before {
+  width: 8rpx;
+  height: 32rpx;
+  margin-right: 14rpx;
+  border-radius: 999rpx;
+  background: #166534;
+  content: '';
+}
+
+.section-header .section-title {
+  margin-bottom: 0;
+}
+
+.batch-summary-card .info-row,
+.result-card .info-row {
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 0;
+}
+
+.batch-summary-card .label,
+.result-card .label {
+  width: auto;
+  color: #7c6f5c;
+}
+
+.picker-btn,
+.upload-btn {
+  height: 78rpx;
+  border-radius: 18rpx;
+  font-size: 28rpx;
+  line-height: 78rpx;
 }
 </style>

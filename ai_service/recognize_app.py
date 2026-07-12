@@ -2,16 +2,23 @@ import os
 import uuid
 import base64
 import shutil
+import sys
 import json
 import time
+from datetime import datetime
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI
 
+if hasattr(sys.stdout, "reconfigure"):
+  sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+  sys.stderr.reconfigure(encoding="utf-8")
+
 app = FastAPI()
 
-MODEL_ID = "doubao-seed-2-1-pro-260628"
+MODEL_ID = "doubao-seed-2-0-lite-260428"
 UPLOAD_DIR = "uploads"
 MAX_FILE_SIZE = 20 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
@@ -42,8 +49,9 @@ def call_doubao(image_path):
 3. 只返回 JSON，不要输出多余文字。
 4. confidence 范围为 0 到 1。
 5. needReview 表示是否需要人工审核。
-6. reason 控制在 50 字以内。
-7. suggestion 控制在 50 字以内。
+6. reason 和 suggestion 必须返回且不能为空。
+7. reason 必须说明图片中的具体判断依据，例如叶形、叶脉、颜色、纹理或植株形态，控制在 50 字以内。
+8. suggestion 必须给出下一步复核建议，例如需要补拍的部位或需要核对的特征，控制在 50 字以内。
 
 返回格式：
 {
@@ -85,6 +93,24 @@ def call_doubao(image_path):
   return response.choices[0].message.content
 
 
+def log_recognition_result(original_filename, result_json, t0, t1, t2):
+  results = result_json.get("results") if isinstance(result_json, dict) else None
+  top_result = results[0] if isinstance(results, list) and results else {}
+  species_name = top_result.get("speciesName") or "未识别"
+  confidence = top_result.get("confidence")
+  reason = top_result.get("reason") or "无"
+  suggestion = result_json.get("suggestion") or "无"
+  need_review = result_json.get("needReview")
+  print(
+    f"[识别完成] 时间={datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
+    f"文件={original_filename} 保存耗时={t1 - t0:.3f}秒 "
+    f"豆包耗时={t2 - t1:.3f}秒 总耗时={t2 - t0:.3f}秒 "
+    f"识别结果={species_name} 置信度={confidence if confidence is not None else '无'} "
+    f"需要复核={need_review} 理由={reason} 建议={suggestion}",
+    flush=True
+  )
+
+
 @app.post("/recognize")
 async def recognize(file: UploadFile = File(...)):
   t0 = time.time()
@@ -96,6 +122,11 @@ async def recognize(file: UploadFile = File(...)):
 
   filename = f"{uuid.uuid4()}.{ext}"
   file_path = os.path.join(UPLOAD_DIR, filename)
+  print(
+    f"[识别开始] 时间={datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
+    f"文件={original_filename}",
+    flush=True
+  )
 
   try:
     with open(file_path, "wb") as buffer:
@@ -113,6 +144,7 @@ async def recognize(file: UploadFile = File(...)):
         "needReview": True,
         "suggestion": "模型返回格式异常，建议人工审核"
       }
+    log_recognition_result(original_filename, result_json, t0, t1, t2)
     return {
       "code": 200,
       "msg": "识别成功",
@@ -123,6 +155,13 @@ async def recognize(file: UploadFile = File(...)):
         "totalSeconds": round(t2 - t0, 3)
       }
     }
+  except Exception as error:
+    print(
+      f"[识别失败] 时间={datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
+      f"文件={original_filename} 总耗时={time.time() - t0:.3f}秒 错误={error}",
+      flush=True
+    )
+    raise
   finally:
     if os.path.exists(file_path):
       os.remove(file_path)

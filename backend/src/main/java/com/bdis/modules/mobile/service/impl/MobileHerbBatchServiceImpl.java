@@ -207,7 +207,9 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
 
     @Override
     public MobileImageIdentificationVO latestIdentification(Long imageId) {
-        return toMobileIdentificationVO(herbIdentificationService.latest(imageId));
+        HerbIdentificationVO identification = herbIdentificationService.latest(imageId);
+        HerbImageVO image = herbImageService.getById(imageId);
+        return toMobileIdentificationVO(identification, image);
     }
 
     private void identifyBoundImage(
@@ -413,12 +415,16 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
     }
 
     private MobileImageIdentificationVO toMobileIdentificationVO(
-            HerbIdentificationVO identification) {
+            HerbIdentificationVO identification, HerbImageVO image) {
         MobileImageIdentificationVO vo = new MobileImageIdentificationVO();
         vo.setId(identification.getId());
         vo.setImageId(identification.getImageId());
         vo.setImageCode(identification.getImageCode());
         vo.setImageUrl(identification.getImageUrl());
+        vo.setImageName(image == null ? null : image.getImageName());
+        vo.setImageRole(image == null ? null : image.getImageType());
+        vo.setCollectPlace(image == null ? null : image.getCollectPlace());
+        vo.setCollectTime(image == null ? null : image.getCollectTime());
         vo.setFinalSpeciesId(identification.getFinalSpeciesId());
         vo.setFinalSpeciesName(identification.getFinalSpeciesName());
         vo.setFinalConfidence(identification.getFinalConfidence());
@@ -428,9 +434,6 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         vo.setReviewStatus(identification.getReviewStatus());
         vo.setSuggestion(identification.getSuggestion());
         vo.setLocalCandidates(identification.getLocalCandidates());
-        if (identification.getDoubaoRecognition() != null) {
-            identification.getDoubaoRecognition().setRawResult(null);
-        }
         vo.setDoubaoRecognition(identification.getDoubaoRecognition());
         vo.setIdentifyTime(identification.getIdentifyTime());
         return vo;

@@ -291,11 +291,10 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     private String localSuggestion(String matchResult) {
         return switch (matchResult) {
             case HerbMatchResultConstants.MATCHED ->
-                    "Local atlas similarity is high and can be used as a preliminary result";
+                    "本地图谱相似度较高，可作为初步识别结果";
             case HerbMatchResultConstants.UNCERTAIN ->
-                    "Local atlas has candidates but confidence is insufficient, manual review is"
-                            + " required";
-            default -> "Local atlas cannot make a reliable judgment, manual review is required";
+                    "本地图谱存在候选结果，但置信度不足，建议人工复核";
+            default -> "本地图谱无法作出可靠判断，建议人工复核";
         };
     }
 
@@ -363,7 +362,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         vo.setMatchResult(result.getMatchResult());
         vo.setNeedReview(result.getNeedReview() != null && result.getNeedReview() == 1);
         vo.setReviewStatus(result.getReviewStatus());
-        vo.setSuggestion(result.getSuggestion());
+        vo.setSuggestion(localizedSuggestion(result.getSuggestion()));
         vo.setReviewComment(result.getReviewComment());
         vo.setReviewerId(result.getReviewerId());
         vo.setReviewerName(result.getReviewerName());
@@ -387,7 +386,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         vo.setMatchResult(result.getMatchResult());
         vo.setNeedReview(result.getNeedReview());
         vo.setReviewStatus(result.getReviewStatus());
-        vo.setSuggestion(result.getSuggestion());
+        vo.setSuggestion(localizedSuggestion(result.getSuggestion()));
         vo.setReviewComment(result.getReviewComment());
         vo.setReviewerId(result.getReviewerId());
         vo.setReviewerName(result.getReviewerName());
@@ -413,7 +412,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         vo.setImageCode(image.getImageNo());
         vo.setImageUrl(image.getImageUrl());
         vo.setNeedReview(true);
-        vo.setSuggestion("No identification result found");
+        vo.setSuggestion("暂未生成识别结果，请先执行识别");
         return vo;
     }
 
@@ -440,32 +439,57 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             result.setResultSource(HerbResultSourceConstants.MANUAL_REVIEW);
             result.setNeedReview(1);
             result.setReviewStatus(HerbReviewStatusConstants.REJECTED);
-            result.setSuggestion("Manual review rejected, re-processing is required");
+            result.setSuggestion("人工复核未通过，需要重新识别");
             return;
         }
         result.setResultSource(HerbResultSourceConstants.MANUAL_REVIEW);
         result.setNeedReview(0);
         result.setReviewStatus(HerbReviewStatusConstants.CONFIRMED);
-        result.setSuggestion("Manual review confirmed");
+        result.setSuggestion("人工复核已确认");
     }
 
     private String doubaoSuggestion(
             HerbImageMatchVO localMatch, HerbRecognitionVO doubaoRecognition) {
         if (doubaoAgreedWithLocalCandidate(localMatch, doubaoRecognition)) {
             markDoubaoAgreedCandidate(localMatch, doubaoRecognition);
-            return "Doubao auxiliary recognition agrees with a local atlas candidate; manual review"
-                    + " should focus on that herb";
+            return "豆包辅助识别与本地图谱候选一致，建议重点复核该候选药材";
         }
-        return "Doubao auxiliary recognition differs from local atlas candidates; manual review is"
-                + " required";
+        return "豆包辅助识别与本地图谱候选不一致，建议人工复核";
     }
 
     private String lowConfidenceSuggestion(String doubaoError) {
         if (StringUtils.hasText(doubaoError)) {
-            return "Local atlas cannot make a reliable judgment; Doubao review failed: "
-                    + doubaoError;
+            return "本地图谱无法作出可靠判断，豆包辅助识别失败：" + doubaoError;
         }
-        return "Local atlas cannot make a reliable judgment, manual review is required";
+        return "本地图谱无法作出可靠判断，建议人工复核";
+    }
+
+    private String localizedSuggestion(String suggestion) {
+        if (!StringUtils.hasText(suggestion)) {
+            return suggestion;
+        }
+        String doubaoFailurePrefix =
+                "Local atlas cannot make a reliable judgment; Doubao review failed: ";
+        if (suggestion.startsWith(doubaoFailurePrefix)) {
+            return "本地图谱无法作出可靠判断，豆包辅助识别失败："
+                    + suggestion.substring(doubaoFailurePrefix.length());
+        }
+        return switch (suggestion) {
+            case "Local atlas similarity is high and can be used as a preliminary result" ->
+                    "本地图谱相似度较高，可作为初步识别结果";
+            case "Local atlas has candidates but confidence is insufficient, manual review is required" ->
+                    "本地图谱存在候选结果，但置信度不足，建议人工复核";
+            case "Local atlas cannot make a reliable judgment, manual review is required" ->
+                    "本地图谱无法作出可靠判断，建议人工复核";
+            case "Doubao auxiliary recognition agrees with a local atlas candidate; manual review should focus on that herb" ->
+                    "豆包辅助识别与本地图谱候选一致，建议重点复核该候选药材";
+            case "Doubao auxiliary recognition differs from local atlas candidates; manual review is required" ->
+                    "豆包辅助识别与本地图谱候选不一致，建议人工复核";
+            case "No identification result found" -> "暂未生成识别结果，请先执行识别";
+            case "Manual review rejected, re-processing is required" -> "人工复核未通过，需要重新识别";
+            case "Manual review confirmed" -> "人工复核已确认";
+            default -> suggestion;
+        };
     }
 
     private boolean doubaoAgreedWithLocalCandidate(
