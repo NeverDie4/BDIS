@@ -1,17 +1,12 @@
 <template>
-  <view class="page">
-    <view class="user-card">
-      <view>
-        <text class="title">我的采集任务</text>
-        <text class="sub-title">当前采集员：{{ collector.collectorName || '-' }}</text>
-      </view>
-      <view class="collector-id">
-        <text class="collector-id-label">采集员ID</text>
-        <text class="collector-id-value">{{ collector.collectorId || '-' }}</text>
-      </view>
+  <view class="page tab-page task-list-page">
+    <view class="herb-card list-summary-card">
+      <text class="section-title">我的采集任务</text>
+      <text class="summary-account">当前账号：{{ authUser?.realName || authUser?.username || '-' }}</text>
+      <text class="summary-desc">查看已分配的中药材采集任务</text>
     </view>
 
-    <scroll-view class="filter-bar" scroll-x>
+    <scroll-view class="filter-bar" scroll-x :show-scrollbar="false">
       <view class="filter-content">
         <view
           v-for="item in statusOptions"
@@ -26,7 +21,7 @@
     </scroll-view>
 
     <view v-if="list.length > 0" class="task-list">
-      <view v-for="item in list" :key="item.taskId || item.id" class="task-card" @click="goDetail(item)">
+      <view v-for="item in list" :key="item.taskId || item.id" class="herb-card task-card" @click="goDetail(item)">
         <view class="task-header">
           <text class="task-title">{{ displayText(item.taskName) }}</text>
           <text class="status-tag" :class="`status-${item.taskStatus || 'unknown'}`">
@@ -34,32 +29,36 @@
           </text>
         </view>
 
-        <view class="info-row">
-          <text class="label">任务编码</text>
-          <text class="value">{{ displayText(item.taskCode) }}</text>
+        <view class="info-block code-block">
+          <text class="info-block-label">任务编码</text>
+          <text class="info-block-value code-text">{{ displayText(item.taskCode) }}</text>
         </view>
         <view class="info-row">
-          <text class="label">药材</text>
-          <text class="value">{{ displayText(item.speciesName) }}</text>
+          <text class="info-label">药材名称</text>
+          <text class="info-value">{{ displayText(item.speciesName) }}</text>
         </view>
         <view class="info-row">
-          <text class="label">基地</text>
-          <text class="value">{{ displayText(item.baseName) }}</text>
+          <text class="info-label">基地名称</text>
+          <text class="info-value">{{ displayText(item.baseName) }}</text>
+        </view>
+        <view class="info-block">
+          <text class="info-block-label">采集地点</text>
+          <text class="info-block-value">{{ displayText(item.collectPlace) }}</text>
+        </view>
+        <view class="info-block">
+          <text class="info-block-label">计划时间</text>
+          <text class="info-block-value">{{ formatTaskTime(item) }}</text>
         </view>
         <view class="info-row">
-          <text class="label">地点</text>
-          <text class="value">{{ displayText(item.collectPlace) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="label">计划时间</text>
-          <text class="value">{{ formatTaskTime(item) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="label">批次</text>
-          <text class="value">{{ formatBatchText(item) }}</text>
+          <text class="info-label">采集批次</text>
+          <text class="info-value">{{ formatBatchText(item) }}</text>
         </view>
 
-        <text class="desc">说明：{{ displayText(item.description) }}</text>
+        <view class="task-desc">
+          <text class="task-desc-label">任务说明</text>
+          <text class="task-desc-value">{{ displayText(item.description) }}</text>
+        </view>
+        <view class="detail-link">查看详情 <text>›</text></view>
       </view>
 
       <view class="load-more">
@@ -69,21 +68,24 @@
       </view>
     </view>
 
-    <view v-else class="empty card">
+    <view v-else class="empty herb-card">
       <text class="empty-title">{{ errorText || '暂无采集任务' }}</text>
-      <text class="empty-tip">请确认 PC 端已发布采集任务，且 collectorId 与当前采集员一致。</text>
+      <text class="empty-tip">请确认 PC 端已发布采集任务，且任务已分配给当前采集员账号。</text>
       <button class="primary-btn" :loading="loading" @click="reload">重新加载</button>
     </view>
+    <AssistantFloat />
+    <AppTabBar />
   </view>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
+import AppTabBar from '../../components/AppTabBar.vue'
 import { getMyTasks } from '../../api/mobileTaskApi'
 import { TASK_STATUS_MAP } from '../../utils/constants'
 import { formatDateTime, formatStatus, normalizePageData } from '../../utils/format'
-import { getCurrentCollector } from '../../utils/user'
+import { getAuthUser, requireLogin } from '../../utils/auth'
 
 const statusOptions = [
   { label: '全部', value: '' },
@@ -93,7 +95,7 @@ const statusOptions = [
   { label: '已取消', value: 'cancelled' }
 ]
 
-const collector = ref(getCurrentCollector())
+const authUser = ref(getAuthUser())
 const list = ref([])
 const pageNum = ref(1)
 const pageSize = ref(10)
@@ -103,20 +105,20 @@ const refreshing = ref(false)
 const finished = ref(false)
 const taskStatus = ref('')
 const errorText = ref('')
-const lastCollectorId = ref(collector.value.collectorId)
 
 onLoad(() => {
-  loadTasks(true)
+  if (requireLogin()) {
+    loadTasks(true)
+  }
 })
 
 onShow(() => {
-  const currentCollector = getCurrentCollector()
-  if (currentCollector.collectorId !== lastCollectorId.value) {
-    collector.value = currentCollector
-    lastCollectorId.value = currentCollector.collectorId
-    list.value = []
-    loadTasks(true)
+  uni.hideTabBar({ animation: false })
+  if (!requireLogin()) {
+    return
   }
+
+  authUser.value = getAuthUser()
 })
 
 onPullDownRefresh(async () => {
@@ -147,12 +149,10 @@ async function loadTasks(reset = false) {
   }
 
   loading.value = true
-  collector.value = getCurrentCollector()
-  lastCollectorId.value = collector.value.collectorId
+  authUser.value = getAuthUser()
 
   try {
     const data = await getMyTasks({
-      collectorId: collector.value.collectorId,
       taskStatus: taskStatus.value,
       pageNum: pageNum.value,
       pageSize: pageSize.value
@@ -234,6 +234,10 @@ function goDetail(item) {
 </script>
 
 <style scoped>
+.tab-page {
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
+}
+
 .user-card {
   display: flex;
   align-items: center;
@@ -244,29 +248,6 @@ function goDetail(item) {
   border-radius: 16rpx;
   background: #ffffff;
   box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06);
-}
-
-.collector-id {
-  flex-shrink: 0;
-  min-width: 150rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 14rpx;
-  background: #eef5ff;
-  text-align: center;
-}
-
-.collector-id-label {
-  display: block;
-  color: #64748b;
-  font-size: 22rpx;
-}
-
-.collector-id-value {
-  display: block;
-  margin-top: 4rpx;
-  color: #1677ff;
-  font-size: 30rpx;
-  font-weight: 700;
 }
 
 .filter-bar {
@@ -288,19 +269,19 @@ function goDetail(item) {
   padding: 0 26rpx;
   border-radius: 999rpx;
   background: #ffffff;
-  color: #475569;
+  color: #5f5548;
   font-size: 26rpx;
   box-shadow: 0 6rpx 18rpx rgba(15, 23, 42, 0.05);
 }
 
 .filter-item.active {
-  background: #1677ff;
+  background: #166534;
   color: #ffffff;
   font-weight: 600;
 }
 
 .task-list {
-  padding-bottom: 24rpx;
+  padding-bottom: 12rpx;
 }
 
 .task-card {
@@ -321,7 +302,7 @@ function goDetail(item) {
 
 .task-title {
   min-width: 0;
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
   line-height: 1.4;
@@ -332,8 +313,8 @@ function goDetail(item) {
   flex-shrink: 0;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
   font-size: 23rpx;
   line-height: 1;
 }
@@ -349,12 +330,12 @@ function goDetail(item) {
 }
 
 .status-completed {
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
 }
 
 .status-cancelled {
-  background: #f1f5f9;
+  background: #f4eadf;
   color: #64748b;
 }
 
@@ -375,7 +356,7 @@ function goDetail(item) {
 .value {
   min-width: 0;
   flex: 1;
-  color: #111827;
+  color: #1f2933;
   text-align: right;
   word-break: break-all;
 }
@@ -385,7 +366,7 @@ function goDetail(item) {
   margin-top: 18rpx;
   padding-top: 18rpx;
   border-top: 1rpx solid #eef2f7;
-  color: #475569;
+  color: #5f5548;
   font-size: 26rpx;
   line-height: 1.5;
 }
@@ -396,7 +377,7 @@ function goDetail(item) {
 
 .empty-title {
   display: block;
-  color: #111827;
+  color: #1f2933;
   font-size: 30rpx;
   font-weight: 700;
 }
@@ -414,5 +395,254 @@ function goDetail(item) {
   color: #94a3b8;
   text-align: center;
   font-size: 26rpx;
+}
+
+.user-card,
+.task-card {
+  border: 1rpx solid #eadfcd;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(63, 45, 24, 0.06);
+}
+
+.user-card {
+  background: #fffaf2;
+}
+
+.filter-item {
+  border: 1rpx solid #eadfcd;
+  background: #ffffff;
+  box-shadow: none;
+  color: #7c6f5c;
+}
+
+.filter-item.active {
+  border-color: #166534;
+  background: #166534;
+  color: #ffffff;
+}
+
+.task-title,
+.empty-title {
+  color: #0f3d2e;
+}
+
+.status-tag {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.status-in_progress,
+.status-completed {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.label {
+  color: #7c6f5c;
+}
+
+.value {
+  color: #1f2933;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.desc {
+  border-top-color: #eadfcd;
+  color: #5f5548;
+}
+
+.empty-tip,
+.load-more {
+  color: #8b7e6b;
+}
+
+.detail-link {
+  margin-top: 16rpx;
+  color: #166534;
+  font-size: 26rpx;
+  font-weight: 600;
+  text-align: right;
+}
+
+.task-list-page {
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+}
+
+.herb-card {
+  box-sizing: border-box;
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 24rpx;
+  background: #fffaf2;
+  background: rgba(255, 250, 242, 0.96);
+  box-shadow: 0 10rpx 28rpx rgba(63, 45, 24, 0.06);
+}
+
+.list-summary-card {
+  position: relative;
+  overflow: hidden;
+  padding: 30rpx;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  color: #0f3d2e;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.section-title::before {
+  width: 8rpx;
+  height: 32rpx;
+  margin-right: 14rpx;
+  border-radius: 999rpx;
+  background: #166534;
+  content: '';
+}
+
+.summary-account,
+.summary-desc {
+  display: block;
+  margin-left: 22rpx;
+}
+
+.summary-account {
+  color: #0f5132;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.summary-desc {
+  margin-top: 8rpx;
+  color: #7c6f5c;
+  font-size: 25rpx;
+}
+
+.filter-bar {
+  box-sizing: border-box;
+  padding: 0 2rpx 4rpx;
+}
+
+.filter-content {
+  box-sizing: border-box;
+  padding-right: 24rpx;
+}
+
+.filter-item {
+  height: 60rpx;
+  padding: 0 24rpx;
+  background: #fffaf2;
+  font-size: 25rpx;
+}
+
+.task-card {
+  padding: 26rpx 28rpx;
+  border-radius: 24rpx;
+}
+
+.task-header {
+  margin-bottom: 14rpx;
+}
+
+.task-title {
+  font-size: 31rpx;
+  line-height: 1.4;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+  padding: 0;
+}
+
+.info-label {
+  flex-shrink: 0;
+  color: #7c6f5c;
+  font-size: 26rpx;
+}
+
+.info-value {
+  min-width: 0;
+  flex: 1;
+  color: #1f2933;
+  font-size: 27rpx;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.info-block {
+  margin-bottom: 20rpx;
+}
+
+.info-block-label,
+.info-block-value {
+  display: block;
+  text-align: left;
+}
+
+.info-block-label {
+  margin-bottom: 7rpx;
+  color: #7c6f5c;
+  font-size: 25rpx;
+}
+
+.info-block-value {
+  color: #1f2933;
+  font-size: 27rpx;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.code-block {
+  margin-top: -2rpx;
+}
+
+.code-text {
+  color: #1f2933;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 24rpx;
+  line-height: 1.5;
+  overflow-wrap: normal;
+  word-break: break-all;
+}
+
+.task-desc {
+  margin-top: 6rpx;
+  padding: 16rpx 18rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 14rpx;
+  background: #f7f1e6;
+}
+
+.task-desc-label,
+.task-desc-value {
+  display: block;
+}
+
+.task-desc-label {
+  color: #7c6f5c;
+  font-size: 24rpx;
+}
+
+.task-desc-value {
+  margin-top: 7rpx;
+  color: #3f3a32;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.detail-link {
+  padding-top: 14rpx;
+  border-top: 1rpx solid #eadfcd;
 }
 </style>

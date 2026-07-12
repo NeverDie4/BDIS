@@ -1,7 +1,6 @@
 package com.bdis.common.security;
 
 import com.bdis.common.constants.SecurityConstants;
-import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.UnauthorizedException;
 import java.time.Duration;
 import java.time.Instant;
@@ -33,7 +32,7 @@ public class TokenBlacklistService {
                     .set(SecurityConstants.TOKEN_BLACKLIST_PREFIX + claims.jti(), "1", ttl);
         } catch (RedisConnectionFailureException exception) {
             LOGGER.warn("Redis unavailable, failed to blacklist token: {}", exception.getMessage());
-            throw new BusinessException("退出登录失败，请稍后重试");
+            throw new UnauthorizedException("Token blacklist is unavailable");
         }
     }
 
@@ -45,7 +44,7 @@ public class TokenBlacklistService {
             LOGGER.warn(
                     "Redis unavailable, failed to check token blacklist: {}",
                     exception.getMessage());
-            throw new UnauthorizedException("Token 状态校验失败，请稍后重试");
+            throw new UnauthorizedException("Token blacklist is unavailable");
         }
     }
 }
