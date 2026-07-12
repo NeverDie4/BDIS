@@ -42,7 +42,8 @@ class EvaluationWorkflowServiceTest {
         EvaluationScoreRecordEntity second = score(11L, 1L, 100);
         EvaluationIndicatorEntity indicator = new EvaluationIndicatorEntity();
         indicator.setId(1L);
-        indicator.setWeight(new BigDecimal("50"));
+        indicator.setWeight(new BigDecimal("100"));
+        indicator.setMaxScore(new BigDecimal("100"));
         when(scoreMapper.selectById(10L)).thenReturn(first);
         when(taskMapper.selectById(1L)).thenReturn(task);
         when(scoreMapper.selectList(any())).thenReturn(List.of(first, second));
@@ -67,10 +68,55 @@ class EvaluationWorkflowServiceTest {
 
         EvaluationResultEntity result = service.confirmByScoreRecord(10L, request);
 
-        assertThat(result.getTotalScore()).isEqualByComparingTo("45.00");
-        assertThat(result.getResultLevel()).isEqualTo("unqualified");
+        assertThat(result.getTotalScore()).isEqualByComparingTo("90.00");
+        assertThat(result.getResultLevel()).isEqualTo("excellent");
         assertThat(result.getConfirmedBy()).isEqualTo(3L);
         assertThat(task.getTaskStatus()).isEqualTo("confirmed");
+    }
+
+    @Test
+    void normalizesNonHundredMaxScoresBeforeApplyingWeight() {
+        EvaluationScoreRecordEntity first = score(20L, 1L, 10);
+        EvaluationScoreRecordEntity second = score(21L, 2L, 20);
+        EvaluationIndicatorEntity firstIndicator = indicator(1L, 50, 10);
+        EvaluationIndicatorEntity secondIndicator = indicator(2L, 50, 20);
+        stubSuccessfulConfirmation(
+                first, List.of(first, second), List.of(firstIndicator, secondIndicator));
+
+        EvaluationResultEntity result = service().confirmByScoreRecord(20L, request());
+
+        assertThat(result.getTotalScore()).isEqualByComparingTo("100.00");
+        assertThat(result.getResultLevel()).isEqualTo("excellent");
+    }
+
+    @Test
+    void usesEqualNormalizedWeightsWhenAllWeightsAreZero() {
+        EvaluationScoreRecordEntity first = score(30L, 1L, 80);
+        EvaluationScoreRecordEntity second = score(31L, 2L, 80);
+        EvaluationIndicatorEntity firstIndicator = indicator(1L, 0, 100);
+        EvaluationIndicatorEntity secondIndicator = indicator(2L, 0, 100);
+        stubSuccessfulConfirmation(
+                first, List.of(first, second), List.of(firstIndicator, secondIndicator));
+
+        EvaluationResultEntity result = service().confirmByScoreRecord(30L, request());
+
+        assertThat(result.getTotalScore()).isEqualByComparingTo("80.00");
+        assertThat(result.getResultLevel()).isEqualTo("good");
+    }
+
+    @Test
+    void rejectsWeightedIndicatorsWhenWeightTotalIsNotOneHundred() {
+        EvaluationScoreRecordEntity first = score(40L, 1L, 80);
+        EvaluationScoreRecordEntity second = score(41L, 2L, 80);
+        when(scoreMapper.selectById(40L)).thenReturn(first);
+        when(taskMapper.selectById(1L)).thenReturn(task(1L, "scoring"));
+        when(scoreMapper.selectList(any())).thenReturn(List.of(first, second));
+        when(indicatorMapper.selectByIds(any()))
+                .thenReturn(List.of(indicator(1L, 30, 100), indicator(2L, 30, 100)));
+
+        assertThatThrownBy(() -> service().confirmByScoreRecord(40L, request()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("参与评分的评价指标权重总和必须为 100");
     }
 
     @Test
@@ -92,6 +138,38 @@ class EvaluationWorkflowServiceTest {
 
     private EvaluationResultEntity capturedResult;
 
+    private void stubSuccessfulConfirmation(
+            EvaluationScoreRecordEntity record,
+            List<EvaluationScoreRecordEntity> scores,
+            List<EvaluationIndicatorEntity> indicators) {
+        capturedResult = null;
+        when(scoreMapper.selectById(record.getId())).thenReturn(record);
+        when(taskMapper.selectById(1L)).thenReturn(task(1L, "scoring"));
+        when(scoreMapper.selectList(any())).thenReturn(scores);
+        when(indicatorMapper.selectByIds(any())).thenReturn(indicators);
+        when(resultMapper.selectOne(any())).thenReturn(null);
+        doAnswer(
+                        invocation -> {
+                            EvaluationResultEntity entity = invocation.getArgument(0);
+                            entity.setId(7L);
+                            capturedResult = entity;
+                            return 1;
+                        })
+                .when(resultMapper)
+                .insert(any(EvaluationResultEntity.class));
+        when(resultMapper.selectById(7L)).thenAnswer(invocation -> capturedResult);
+        when(accessService.currentUserId()).thenReturn(3L);
+    }
+
+    private EvaluationResultServiceImpl service() {
+        return new EvaluationResultServiceImpl(
+                resultMapper, scoreMapper, indicatorMapper, taskMapper, accessService);
+    }
+
+    private EvaluationConfirmationRequest request() {
+        return new EvaluationConfirmationRequest();
+    }
+
     private static EvaluationTaskEntity task(Long id, String status) {
         EvaluationTaskEntity task = new EvaluationTaskEntity();
         task.setId(id);
@@ -107,5 +185,13 @@ class EvaluationWorkflowServiceTest {
         score.setIndicatorId(indicatorId);
         score.setScore(BigDecimal.valueOf(value));
         return score;
+    }
+
+    private static EvaluationIndicatorEntity indicator(Long id, int weight, int maxScore) {
+        EvaluationIndicatorEntity indicator = new EvaluationIndicatorEntity();
+        indicator.setId(id);
+        indicator.setWeight(BigDecimal.valueOf(weight));
+        indicator.setMaxScore(BigDecimal.valueOf(maxScore));
+        return indicator;
     }
 }

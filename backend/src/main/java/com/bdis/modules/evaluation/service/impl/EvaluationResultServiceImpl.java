@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -106,14 +105,6 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
                                 Collectors.toMap(
                                         EvaluationIndicatorEntity::getId, Function.identity()));
 
-        boolean hasWeight =
-                indicators.values().stream()
-                        .anyMatch(
-                                indicator ->
-                                        indicator.getWeight() != null
-                                                && indicator.getWeight().compareTo(BigDecimal.ZERO)
-                                                        > 0);
-
         Map<Long, BigDecimal> averageScores =
                 scores.stream()
                         .filter(score -> score.getScore() != null)
@@ -135,19 +126,73 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
                                                                                 values.size()),
                                                                         4,
                                                                         RoundingMode.HALF_UP))));
+        if (averageScores.isEmpty()) {
+            throw new IllegalArgumentException("评价任务没有有效评分记录");
+        }
+
+        List<EvaluationIndicatorEntity> scoredIndicators =
+                averageScores.keySet().stream()
+                        .map(indicators::get)
+                        .filter(Objects::nonNull)
+                        .toList();
+        if (scoredIndicators.size() != averageScores.size()) {
+            throw new IllegalArgumentException("评分记录关联的评价指标不存在");
+        }
+        for (EvaluationIndicatorEntity indicator : scoredIndicators) {
+            if (indicator.getMaxScore() == null
+                    || indicator.getMaxScore().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("评价指标满分必须大于 0");
+            }
+        }
+
+        boolean allWeightsZero =
+                scoredIndicators.stream()
+                        .allMatch(
+                                indicator ->
+                                        indicator.getWeight() == null
+                                                || indicator.getWeight().compareTo(BigDecimal.ZERO)
+                                                        == 0);
+        if (!allWeightsZero) {
+            boolean hasZeroWeight =
+                    scoredIndicators.stream()
+                            .anyMatch(
+                                    indicator ->
+                                            indicator.getWeight() == null
+                                                    || indicator
+                                                                    .getWeight()
+                                                                    .compareTo(BigDecimal.ZERO)
+                                                            <= 0);
+            if (hasZeroWeight) {
+                throw new IllegalArgumentException("评价指标不能混合配置零权重和非零权重");
+            }
+            BigDecimal totalWeight =
+                    scoredIndicators.stream()
+                            .map(EvaluationIndicatorEntity::getWeight)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (totalWeight.compareTo(new BigDecimal("100")) != 0) {
+                throw new IllegalArgumentException("参与评分的评价指标权重总和必须为 100");
+            }
+        }
 
         BigDecimal total = BigDecimal.ZERO;
         for (Map.Entry<Long, BigDecimal> entry : averageScores.entrySet()) {
             EvaluationIndicatorEntity indicator = indicators.get(entry.getKey());
-            if (hasWeight && indicator != null && indicator.getWeight() != null) {
+            BigDecimal normalizedScore =
+                    entry.getValue()
+                            .multiply(new BigDecimal("100"))
+                            .divide(indicator.getMaxScore(), 8, RoundingMode.HALF_UP);
+            if (allWeightsZero) {
+                total = total.add(normalizedScore);
+            } else {
                 total =
                         total.add(
-                                entry.getValue()
+                                normalizedScore
                                         .multiply(indicator.getWeight())
-                                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP));
-            } else {
-                total = total.add(entry.getValue());
+                                        .divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP));
             }
+        }
+        if (allWeightsZero) {
+            total = total.divide(BigDecimal.valueOf(averageScores.size()), 8, RoundingMode.HALF_UP);
         }
         return total.setScale(2, RoundingMode.HALF_UP);
     }
@@ -163,9 +208,5 @@ public class EvaluationResultServiceImpl implements EvaluationResultService {
             return "qualified";
         }
         return "unqualified";
-    }
-
-    private String defaultText(String value, String defaultValue) {
-        return StringUtils.hasText(value) ? value : defaultValue;
     }
 }
