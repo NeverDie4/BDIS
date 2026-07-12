@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.UnauthorizedException;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -25,11 +24,11 @@ class TokenBlacklistServiceTest {
 
         assertThatThrownBy(() -> service.isBlacklisted("jti-1"))
                 .isInstanceOf(UnauthorizedException.class)
-                .hasMessage("Token 状态校验失败，请稍后重试");
+                .hasMessage("Token blacklist is unavailable");
     }
 
     @Test
-    void blacklistFailsWhenRedisUnavailable() {
+    void blacklistFailsClosedWhenRedisUnavailable() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> operations = mock(ValueOperations.class);
@@ -45,8 +44,8 @@ class TokenBlacklistServiceTest {
                 new JwtClaims(1L, "admin", "jti-1", Instant.now(), Instant.now().plusSeconds(60));
 
         assertThatThrownBy(() -> service.blacklist(claims))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("退出登录失败，请稍后重试");
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Token blacklist is unavailable");
 
         verify(redisTemplate).opsForValue();
     }

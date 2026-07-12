@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page detail-page">
     <view v-if="errorText" class="card error">
       <text class="empty-title">{{ errorText }}</text>
       <text class="empty-tip">{{ errorTip }}</text>
@@ -7,7 +7,7 @@
     </view>
 
     <template v-else>
-      <view class="card">
+      <view class="herb-card batch-overview-card">
         <view class="batch-header">
           <text class="batch-title">{{ displayText(detail.batchName) }}</text>
           <text class="status-tag" :class="`status-${detail.batchStatus || 'unknown'}`">
@@ -15,29 +15,33 @@
           </text>
         </view>
 
-        <view class="info-row">
-          <text class="label">批次编码</text>
-          <text class="value">{{ displayText(detail.batchCode) }}</text>
+        <view class="info-block">
+          <text class="info-block-label">批次编码</text>
+          <text class="info-block-value code-text">{{ displayText(detail.batchCode) }}</text>
         </view>
         <view class="info-row">
           <text class="label">药材名称</text>
           <text class="value">{{ displayText(detail.speciesName) }}</text>
         </view>
-        <view class="info-row">
-          <text class="label">产地</text>
-          <text class="value">{{ displayText(detail.originPlace) }}</text>
+      </view>
+
+      <view class="herb-card collection-info-card">
+        <text class="section-title">采集信息</text>
+        <view class="info-block">
+          <text class="info-block-label">产地</text>
+          <text class="info-block-value">{{ displayText(detail.originPlace) }}</text>
         </view>
-        <view class="info-row">
-          <text class="label">基地名称</text>
-          <text class="value">{{ displayText(detail.baseName) }}</text>
+        <view class="info-block">
+          <text class="info-block-label">基地名称</text>
+          <text class="info-block-value">{{ displayText(detail.baseName) }}</text>
         </view>
-        <view class="info-row">
-          <text class="label">采集时间</text>
-          <text class="value">{{ formatCollectTime(detail) }}</text>
+        <view class="info-block">
+          <text class="info-block-label">采集时间</text>
+          <text class="info-block-value">{{ formatCollectTime(detail) }}</text>
         </view>
-        <view class="info-row">
-          <text class="label">创建时间</text>
-          <text class="value">{{ formatDateTime(detail.createTime) }}</text>
+        <view class="info-block">
+          <text class="info-block-label">创建时间</text>
+          <text class="info-block-value">{{ formatDateTime(detail.createTime) }}</text>
         </view>
         <view class="text-block">
           <text class="label block-label">备注</text>
@@ -45,7 +49,7 @@
         </view>
       </view>
 
-      <view class="card">
+      <view class="herb-card stat-card">
         <text class="section-title">识别统计</text>
         <view class="stat-grid">
           <view class="stat-item">
@@ -68,7 +72,7 @@
         <text v-if="Number(detail.needReviewCount || 0) > 0" class="notice">存在待复核图片，请等待管理员复核</text>
       </view>
 
-      <view class="card">
+      <view class="herb-card evaluation-card">
         <text class="section-title">批次评价</text>
         <view class="info-row">
           <text class="label">最终药材</text>
@@ -86,13 +90,13 @@
           <text class="label">质量分数</text>
           <text class="value">{{ formatScore(detail.qualityScore) }}</text>
         </view>
-        <view class="text-block">
+        <view class="text-block evaluation-summary">
           <text class="label block-label">评价摘要</text>
           <text class="block-value">{{ detail.evaluationSummary || '暂无评价摘要，请先上传图片并刷新汇总' }}</text>
         </view>
       </view>
 
-      <view class="card">
+      <view class="herb-card action-card">
         <text class="section-title">批次操作</text>
         <view class="action-grid">
           <button v-if="canUpload" class="primary-btn action-btn" @click="goUpload">上传图片</button>
@@ -106,11 +110,12 @@
             识别未完成图片
           </button>
           <button v-if="canRefreshSummary" class="secondary-btn action-btn" :loading="refreshing" @click="handleRefreshSummary">刷新汇总</button>
+          <button class="secondary-btn action-btn" @click="handleExplainBatch">AI 解释批次</button>
           <button v-if="canSubmit" class="secondary-btn action-btn" :loading="submitting" @click="handleSubmitBatch">提交批次</button>
         </view>
       </view>
 
-      <view class="card">
+      <view class="herb-card image-section-card">
         <view class="section-header">
           <text class="section-title">图片列表</text>
           <text class="section-count">{{ images.length }} 张</text>
@@ -118,19 +123,25 @@
 
         <view v-if="images.length > 0" class="image-list">
           <view v-for="item in images" :key="item.batchImageId || item.imageId || item.id" class="image-card">
-            <image v-if="resolveImageUrl(item.imageUrl)" class="thumb" mode="aspectFill" :src="resolveImageUrl(item.imageUrl)" />
+            <image
+              v-if="getDisplayImageUrl(item)"
+              class="thumb"
+              mode="aspectFill"
+              :src="getDisplayImageUrl(item)"
+              @error="handleThumbError(item)"
+            />
             <view v-else class="thumb placeholder">暂无图片</view>
             <view class="image-info">
               <view class="image-header">
                 <text class="image-title">{{ formatStatus(item.imageRole, IMAGE_ROLE_MAP) }}图片</text>
                 <text v-if="item.isPrimary" class="primary-tag">主图</text>
               </view>
-              <text class="image-line">图片编码：{{ displayText(item.imageCode) }}</text>
-              <text class="image-line">识别结果：{{ displayText(item.finalSpeciesName) }}</text>
-              <text class="image-line">置信度：{{ formatPercent(item.finalConfidence) }}</text>
-              <text class="image-line">复核状态：{{ displayText(item.reviewStatus) }}</text>
-              <text class="image-line">来源：{{ displayText(item.resultSource) }}</text>
-              <text class="image-line">识别时间：{{ formatDateTime(item.identifyTime) }}</text>
+              <text class="image-line image-code code-text">图片编码：{{ displayText(item.imageCode) }}</text>
+              <text class="image-line result-highlight">识别结果：{{ displayText(item.finalSpeciesName) }}</text>
+              <text class="image-line confidence-line">置信度：{{ formatPercent(item.finalConfidence) }}</text>
+              <text class="image-line">复核状态：{{ formatStatus(item.reviewStatus || 'unknown', REVIEW_STATUS_MAP) }}</text>
+              <text class="image-line secondary-meta">来源：{{ formatStatus(item.resultSource || 'unknown', RESULT_SOURCE_MAP) }}</text>
+              <text class="image-line secondary-meta">识别时间：{{ formatDateTime(item.identifyTime) }}</text>
 
               <view class="image-actions">
                 <button class="mini-btn secondary-mini" @click="goImageResult(item)">查看结果</button>
@@ -154,11 +165,12 @@
         </view>
       </view>
     </template>
+    <AssistantFloat ref="assistantRef" />
   </view>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import {
   getBatchDetail,
@@ -167,19 +179,27 @@ import {
   refreshBatchSummary,
   submitBatch
 } from '../../api/mobileBatchApi'
-import { BATCH_STATUS_MAP, IMAGE_ROLE_MAP, QUALITY_LEVEL_MAP } from '../../utils/constants'
+import {
+  BATCH_STATUS_MAP,
+  IMAGE_ROLE_MAP,
+  QUALITY_LEVEL_MAP,
+  RESULT_SOURCE_MAP,
+  REVIEW_STATUS_MAP
+} from '../../utils/constants'
 import { formatDateTime, formatPercent, formatScore, formatStatus, resolveFileUrl } from '../../utils/format'
-import { getCurrentCollector } from '../../utils/user'
+import { getAuthHeader } from '../../utils/auth'
 
 const batchId = ref('')
-const collector = ref(getCurrentCollector())
 const detail = ref({})
 const images = ref([])
+const imagePreviewUrls = ref({})
+const failedThumbKeys = ref({})
 const loading = ref(false)
 const refreshing = ref(false)
 const submitting = ref(false)
 const identifyingImageId = ref(null)
 const identifyingMissing = ref(false)
+const assistantRef = ref(null)
 const errorText = ref('')
 const errorTip = ref('请检查网络或后端服务是否启动')
 
@@ -218,6 +238,10 @@ onPullDownRefresh(async () => {
   }
 })
 
+onUnmounted(() => {
+  revokeImagePreviewUrls()
+})
+
 async function loadDetail() {
   if (!batchId.value) {
     errorText.value = '批次 ID 不存在'
@@ -232,14 +256,13 @@ async function loadDetail() {
   loading.value = true
   errorText.value = ''
   errorTip.value = '请检查网络或后端服务是否启动'
-  collector.value = getCurrentCollector()
 
   try {
-    const data = await getBatchDetail(batchId.value, {
-      collectorId: collector.value.collectorId
-    })
+    const data = await getBatchDetail(batchId.value)
     detail.value = normalizeBatchDetail(data)
     images.value = normalizeImages(data)
+    failedThumbKeys.value = {}
+    await prepareImagePreviewUrls(images.value)
   } catch (error) {
     console.error('批次加载失败', error)
     errorText.value = '批次加载失败'
@@ -271,6 +294,76 @@ function normalizeImages(data) {
     []
 
   return Array.isArray(records) ? records : []
+}
+
+async function prepareImagePreviewUrls(records) {
+  revokeImagePreviewUrls()
+
+  const entries = await Promise.all(
+    records.map(async (item) => {
+      const key = getImagePreviewKey(item)
+      const url = item?.imageUrl
+
+      if (!key || !url) {
+        return null
+      }
+
+      if (!isPrivateFileUrl(url)) {
+        return [key, resolveFileUrl(url)]
+      }
+
+      const previewUrl = await loadPrivateImageUrl(url)
+      return previewUrl ? [key, previewUrl] : null
+    })
+  )
+
+  imagePreviewUrls.value = entries
+    .filter(Boolean)
+    .reduce((result, [key, value]) => {
+      result[key] = value
+      return result
+    }, {})
+}
+
+function revokeImagePreviewUrls() {
+  Object.values(imagePreviewUrls.value).forEach((url) => {
+    if (typeof url === 'string' && url.startsWith('blob:') && typeof URL !== 'undefined') {
+      URL.revokeObjectURL(url)
+    }
+  })
+  imagePreviewUrls.value = {}
+}
+
+async function loadPrivateImageUrl(url) {
+  if (typeof fetch !== 'function' || typeof URL === 'undefined') {
+    return ''
+  }
+
+  try {
+    const response = await fetch(resolveFileUrl(url), {
+      headers: {
+        Authorization: getAuthHeader()
+      }
+    })
+
+    if (!response.ok) {
+      return ''
+    }
+
+    const blob = await response.blob()
+    return URL.createObjectURL(blob)
+  } catch (error) {
+    console.error('load private image failed:', error)
+    return ''
+  }
+}
+
+function isPrivateFileUrl(url) {
+  return typeof url === 'string' && /\/api\/files\//.test(url)
+}
+
+function getImagePreviewKey(item) {
+  return String(item?.batchImageId || item?.imageId || item?.id || '')
 }
 
 async function handleRefreshSummary() {
@@ -330,11 +423,9 @@ function handleSubmitBatch() {
 
 async function submitCurrentBatch() {
   submitting.value = true
-  collector.value = getCurrentCollector()
 
   try {
     await submitBatch(batchId.value, {
-      collectorId: collector.value.collectorId,
       remark: '手机端采集完成，提交批次'
     })
     uni.showToast({
@@ -529,8 +620,38 @@ function showUploadDisabledTip() {
   showToast('当前批次状态不允许继续上传图片')
 }
 
+function handleExplainBatch() {
+  if (!batchId.value) {
+    return
+  }
+  assistantRef.value?.explainBatch(batchId.value)
+}
+
 function resolveImageUrl(url) {
   return resolveFileUrl(url)
+}
+
+function getDisplayImageUrl(item) {
+  if (
+    typeof failedThumbKeys !== 'undefined' &&
+    failedThumbKeys.value[getImagePreviewKey(item)]
+  ) {
+    return ''
+  }
+
+  const previewUrl = imagePreviewUrls.value[getImagePreviewKey(item)]
+  if (previewUrl) {
+    return previewUrl
+  }
+
+  return isPrivateFileUrl(item?.imageUrl) ? '' : resolveImageUrl(item?.imageUrl)
+}
+
+function handleThumbError(item) {
+  failedThumbKeys.value = {
+    ...failedThumbKeys.value,
+    [getImagePreviewKey(item)]: true
+  }
 }
 
 function displayText(value) {
@@ -561,6 +682,10 @@ function showToast(title) {
 </script>
 
 <style scoped>
+.detail-page {
+  padding-top: 32rpx;
+}
+
 .batch-header,
 .section-header,
 .image-header {
@@ -580,7 +705,7 @@ function showToast(title) {
 
 .batch-title {
   min-width: 0;
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
   line-height: 1.4;
@@ -590,7 +715,7 @@ function showToast(title) {
 .section-title {
   display: block;
   margin-bottom: 20rpx;
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -605,8 +730,8 @@ function showToast(title) {
   flex-shrink: 0;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
   font-size: 23rpx;
   line-height: 1;
 }
@@ -631,12 +756,12 @@ function showToast(title) {
 
 .status-confirmed,
 .status-archived {
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
 }
 
 .status-cancelled {
-  background: #f1f5f9;
+  background: #f4eadf;
   color: #64748b;
 }
 
@@ -657,8 +782,40 @@ function showToast(title) {
 .value {
   min-width: 0;
   flex: 1;
-  color: #111827;
+  color: #1f2933;
   text-align: right;
+  word-break: break-all;
+}
+
+.info-block {
+  margin-bottom: 22rpx;
+}
+
+.info-block-label,
+.info-block-value {
+  display: block;
+  text-align: left;
+}
+
+.info-block-label {
+  margin-bottom: 8rpx;
+  color: #7c6f5c;
+  font-size: 26rpx;
+}
+
+.info-block-value {
+  color: #1f2933;
+  font-size: 28rpx;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.code-text {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 25rpx;
+  line-height: 1.45;
+  overflow-wrap: normal;
   word-break: break-all;
 }
 
@@ -675,7 +832,7 @@ function showToast(title) {
 
 .block-value {
   margin-top: 10rpx;
-  color: #475569;
+  color: #5f5548;
   line-height: 1.55;
 }
 
@@ -688,7 +845,7 @@ function showToast(title) {
 .stat-item {
   padding: 18rpx 10rpx;
   border-radius: 14rpx;
-  background: #f8fafc;
+  background: #fffaf2;
   text-align: center;
 }
 
@@ -698,7 +855,7 @@ function showToast(title) {
 
 .stat-value {
   display: block;
-  color: #111827;
+  color: #1f2933;
   font-size: 34rpx;
   font-weight: 700;
 }
@@ -725,7 +882,19 @@ function showToast(title) {
 }
 
 .action-btn {
+  height: 80rpx;
   margin-top: 0;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 80rpx;
+}
+
+.action-btn[disabled] {
+  border-color: #ddd5ca !important;
+  background: #eee9e1 !important;
+  color: #8b7e6b !important;
+  opacity: 0.78;
 }
 
 .image-list {
@@ -739,15 +908,15 @@ function showToast(title) {
   gap: 20rpx;
   padding: 20rpx;
   border-radius: 16rpx;
-  background: #f8fafc;
+  background: #fffaf2;
 }
 
 .thumb {
   flex-shrink: 0;
-  width: 168rpx;
-  height: 168rpx;
-  border-radius: 12rpx;
-  background: #e2e8f0;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 16rpx;
+  background: #f0e8dc;
 }
 
 .thumb.placeholder {
@@ -766,7 +935,7 @@ function showToast(title) {
 
 .image-title {
   min-width: 0;
-  color: #111827;
+  color: #1f2933;
   font-size: 29rpx;
   font-weight: 700;
   word-break: break-all;
@@ -775,10 +944,30 @@ function showToast(title) {
 .image-line {
   display: block;
   margin-top: 8rpx;
-  color: #475569;
+  color: #5f5548;
   font-size: 24rpx;
   line-height: 1.4;
   word-break: break-all;
+}
+
+.image-code {
+  color: #3f3a32;
+  font-size: 23rpx;
+}
+
+.result-highlight {
+  color: #0f3d2e;
+  font-weight: 600;
+}
+
+.confidence-line {
+  color: #0f5132;
+  font-weight: 600;
+}
+
+.secondary-meta {
+  color: #8b7e6b;
+  font-size: 22rpx;
 }
 
 .image-actions {
@@ -798,13 +987,13 @@ function showToast(title) {
 }
 
 .primary-mini {
-  background: #1677ff;
+  background: #166534;
   color: #ffffff;
 }
 
 .secondary-mini {
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
 }
 
 .empty,
@@ -814,7 +1003,7 @@ function showToast(title) {
 
 .empty-title {
   display: block;
-  color: #111827;
+  color: #1f2933;
   font-size: 30rpx;
   font-weight: 700;
 }
@@ -825,5 +1014,225 @@ function showToast(title) {
   color: #64748b;
   font-size: 26rpx;
   line-height: 1.5;
+}
+
+.batch-title,
+.section-title,
+.image-title,
+.empty-title {
+  color: #0f3d2e;
+}
+
+.status-tag,
+.status-draft,
+.status-collecting,
+.status-confirmed {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.status-submitted,
+.status-identifying,
+.status-reviewing,
+.primary-tag {
+  background: #fff4df;
+  color: #d97706;
+}
+
+.status-archived {
+  background: #f4ead8;
+  color: #8a5a2b;
+}
+
+.label {
+  color: #7c6f5c;
+}
+
+.value {
+  color: #1f2933;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.text-block {
+  border-top-color: #eadfcd;
+}
+
+.block-value,
+.image-line {
+  color: #5f5548;
+}
+
+.stat-item {
+  border: 1rpx solid #d9e8dc;
+  background: #eaf5ee;
+}
+
+.stat-item.warning {
+  border-color: #f3d39a;
+  background: #fff4df;
+}
+
+.stat-value {
+  color: #0f5132;
+}
+
+.stat-label,
+.section-count,
+.empty-tip {
+  color: #7c6f5c;
+}
+
+.notice {
+  color: #d97706;
+}
+
+.image-card {
+  border: 1rpx solid #eadfcd;
+  background: #fffaf2;
+}
+
+.thumb {
+  background: #f0e8dc;
+}
+
+.image-line.image-code {
+  color: #3f3a32;
+}
+
+.image-line.result-highlight {
+  color: #0f3d2e;
+}
+
+.image-line.confidence-line {
+  color: #0f5132;
+}
+
+.image-line.secondary-meta {
+  color: #8b7e6b;
+}
+
+.primary-mini {
+  background: #166534;
+  color: #ffffff;
+}
+
+.secondary-mini {
+  border: 1rpx solid #b7d7c2;
+  background: #eaf5ee;
+  color: #0f5132;
+}
+
+.detail-page {
+  padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
+}
+
+.herb-card {
+  box-sizing: border-box;
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 24rpx;
+  background: #fffaf2;
+  background: rgba(255, 250, 242, 0.96);
+  box-shadow: 0 10rpx 28rpx rgba(63, 45, 24, 0.06);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  color: #0f3d2e;
+}
+
+.section-title::before {
+  width: 8rpx;
+  height: 32rpx;
+  margin-right: 14rpx;
+  border-radius: 999rpx;
+  background: #166534;
+  content: '';
+}
+
+.section-header .section-title {
+  margin-bottom: 0;
+}
+
+.batch-overview-card .info-row,
+.evaluation-card .info-row {
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+  padding: 0;
+}
+
+.batch-overview-card .label,
+.evaluation-card .label {
+  width: auto;
+  color: #7c6f5c;
+  font-size: 26rpx;
+}
+
+.batch-overview-card .value,
+.evaluation-card .value {
+  color: #1f2933;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.collection-info-card .info-block:last-child {
+  margin-bottom: 0;
+}
+
+.collection-info-card .text-block {
+  margin-top: 6rpx;
+}
+
+.stat-grid {
+  gap: 10rpx;
+}
+
+.stat-item {
+  padding: 14rpx 8rpx;
+  border-radius: 14rpx;
+}
+
+.stat-value {
+  font-size: 31rpx;
+}
+
+.evaluation-summary {
+  margin-top: 18rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 14rpx;
+  background: #f7f1e6;
+}
+
+.evaluation-summary .block-value {
+  color: #3f3a32;
+  line-height: 1.65;
+}
+
+.action-card .action-grid {
+  gap: 14rpx;
+}
+
+.action-card .action-btn {
+  border-radius: 18rpx;
+  font-weight: 600;
+}
+
+.image-section-card .image-card {
+  padding: 18rpx;
+  border-radius: 18rpx;
+}
+
+.image-section-card .image-actions {
+  padding-top: 14rpx;
+  border-top: 1rpx solid #eadfcd;
+}
+
+.mini-btn::after {
+  border: 0;
 }
 </style>
