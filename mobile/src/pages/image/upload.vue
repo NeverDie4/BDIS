@@ -188,7 +188,7 @@ const form = reactive({
   collectPlace: '',
   collectTime: getNowDateTime(),
   isPrimary: false,
-  autoIdentify: true,
+  autoIdentify: false,
   remark: ''
 })
 

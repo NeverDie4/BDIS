@@ -42,8 +42,8 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { login } from '../../api/authApi'
-import { setAuthSession } from '../../utils/auth'
+import { getCurrentUser, login } from '../../api/authApi'
+import { clearAuthSession, getAuthToken, isLoggedIn, setAuthSession } from '../../utils/auth'
 
 const loading = ref(false)
 const redirect = ref('/pages/index/index')
@@ -56,7 +56,32 @@ onLoad((options) => {
   if (options.redirect) {
     redirect.value = decodeURIComponent(options.redirect)
   }
+  restoreExistingSession()
 })
+
+async function restoreExistingSession() {
+  if (!isLoggedIn() || loading.value) {
+    return
+  }
+
+  loading.value = true
+  try {
+    const user = await getCurrentUser({ skipAuthRedirect: true })
+    if (isCollectorSession({ user })) {
+      setAuthSession({
+        accessToken: getAuthToken(),
+        user
+      })
+      goRedirect()
+      return
+    }
+    clearAuthSession()
+  } catch (error) {
+    clearAuthSession()
+  } finally {
+    loading.value = false
+  }
+}
 
 async function handleLogin() {
   const username = form.username.trim()

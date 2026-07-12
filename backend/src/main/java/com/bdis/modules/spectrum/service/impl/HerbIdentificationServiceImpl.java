@@ -290,10 +290,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
 
     private String localSuggestion(String matchResult) {
         return switch (matchResult) {
-            case HerbMatchResultConstants.MATCHED ->
-                    "本地图谱相似度较高，可作为初步识别结果";
-            case HerbMatchResultConstants.UNCERTAIN ->
-                    "本地图谱存在候选结果，但置信度不足，建议人工复核";
+            case HerbMatchResultConstants.MATCHED -> "本地图谱相似度较高，可作为初步识别结果";
+            case HerbMatchResultConstants.UNCERTAIN -> "本地图谱存在候选结果，但置信度不足，建议人工复核";
             default -> "本地图谱无法作出可靠判断，建议人工复核";
         };
     }
@@ -471,8 +469,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         String doubaoFailurePrefix =
                 "Local atlas cannot make a reliable judgment; Doubao review failed: ";
         if (suggestion.startsWith(doubaoFailurePrefix)) {
-            return "本地图谱无法作出可靠判断，豆包辅助识别失败："
-                    + suggestion.substring(doubaoFailurePrefix.length());
+            return "本地图谱无法作出可靠判断，豆包辅助识别失败：" + suggestion.substring(doubaoFailurePrefix.length());
         }
         return switch (suggestion) {
             case "Local atlas similarity is high and can be used as a preliminary result" ->

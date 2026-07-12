@@ -9,10 +9,11 @@ export function login(data) {
   })
 }
 
-export function getCurrentUser() {
+export function getCurrentUser(options = {}) {
   return request({
     url: '/api/auth/me',
-    method: 'GET'
+    method: 'GET',
+    skipAuthRedirect: Boolean(options.skipAuthRedirect)
   })
 }
 

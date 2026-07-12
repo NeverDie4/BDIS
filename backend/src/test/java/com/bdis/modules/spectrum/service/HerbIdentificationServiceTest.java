@@ -114,8 +114,7 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getResultSource()).isEqualTo("local_match");
         assertThat(captor.getValue().getMatchResult()).isEqualTo("matched");
         assertThat(captor.getValue().getNeedReview()).isZero();
-        assertThat(captor.getValue().getSuggestion())
-                .isEqualTo("本地图谱相似度较高，可作为初步识别结果");
+        assertThat(captor.getValue().getSuggestion()).isEqualTo("本地图谱相似度较高，可作为初步识别结果");
         assertThat(result.getNeedReview()).isFalse();
         verify(herbRecognitionService, never()).recognizeByDoubao(any());
     }
@@ -139,8 +138,7 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(captor.getValue().getFinalConfidence()).isEqualByComparingTo("0.5100");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
-        assertThat(captor.getValue().getSuggestion())
-                .isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
+        assertThat(captor.getValue().getSuggestion()).isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
         assertThat(result.getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(result.getDoubaoRecognition().getPredictedName()).isEqualTo("Wuzhimaotao");
     }

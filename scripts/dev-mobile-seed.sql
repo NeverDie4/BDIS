@@ -1,15 +1,71 @@
 -- Development-only mobile collection seed data.
--- This script intentionally does not create sys_user rows.
--- Initialize the administrator through POST /api/auth/bootstrap-admin first,
--- then create/login users through the normal auth/user workflow.
+-- Safe for a clean Flyway-managed schema: it creates its own dev collector,
+-- herb species, bases, tasks, and batches, then references them by business code.
+--
+-- Dev login:
+--   username: collector_dev
+--   password: password
+
+INSERT INTO `sys_user`
+(`user_no`, `username`, `password_hash`, `real_name`, `user_type`, `status`, `is_deleted`, `created_at`, `updated_at`, `version`, `remark`)
+VALUES
+('DEV_COLLECTOR_001', 'collector_dev', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '开发采集员', 'collector', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
+ON DUPLICATE KEY UPDATE
+  `real_name` = VALUES(`real_name`),
+  `user_type` = VALUES(`user_type`),
+  `status` = 1,
+  `is_deleted` = 0,
+  `updated_at` = NOW(),
+  `remark` = VALUES(`remark`);
+
+INSERT IGNORE INTO `rel_user_role` (`user_id`, `role_id`, `created_at`, `remark`)
+SELECT user.id, role.id, NOW(), 'mobile dev seed'
+FROM `sys_user` user
+JOIN `auth_role` role ON role.role_code = 'COLLECTOR'
+WHERE user.username = 'collector_dev';
+
+INSERT INTO `herb_species`
+(`herb_no`, `herb_name`, `medicinal_part`, `origin_area`, `description`, `status`, `is_deleted`, `created_at`, `updated_at`, `version`, `remark`)
+VALUES
+('DEV_HERB_HUANGLIAN', '黄连', '根茎', '重庆石柱', '移动端开发测试药材', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
+('DEV_HERB_DANGSHEN', '党参', '根', '甘肃岷县', '移动端开发测试药材', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
+ON DUPLICATE KEY UPDATE
+  `herb_name` = VALUES(`herb_name`),
+  `medicinal_part` = VALUES(`medicinal_part`),
+  `origin_area` = VALUES(`origin_area`),
+  `description` = VALUES(`description`),
+  `status` = 1,
+  `is_deleted` = 0,
+  `updated_at` = NOW(),
+  `remark` = VALUES(`remark`);
+
+INSERT INTO `herb_base`
+(`base_no`, `base_name`, `base_type`, `address`, `contact_name`, `description`, `status`, `is_deleted`, `created_at`, `updated_at`, `version`, `remark`)
+VALUES
+('DEV_BASE_SHIZHU', '石柱黄连开发测试基地', 'planting', '重庆市石柱县', '开发采集员', '移动端开发测试基地', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
+('DEV_BASE_MINXIAN', '岷县党参开发测试基地', 'planting', '甘肃省岷县', '开发采集员', '移动端开发测试基地', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
+ON DUPLICATE KEY UPDATE
+  `base_name` = VALUES(`base_name`),
+  `base_type` = VALUES(`base_type`),
+  `address` = VALUES(`address`),
+  `contact_name` = VALUES(`contact_name`),
+  `description` = VALUES(`description`),
+  `status` = 1,
+  `is_deleted` = 0,
+  `updated_at` = NOW(),
+  `remark` = VALUES(`remark`);
+
+SET @dev_collector_id := (SELECT id FROM `sys_user` WHERE username = 'collector_dev' AND is_deleted = 0 LIMIT 1);
+SET @huanglian_species_id := (SELECT id FROM `herb_species` WHERE herb_no = 'DEV_HERB_HUANGLIAN' AND is_deleted = 0 LIMIT 1);
+SET @dangshen_species_id := (SELECT id FROM `herb_species` WHERE herb_no = 'DEV_HERB_DANGSHEN' AND is_deleted = 0 LIMIT 1);
+SET @shizhu_base_id := (SELECT id FROM `herb_base` WHERE base_no = 'DEV_BASE_SHIZHU' AND is_deleted = 0 LIMIT 1);
+SET @minxian_base_id := (SELECT id FROM `herb_base` WHERE base_no = 'DEV_BASE_MINXIAN' AND is_deleted = 0 LIMIT 1);
 
 INSERT INTO `herb_collection_task`
-(`task_code`, `task_name`, `species_id`, `species_name`, `base_id`, `base_name`, `collect_place`, `planned_start_time`, `planned_end_time`, `collector_id`, `collector_name`, `task_status`, `description`, `status`, `is_deleted`, `created_at`, `updated_at`, `version`, `remark`)
+(`task_code`, `task_name`, `species_id`, `species_name`, `base_id`, `base_name`, `collect_place`, `planned_start_time`, `planned_end_time`, `collector_id`, `collector_name`, `task_status`, `description`, `status`, `is_deleted`, `created_at`, `updated_at`, `created_by`, `updated_by`, `version`, `remark`)
 VALUES
-('DEV_MOBILE_20260711_TASK_001', '移动端黄芪样方采集任务', 4, '黄芪', 20001, '重庆南川金佛山中药材基地', '重庆市南川区金佛山北坡样方 A-01', '2026-07-11 08:30:00', '2026-07-13 18:00:00', 2, '采集员A', 'published', '用于移动端任务列表、批次创建和图片上传联调的默认测试任务。', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_TASK_002', '移动端党参连续观测任务', 1, '党参', 20002, '甘肃岷县党参示范基地', '甘肃省定西市岷县梅川镇试验田 B-03', '2026-07-10 09:00:00', '2026-07-15 17:30:00', 2, '采集员A', 'in_progress', '包含多个批次状态，用于检查批次列表、详情和状态标签显示。', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_TASK_003', '移动端枸杞花期补采任务', 2, '枸杞', 20003, '重庆武隆枸杞种植基地', '重庆市武隆区仙女山镇样地 C-02', '2026-07-12 07:30:00', '2026-07-14 16:30:00', 2, '采集员A', 'published', '无批次任务，用于验证任务详情页空批次状态。', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_TASK_004', '移动端金银花历史采集任务', 5, '金银花', 20004, '浙江乐清金银花基地', '浙江省温州市乐清市大荆镇温室 D-06', '2026-07-01 08:00:00', '2026-07-03 18:00:00', 2, '采集员A', 'completed', '用于筛选已完成任务状态的历史样例。', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
+('DEV_MOBILE_TASK_HUANGLIAN', '移动端黄连开发采集任务', @huanglian_species_id, '黄连', @shizhu_base_id, '石柱黄连开发测试基地', '重庆市石柱县开发样方 A-01', '2026-07-11 08:30:00', '2026-07-13 18:00:00', @dev_collector_id, '开发采集员', 'published', '用于移动端任务、批次、上传和识别联调。', 1, 0, NOW(), NOW(), @dev_collector_id, @dev_collector_id, 0, 'mobile dev seed'),
+('DEV_MOBILE_TASK_DANGSHEN', '移动端党参开发观察任务', @dangshen_species_id, '党参', @minxian_base_id, '岷县党参开发测试基地', '甘肃省岷县开发样方 B-03', '2026-07-10 09:00:00', '2026-07-15 17:30:00', @dev_collector_id, '开发采集员', 'in_progress', '用于移动端批次详情和状态展示联调。', 1, 0, NOW(), NOW(), @dev_collector_id, @dev_collector_id, 0, 'mobile dev seed')
 ON DUPLICATE KEY UPDATE
   `task_name` = VALUES(`task_name`),
   `species_id` = VALUES(`species_id`),
@@ -26,16 +82,17 @@ ON DUPLICATE KEY UPDATE
   `status` = 1,
   `is_deleted` = 0,
   `updated_at` = NOW(),
+  `updated_by` = VALUES(`updated_by`),
   `remark` = VALUES(`remark`);
 
+SET @huanglian_task_id := (SELECT id FROM `herb_collection_task` WHERE task_code = 'DEV_MOBILE_TASK_HUANGLIAN' AND is_deleted = 0 LIMIT 1);
+SET @dangshen_task_id := (SELECT id FROM `herb_collection_task` WHERE task_code = 'DEV_MOBILE_TASK_DANGSHEN' AND is_deleted = 0 LIMIT 1);
+
 INSERT INTO `herb_batch`
-(`batch_code`, `batch_name`, `task_id`, `species_id`, `species_name`, `base_id`, `base_name`, `origin_place`, `collect_start_time`, `collect_end_time`, `harvest_time`, `production_date`, `batch_status`, `image_count`, `identified_count`, `reviewed_count`, `need_review_count`, `final_species_id`, `final_species_name`, `avg_similarity`, `quality_level`, `quality_score`, `evaluation_summary`, `trace_code`, `status`, `is_deleted`, `created_at`, `updated_at`, `version`, `remark`)
+(`batch_code`, `batch_name`, `task_id`, `species_id`, `species_name`, `base_id`, `base_name`, `origin_place`, `collect_start_time`, `collect_end_time`, `harvest_time`, `production_date`, `batch_status`, `image_count`, `identified_count`, `reviewed_count`, `need_review_count`, `final_species_id`, `final_species_name`, `avg_similarity`, `quality_level`, `quality_score`, `evaluation_summary`, `trace_code`, `status`, `is_deleted`, `created_at`, `updated_at`, `created_by`, `updated_by`, `version`, `remark`)
 VALUES
-('DEV_MOBILE_20260711_BATCH_001', '黄芪根部样品第 1 批', (SELECT id FROM herb_collection_task WHERE task_code = 'DEV_MOBILE_20260711_TASK_001'), 4, '黄芪', 20001, '重庆南川金佛山中药材基地', '重庆市南川区金佛山北坡样方 A-01', '2026-07-11 09:10:00', NULL, NULL, '2026-07-11', 'collecting', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, '移动端现场采集中，待上传图片。', 'TRACE-DEV-MOBILE-001', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_BATCH_002', '黄芪地上部样品第 2 批', (SELECT id FROM herb_collection_task WHERE task_code = 'DEV_MOBILE_20260711_TASK_001'), 4, '黄芪', 20001, '重庆南川金佛山中药材基地', '重庆市南川区金佛山北坡样方 A-02', '2026-07-11 10:20:00', '2026-07-11 11:05:00', NULL, '2026-07-11', 'submitted', 3, 2, 0, 1, 4, '黄芪', 0.892100, 'good', 86.5000, '已提交后台审核，识别结果整体可信。', 'TRACE-DEV-MOBILE-002', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_BATCH_003', '党参叶片观测第 1 批', (SELECT id FROM herb_collection_task WHERE task_code = 'DEV_MOBILE_20260711_TASK_002'), 1, '党参', 20002, '甘肃岷县党参示范基地', '甘肃省定西市岷县梅川镇试验田 B-03', '2026-07-10 09:25:00', '2026-07-10 10:40:00', NULL, '2026-07-10', 'reviewing', 5, 5, 2, 3, 1, '党参', 0.781300, 'normal', 72.0000, '图片较完整，仍需复核叶片局部特征。', 'TRACE-DEV-MOBILE-003', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_BATCH_004', '党参根茎采集第 2 批', (SELECT id FROM herb_collection_task WHERE task_code = 'DEV_MOBILE_20260711_TASK_002'), 1, '党参', 20002, '甘肃岷县党参示范基地', '甘肃省定西市岷县梅川镇试验田 B-04', '2026-07-11 14:00:00', NULL, NULL, '2026-07-11', 'collecting', 1, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, '现场继续采集中，适合测试未完成批次数。', 'TRACE-DEV-MOBILE-004', 1, 0, NOW(), NOW(), 0, 'mobile dev seed'),
-('DEV_MOBILE_20260711_BATCH_005', '金银花温室复核批次', (SELECT id FROM herb_collection_task WHERE task_code = 'DEV_MOBILE_20260711_TASK_004'), 5, '金银花', 20004, '浙江乐清金银花基地', '浙江省温州市乐清市大荆镇温室 D-06', '2026-07-02 08:40:00', '2026-07-02 12:10:00', '2026-07-03 10:00:00', '2026-07-03', 'confirmed', 4, 4, 4, 0, 5, '金银花', 0.934200, 'excellent', 94.0000, '历史批次已确认，用于已完成任务详情展示。', 'TRACE-DEV-MOBILE-005', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
+('DEV_MOBILE_BATCH_HUANGLIAN_001', '黄连移动端采集第 1 批', @huanglian_task_id, @huanglian_species_id, '黄连', @shizhu_base_id, '石柱黄连开发测试基地', '重庆市石柱县开发样方 A-01', '2026-07-11 09:10:00', NULL, NULL, '2026-07-11', 'collecting', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, '现场采集中，待上传图片。', 'TRACE-DEV-MOBILE-HL-001', 1, 0, NOW(), NOW(), @dev_collector_id, @dev_collector_id, 0, 'mobile dev seed'),
+('DEV_MOBILE_BATCH_DANGSHEN_001', '党参移动端观察第 1 批', @dangshen_task_id, @dangshen_species_id, '党参', @minxian_base_id, '岷县党参开发测试基地', '甘肃省岷县开发样方 B-03', '2026-07-10 09:25:00', '2026-07-10 10:40:00', NULL, '2026-07-10', 'submitted', 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, '已提交批次，用于移动端状态展示。', 'TRACE-DEV-MOBILE-DS-001', 1, 0, NOW(), NOW(), @dev_collector_id, @dev_collector_id, 0, 'mobile dev seed')
 ON DUPLICATE KEY UPDATE
   `batch_name` = VALUES(`batch_name`),
   `task_id` = VALUES(`task_id`),
@@ -46,21 +103,12 @@ ON DUPLICATE KEY UPDATE
   `origin_place` = VALUES(`origin_place`),
   `collect_start_time` = VALUES(`collect_start_time`),
   `collect_end_time` = VALUES(`collect_end_time`),
-  `harvest_time` = VALUES(`harvest_time`),
   `production_date` = VALUES(`production_date`),
   `batch_status` = VALUES(`batch_status`),
-  `image_count` = VALUES(`image_count`),
-  `identified_count` = VALUES(`identified_count`),
-  `reviewed_count` = VALUES(`reviewed_count`),
-  `need_review_count` = VALUES(`need_review_count`),
-  `final_species_id` = VALUES(`final_species_id`),
-  `final_species_name` = VALUES(`final_species_name`),
-  `avg_similarity` = VALUES(`avg_similarity`),
-  `quality_level` = VALUES(`quality_level`),
-  `quality_score` = VALUES(`quality_score`),
   `evaluation_summary` = VALUES(`evaluation_summary`),
   `trace_code` = VALUES(`trace_code`),
   `status` = 1,
   `is_deleted` = 0,
   `updated_at` = NOW(),
+  `updated_by` = VALUES(`updated_by`),
   `remark` = VALUES(`remark`);

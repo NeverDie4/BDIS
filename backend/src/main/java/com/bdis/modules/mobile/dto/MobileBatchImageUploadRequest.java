@@ -28,5 +28,5 @@ public class MobileBatchImageUploadRequest {
 
     private Integer sortOrder;
 
-    private Boolean autoIdentify = true;
+    private Boolean autoIdentify = false;
 }

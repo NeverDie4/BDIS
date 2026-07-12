@@ -38,6 +38,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -108,7 +110,8 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         result.setAutoIdentifySuccess(false);
         result.setMessage("uploaded and bound");
         if (Boolean.TRUE.equals(safeRequest.getAutoIdentify())) {
-            identifyBoundImage(batchId, image.getId(), new MobileBatchIdentifyRequest(), result);
+            identifyBoundImageAfterCommit(
+                    batchId, image.getId(), new MobileBatchIdentifyRequest(), result);
         }
         return result;
     }
@@ -231,6 +234,24 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
             result.setMessage(
                     "uploaded and bound, but identification failed: " + exception.getMessage());
         }
+    }
+
+    private void identifyBoundImageAfterCommit(
+            Long batchId,
+            Long imageId,
+            MobileBatchIdentifyRequest request,
+            MobileBatchImageUploadResultVO result) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            identifyBoundImage(batchId, imageId, request, result);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        identifyBoundImage(batchId, imageId, request, result);
+                    }
+                });
     }
 
     private HerbIdentificationVO identify(Long imageId, MobileBatchIdentifyRequest request) {

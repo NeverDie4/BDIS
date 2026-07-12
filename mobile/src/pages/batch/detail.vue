@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import {
   getBatchDetail,
@@ -238,6 +238,10 @@ onPullDownRefresh(async () => {
   }
 })
 
+onUnmounted(() => {
+  revokeImagePreviewUrls()
+})
+
 async function loadDetail() {
   if (!batchId.value) {
     errorText.value = '批次 ID 不存在'
@@ -257,6 +261,7 @@ async function loadDetail() {
     const data = await getBatchDetail(batchId.value)
     detail.value = normalizeBatchDetail(data)
     images.value = normalizeImages(data)
+    failedThumbKeys.value = {}
     await prepareImagePreviewUrls(images.value)
   } catch (error) {
     console.error('批次加载失败', error)
