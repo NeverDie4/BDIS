@@ -7,9 +7,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class DeclarationReviewRequest {
-
-    private Long reviewerId;
-
     @NotBlank(message = "审核动作不能为空")
     private String reviewAction;
 

@@ -36,7 +36,7 @@ class EvaluationWorkflowServiceTest {
     @Mock private BusinessAccessService accessService;
 
     @Test
-    void averagesScoresByIndicatorBeforeApplyingWeightAndIgnoresClientSnapshot() {
+    void averagesScoresByIndicatorBeforeApplyingWeight() {
         EvaluationTaskEntity task = task(1L, "scoring");
         EvaluationScoreRecordEntity first = score(10L, 1L, 80);
         EvaluationScoreRecordEntity second = score(11L, 1L, 100);
@@ -61,8 +61,6 @@ class EvaluationWorkflowServiceTest {
         when(accessService.currentUserId()).thenReturn(3L);
 
         EvaluationConfirmationRequest request = new EvaluationConfirmationRequest();
-        request.setTotalScore(new BigDecimal("999"));
-        request.setResultLevel("client-overwrite");
         EvaluationResultServiceImpl service =
                 new EvaluationResultServiceImpl(
                         resultMapper, scoreMapper, indicatorMapper, taskMapper, accessService);

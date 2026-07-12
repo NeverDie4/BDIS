@@ -3,9 +3,11 @@ package com.bdis.modules.performance.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.BusinessAccessService;
+import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.modules.performance.dto.PerformanceRequest;
 import com.bdis.modules.performance.entity.PerformanceEntity;
 import com.bdis.modules.performance.mapper.PerformanceAuditMapper;
@@ -25,6 +27,7 @@ class PerformanceWorkflowServiceTest {
     @Mock private PerformanceAuditMapper auditMapper;
     @Mock private PerformanceMaterialService materialService;
     @Mock private BusinessAccessService accessService;
+    @Mock private BusinessReferenceValidator referenceValidator;
 
     @Test
     void creationUsesAuthenticatedUserAndAlwaysStartsAsDraft() {
@@ -36,11 +39,12 @@ class PerformanceWorkflowServiceTest {
                         standardMapper,
                         auditMapper,
                         materialService,
-                        accessService);
+                        accessService,
+                        referenceValidator);
         PerformanceRequest request = new PerformanceRequest();
-        request.setUserId(999L);
+        request.setSourceType("eval_application");
+        request.setSourceId(2L);
         request.setPerformanceTitle("测试业绩");
-        request.setIdentifyStatus("approved");
 
         doAnswer(
                         invocation -> {
@@ -54,6 +58,7 @@ class PerformanceWorkflowServiceTest {
 
         assertThat(result.getUserId()).isEqualTo(5L);
         assertThat(result.getIdentifyStatus()).isEqualTo("draft");
+        verify(referenceValidator).validate("eval_application", 2L);
     }
 
     private PerformanceEntity inserted;

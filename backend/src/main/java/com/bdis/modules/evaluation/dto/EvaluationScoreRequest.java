@@ -16,8 +16,6 @@ public class EvaluationScoreRequest {
     @NotNull(message = "评价指标 ID 不能为空")
     private Long indicatorId;
 
-    private Long evaluatorId;
-
     @NotNull(message = "评分不能为空")
     @DecimalMin(value = "0.00", message = "评分不能小于 0")
     private BigDecimal score;

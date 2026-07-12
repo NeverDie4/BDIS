@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.security.BusinessAccessService;
+import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.modules.performance.dto.PerformanceRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
@@ -42,6 +43,7 @@ public class PerformanceServiceImpl implements PerformanceService {
     private final PerformanceAuditMapper auditMapper;
     private final PerformanceMaterialService materialService;
     private final BusinessAccessService accessService;
+    private final BusinessReferenceValidator referenceValidator;
 
     @Override
     public IPage<PerformanceEntity> listPerformances(PerformanceQuery query) {
@@ -59,6 +61,7 @@ public class PerformanceServiceImpl implements PerformanceService {
         accessService.requirePermission("performance:record:create");
         Long userId = accessService.currentUserId();
         validateStandard(request.getStandardId());
+        validateSource(request.getSourceType(), request.getSourceId());
         PerformanceEntity entity = new PerformanceEntity();
         entity.setPerformanceNo(defaultText(request.getPerformanceNo(), generateNo()));
         entity.setUserId(userId);
@@ -105,6 +108,7 @@ public class PerformanceServiceImpl implements PerformanceService {
             throw new IllegalArgumentException("只有草稿或退回状态的业绩可以修改");
         }
         validateStandard(request.getStandardId());
+        validateSource(request.getSourceType(), request.getSourceId());
         entity.setPerformanceTitle(request.getPerformanceTitle());
         entity.setPerformanceType(request.getPerformanceType());
         entity.setStandardId(request.getStandardId());
@@ -118,9 +122,9 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     @Transactional
-    public PerformanceEntity submitPerformance(Long performanceId, Long userId) {
+    public PerformanceEntity submitPerformance(Long performanceId) {
         PerformanceEntity entity = findPerformance(performanceId);
-        userId = accessService.currentUserId();
+        Long userId = accessService.currentUserId();
         accessService.requireResourceAccess(
                 "perf_record", performanceId, "performance:record:submit", entity.getUserId());
         if (!"draft".equals(entity.getIdentifyStatus())
@@ -239,6 +243,16 @@ public class PerformanceServiceImpl implements PerformanceService {
         if (standardId != null && standardMapper.selectById(standardId) == null) {
             throw new IllegalArgumentException("认定标准不存在");
         }
+    }
+
+    private void validateSource(String sourceType, Long sourceId) {
+        if (!StringUtils.hasText(sourceType) && sourceId == null) {
+            return;
+        }
+        if (!StringUtils.hasText(sourceType) || sourceId == null) {
+            throw new IllegalArgumentException("来源类型和来源 ID 必须同时提供");
+        }
+        referenceValidator.validate(sourceType, sourceId);
     }
 
     private void assertIdentifyStatus(String identifyStatus) {

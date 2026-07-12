@@ -2,6 +2,8 @@ package com.bdis.modules.declaration.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.common.security.BusinessAccessService;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.modules.declaration.dto.DeclarationArchiveItemRequest;
 import com.bdis.modules.declaration.entity.DeclarationArchiveEntity;
 import com.bdis.modules.declaration.entity.DeclarationArchiveItemEntity;
@@ -36,6 +38,8 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
 
     private final DeclarationArchiveItemMapper archiveItemMapper;
     private final BusinessAccessService accessService;
+    private final BusinessReferenceValidator referenceValidator;
+    private final FileResourceService fileResourceService;
 
     @Override
     @Transactional
@@ -93,6 +97,11 @@ public class DeclarationArchiveServiceImpl implements DeclarationArchiveService 
                 archive.getApplicationId(),
                 "declaration:application:archive",
                 archive.getOwnerId());
+        referenceValidator.validate(request.getSourceType(), request.getSourceId());
+        if ("file".equals(request.getSourceType())
+                || "sys_file_resource".equals(request.getSourceType())) {
+            fileResourceService.detail(request.getSourceId());
+        }
         DeclarationArchiveItemEntity item = new DeclarationArchiveItemEntity();
         item.setArchiveId(archiveId);
         item.setSourceType(request.getSourceType());

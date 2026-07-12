@@ -1,14 +1,18 @@
 "use client";
 
-import { App, Button, Empty, Input, Space, Spin, Tag } from "antd";
+import { App, Button, Empty, Input, Select, Space, Spin, Tag } from "antd";
 import L, { type LatLng, type Map as LeafletMap } from "leaflet";
-import { LocateFixed, Minus, Plus, RefreshCw, Ruler, Search, X } from "lucide-react";
+import { Layers, LocateFixed, Minus, Plus, RefreshCw, Ruler, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createMapPoint,
+  createGrowthRecord,
   deleteMapPoint,
   fetchMapPoints,
+  fetchGrowthRecords,
   getMapPointRequestErrorMessage,
+  type GrowthRecord,
+  type GrowthRecordPayload,
   type MapPoint,
   type MapPointPayload,
   updateMapPoint,
@@ -49,6 +53,22 @@ function createTileLayer(layerKey: MapLayerKey) {
     maxZoom: 22,
     subdomains: ["0", "1", "2", "3"],
   });
+}
+
+function getPreviewLayerKey(layerKey: MapLayerKey): MapLayerKey {
+  return layerKey === "satellite" ? "standard" : "satellite";
+}
+
+function createPreviewTileLayer(layerKey: MapLayerKey) {
+  if (layerKey === "standard") {
+    return L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; CARTO",
+      maxNativeZoom: 20,
+      maxZoom: 22,
+      subdomains: ["a", "b", "c", "d"],
+    });
+  }
+  return createTileLayer("satellite");
 }
 
 interface MeasurePoint {
@@ -156,6 +176,13 @@ function formatTickDistance(meters: number, useKm: boolean) {
   return useKm ? `${(meters / 1000).toFixed(2)} km` : `${Math.round(meters)} m`;
 }
 
+function formatDateTime(value?: string) {
+  if (!value) {
+    return "暂无";
+  }
+  return value.replace("T", " ").slice(0, 16);
+}
+
 function createLabelIcon(className: string, text: string) {
   return L.divIcon({
     className,
@@ -227,6 +254,8 @@ export function HerbDistributionMap() {
   const { message, modal } = App.useApp();
   const [points, setPoints] = useState<MapPoint[]>([]);
   const [keyword, setKeyword] = useState("");
+  const [districtFilter, setDistrictFilter] = useState<string>();
+  const [sourceFilter, setSourceFilter] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<MeasurePoint[]>([]);
@@ -237,12 +266,23 @@ export function HerbDistributionMap() {
   const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingPoint, setEditingPoint] = useState<Partial<MapPoint>>();
   const [emptyNoticeVisible, setEmptyNoticeVisible] = useState(true);
+  const [selectedPointId, setSelectedPointId] = useState<number>();
+  const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
+  const [growthLoading, setGrowthLoading] = useState(false);
+  const [growthSubmitting, setGrowthSubmitting] = useState(false);
+  const [growthForm, setGrowthForm] = useState<GrowthRecordPayload>({
+    collectorName: "",
+    growthStage: "",
+    sampleWeight: undefined,
+    remark: "",
+  });
   const mapElementRef = useRef<HTMLDivElement>(null);
   const miniMapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const miniMapRef = useRef<LeafletMap | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
   const miniBaseLayerRef = useRef<L.TileLayer | null>(null);
+  const previewLayerRef = useRef<MapLayerKey>("satellite");
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
   const measuringRef = useRef(false);
@@ -257,10 +297,48 @@ export function HerbDistributionMap() {
     }, 0);
   }, [measurePoints]);
 
+  const districtOptions = useMemo(
+    () =>
+      Array.from(new Set(points.map((point) => point.district).filter(Boolean))).map((district) => ({
+        label: district,
+        value: district,
+      })),
+    [points],
+  );
+
+  const sourceOptions = useMemo(
+    () =>
+      Array.from(new Set(points.map((point) => point.dataSource).filter(Boolean))).map((source) => ({
+        label: source,
+        value: source,
+      })),
+    [points],
+  );
+
+  const filteredPoints = useMemo(
+    () =>
+      points.filter((point) => {
+        if (districtFilter && point.district !== districtFilter) {
+          return false;
+        }
+        if (sourceFilter && point.dataSource !== sourceFilter) {
+          return false;
+        }
+        return true;
+      }),
+    [districtFilter, points, sourceFilter],
+  );
+
+  const selectedPoint = useMemo(
+    () => filteredPoints.find((point) => point.id === selectedPointId) ?? filteredPoints[0],
+    [filteredPoints, selectedPointId],
+  );
+
   const activeLayerConfig = useMemo(
     () => MAP_LAYERS.find((layer) => layer.key === activeLayer) ?? MAP_LAYERS[0],
     [activeLayer],
   );
+  const previewLayer = useMemo(() => getPreviewLayerKey(activeLayer), [activeLayer]);
 
   const switchMapLayer = useCallback((layerKey: MapLayerKey) => {
     const map = mapRef.current;
@@ -321,6 +399,7 @@ export function HerbDistributionMap() {
     try {
       const data = await fetchMapPoints(keyword ? { keyword } : undefined);
       setPoints(data);
+      setSelectedPointId((current) => current ?? data[0]?.id);
       setEmptyNoticeVisible(true);
     } catch (error) {
       message.error(getMapPointRequestErrorMessage(error, "地图点位加载"));
@@ -338,7 +417,7 @@ export function HerbDistributionMap() {
       city: "重庆市",
       distributionType: "cultivated",
       sourceType: "pc",
-      dataSource: "map-demo",
+      dataSource: "map",
     });
     setFormOpen(true);
   }, []);
@@ -369,6 +448,10 @@ export function HerbDistributionMap() {
   }, [measuring]);
 
   useEffect(() => {
+    previewLayerRef.current = previewLayer;
+  }, [previewLayer]);
+
+  useEffect(() => {
     if (!mapElementRef.current || mapRef.current) {
       return;
     }
@@ -381,6 +464,7 @@ export function HerbDistributionMap() {
     });
 
     baseLayerRef.current = createTileLayer("standard").addTo(map);
+    L.control.scale({ imperial: false, metric: true, position: "bottomright" }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
     measureLayerRef.current = L.layerGroup().addTo(map);
@@ -424,21 +508,21 @@ export function HerbDistributionMap() {
       dragging: false,
       keyboard: false,
       scrollWheelZoom: false,
-      // tap: false, // Leaflet 1.9+ 中 tap 选项已被移除，在移动设备上默认启用点击延迟处理
       touchZoom: false,
       zoom: Math.max(map.getZoom() - 4, 3),
       zoomControl: false,
     });
 
-    miniBaseLayerRef.current = createTileLayer(activeLayer).addTo(miniMap);
     miniMapRef.current = miniMap;
+    miniBaseLayerRef.current = createPreviewTileLayer(previewLayerRef.current).addTo(miniMap);
+    window.setTimeout(() => miniMap.invalidateSize(), 0);
 
     return () => {
       miniMap.remove();
       miniMapRef.current = null;
       miniBaseLayerRef.current = null;
     };
-  }, [activeLayer, mapReady]);
+  }, [mapReady, miniMapElementRef]);
 
   useEffect(() => {
     const miniMap = miniMapRef.current;
@@ -449,17 +533,22 @@ export function HerbDistributionMap() {
     if (miniBaseLayerRef.current) {
       miniMap.removeLayer(miniBaseLayerRef.current);
     }
-    miniBaseLayerRef.current = createTileLayer(activeLayer).addTo(miniMap);
-  }, [activeLayer]);
+    miniBaseLayerRef.current = createPreviewTileLayer(previewLayer).addTo(miniMap);
+    window.setTimeout(() => miniMap.invalidateSize(), 0);
+  }, [previewLayer]);
 
   useEffect(() => {
     const map = mapRef.current;
-    const miniMap = miniMapRef.current;
-    if (!mapReady || !map || !miniMap) {
+    if (!mapReady || !map) {
       return;
     }
 
     const syncMiniMap = () => {
+      const miniMap = miniMapRef.current;
+      const container = miniMapElementRef.current;
+      if (!miniMap || !container?.isConnected) {
+        return;
+      }
       miniMap.setView(map.getCenter(), Math.max(map.getZoom() - 4, 3), { animate: false });
     };
 
@@ -472,9 +561,27 @@ export function HerbDistributionMap() {
   }, [mapReady]);
 
   useEffect(() => {
-    const task = window.setTimeout(() => void loadPoints(), 0);
-    return () => window.clearTimeout(task);
+    loadPoints();
   }, [loadPoints]);
+
+  useEffect(() => {
+    if (!selectedPoint?.id) {
+      setGrowthRecords([]);
+      return;
+    }
+
+    setGrowthLoading(true);
+    fetchGrowthRecords(selectedPoint.id)
+      .then(setGrowthRecords)
+      .catch((error) => message.error(getMapPointRequestErrorMessage(error, "采集记录加载")))
+      .finally(() => setGrowthLoading(false));
+  }, [message, selectedPoint?.id]);
+
+  useEffect(() => {
+    if (selectedPointId && !filteredPoints.some((point) => point.id === selectedPointId)) {
+      setSelectedPointId(filteredPoints[0]?.id);
+    }
+  }, [filteredPoints, selectedPointId]);
 
   useEffect(() => {
     const layer = markersLayerRef.current;
@@ -483,11 +590,12 @@ export function HerbDistributionMap() {
     }
 
     layer.clearLayers();
-    points.forEach((point) => {
+    filteredPoints.forEach((point) => {
       if (point.latitude == null || point.longitude == null) {
         return;
       }
       L.marker([point.latitude, point.longitude], { icon: createHerbIcon(point) })
+        .on("click", () => setSelectedPointId(point.id))
         .bindPopup(buildPopupContent(point, openEditForm, confirmDelete), {
           className: "bdis-herb-popup",
           maxWidth: 280,
@@ -495,7 +603,7 @@ export function HerbDistributionMap() {
         })
         .addTo(layer);
     });
-  }, [confirmDelete, openEditForm, points]);
+  }, [confirmDelete, filteredPoints, openEditForm]);
 
   useEffect(() => {
     const layer = measureLayerRef.current;
@@ -592,12 +700,44 @@ export function HerbDistributionMap() {
       } else {
         const next = await createMapPoint(payload);
         setPoints((current) => [next, ...current]);
+        setSelectedPointId(next.id);
         setEmptyNoticeVisible(false);
         message.success("地图点位已新增");
       }
       setFormOpen(false);
     } catch (error) {
       message.error(getMapPointRequestErrorMessage(error, "地图点位保存"));
+    }
+  }
+
+  async function handleGrowthSubmit() {
+    if (!selectedPoint?.id) {
+      return;
+    }
+    if (!growthForm.collectorName?.trim()) {
+      message.warning("请填写采集者");
+      return;
+    }
+
+    setGrowthSubmitting(true);
+    try {
+      const next = await createGrowthRecord(selectedPoint.id, {
+        ...growthForm,
+        collectorName: growthForm.collectorName.trim(),
+        dataSource: growthForm.dataSource || "map",
+      });
+      setGrowthRecords((current) => [next, ...current]);
+      setPoints((current) =>
+        current.map((point) =>
+          point.id === selectedPoint.id ? { ...point, lastCollectedAt: next.collectedAt } : point,
+        ),
+      );
+      setGrowthForm({ collectorName: "", growthStage: "", sampleWeight: undefined, remark: "" });
+      message.success("采集记录已保存");
+    } catch (error) {
+      message.error(getMapPointRequestErrorMessage(error, "采集记录保存"));
+    } finally {
+      setGrowthSubmitting(false);
     }
   }
 
@@ -620,27 +760,83 @@ export function HerbDistributionMap() {
           />
           <Button onClick={loadPoints}>查询</Button>
         </Space.Compact>
+        <Select
+          allowClear
+          className={styles.filterSelect}
+          placeholder="全部区县"
+          options={districtOptions}
+          value={districtFilter}
+          onChange={setDistrictFilter}
+        />
+        <Select
+          allowClear
+          className={styles.filterSelect}
+          placeholder="全部来源"
+          options={sourceOptions}
+          value={sourceFilter}
+          onChange={setSourceFilter}
+        />
         <Space>
           <Button icon={<RefreshCw size={16} />} onClick={loadPoints}>
             刷新
           </Button>
-          <Button
-            type={measuring ? "primary" : "default"}
-            icon={<Ruler size={16} />}
-            onClick={toggleMeasure}
-          >
-            {measuring ? "结束测距" : "测距"}
-          </Button>
         </Space>
       </div>
 
-      <div className={styles.mapWrap}>
+      <div className={styles.contentGrid}>
+        <aside className={styles.pointListPanel}>
+          <div className={styles.panelHeader}>
+            <strong>分布点列表</strong>
+            <span>共 {filteredPoints.length} 条</span>
+          </div>
+          <Button type="primary" block onClick={() => openCreateForm(L.latLng(CHONGQING_CENTER))}>
+            新增点位
+          </Button>
+          <div className={styles.pointList}>
+            {filteredPoints.map((point) => (
+              <button
+                type="button"
+                key={point.id}
+                className={`${styles.pointItem} ${selectedPoint?.id === point.id ? styles.pointItemActive : ""}`}
+                onClick={() => {
+                  setSelectedPointId(point.id);
+                  mapRef.current?.flyTo([point.latitude, point.longitude], Math.max(mapZoom, 11));
+                }}
+              >
+                <div
+                  className={styles.pointThumb}
+                  style={point.coverImageUrl ? { backgroundImage: `url(${point.coverImageUrl})` } : undefined}
+                  aria-label={point.herbName}
+                >
+                  {!point.coverImageUrl && <span>药</span>}
+                </div>
+                <div className={styles.pointMeta}>
+                  <strong>{point.locationName || point.herbName}</strong>
+                  <span>{[point.district, point.baseName || point.herbName].filter(Boolean).join(" · ")}</span>
+                </div>
+                <Tag color={point.status === 0 ? "default" : "green"}>{point.status === 0 ? "停用" : "启用"}</Tag>
+              </button>
+            ))}
+            {filteredPoints.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无点位" />}
+          </div>
+        </aside>
+
+      <div className={`${styles.mapWrap} ${activeLayer === "satellite" ? styles.satelliteMap : styles.lightMap}`}>
         {loading && (
           <div className={styles.loadingMask}>
             <Spin />
           </div>
         )}
         <div ref={mapElementRef} className={styles.mapCanvas} />
+        <button
+          type="button"
+          className={`${styles.measureMapButton} ${measuring ? styles.measureMapButtonActive : ""}`}
+          aria-label={measuring ? "结束测距" : "测距"}
+          onClick={toggleMeasure}
+        >
+          <Ruler size={16} />
+          <span>{measuring ? "结束测距" : "测距"}</span>
+        </button>
         <div className={styles.mapControls} aria-label="地图控制">
           <button type="button" className={styles.mapControlButton} aria-label="放大地图" onClick={zoomIn}>
             <Plus size={18} />
@@ -665,7 +861,10 @@ export function HerbDistributionMap() {
             onClick={switchToNextLayer}
           >
             <div ref={miniMapElementRef} className={styles.miniMapCanvas} />
-            <span className={styles.layerBadge}>图层</span>
+            <span className={styles.layerBadge}>
+              <Layers size={14} />
+              <span>图层</span>
+            </span>
           </button>
           <div className={styles.layerOptions} aria-label="地图样式">
             {MAP_LAYERS.map((layer) => (
@@ -700,6 +899,104 @@ export function HerbDistributionMap() {
             <Empty description="暂无地图点位，可点击地图新增" />
           </div>
         )}
+      </div>
+
+        <aside className={styles.detailPanel}>
+          {selectedPoint ? (
+            <>
+              <div className={styles.detailHeader}>
+                <div>
+                  <h3>{selectedPoint.locationName || selectedPoint.herbName}</h3>
+                  <p>{[selectedPoint.district, selectedPoint.address].filter(Boolean).join(" · ") || "地图点位"}</p>
+                </div>
+                <Button type="text" icon={<X size={16} />} onClick={() => setSelectedPointId(undefined)} />
+              </div>
+
+              <div className={styles.detailSection}>
+                <h4>基本信息</h4>
+                <div className={styles.infoRows}>
+                  <span>药材名称</span>
+                  <strong>{selectedPoint.herbName}</strong>
+                  <span>经纬度</span>
+                  <strong>
+                    {selectedPoint.longitude.toFixed(6)}, {selectedPoint.latitude.toFixed(6)}
+                  </strong>
+                  <span>数据来源</span>
+                  <strong>{selectedPoint.dataSource || "暂无"}</strong>
+                  <span>最近采集</span>
+                  <strong>{formatDateTime(selectedPoint.lastCollectedAt)}</strong>
+                </div>
+              </div>
+
+              <div className={styles.detailSection}>
+                <h4>药材说明</h4>
+                <p className={styles.detailText}>
+                  {selectedPoint.efficacy || selectedPoint.distributionDesc || selectedPoint.herbDescription || "暂无说明"}
+                </p>
+              </div>
+
+              <div className={styles.detailSection}>
+                <div className={styles.sectionTitleRow}>
+                  <h4>采集记录</h4>
+                  <Tag>{growthRecords.length} 次</Tag>
+                </div>
+                <div className={styles.collectionForm}>
+                  <Input
+                    placeholder="采集者"
+                    value={growthForm.collectorName}
+                    onChange={(event) => setGrowthForm((current) => ({ ...current, collectorName: event.target.value }))}
+                  />
+                  <Input
+                    placeholder="生长阶段，如花期/结果期"
+                    value={growthForm.growthStage}
+                    onChange={(event) => setGrowthForm((current) => ({ ...current, growthStage: event.target.value }))}
+                  />
+                  <Input
+                    placeholder="采集重量 g"
+                    type="number"
+                    value={growthForm.sampleWeight}
+                    onChange={(event) =>
+                      setGrowthForm((current) => ({
+                        ...current,
+                        sampleWeight: event.target.value ? Number(event.target.value) : undefined,
+                      }))
+                    }
+                  />
+                  <Input
+                    placeholder="备注"
+                    value={growthForm.remark}
+                    onChange={(event) => setGrowthForm((current) => ({ ...current, remark: event.target.value }))}
+                  />
+                  <Button type="primary" loading={growthSubmitting} onClick={handleGrowthSubmit}>
+                    保存采集
+                  </Button>
+                </div>
+                <Spin spinning={growthLoading}>
+                  <div className={styles.collectionList}>
+                    {growthRecords.map((record) => (
+                      <div key={record.id} className={styles.collectionItem}>
+                        <div>
+                          <strong>{record.collectorName || "未知采集者"}</strong>
+                          <span>{formatDateTime(record.collectedAt)}</span>
+                        </div>
+                        <p>
+                          {[record.growthStage, record.sampleWeight ? `${record.sampleWeight} g` : undefined, record.weather]
+                            .filter(Boolean)
+                            .join(" · ") || "暂无采集详情"}
+                        </p>
+                      </div>
+                    ))}
+                    {growthRecords.length === 0 && (
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无采集记录" />
+                    )}
+                  </div>
+                </Spin>
+              </div>
+            </>
+          ) : (
+            <Empty description="请选择一个点位" />
+          )}
+        </aside>
       </div>
 
       <div className={styles.footer}>

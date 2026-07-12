@@ -76,8 +76,7 @@ export default function PermissionsPage() {
   }, [message]);
 
   useEffect(() => {
-    const task = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(task);
+    void load();
   }, [load]);
 
   const flatMenus = useMemo(() => flattenMenus(menus), [menus]);

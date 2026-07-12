@@ -18,7 +18,7 @@ public interface PerformanceService {
 
     PerformanceEntity updatePerformance(Long performanceId, PerformanceRequest request);
 
-    PerformanceEntity submitPerformance(Long performanceId, Long userId);
+    PerformanceEntity submitPerformance(Long performanceId);
 
     PerformanceStatisticsVO getStatistics(PerformanceStatisticsQuery query);
 }

@@ -22,7 +22,5 @@ public class PerformanceStandardRequest {
 
     private Integer sortOrder;
 
-    private Long operatorId;
-
     private String remark;
 }

@@ -44,8 +44,7 @@ export default function DepartmentsPage() {
   }, [message]);
 
   useEffect(() => {
-    const task = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(task);
+    void load();
   }, [load]);
 
   const flatDepartments = useMemo(() => flattenDepartments(departments), [departments]);

@@ -9,7 +9,6 @@ import lombok.Setter;
 public class PerformanceRequest {
 
     private String performanceNo;
-    private Long userId;
 
     @NotBlank(message = "业绩标题不能为空")
     private String performanceTitle;
@@ -18,6 +17,5 @@ public class PerformanceRequest {
     private Long standardId;
     private String sourceType;
     private Long sourceId;
-    private String identifyStatus;
     private String remark;
 }

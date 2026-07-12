@@ -8,8 +8,6 @@ import org.springframework.util.StringUtils;
 @Setter
 public class PerformanceAuditRequest {
 
-    private Long identifierId;
-    private String identifyAction;
     private String identifyResult;
     private String identifyComment;
     private String decision;
@@ -17,9 +15,6 @@ public class PerformanceAuditRequest {
     private String remark;
 
     public String resolvedAction() {
-        if (StringUtils.hasText(identifyAction)) {
-            return identifyAction;
-        }
         return "approved".equals(resolvedResult()) ? "approve" : "reject";
     }
 

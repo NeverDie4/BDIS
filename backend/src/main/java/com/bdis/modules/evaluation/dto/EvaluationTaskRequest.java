@@ -23,13 +23,9 @@ public class EvaluationTaskRequest {
     @NotNull(message = "评价对象 ID 不能为空")
     private Long targetId;
 
-    private Long ownerId;
-
     private LocalDateTime startedAt;
 
     private LocalDateTime endedAt;
-
-    private String taskStatus;
 
     private Integer status;
 

@@ -114,9 +114,9 @@ public class DeclarationServiceImpl implements DeclarationService {
 
     @Override
     @Transactional
-    public DeclarationEntity submitDeclaration(Long declarationId, Long applicantId) {
+    public DeclarationEntity submitDeclaration(Long declarationId) {
         DeclarationEntity declaration = findDeclaration(declarationId);
-        applicantId = accessService.currentUserId();
+        Long applicantId = accessService.currentUserId();
         accessService.requireResourceAccess(
                 "eval_application",
                 declarationId,

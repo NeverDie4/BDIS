@@ -15,7 +15,5 @@ public class PerformanceMaterialRequest {
 
     private Integer sortOrder;
 
-    private Long operatorId;
-
     private String remark;
 }

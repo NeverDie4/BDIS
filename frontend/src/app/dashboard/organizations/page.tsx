@@ -40,8 +40,7 @@ export default function OrganizationsPage() {
   }, [message]);
 
   useEffect(() => {
-    const task = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(task);
+    void load();
   }, [load]);
 
   const columns = useMemo<ColumnsType<Organization>>(

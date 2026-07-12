@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bdis.common.core.Result;
 import com.bdis.modules.performance.dto.PerformanceAuditRequest;
 import com.bdis.modules.performance.dto.PerformanceRequest;
-import com.bdis.modules.performance.dto.PerformanceSubmitRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
 import com.bdis.modules.performance.query.PerformanceQuery;
@@ -52,11 +51,8 @@ public class PerformanceController {
     }
 
     @PostMapping("/{performanceId}/submissions")
-    public Result<PerformanceEntity> submitPerformance(
-            @PathVariable Long performanceId,
-            @Valid @RequestBody PerformanceSubmitRequest request) {
-        return Result.success(
-                performanceService.submitPerformance(performanceId, request.getUserId()));
+    public Result<PerformanceEntity> submitPerformance(@PathVariable Long performanceId) {
+        return Result.success(performanceService.submitPerformance(performanceId));
     }
 
     @PostMapping("/{performanceId}/audit-records")

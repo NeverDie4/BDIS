@@ -21,7 +21,5 @@ public class DeclarationArchiveItemRequest {
 
     private Integer sortOrder;
 
-    private Long createdBy;
-
     private String remark;
 }

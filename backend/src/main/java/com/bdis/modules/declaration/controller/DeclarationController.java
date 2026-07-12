@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bdis.common.core.Result;
 import com.bdis.modules.declaration.dto.DeclarationRequest;
 import com.bdis.modules.declaration.dto.DeclarationReviewRequest;
-import com.bdis.modules.declaration.dto.DeclarationSubmitRequest;
 import com.bdis.modules.declaration.entity.DeclarationEntity;
 import com.bdis.modules.declaration.entity.DeclarationReviewRecordEntity;
 import com.bdis.modules.declaration.query.DeclarationQuery;
@@ -44,11 +43,8 @@ public class DeclarationController {
     }
 
     @PostMapping("/{declarationId}/submissions")
-    public Result<DeclarationEntity> submitDeclaration(
-            @PathVariable Long declarationId,
-            @Valid @RequestBody DeclarationSubmitRequest request) {
-        return Result.success(
-                declarationService.submitDeclaration(declarationId, request.getApplicantId()));
+    public Result<DeclarationEntity> submitDeclaration(@PathVariable Long declarationId) {
+        return Result.success(declarationService.submitDeclaration(declarationId));
     }
 
     @PostMapping("/{declarationId}/reviews")
