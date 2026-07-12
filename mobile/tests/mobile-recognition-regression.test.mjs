@@ -107,14 +107,14 @@ test('批次详情不会把私有文件 URL 直接交给 image 标签', async ()
   )
 })
 
-test('手机上传和后端请求都默认开启自动识别', async () => {
+test('手机上传和后端请求都默认关闭自动识别', async () => {
   const [uploadPage, uploadRequest] = await Promise.all([
     readFile(uploadPagePath, 'utf8'),
     readFile(uploadRequestPath, 'utf8')
   ])
 
-  assert.match(uploadPage, /autoIdentify:\s*true/)
-  assert.match(uploadRequest, /Boolean autoIdentify\s*=\s*true/)
+  assert.match(uploadPage, /autoIdentify:\s*false/)
+  assert.match(uploadRequest, /Boolean autoIdentify\s*=\s*false/)
 })
 
 test('批次图片的复核状态和来源使用中文映射', async () => {

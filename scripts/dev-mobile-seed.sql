@@ -9,7 +9,7 @@
 INSERT INTO `sys_user`
 (`user_no`, `username`, `password_hash`, `real_name`, `user_type`, `status`, `is_deleted`, `created_at`, `updated_at`, `version`, `remark`)
 VALUES
-('DEV_COLLECTOR_001', 'collector_dev', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '开发采集员', 'collector', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
+('DEV_COLLECTOR_001', 'collector_dev', '$2a$10$6bvbc4YcNNJ8G04ht4nF8.gyQlisoJ55a/yX/LTwdigeEApavMgpK', '开发采集员', 'collector', 1, 0, NOW(), NOW(), 0, 'mobile dev seed')
 ON DUPLICATE KEY UPDATE
   `real_name` = VALUES(`real_name`),
   `user_type` = VALUES(`user_type`),

@@ -77,7 +77,11 @@ async function restoreExistingSession() {
     }
     clearAuthSession()
   } catch (error) {
-    clearAuthSession()
+    if (isUnauthorizedError(error)) {
+      clearAuthSession()
+      return
+    }
+    showToast('会话校验失败，请检查网络后重试')
   } finally {
     loading.value = false
   }
@@ -126,6 +130,10 @@ async function handleLogin() {
 function isCollectorSession(session) {
   const roleCodes = session?.user?.roleCodes || []
   return Array.isArray(roleCodes) && roleCodes.includes('COLLECTOR')
+}
+
+function isUnauthorizedError(error) {
+  return error?.code === 401 || error?.code === 'UNAUTHORIZED'
 }
 
 function goRedirect() {

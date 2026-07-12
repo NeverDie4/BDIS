@@ -12,6 +12,7 @@ import com.bdis.modules.collection.service.HerbBatchSummaryService;
 import com.bdis.modules.herb.service.HerbImageService;
 import com.bdis.modules.herb.vo.HerbImageVO;
 import com.bdis.modules.mobile.dto.MobileBatchImageUploadRequest;
+import com.bdis.modules.mobile.service.impl.MobileBatchAutoIdentificationExecutor;
 import com.bdis.modules.mobile.service.impl.MobileHerbBatchServiceImpl;
 import com.bdis.modules.mobile.vo.MobileImageIdentificationVO;
 import com.bdis.modules.spectrum.service.HerbIdentificationService;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @ExtendWith(MockitoExtension.class)
 class MobileHerbBatchServiceImplTest {
@@ -35,6 +38,7 @@ class MobileHerbBatchServiceImplTest {
     @Mock private HerbIdentificationService herbIdentificationService;
     @Mock private HerbBatchSummaryService herbBatchSummaryService;
     @Mock private HerbBatchStatusService herbBatchStatusService;
+    @Mock private MobileBatchAutoIdentificationExecutor autoIdentificationExecutor;
 
     @InjectMocks private MobileHerbBatchServiceImpl service;
 
@@ -43,6 +47,21 @@ class MobileHerbBatchServiceImplTest {
         MobileBatchImageUploadRequest request = new MobileBatchImageUploadRequest();
 
         assertThat(request.getAutoIdentify()).isFalse();
+    }
+
+    @Test
+    void autoIdentificationExecutorUsesIndependentTransaction() throws Exception {
+        Transactional transactional =
+                MobileBatchAutoIdentificationExecutor.class
+                        .getMethod(
+                                "identifyBoundImage",
+                                Long.class,
+                                Long.class,
+                                com.bdis.modules.mobile.dto.MobileBatchIdentifyRequest.class)
+                        .getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
     }
 
     @Test
