@@ -5,18 +5,16 @@ import shutil
 import json
 import time
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from openai import OpenAI
 
 app = FastAPI()
 
-client = OpenAI(
-  api_key=os.getenv("ARK_API_KEY"),
-  base_url="https://ark.cn-beijing.volces.com/api/v3"
-)
-
 MODEL_ID = "doubao-seed-2-1-pro-260628"
 UPLOAD_DIR = "uploads"
+MAX_FILE_SIZE = 20 * 1024 * 1024
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -26,6 +24,13 @@ def image_to_base64(image_path):
 
 
 def call_doubao(image_path):
+  api_key = os.getenv("ARK_API_KEY")
+  if not api_key:
+    raise RuntimeError("ARK_API_KEY is not configured")
+  client = OpenAI(
+    api_key=api_key,
+    base_url="https://ark.cn-beijing.volces.com/api/v3"
+  )
   image_base64 = image_to_base64(image_path)
 
   prompt = """
@@ -86,45 +91,43 @@ async def recognize(file: UploadFile = File(...)):
 
   original_filename = file.filename or "upload.jpg"
   ext = original_filename.split(".")[-1].lower()
+  if ext not in ALLOWED_EXTENSIONS:
+    raise HTTPException(status_code=400, detail="unsupported image format")
 
   filename = f"{uuid.uuid4()}.{ext}"
   file_path = os.path.join(UPLOAD_DIR, filename)
 
-  # 1. 保存上传文件
-  with open(file_path, "wb") as buffer:
-    shutil.copyfileobj(file.file, buffer)
-
-  t1 = time.time()
-  print("保存文件耗时:", t1 - t0)
-
-  # 2. 调用豆包视觉模型
-  result = call_doubao(file_path)
-
-  t2 = time.time()
-  print("调用豆包耗时:", t2 - t1)
-  print("总耗时:", t2 - t0)
-
-  print("豆包识别结果：")
-  print(result)
-
-  # 3. 解析 JSON
   try:
-    result_json = json.loads(result)
-  except json.JSONDecodeError:
-    result_json = {
-      "results": [],
-      "needReview": True,
-      "suggestion": "模型返回格式异常，建议人工审核",
-      "raw": result
+    with open(file_path, "wb") as buffer:
+      shutil.copyfileobj(file.file, buffer)
+    if os.path.getsize(file_path) > MAX_FILE_SIZE:
+      raise HTTPException(status_code=413, detail="image is too large")
+    t1 = time.time()
+    result = await run_in_threadpool(call_doubao, file_path)
+    t2 = time.time()
+    try:
+      result_json = json.loads(result)
+    except json.JSONDecodeError:
+      result_json = {
+        "results": [],
+        "needReview": True,
+        "suggestion": "模型返回格式异常，建议人工审核"
+      }
+    return {
+      "code": 200,
+      "msg": "识别成功",
+      "data": result_json,
+      "timeCost": {
+        "saveFileSeconds": round(t1 - t0, 3),
+        "doubaoSeconds": round(t2 - t1, 3),
+        "totalSeconds": round(t2 - t0, 3)
+      }
     }
+  finally:
+    if os.path.exists(file_path):
+      os.remove(file_path)
 
-  return {
-    "code": 200,
-    "msg": "识别成功",
-    "data": result_json,
-    "timeCost": {
-      "saveFileSeconds": round(t1 - t0, 3),
-      "doubaoSeconds": round(t2 - t1, 3),
-      "totalSeconds": round(t2 - t0, 3)
-    }
-  }
+
+@app.get("/health")
+def health():
+  return {"status": "UP", "configured": bool(os.getenv("ARK_API_KEY"))}

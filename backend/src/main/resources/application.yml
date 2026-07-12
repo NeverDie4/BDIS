@@ -90,11 +90,14 @@ herb:
   feature:
     enabled: ${HERB_FEATURE_ENABLED:true}
     service-url: ${HERB_FEATURE_EXTRACTION_SERVICE_URL:http://localhost:8002/extract-feature}
-    timeout-seconds: ${HERB_FEATURE_TIMEOUT_SECONDS:180}
+    timeout-seconds: ${HERB_FEATURE_TIMEOUT_SECONDS:30}
     mock-enabled: ${HERB_FEATURE_MOCK_ENABLED:false}
     model-name: ${HERB_FEATURE_MODEL_NAME:resnet50}
-    model-version: ${HERB_FEATURE_MODEL_VERSION:v1.0}
+    model-version: ${HERB_FEATURE_MODEL_VERSION:resnet50-imagenet-v1}
     mock-dimension: ${HERB_FEATURE_MOCK_DIMENSION:512}
+    recovery-enabled: ${HERB_FEATURE_RECOVERY_ENABLED:true}
+    recovery-initial-delay-ms: ${HERB_FEATURE_RECOVERY_INITIAL_DELAY_MS:5000}
+    recovery-interval-ms: ${HERB_FEATURE_RECOVERY_INTERVAL_MS:60000}
   identification:
     high-threshold: ${HERB_IDENTIFICATION_HIGH_THRESHOLD:0.85}
     middle-threshold: ${HERB_IDENTIFICATION_MIDDLE_THRESHOLD:0.60}

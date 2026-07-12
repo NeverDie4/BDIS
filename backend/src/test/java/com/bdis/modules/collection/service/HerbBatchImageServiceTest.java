@@ -17,6 +17,7 @@ import com.bdis.modules.collection.entity.HerbBatchImageEntity;
 import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.service.impl.HerbBatchImageServiceImpl;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchImageBindResultVO;
 import com.bdis.modules.collection.vo.HerbBatchImageStatisticsVO;
 import com.bdis.modules.collection.vo.HerbBatchImageVO;
@@ -44,6 +45,8 @@ class HerbBatchImageServiceTest {
 
     @Mock private HerbIdentificationResultMapper herbIdentificationResultMapper;
 
+    @Mock private CollectionAccessService collectionAccessService;
+
     private HerbBatchImageService herbBatchImageService;
 
     @BeforeEach
@@ -53,7 +56,8 @@ class HerbBatchImageServiceTest {
                         herbBatchImageMapper,
                         herbBatchMapper,
                         herbImageMapper,
-                        herbIdentificationResultMapper);
+                        herbIdentificationResultMapper,
+                        collectionAccessService);
     }
 
     @Test

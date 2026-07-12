@@ -2,6 +2,7 @@ package com.bdis.modules.herb.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.herb.dto.HerbSpeciesCreateRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesQueryRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesUpdateRequest;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb/species")
+@RequirePermission("herb:species:view")
 public class HerbSpeciesController {
 
     private final HerbSpeciesService herbSpeciesService;
@@ -30,17 +32,20 @@ public class HerbSpeciesController {
     }
 
     @PostMapping
+    @RequirePermission("herb:species:create")
     public Result<HerbSpeciesVO> create(@Valid @RequestBody HerbSpeciesCreateRequest request) {
         return Result.success(herbSpeciesService.create(request));
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("herb:species:update")
     public Result<HerbSpeciesVO> update(
             @PathVariable Long id, @Valid @RequestBody HerbSpeciesUpdateRequest request) {
         return Result.success(herbSpeciesService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("herb:species:delete")
     public Result<Void> delete(@PathVariable Long id) {
         herbSpeciesService.delete(id);
         return Result.success();

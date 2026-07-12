@@ -16,4 +16,6 @@ public interface DashboardService {
     List<DashboardTodoVO> pendingTasks(DashboardQuery query);
 
     DashboardMapVO mapOverview();
+
+    void refreshSnapshot();
 }

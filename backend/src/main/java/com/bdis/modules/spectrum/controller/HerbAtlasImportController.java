@@ -1,6 +1,7 @@
 package com.bdis.modules.spectrum.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.spectrum.dto.HerbAtlasImportRequest;
 import com.bdis.modules.spectrum.service.HerbAtlasImportService;
 import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb/atlas")
+@RequirePermission("herb:atlas:import")
 public class HerbAtlasImportController {
 
     private final HerbAtlasImportService herbAtlasImportService;

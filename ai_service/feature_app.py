@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from fastapi import FastAPI, UploadFile, File
+from fastapi import HTTPException
+from fastapi.concurrency import run_in_threadpool
 from torchvision import models
 from torchvision.models import ResNet50_Weights
 from PIL import Image
@@ -16,6 +18,7 @@ UPLOAD_DIR = "feature_uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MODEL_VERSION = "resnet50-imagenet-v1"
+MAX_FILE_SIZE = 20 * 1024 * 1024
 
 # 1. 加载 ResNet50 预训练模型
 weights = ResNet50_Weights.DEFAULT
@@ -51,25 +54,31 @@ async def get_feature(file: UploadFile = File(...)):
     ext = original_filename.split(".")[-1].lower()
 
     if ext not in ["jpg", "jpeg", "png", "webp"]:
-        ext = "jpg"
+        raise HTTPException(status_code=400, detail="unsupported image format")
 
     filename = f"{uuid.uuid4()}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    vector = extract_feature(file_path)
-
-    return {
-        "code": 200,
-        "msg": "特征提取成功",
-        "data": {
-            "modelVersion": MODEL_VERSION,
-            "dim": len(vector),
-            "vector": vector
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        if os.path.getsize(file_path) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="image is too large")
+        vector = await run_in_threadpool(extract_feature, file_path)
+        return {
+            "code": 200,
+            "msg": "特征提取成功",
+            "data": {
+                "modelVersion": MODEL_VERSION,
+                "dim": len(vector),
+                "vector": vector
+            }
         }
-    }
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+
 @app.post("/extract-feature")
 async def extract_feature_api(file: UploadFile = File(...)):
     started_at = time.perf_counter()
@@ -112,3 +121,8 @@ async def extract_feature_api(file: UploadFile = File(...)):
             "message": str(exc),
             "elapsedSeconds": elapsed,
         }
+
+
+@app.get("/health")
+def health():
+    return {"status": "UP", "modelVersion": MODEL_VERSION}

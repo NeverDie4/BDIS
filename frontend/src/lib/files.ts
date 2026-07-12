@@ -24,6 +24,7 @@ export interface FileResource {
 
 export interface UploadFileOptions {
   bizType?: string;
+  bizId?: number;
   fileUsage?: string;
 }
 
@@ -33,12 +34,19 @@ export async function uploadFile(file: File, options?: UploadFileOptions) {
   if (options?.bizType) {
     formData.append("bizType", options.bizType);
   }
+  if (options?.bizId) {
+    formData.append("bizId", String(options.bizId));
+  }
   if (options?.fileUsage) {
     formData.append("fileUsage", options.fileUsage);
   }
 
   const response = await request.post<ApiResult<FileResource>>("/files/upload", formData);
   return withBrowserFileUrl(response.data.data);
+}
+
+export async function deleteFileResource(fileId: number) {
+  await request.delete(`/files/${fileId}`);
 }
 
 function withBrowserFileUrl(file: FileResource): FileResource {

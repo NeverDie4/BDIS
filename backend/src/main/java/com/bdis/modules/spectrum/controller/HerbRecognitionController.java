@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.spectrum.dto.HerbRecognitionQueryRequest;
 import com.bdis.modules.spectrum.service.HerbRecognitionService;
 import com.bdis.modules.spectrum.vo.HerbRecognitionVO;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb")
+@RequirePermission("herb:identification:view")
 public class HerbRecognitionController {
 
     private final HerbRecognitionService herbRecognitionService;
@@ -24,6 +26,7 @@ public class HerbRecognitionController {
     }
 
     @PostMapping("/image/{imageId}/recognize")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbRecognitionVO> recognize(@PathVariable Long imageId) {
         return Result.success(herbRecognitionService.recognize(imageId));
     }

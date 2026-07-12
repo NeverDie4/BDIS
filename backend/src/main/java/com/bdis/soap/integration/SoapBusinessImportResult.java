@@ -21,4 +21,16 @@ public class SoapBusinessImportResult {
         result.setMessage(message);
         return result;
     }
+
+    public static SoapBusinessImportResult imported(
+            Long businessId, String externalNo, String message) {
+        SoapBusinessImportResult result = new SoapBusinessImportResult();
+        result.setStatus("SUCCESS");
+        result.setBusinessType("herb_growth_record");
+        result.setBusinessId(businessId);
+        result.setExternalNo(externalNo);
+        result.setSuccessCount(1);
+        result.setMessage(message);
+        return result;
+    }
 }

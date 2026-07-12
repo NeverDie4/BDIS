@@ -1,6 +1,7 @@
 package com.bdis.modules.collection.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.collection.dto.HerbBatchConfirmRequest;
 import com.bdis.modules.collection.service.HerbBatchSummaryService;
 import com.bdis.modules.collection.vo.HerbBatchIdentificationItemVO;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/herb/batch")
+@RequirePermission("growth:record:view")
 public class HerbBatchSummaryController {
 
     private final HerbBatchSummaryService herbBatchSummaryService;
@@ -26,6 +28,7 @@ public class HerbBatchSummaryController {
     }
 
     @PostMapping("/{batchId}/summary/refresh")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchSummaryVO> refreshSummary(@PathVariable Long batchId) {
         return Result.success(herbBatchSummaryService.refreshSummary(batchId));
     }
@@ -42,6 +45,7 @@ public class HerbBatchSummaryController {
     }
 
     @PutMapping("/{batchId}/confirm")
+    @RequirePermission("growth:record:audit")
     public Result<HerbBatchSummaryVO> confirm(
             @PathVariable Long batchId, @Valid @RequestBody HerbBatchConfirmRequest request) {
         return Result.success(herbBatchSummaryService.confirm(batchId, request));

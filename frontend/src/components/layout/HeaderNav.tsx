@@ -4,15 +4,18 @@ import { Badge, Button, Drawer, Space, Tooltip, Typography } from "antd";
 import { BellOutlined, SafetyCertificateOutlined, SettingOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiGet } from "@/lib/request";
+import { useAuthStore } from "@/stores/auth-store";
+import type { CurrentUser } from "@/types/api";
 import { UserMenu } from "./UserMenu";
 import styles from "./HeaderNav.module.css";
 
 const NAV_ITEMS = [
-  { href: "/", label: "首页" },
-  { href: "/herbs", label: "中药材资源" },
-  { href: "/map", label: "分布地图" },
-  { href: "/growth", label: "生长数据" },
+  { href: "/", label: "首页", permission: "dashboard:view" },
+  { href: "/herbs", label: "中药材资源", permission: "herb:species:view" },
+  { href: "/map", label: "分布地图", permission: "map:point:view" },
+  { href: "/growth", label: "生长数据", permission: "growth:record:view" },
   { href: "/teaching", label: "教学科研" },
   { href: "/evaluation", label: "评价申报" },
   { href: "/about", label: "关于我们" },
@@ -45,6 +48,19 @@ export function HeaderNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+
+  useEffect(() => {
+    if (token && !user) {
+      apiGet<CurrentUser>("/auth/me").then(setUser).catch(() => undefined);
+    }
+  }, [setUser, token, user]);
+
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.permission || !user || user.permissions.includes(item.permission) || user.permissions.includes("*"),
+  );
 
   return (
     <header className={styles.header}>
@@ -59,7 +75,7 @@ export function HeaderNav() {
       </Link>
 
       <nav className={styles.nav} aria-label="主导航">
-        {NAV_ITEMS.map((item) => (
+        {visibleNavItems.map((item) => (
           <Link
             key={item.href}
             className={`${styles.navItem} ${

@@ -1,6 +1,7 @@
 package com.bdis.modules.herb.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.vo.HerbImageVO;
@@ -21,10 +22,15 @@ public interface HerbImageMapper extends BaseMapper<HerbImageEntity> {
 
     HerbImageVO selectDetailById(@Param("id") Long id);
 
-    Long countPage(@Param("query") HerbImageQueryRequest query);
+    List<HerbImageVO> selectByGrowthRecordId(@Param("growthRecordId") Long growthRecordId);
+
+    Long countPage(
+            @Param("query") HerbImageQueryRequest query,
+            @Param("scope") CollectionAccessScope scope);
 
     List<HerbImageVO> selectPage(
             @Param("query") HerbImageQueryRequest query,
+            @Param("scope") CollectionAccessScope scope,
             @Param("offset") Long offset,
             @Param("pageSize") Integer pageSize);
 

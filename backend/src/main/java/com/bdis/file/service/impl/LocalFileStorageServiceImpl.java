@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -18,6 +20,19 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class LocalFileStorageServiceImpl implements FileStorageService {
+
+    private static final Set<String> ALLOWED_EXTENSIONS =
+            Set.of(
+                    "jpg", "jpeg", "png", "gif", "webp", "pdf", "doc", "docx", "ppt", "pptx", "xls",
+                    "xlsx", "csv", "txt", "mp4", "webm", "mp3", "wav", "zip");
+
+    private static final Set<String> BLOCKED_CONTENT_TYPES =
+            Set.of(
+                    "text/html",
+                    "image/svg+xml",
+                    "application/x-sh",
+                    "application/x-executable",
+                    "application/x-msdownload");
 
     private final Path storageRoot;
 
@@ -31,6 +46,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
         if (file == null || file.isEmpty()) {
             throw new FileStorageException("文件不能为空");
         }
+        validateFile(file);
         String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
         String storedName = UUID.randomUUID() + (extension == null ? "" : "." + extension);
         Path relativeDir = Path.of("uploads", LocalDate.now().toString());
@@ -47,6 +63,18 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
         }
         String storagePath = storageRoot.relativize(targetPath).toString().replace('\\', '/');
         return new StoredFile(storedName, storagePath, "/api/files/" + storagePath);
+    }
+
+    private void validateFile(MultipartFile file) {
+        String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
+        if (extension == null || !ALLOWED_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            throw new FileStorageException("不支持的文件格式");
+        }
+        String contentType = file.getContentType();
+        if (contentType != null
+                && BLOCKED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            throw new FileStorageException("不允许上传可执行或主动内容文件");
+        }
     }
 
     @Override

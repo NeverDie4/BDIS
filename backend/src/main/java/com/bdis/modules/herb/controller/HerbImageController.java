@@ -2,6 +2,7 @@ package com.bdis.modules.herb.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.herb.dto.HerbImageQueryRequest;
 import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
@@ -22,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/herb/image")
+@RequirePermission("herb:identification:view")
 public class HerbImageController {
 
     private final HerbImageService herbImageService;
@@ -31,6 +33,7 @@ public class HerbImageController {
     }
 
     @PostMapping("/upload")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbImageVO> upload(
             @RequestPart("file") MultipartFile file,
             @Valid @ModelAttribute HerbImageUploadRequest request) {
@@ -38,12 +41,14 @@ public class HerbImageController {
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbImageVO> update(
             @PathVariable Long id, @RequestBody HerbImageUpdateRequest request) {
         return Result.success(herbImageService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("herb:identification:execute")
     public Result<Void> delete(@PathVariable Long id) {
         herbImageService.delete(id);
         return Result.success();

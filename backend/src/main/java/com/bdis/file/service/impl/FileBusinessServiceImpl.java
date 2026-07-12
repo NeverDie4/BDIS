@@ -8,6 +8,7 @@ import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.file.vo.FileBusinessVO;
 import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
@@ -30,25 +31,44 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     private final FileBusinessMapper fileBusinessMapper;
     private final FileResourceMapper fileResourceMapper;
     private final BusinessReferenceValidator businessReferenceValidator;
+    private final FileAccessGuard fileAccessGuard;
     private final AuditLogService auditLogService;
 
     public FileBusinessServiceImpl(
             FileBusinessMapper fileBusinessMapper,
             FileResourceMapper fileResourceMapper,
             BusinessReferenceValidator businessReferenceValidator,
+            FileAccessGuard fileAccessGuard,
             AuditLogService auditLogService) {
         this.fileBusinessMapper = fileBusinessMapper;
         this.fileResourceMapper = fileResourceMapper;
         this.businessReferenceValidator = businessReferenceValidator;
+        this.fileAccessGuard = fileAccessGuard;
         this.auditLogService = auditLogService;
     }
 
     @Override
     @Transactional
     public FileBusinessVO bind(FileBusinessBindDTO dto) {
-        businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
-        if (fileResourceMapper.selectById(dto.getFileId()) == null) {
+        return bindInternal(dto, true);
+    }
+
+    @Override
+    @Transactional
+    public FileBusinessVO bindSystem(FileBusinessBindDTO dto) {
+        return bindInternal(dto, false);
+    }
+
+    private FileBusinessVO bindInternal(FileBusinessBindDTO dto, boolean validateAccess) {
+        if (validateAccess) {
+            businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
+        }
+        FileResourceEntity file = fileResourceMapper.selectById(dto.getFileId());
+        if (file == null) {
             throw new ResourceNotFoundException("文件不存在");
+        }
+        if (validateAccess) {
+            fileAccessGuard.requireAuthenticatedAccess(file);
         }
         LambdaQueryWrapper<FileBusinessEntity> wrapper =
                 new LambdaQueryWrapper<FileBusinessEntity>()
@@ -79,6 +99,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         if (entity == null) {
             throw new ResourceNotFoundException("文件关联不存在");
         }
+        businessReferenceValidator.validate(entity.getBizType(), entity.getBizId());
         fileBusinessMapper.deleteById(relationId);
         recordAudit("UNBIND", entity.getBizType(), entity.getBizId());
     }
@@ -91,13 +112,32 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
+    public void deleteByBusiness(String bizType, Long bizId) {
+        fileBusinessMapper.delete(
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getBizType, bizType)
+                        .eq(FileBusinessEntity::getBizId, bizId));
+    }
+
+    @Override
+    public void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId) {
+        fileBusinessMapper.delete(
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getBizType, bizType)
+                        .eq(FileBusinessEntity::getBizId, bizId)
+                        .eq(FileBusinessEntity::getFileId, fileId));
+    }
+
+    @Override
     public List<FileResourceVO> listByBusiness(String bizType, Long bizId) {
         businessReferenceValidator.validate(bizType, bizId);
         List<FileBusinessEntity> relations =
                 fileBusinessMapper.selectList(
                         new LambdaQueryWrapper<FileBusinessEntity>()
                                 .eq(FileBusinessEntity::getBizType, bizType)
-                                .eq(FileBusinessEntity::getBizId, bizId));
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByDesc(FileBusinessEntity::getId));
         return relations.stream()
                 .map(FileBusinessEntity::getFileId)
                 .map(fileResourceMapper::selectById)
@@ -130,6 +170,13 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     private FileResourceVO toFileVO(FileResourceEntity entity) {
         FileResourceVO vo = new FileResourceVO();
         BeanUtils.copyProperties(entity, vo);
+        vo.setFileUrl(
+                "public".equalsIgnoreCase(entity.getAccessLevel())
+                        ? "/api/public-files/" + entity.getId() + "/content"
+                        : "/api/files/" + entity.getId() + "/content");
+        if (entity.getThumbnailUrl() != null) {
+            vo.setThumbnailUrl(vo.getFileUrl());
+        }
         return vo;
     }
 

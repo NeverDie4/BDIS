@@ -1,6 +1,7 @@
 package com.bdis.dashboard.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.dashboard.query.DashboardQuery;
 import com.bdis.dashboard.service.DashboardService;
 import com.bdis.dashboard.vo.DashboardMapVO;
@@ -10,11 +11,13 @@ import com.bdis.dashboard.vo.DashboardTodoVO;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/dashboard")
+@RequirePermission("dashboard:view")
 public class DashboardController {
 
     private final DashboardService dashboardService;
@@ -42,5 +45,12 @@ public class DashboardController {
     @GetMapping("/map-overview")
     public Result<DashboardMapVO> mapOverview() {
         return Result.success(dashboardService.mapOverview());
+    }
+
+    @PostMapping("/snapshots")
+    @RequirePermission("dashboard:refresh")
+    public Result<Void> refreshSnapshot() {
+        dashboardService.refreshSnapshot();
+        return Result.success();
     }
 }

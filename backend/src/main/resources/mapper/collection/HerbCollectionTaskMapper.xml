@@ -21,6 +21,8 @@
         <result column="remark" property="remark"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_by" property="updatedBy"/>
         <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 
@@ -74,6 +76,8 @@
         remark,
         created_at,
         updated_at,
+        created_by,
+        updated_by,
         is_deleted
     </sql>
 
@@ -135,6 +139,18 @@
                     #{status}
                 </foreach>
             </if>
+            <if test="!scope.allIncluded">
+                AND (
+                    t.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR t.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
         </where>
     </sql>
 
@@ -155,6 +171,18 @@
                 <foreach collection="query.excludedStatuses" item="status" open="(" separator="," close=")">
                     #{status}
                 </foreach>
+            </if>
+            <if test="!scope.allIncluded">
+                AND (
+                    t.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR t.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
             </if>
         </where>
     </sql>
@@ -194,6 +222,8 @@
             remark,
             created_at,
             updated_at,
+            created_by,
+            updated_by,
             is_deleted
         ) VALUES (
             #{taskCode},
@@ -212,6 +242,8 @@
             #{remark},
             #{createdAt},
             #{updatedAt},
+            #{createdBy},
+            #{updatedBy},
             #{isDeleted}
         )
     </insert>
@@ -231,7 +263,8 @@
             task_status = #{taskStatus},
             description = #{description},
             remark = #{remark},
-            updated_at = #{updatedAt}
+            updated_at = #{updatedAt},
+            updated_by = #{updatedBy}
         WHERE id = #{id}
           AND is_deleted = 0
     </update>

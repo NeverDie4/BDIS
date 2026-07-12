@@ -1,6 +1,7 @@
 package com.bdis.file.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.vo.FileBusinessVO;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/file-relations")
+@RequirePermission("file:resource:update")
 public class FileBusinessController {
 
     private final FileBusinessService fileBusinessService;

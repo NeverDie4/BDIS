@@ -44,6 +44,10 @@ public class GrowthRecordEntity extends BaseEntity {
 
     private String dataSource;
 
+    private String externalSource;
+
+    private String externalNo;
+
     private String reviewStatus;
 
     private LocalDateTime submittedAt;

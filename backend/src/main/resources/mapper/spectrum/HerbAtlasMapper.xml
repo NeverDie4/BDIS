@@ -171,6 +171,15 @@
           AND is_deleted = 0
     </update>
 
+    <update id="updateImageUrl">
+        UPDATE herb_atlas
+        SET image_url = #{imageUrl},
+            thumbnail_url = #{imageUrl},
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
     <select id="selectActiveById" resultMap="AtlasResultMap">
         SELECT
         <include refid="AtlasColumns"/>
@@ -334,5 +343,14 @@
           AND a.species_id = #{speciesId}
         </if>
         ORDER BY a.id ASC
+    </select>
+
+    <select id="selectLegacyFileCandidates" resultMap="AtlasResultMap">
+        SELECT
+        <include refid="AtlasColumns"/>
+        FROM herb_atlas
+        WHERE is_deleted = 0
+          AND image_url LIKE '/api/files/uploads/%'
+        ORDER BY id ASC
     </select>
 </mapper>
