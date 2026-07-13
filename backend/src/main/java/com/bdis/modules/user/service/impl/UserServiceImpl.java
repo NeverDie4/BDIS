@@ -32,7 +32,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -62,44 +61,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResult<UserVO> page(UserQuery query) {
-        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(query.getKeyword())) {
-            wrapper.and(
-                    condition ->
-                            condition
-                                    .like(UserEntity::getUsername, query.getKeyword())
-                                    .or()
-                                    .like(UserEntity::getRealName, query.getKeyword())
-                                    .or()
-                                    .like(UserEntity::getPhoneNumber, query.getKeyword()));
-        }
-        if (query.getStatus() != null) {
-            wrapper.eq(UserEntity::getStatus, query.getStatus());
-        }
-        if (query.getOrganizationId() != null) {
-            wrapper.eq(UserEntity::getOrganizationId, query.getOrganizationId());
-        }
-        if (query.getDepartmentId() != null) {
-            wrapper.eq(UserEntity::getDepartmentId, query.getDepartmentId());
-        }
-        wrapper.orderByDesc(UserEntity::getId);
         Page<UserEntity> page =
-                userMapper.selectPage(Page.of(query.getPage(), query.getSize()), wrapper);
+                userMapper.selectUserPage(Page.of(query.getPage(), query.getSize()), query);
         List<UserVO> records = attachRoles(page.getRecords());
-        if (query.getRoleId() != null) {
-            records =
-                    records.stream()
-                            .filter(
-                                    user ->
-                                            user.getRoles().stream()
-                                                    .anyMatch(
-                                                            role ->
-                                                                    role.getId()
-                                                                            .equals(
-                                                                                    query
-                                                                                            .getRoleId())))
-                            .toList();
-        }
         return PageResult.of(records, page);
     }
 

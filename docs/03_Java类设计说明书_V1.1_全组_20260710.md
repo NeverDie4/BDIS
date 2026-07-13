@@ -737,7 +737,7 @@ Converter 用于避免 Controller 或 Service 中堆积对象转换代码。简�
 
 ### 15.1 文件资源主数据约束
 
-文件主数据以 `FileResourceEntity` 为准，业务表中的 `fileUrl`、`imageUrl`、`thumbnailUrl` 只作为兼容字段或快速展示字段。新增和修改文件时，优先写入 `sys_file_resource` 和 `sys_file_business`，业务表只保存必要展示冗余。
+文件主数据以 `FileResourceEntity` 为准，业务表中的 `fileUrl`、`imageUrl`、`thumbnailUrl` 只作为兼容字段或快速展示字段。新增和修改文件时，优先写入 `sys_file_resource` 和 `sys_file_business`，业务表只保存必要展示冗余。`FileBusinessEntity.publicVisible` 对应关系级 `is_public`，文件级 `accessLevel` 由所有有效关系的发布状态统一派生，不能由单个业务解绑直接覆盖。
 
 ### 15.2 数据权限约束
 
@@ -747,7 +747,7 @@ Converter 用于避免 Controller 或 Service 中堆积对象转换代码。简�
 
 `bizType + bizId`、`sourceType + sourceId` 不创建物理外键，由 Service 层统一校验。文件关联不再使用集中硬编码业务表的 `BusinessReferenceValidator`；每一种 `bizType` 必须由所属业务模块提供 `FileBusinessAccessPolicy`，Policy 只负责业务对象存在性和授权决策，不读取或修改 `sys_file_resource`，也不返回物理存储路径。未注册 `bizType` 默认拒绝，禁止通用权限回退。
 
-文件上传接口只接受私有文件。公开文件必须遵循“私有上传 → 绑定业务对象 → 业务审核或发布 → `publishForBusiness`”流程。删除已绑定文件时，对每个关联对象校验 `DETACH`；文件已公开时还必须校验 `PUBLISH`，避免上传者绕过业务模块删除已发布内容。
+文件上传接口只接受私有文件。公开文件必须遵循“私有上传 → 绑定业务对象 → 业务审核或发布 → `publishForBusiness`”流程。删除已绑定文件时，对每个关联对象校验 `DETACH`；对关系级 `is_public = 1` 的关联还必须校验 `PUBLISH`，避免上传者绕过业务模块删除已发布内容。
 
 ### 15.4 审计事件与事务约束
 

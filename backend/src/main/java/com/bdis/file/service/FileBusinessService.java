@@ -12,7 +12,9 @@ public interface FileBusinessService {
 
     void unbind(Long relationId);
 
-    void authorizeDeleteByFileId(Long fileId, boolean published);
+    void setPublicVisibility(Long fileId, String bizType, Long bizId, boolean publicVisible);
+
+    void authorizeDeleteByFileId(Long fileId);
 
     void deleteByFileId(Long fileId);
 

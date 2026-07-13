@@ -136,13 +136,15 @@ class FileBusinessServiceImplTest {
         first.setFileId(80L);
         first.setBizType("herb_image");
         first.setBizId(11L);
+        first.setPublicVisible(true);
         FileBusinessEntity second = new FileBusinessEntity();
         second.setFileId(80L);
         second.setBizType("herb_growth_record");
         second.setBizId(12L);
+        second.setPublicVisible(false);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of(first, second));
 
-        fileBusinessService.authorizeDeleteByFileId(80L, true);
+        fileBusinessService.authorizeDeleteByFileId(80L);
 
         verify(policyRegistry)
                 .require("herb_image", 11L, com.bdis.file.policy.FileBusinessAction.DETACH);
@@ -150,9 +152,66 @@ class FileBusinessServiceImplTest {
                 .require("herb_image", 11L, com.bdis.file.policy.FileBusinessAction.PUBLISH);
         verify(policyRegistry)
                 .require("herb_growth_record", 12L, com.bdis.file.policy.FileBusinessAction.DETACH);
-        verify(policyRegistry)
+        verify(policyRegistry, never())
                 .require(
                         "herb_growth_record", 12L, com.bdis.file.policy.FileBusinessAction.PUBLISH);
-        verify(policyRegistry, times(4)).require(any(), any(), any());
+        verify(policyRegistry, times(3)).require(any(), any(), any());
+    }
+
+    @Test
+    void detachingOneOfTwoPublishedMapPointsKeepsSharedCoverPublic() {
+        FileBusinessEntity current = new FileBusinessEntity();
+        current.setId(91L);
+        current.setFileId(81L);
+        current.setBizType("map_point");
+        current.setBizId(101L);
+        current.setPublicVisible(true);
+        FileResourceEntity sharedCover = new FileResourceEntity();
+        sharedCover.setId(81L);
+        sharedCover.setFileType("image");
+        sharedCover.setAccessLevel("public");
+        sharedCover.setFileUrl("/api/public-files/81/content");
+        sharedCover.setThumbnailUrl("/api/public-files/81/content");
+        when(fileBusinessMapper.selectOne(any())).thenReturn(current, current);
+        when(fileBusinessMapper.selectCount(any())).thenReturn(1L);
+        when(fileResourceMapper.selectByIdForUpdate(81L)).thenReturn(sharedCover);
+
+        fileBusinessService.setPublicVisibility(81L, "map_point", 101L, false);
+        fileBusinessService.deleteByBusinessAndFile("map_point", 101L, 81L);
+
+        assertThat(current.getPublicVisible()).isFalse();
+        assertThat(sharedCover.getAccessLevel()).isEqualTo("public");
+        assertThat(sharedCover.getFileUrl()).isEqualTo("/api/public-files/81/content");
+        verify(fileResourceMapper, never()).updateById(any(FileResourceEntity.class));
+    }
+
+    @Test
+    void unbindingLastPublishedRelationMakesFilePrivate() {
+        FileBusinessEntity relation = new FileBusinessEntity();
+        relation.setId(92L);
+        relation.setFileId(82L);
+        relation.setBizType("map_point");
+        relation.setBizId(102L);
+        relation.setPublicVisible(true);
+        FileResourceEntity cover = new FileResourceEntity();
+        cover.setId(82L);
+        cover.setFileType("image");
+        cover.setAccessLevel("public");
+        cover.setFileUrl("/api/public-files/82/content");
+        cover.setThumbnailUrl("/api/public-files/82/content");
+        when(fileBusinessMapper.selectById(92L)).thenReturn(relation);
+        when(fileBusinessMapper.selectCount(any())).thenReturn(0L);
+        when(fileResourceMapper.selectByIdForUpdate(82L)).thenReturn(cover);
+
+        fileBusinessService.unbind(92L);
+
+        assertThat(cover.getAccessLevel()).isEqualTo("private");
+        assertThat(cover.getFileUrl()).isEqualTo("/api/files/82/content");
+        assertThat(cover.getThumbnailUrl()).isEqualTo("/api/files/82/content");
+        verify(fileResourceMapper).updateById(cover);
+        verify(policyRegistry)
+                .require("map_point", 102L, com.bdis.file.policy.FileBusinessAction.DETACH);
+        verify(policyRegistry)
+                .require("map_point", 102L, com.bdis.file.policy.FileBusinessAction.PUBLISH);
     }
 }

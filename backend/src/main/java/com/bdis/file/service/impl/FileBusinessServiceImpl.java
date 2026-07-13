@@ -2,6 +2,7 @@ package com.bdis.file.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.common.core.PageResult;
+import com.bdis.common.exception.ResourceConflictException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
@@ -66,6 +67,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         entity.setBizType(dto.getBizType());
         entity.setBizId(dto.getBizId());
         entity.setFileUsage(dto.getFileUsage());
+        entity.setPublicVisible(false);
         entity.setRemark(dto.getRemark());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setCreatedBy(CurrentUserUtils.currentUserId());
@@ -74,18 +76,32 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
-    public void authorizeDeleteByFileId(Long fileId, boolean published) {
+    @Transactional
+    public void setPublicVisibility(
+            Long fileId, String bizType, Long bizId, boolean publicVisible) {
+        policyRegistry.require(bizType, bizId, FileBusinessAction.PUBLISH);
+        FileBusinessEntity relation =
+                fileBusinessMapper.selectOne(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getFileId, fileId)
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId));
+        if (relation == null) {
+            throw new ResourceConflictException("文件尚未绑定到该业务对象");
+        }
+        relation.setPublicVisible(publicVisible);
+        fileBusinessMapper.updateById(relation);
+        synchronizeResourceVisibility(fileId);
+    }
+
+    @Override
+    public void authorizeDeleteByFileId(Long fileId) {
         List<FileBusinessEntity> relations =
                 fileBusinessMapper.selectList(
                         new LambdaQueryWrapper<FileBusinessEntity>()
                                 .eq(FileBusinessEntity::getFileId, fileId));
         for (FileBusinessEntity relation : relations) {
-            policyRegistry.require(
-                    relation.getBizType(), relation.getBizId(), FileBusinessAction.DETACH);
-            if (published) {
-                policyRegistry.require(
-                        relation.getBizType(), relation.getBizId(), FileBusinessAction.PUBLISH);
-            }
+            authorizeDetach(relation);
         }
     }
 
@@ -96,8 +112,9 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         if (entity == null) {
             throw new ResourceNotFoundException("文件关联不存在");
         }
-        policyRegistry.require(entity.getBizType(), entity.getBizId(), FileBusinessAction.DETACH);
+        authorizeDetach(entity);
         fileBusinessMapper.deleteById(relationId);
+        synchronizeResourceVisibility(entity.getFileId());
     }
 
     @Override
@@ -108,20 +125,42 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
+    @Transactional
     public void deleteByBusiness(String bizType, Long bizId) {
+        List<FileBusinessEntity> relations =
+                fileBusinessMapper.selectList(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId));
+        relations.forEach(this::authorizeDetach);
+        List<Long> fileIds =
+                relations.stream().map(FileBusinessEntity::getFileId).distinct().sorted().toList();
         fileBusinessMapper.delete(
                 new LambdaQueryWrapper<FileBusinessEntity>()
                         .eq(FileBusinessEntity::getBizType, bizType)
                         .eq(FileBusinessEntity::getBizId, bizId));
+        fileIds.forEach(this::synchronizeResourceVisibility);
     }
 
     @Override
+    @Transactional
     public void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId) {
+        FileBusinessEntity relation =
+                fileBusinessMapper.selectOne(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .eq(FileBusinessEntity::getFileId, fileId));
+        if (relation == null) {
+            return;
+        }
+        authorizeDetach(relation);
         fileBusinessMapper.delete(
                 new LambdaQueryWrapper<FileBusinessEntity>()
                         .eq(FileBusinessEntity::getBizType, bizType)
                         .eq(FileBusinessEntity::getBizId, bizId)
                         .eq(FileBusinessEntity::getFileId, fileId));
+        synchronizeResourceVisibility(fileId);
     }
 
     @Override
@@ -187,6 +226,47 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         FileBusinessVO vo = new FileBusinessVO();
         BeanUtils.copyProperties(entity, vo);
         return vo;
+    }
+
+    private void synchronizeResourceVisibility(Long fileId) {
+        FileResourceEntity file = fileResourceMapper.selectByIdForUpdate(fileId);
+        if (file == null) {
+            return;
+        }
+        boolean publicVisible =
+                fileBusinessMapper.selectCount(
+                                new LambdaQueryWrapper<FileBusinessEntity>()
+                                        .eq(FileBusinessEntity::getFileId, fileId)
+                                        .eq(FileBusinessEntity::getPublicVisible, true))
+                        > 0;
+        String accessLevel = publicVisible ? "public" : "private";
+        String contentUrl =
+                publicVisible
+                        ? "/api/public-files/" + fileId + "/content"
+                        : "/api/files/" + fileId + "/content";
+        boolean unchanged =
+                accessLevel.equalsIgnoreCase(file.getAccessLevel())
+                        && contentUrl.equals(file.getFileUrl())
+                        && (!("image".equals(file.getFileType()))
+                                || contentUrl.equals(file.getThumbnailUrl()));
+        if (unchanged) {
+            return;
+        }
+        file.setAccessLevel(accessLevel);
+        file.setFileUrl(contentUrl);
+        file.setThumbnailUrl("image".equals(file.getFileType()) ? contentUrl : null);
+        file.setUpdatedAt(LocalDateTime.now());
+        file.setUpdatedBy(CurrentUserUtils.currentUserId());
+        fileResourceMapper.updateById(file);
+    }
+
+    private void authorizeDetach(FileBusinessEntity relation) {
+        policyRegistry.require(
+                relation.getBizType(), relation.getBizId(), FileBusinessAction.DETACH);
+        if (Boolean.TRUE.equals(relation.getPublicVisible())) {
+            policyRegistry.require(
+                    relation.getBizType(), relation.getBizId(), FileBusinessAction.PUBLISH);
+        }
     }
 
     private FileResourceVO toFileVO(FileResourceEntity entity) {

@@ -11,13 +11,10 @@ import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.FileStorageException;
 import com.bdis.common.exception.ForbiddenException;
-import com.bdis.common.exception.ResourceConflictException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.dto.FileUploadDTO;
-import com.bdis.file.policy.FileBusinessAction;
-import com.bdis.file.policy.FileBusinessPolicyRegistry;
 import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
@@ -55,7 +52,6 @@ public class FileResourceServiceImpl implements FileResourceService {
     private final AuditLogService auditLogService;
     private final FileBusinessService fileBusinessService;
     private final FileAccessGuard fileAccessGuard;
-    private final FileBusinessPolicyRegistry policyRegistry;
 
     public FileResourceServiceImpl(
             FileResourceMapper fileResourceMapper,
@@ -63,15 +59,13 @@ public class FileResourceServiceImpl implements FileResourceService {
             FileAccessLogService fileAccessLogService,
             AuditLogService auditLogService,
             FileBusinessService fileBusinessService,
-            FileAccessGuard fileAccessGuard,
-            FileBusinessPolicyRegistry policyRegistry) {
+            FileAccessGuard fileAccessGuard) {
         this.fileResourceMapper = fileResourceMapper;
         this.fileStorageService = fileStorageService;
         this.fileAccessLogService = fileAccessLogService;
         this.auditLogService = auditLogService;
         this.fileBusinessService = fileBusinessService;
         this.fileAccessGuard = fileAccessGuard;
-        this.policyRegistry = policyRegistry;
     }
 
     @Override
@@ -273,8 +267,7 @@ public class FileResourceServiceImpl implements FileResourceService {
                 && (currentUserId == null || !currentUserId.equals(entity.getUploaderId()))) {
             throw new ForbiddenException("只能删除本人上传的文件");
         }
-        fileBusinessService.authorizeDeleteByFileId(
-                fileId, "public".equalsIgnoreCase(entity.getAccessLevel()));
+        fileBusinessService.authorizeDeleteByFileId(fileId);
         deleteEntity(entity);
     }
 
@@ -342,16 +335,9 @@ public class FileResourceServiceImpl implements FileResourceService {
 
     private void changeBusinessVisibility(
             Long fileId, String bizType, Long bizId, String accessLevel) {
-        policyRegistry.require(bizType, bizId, FileBusinessAction.PUBLISH);
-        if (!fileBusinessService.isBound(fileId, bizType, bizId)) {
-            throw new ResourceConflictException("文件尚未绑定到该业务对象");
-        }
-        FileResourceEntity entity = requireFile(fileId);
-        entity.setAccessLevel(accessLevel);
-        entity.setUpdatedAt(LocalDateTime.now());
-        entity.setUpdatedBy(CurrentUserUtils.currentUserId());
-        applyControlledUrls(entity);
-        fileResourceMapper.updateById(entity);
+        requireFile(fileId);
+        fileBusinessService.setPublicVisibility(
+                fileId, bizType, bizId, "public".equals(accessLevel));
         recordAudit("public".equals(accessLevel) ? "PUBLISH" : "MAKE_PRIVATE", bizType, bizId);
     }
 

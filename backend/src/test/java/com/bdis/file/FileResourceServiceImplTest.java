@@ -19,8 +19,6 @@ import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.file.dto.FileUploadDTO;
-import com.bdis.file.policy.FileBusinessAction;
-import com.bdis.file.policy.FileBusinessPolicyRegistry;
 import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
@@ -60,8 +58,6 @@ class FileResourceServiceImplTest {
 
     @Mock private FileAccessGuard fileAccessGuard;
 
-    @Mock private FileBusinessPolicyRegistry policyRegistry;
-
     private FileResourceService fileResourceService;
 
     @BeforeEach
@@ -73,8 +69,7 @@ class FileResourceServiceImplTest {
                         fileAccessLogService,
                         auditLogService,
                         fileBusinessService,
-                        fileAccessGuard,
-                        policyRegistry);
+                        fileAccessGuard);
         CurrentUser user =
                 new CurrentUser(
                         8L,
@@ -185,16 +180,10 @@ class FileResourceServiceImplTest {
     void publishRequiresPolicyAndExistingBusinessBinding() {
         FileResourceEntity entity = resource(43L, "private", "uploads/day/reviewed.png");
         when(fileResourceMapper.selectById(43L)).thenReturn(entity);
-        when(fileBusinessService.isBound(43L, "herb_image", 9L)).thenReturn(true);
 
         fileResourceService.publishForBusiness(43L, "herb_image", 9L);
 
-        verify(policyRegistry).require("herb_image", 9L, FileBusinessAction.PUBLISH);
-        ArgumentCaptor<FileResourceEntity> captor =
-                ArgumentCaptor.forClass(FileResourceEntity.class);
-        verify(fileResourceMapper).updateById(captor.capture());
-        assertThat(captor.getValue().getAccessLevel()).isEqualTo("public");
-        assertThat(captor.getValue().getFileUrl()).isEqualTo("/api/public-files/43/content");
+        verify(fileBusinessService).setPublicVisibility(43L, "herb_image", 9L, true);
     }
 
     @Test
@@ -291,7 +280,7 @@ class FileResourceServiceImplTest {
 
         fileResourceService.delete(26L);
 
-        verify(fileBusinessService).authorizeDeleteByFileId(26L, true);
+        verify(fileBusinessService).authorizeDeleteByFileId(26L);
         verify(fileBusinessService).deleteByFileId(26L);
         verify(fileResourceMapper).deleteById(26L);
     }
