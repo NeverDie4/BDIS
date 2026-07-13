@@ -19,6 +19,7 @@ export interface FileResource {
   fileUrl: string;
   thumbnailUrl?: string;
   storageType?: string;
+  accessLevel?: "private" | "public";
   uploadedAt?: string;
 }
 
@@ -26,6 +27,7 @@ export interface UploadFileOptions {
   bizType?: string;
   bizId?: number;
   fileUsage?: string;
+  accessLevel?: "private" | "public";
 }
 
 export async function uploadFile(file: File, options?: UploadFileOptions) {
@@ -39,6 +41,9 @@ export async function uploadFile(file: File, options?: UploadFileOptions) {
   }
   if (options?.fileUsage) {
     formData.append("fileUsage", options.fileUsage);
+  }
+  if (options?.accessLevel) {
+    formData.append("accessLevel", options.accessLevel);
   }
 
   const response = await request.post<ApiResult<FileResource>>("/files/upload", formData);

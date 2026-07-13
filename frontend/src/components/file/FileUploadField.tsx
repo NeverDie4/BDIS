@@ -14,6 +14,7 @@ interface FileUploadFieldProps {
   bizType?: string;
   bizId?: number;
   fileUsage?: string;
+  accessLevel?: "private" | "public";
   buttonText?: string;
   onUploaded?: (file: FileResource) => void;
 }
@@ -26,6 +27,7 @@ export function FileUploadField({
   bizType,
   bizId,
   fileUsage,
+  accessLevel,
   buttonText = "上传文件",
   onUploaded,
 }: FileUploadFieldProps) {
@@ -46,7 +48,7 @@ export function FileUploadField({
   const customRequest: UploadProps["customRequest"] = async (options) => {
     try {
       const file = options.file as File;
-      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage });
+      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage, accessLevel });
       onChange?.(uploaded.fileUrl);
       onUploaded?.(uploaded);
       options.onSuccess?.(uploaded);

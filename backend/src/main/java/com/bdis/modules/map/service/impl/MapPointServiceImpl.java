@@ -62,6 +62,19 @@ public class MapPointServiceImpl implements MapPointService {
 
     @Override
     @Transactional
+    public MapPointVO updateMapPointStatus(Long pointId, Integer status) {
+        MapPointEntity entity = mapPointMapper.selectById(pointId);
+        if (entity == null) {
+            throw new ResourceNotFoundException("地图点位不存在");
+        }
+        entity.setStatus(status);
+        entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
+        mapPointMapper.updateById(entity);
+        return findCreatedOrUpdated(pointId);
+    }
+
+    @Override
+    @Transactional
     public void deleteMapPoint(Long pointId) {
         MapPointEntity entity = mapPointMapper.selectById(pointId);
         if (entity == null) {

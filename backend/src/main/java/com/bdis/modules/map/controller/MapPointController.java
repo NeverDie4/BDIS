@@ -5,6 +5,7 @@ import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.growth.dto.GrowthRecordCreateRequest;
 import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
+import com.bdis.modules.map.dto.MapPointStatusRequest;
 import com.bdis.modules.map.dto.MapPointUpsertRequest;
 import com.bdis.modules.map.query.MapPointQuery;
 import com.bdis.modules.map.service.MapPointService;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +51,13 @@ public class MapPointController {
     public Result<MapPointVO> updateMapPoint(
             @PathVariable Long pointId, @Valid @RequestBody MapPointUpsertRequest request) {
         return Result.success(mapPointService.updateMapPoint(pointId, request));
+    }
+
+    @PatchMapping("/{pointId}/status")
+    @RequirePermission("map:point:update")
+    public Result<MapPointVO> updateMapPointStatus(
+            @PathVariable Long pointId, @Valid @RequestBody MapPointStatusRequest request) {
+        return Result.success(mapPointService.updateMapPointStatus(pointId, request.getStatus()));
     }
 
     @DeleteMapping("/{pointId}")

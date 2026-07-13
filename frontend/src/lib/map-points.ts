@@ -145,6 +145,11 @@ export async function updateMapPoint(pointId: number, payload: MapPointPayload) 
   return response.data.data;
 }
 
+export async function updateMapPointStatus(pointId: number, status: 0 | 1) {
+  const response = await request.patch<ApiResult<MapPoint>>(`/map-points/${pointId}/status`, { status });
+  return response.data.data;
+}
+
 export async function deleteMapPoint(pointId: number) {
   await request.delete<ApiResult<void>>(`/map-points/${pointId}`);
 }

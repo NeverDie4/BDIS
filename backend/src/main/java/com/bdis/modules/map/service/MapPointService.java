@@ -13,5 +13,7 @@ public interface MapPointService {
 
     MapPointVO updateMapPoint(Long pointId, MapPointUpsertRequest request);
 
+    MapPointVO updateMapPointStatus(Long pointId, Integer status);
+
     void deleteMapPoint(Long pointId);
 }

@@ -158,6 +158,7 @@ export function HerbPointFormModal({
             maxSizeMB={10}
             bizType="map_point"
             fileUsage="cover"
+            accessLevel="public"
             buttonText="上传本地照片"
           />
         </Form.Item>
