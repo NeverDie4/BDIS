@@ -5,7 +5,7 @@ import test from "node:test";
 
 const migrationPath = path.resolve(
   import.meta.dirname,
-  "../src/main/resources/db/migration/V20260713_006__restore_growth_reviewer_data_scope.sql",
+  "../src/main/resources/db/migration/V20260714_008__restore_growth_reviewer_data_scope.sql",
 );
 
 test("forward repair restores reviewer scope from role default without granting all", () => {

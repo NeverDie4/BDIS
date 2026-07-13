@@ -2,14 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-const pageSource = readFileSync(
-  new URL("../src/app/growth/page.tsx", import.meta.url),
-  "utf8",
-);
-const dataSource = readFileSync(
-  new URL("../src/lib/growth-records.ts", import.meta.url),
-  "utf8",
-);
+const pageSource = readFileSync(new URL("../src/app/growth/page.tsx", import.meta.url), "utf8");
+const dataSource = readFileSync(new URL("../src/lib/growth-records.ts", import.meta.url), "utf8");
 const cssSource = readFileSync(
   new URL("../src/app/growth/page.module.css", import.meta.url),
   "utf8",
@@ -23,7 +17,7 @@ const publicTraceCssSource = readFileSync(
   "utf8",
 );
 const reviewerScopeMigrationUrl = new URL(
-  "../../backend/src/main/resources/db/migration/V20260713_004__grant_growth_reviewer_data_scope.sql",
+  "../../backend/src/main/resources/db/migration/V20260714_006__grant_growth_reviewer_data_scope.sql",
   import.meta.url,
 );
 
@@ -106,7 +100,10 @@ test("任务概览去除重复药材基地并使用紧凑统计网格", () => {
   assert.doesNotMatch(pageSource, /styles\.taskTags/);
   assert.match(pageSource, /styles\.taskMetaLine/);
   assert.match(pageSource, /styles\.currentMetricTag/);
-  assert.match(cssSource, /\.overviewGrid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/s);
+  assert.match(
+    cssSource,
+    /\.overviewGrid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);/s,
+  );
   assert.match(cssSource, /\.overviewGrid\s*>\s*div\s*\{[^}]*height:\s*116px;/s);
 });
 
@@ -170,7 +167,10 @@ test("详情信息框文字放大且数值与单位字号统一", () => {
   assert.match(cssSource, /\.metricUnit\s*\{[^}]*font-size:\s*18px;[^}]*font-weight:\s*600;/s);
   assert.match(cssSource, /\.metricNumber\s*\{[^}]*color:\s*#0f5132;/s);
   assert.match(cssSource, /\.metricUnit\s*\{[^}]*color:\s*#0f5132;/s);
-  assert.match(cssSource, /\.textMetricTile dd\s*\{[^}]*font-size:\s*18px;[^}]*font-weight:\s*600;/s);
+  assert.match(
+    cssSource,
+    /\.textMetricTile dd\s*\{[^}]*font-size:\s*18px;[^}]*font-weight:\s*600;/s,
+  );
   assert.doesNotMatch(cssSource, /\.primaryMetricTile\s*\{[^}]*background:\s*#eef7ef/s);
 });
 
@@ -181,7 +181,10 @@ test("记录筛选使用工作台工具条和均衡网格", () => {
   assert.match(pageSource, /搜索批次、采集人、阶段或备注/);
   assert.match(pageSource, /className=\{styles\.filterActions\}/);
   assert.match(pageSource, /title=\{selectedTask\?\.taskName\}/);
-  assert.match(cssSource, /\.workspaceMain \.filterGrid,[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s);
+  assert.match(
+    cssSource,
+    /\.workspaceMain \.filterGrid,[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s,
+  );
 });
 
 test("growth 页面用户可见文案统一使用观测点", () => {
@@ -205,8 +208,14 @@ test("顶部三区使用统一间距、轻量指标标签和同款 KPI 卡", () 
   );
   assert.match(cssSource, /\.filters\s*\{[^}]*padding:\s*28px 30px;/s);
   assert.match(cssSource, /\.filterGrid\s*\{[^}]*margin-top:\s*24px;/s);
-  assert.match(cssSource, /\.filterGrid :global\(\.ant-select-selector\)\s*\{[^}]*min-height:\s*48px/s);
-  assert.match(cssSource, /\.filterGrid :global\(\.ant-select-selection-item\)[\s\S]*font-size:\s*16px;/s);
+  assert.match(
+    cssSource,
+    /\.filterGrid :global\(\.ant-select-selector\)\s*\{[^}]*min-height:\s*48px/s,
+  );
+  assert.match(
+    cssSource,
+    /\.filterGrid :global\(\.ant-select-selection-item\)[\s\S]*font-size:\s*16px;/s,
+  );
   assert.match(
     cssSource,
     /\.filterSummary\s*\{[^}]*margin-top:\s*20px;[^}]*padding:\s*14px 16px;[^}]*border:\s*1px solid #cddfce;[^}]*background:\s*#eef7ef;/s,
@@ -230,7 +239,10 @@ test("growth 页面重构为左侧记录工作台和右侧固定详情面板", (
   assert.match(pageSource, /生长数据/);
   assert.match(pageSource, /管理移动端采集的中药材生长记录，汇聚现场图片、审核状态与溯源轨迹/);
   assert.doesNotMatch(pageSource, /<DetailDrawer/);
-  assert.match(cssSource, /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px/s);
+  assert.match(
+    cssSource,
+    /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px/s,
+  );
   assert.match(cssSource, /\.detailPanel\s*\{[^}]*position:\s*sticky/s);
   assert.match(cssSource, /\.growthHero::after/);
 });
@@ -250,10 +262,16 @@ test("growth 工作台使用宽版双栏、折叠筛选和档案式详情", () =
   assert.match(pageSource, /生长趋势分析/);
   assert.match(pageSource, /暂无精确经纬度，已展示采集地点文本信息/);
   assert.match(cssSource, /\.page\s*\{[^}]*width:\s*min\(1560px,\s*calc\(100vw - 64px\)\)/s);
-  assert.match(cssSource, /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px/s);
+  assert.match(
+    cssSource,
+    /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px/s,
+  );
   assert.match(cssSource, /\.detailPanel\s*\{[^}]*border-radius:\s*20px/s);
   assert.match(cssSource, /\.detailTabs button\s*\{[^}]*min-width:\s*76px;[^}]*font-size:\s*14px/s);
-  assert.match(cssSource, /\.basicInfoList\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
+  assert.match(
+    cssSource,
+    /\.basicInfoList\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s,
+  );
 });
 
 test("growth 详情使用四个信息域并中文化图片类型", () => {
@@ -262,14 +280,20 @@ test("growth 详情使用四个信息域并中文化图片类型", () => {
   assert.match(pageSource, /\["metrics", "指标数据"\]/);
   assert.match(pageSource, /\["images", "现场图片"\]/);
   assert.match(pageSource, /\["trace", "地图与溯源"\]/);
-  assert.doesNotMatch(pageSource, /\["environment", "环境指标"\]|\["morphology", "形态指标"\]|\["map", "地图定位"\]/);
+  assert.doesNotMatch(
+    pageSource,
+    /\["environment", "环境指标"\]|\["morphology", "形态指标"\]|\["map", "地图定位"\]/,
+  );
   assert.match(pageSource, /const IMAGE_TYPE_LABELS/);
   assert.match(pageSource, /whole_plant:\s*"整株"/);
   assert.match(pageSource, /medicinal_part:\s*"药用部位"/);
   assert.match(pageSource, /IMAGE_TYPE_LABELS\[image\.imageType\]/);
   assert.match(pageSource, /className=\{styles\.advancedFilterGrid\}/);
   assert.match(pageSource, /className=\{styles\.trendFacts\}/);
-  assert.match(cssSource, /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px;/s);
+  assert.match(
+    cssSource,
+    /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px;/s,
+  );
 });
 
 test("growth 溯源 API 与右侧二维码卡使用后端真实契约", () => {

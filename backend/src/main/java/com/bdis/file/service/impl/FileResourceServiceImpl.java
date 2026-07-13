@@ -224,6 +224,7 @@ public class FileResourceServiceImpl implements FileResourceService {
                 entity.getContentType(),
                 entity.getFileSize());
     }
+
     @Override
     public Path resolveLocalPath(String fileUrl) {
         Long fileId = resolveFileId(fileUrl);

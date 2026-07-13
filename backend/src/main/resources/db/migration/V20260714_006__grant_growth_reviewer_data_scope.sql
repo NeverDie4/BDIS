@@ -19,7 +19,7 @@ SELECT
     NULL,
     1,
     0,
-    'growth-reviewer-scope-migration-20260713-004'
+    'growth-reviewer-scope-migration-20260714-006'
 FROM auth_role role
 WHERE role.role_code = 'REVIEWER'
   AND role.is_deleted = 0

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { apiDelete, apiGet, getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";

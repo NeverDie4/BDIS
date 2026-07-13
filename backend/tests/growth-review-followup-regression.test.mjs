@@ -11,12 +11,12 @@ function read(relativePath) {
 
 test("reviewer scope repair only targets rows created by the faulty migration", () => {
   const grant = read(
-    "backend/src/main/resources/db/migration/V20260713_004__grant_growth_reviewer_data_scope.sql",
+    "backend/src/main/resources/db/migration/V20260714_006__grant_growth_reviewer_data_scope.sql",
   );
   const repair = read(
-    "backend/src/main/resources/db/migration/V20260713_006__restore_growth_reviewer_data_scope.sql",
+    "backend/src/main/resources/db/migration/V20260714_008__restore_growth_reviewer_data_scope.sql",
   );
-  const currentMarker = "growth-reviewer-scope-migration-20260713-004";
+  const currentMarker = "growth-reviewer-scope-migration-20260714-006";
   const faultyMarker = "Reviewers can access growth records pending review";
 
   assert.match(grant, new RegExp(currentMarker));
