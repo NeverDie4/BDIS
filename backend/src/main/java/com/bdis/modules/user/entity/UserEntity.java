@@ -32,4 +32,8 @@ public class UserEntity extends BaseEntity {
     private String avatarUrl;
 
     private LocalDateTime lastLoginAt;
+
+    private LocalDateTime passwordChangedAt;
+
+    private Boolean mustChangePassword;
 }

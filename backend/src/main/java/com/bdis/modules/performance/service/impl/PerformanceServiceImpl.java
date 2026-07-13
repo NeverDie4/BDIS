@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.security.BusinessAccessService;
-import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.common.security.BusinessReferenceAccessService;
 import com.bdis.modules.performance.dto.PerformanceRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
@@ -43,7 +43,7 @@ public class PerformanceServiceImpl implements PerformanceService {
     private final PerformanceAuditMapper auditMapper;
     private final PerformanceMaterialService materialService;
     private final BusinessAccessService accessService;
-    private final BusinessReferenceValidator referenceValidator;
+    private final BusinessReferenceAccessService referenceAccessService;
 
     @Override
     public IPage<PerformanceEntity> listPerformances(PerformanceQuery query) {
@@ -252,7 +252,7 @@ public class PerformanceServiceImpl implements PerformanceService {
         if (!StringUtils.hasText(sourceType) || sourceId == null) {
             throw new IllegalArgumentException("来源类型和来源 ID 必须同时提供");
         }
-        referenceValidator.validate(sourceType, sourceId);
+        referenceAccessService.validate(sourceType, sourceId);
     }
 
     private void assertIdentifyStatus(String identifyStatus) {

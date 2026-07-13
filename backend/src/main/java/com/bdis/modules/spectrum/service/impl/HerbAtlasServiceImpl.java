@@ -143,6 +143,9 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
     public void delete(Long id) {
         SpectrumEntity atlas = getActiveAtlas(id);
         Long fileId = fileResourceService.resolveFileId(atlas.getImageUrl());
+        if (fileId != null) {
+            fileResourceService.delete(fileId);
+        }
         LocalDateTime now = LocalDateTime.now();
         atlas.setUpdatedAt(now);
         int affected = herbAtlasMapper.logicalDeleteById(atlas);
@@ -150,9 +153,6 @@ public class HerbAtlasServiceImpl implements HerbAtlasService {
             throw new BusinessException("Herb atlas not found or already deleted");
         }
         logicalDeleteTags(atlas.getId(), now);
-        if (fileId != null) {
-            fileResourceService.delete(fileId);
-        }
     }
 
     @Override

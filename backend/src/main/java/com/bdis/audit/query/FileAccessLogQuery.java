@@ -11,4 +11,5 @@ public class FileAccessLogQuery extends BaseQuery {
     private Long fileId;
     private Long operatorId;
     private String accessType;
+    private String accessResult;
 }

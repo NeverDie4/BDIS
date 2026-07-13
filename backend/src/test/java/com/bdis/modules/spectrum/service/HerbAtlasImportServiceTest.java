@@ -57,9 +57,9 @@ class HerbAtlasImportServiceTest {
         importRoot = workspace.resolve("import").resolve("herb_atlas");
         FileResourceVO file = new FileResourceVO();
         file.setId(11L);
-        file.setFileUrl("/api/public-files/11/content");
+        file.setFileUrl("/api/files/11/content");
         lenient()
-                .when(fileResourceService.importPublic(any(Path.class), any(), any()))
+                .when(fileResourceService.importPrivate(any(Path.class), any(), any()))
                 .thenReturn(file);
         lenient()
                 .doAnswer(
@@ -77,8 +77,7 @@ class HerbAtlasImportServiceTest {
                         herbSpeciesMapper,
                         fileResourceService,
                         fileBusinessService,
-                        importRoot.toString(),
-                        false);
+                        importRoot.toString());
     }
 
     @Test
@@ -176,32 +175,11 @@ class HerbAtlasImportServiceTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<SpectrumTagEntity>> tagsCaptor = ArgumentCaptor.forClass(List.class);
         verify(herbAtlasTagMapper).insertTags(tagsCaptor.capture());
-        verify(fileBusinessService).bindSystem(any());
+        verify(fileBusinessService).bind(any());
+        verify(fileResourceService).publishForBusiness(11L, "herb_atlas", 101L);
         assertThat(tagsCaptor.getValue())
                 .extracting(SpectrumTagEntity::getTagName)
                 .containsExactly("standard", "batch_import", "huanglian");
-    }
-
-    @Test
-    void reconcileLegacyAtlasRegistersAndBindsExistingFile() {
-        SpectrumEntity atlas = new SpectrumEntity();
-        atlas.setId(101L);
-        atlas.setAtlasTitle("legacy.jpg");
-        atlas.setImageUrl("/api/files/uploads/2026-07-11/legacy.jpg");
-        FileResourceVO file = new FileResourceVO();
-        file.setId(22L);
-        file.setFileUrl("/api/public-files/22/content");
-        when(herbAtlasMapper.selectLegacyFileCandidates()).thenReturn(List.of(atlas));
-        when(fileResourceService.registerPublic(
-                        "/api/files/uploads/2026-07-11/legacy.jpg", "legacy.jpg", "历史图谱文件资源迁移"))
-                .thenReturn(file);
-        when(herbAtlasMapper.updateImageUrl(101L, "/api/public-files/22/content")).thenReturn(1);
-
-        int migrated = herbAtlasImportService.reconcileFileResources();
-
-        assertThat(migrated).isEqualTo(1);
-        verify(fileBusinessService).bindSystem(any());
-        verify(herbAtlasMapper).updateImageUrl(101L, "/api/public-files/22/content");
     }
 
     @Test

@@ -1,46 +1,42 @@
 "use client";
 
-import { UserOutlined } from "@ant-design/icons";
-import { App, Avatar, Button, Card, Descriptions, List, Tabs, Tag, Typography } from "antd";
-import type { TableProps } from "antd";
+import { App, Button, Card, Collapse, Descriptions, Tag, Typography } from "antd";
+import { ArrowRight, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DataTable } from "@/components/common/DataTable";
 import { InfoCard } from "@/components/common/InfoCard";
 import { MetricCard } from "@/components/common/MetricCard";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import { PageBanner } from "@/components/layout/PageBanner";
 import { SiteLayout } from "@/components/layout/SiteLayout";
+import { authAdminRoutes } from "@/config/routes/auth-admin";
+import { hasUserPermission } from "@/config/routes/types";
 import { apiGet, getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
+import type { CurrentUser } from "@/types/api";
+import pageStyles from "./profile.module.css";
 import styles from "@/styles/mockPages.module.css";
-import type { CurrentUser, PageResult } from "@/types/api";
 
-type AuditLog = {
-  id: number;
-  operatorName?: string;
-  operationModule?: string;
-  operationType?: string;
-  bizType?: string;
-  operationResult?: string;
-  operationTime?: string;
-};
+const permissionAreas = [
+  { prefixes: ["auth:"], label: "账号与权限" },
+  { prefixes: ["dashboard:"], label: "业务看板" },
+  { prefixes: ["herb:"], label: "药材与图谱" },
+  { prefixes: ["map:"], label: "地图与基地" },
+  { prefixes: ["growth:"], label: "生长采集" },
+  { prefixes: ["file:"], label: "文件资源" },
+  { prefixes: ["dictionary:"], label: "数据字典" },
+  { prefixes: ["soap:"], label: "数据交换" },
+  { prefixes: ["audit:"], label: "操作审计" },
+];
 
-type LoginLog = {
-  id: number;
-  username?: string;
-  loginResult?: string;
-  failureReason?: string;
-  ipAddress?: string;
-  loggedInAt?: string;
-};
-
-type FileAccessLog = {
-  id: number;
-  fileId?: number;
-  operatorName?: string;
-  accessType?: string;
-  accessResult?: string;
-  operationTime?: string;
+const managementDescriptions: Record<string, string> = {
+  "/dashboard/auth": "进入权限管理中心。",
+  "/dashboard/users": "维护用户账号及其角色关系。",
+  "/dashboard/roles": "维护角色、权限和数据范围。",
+  "/dashboard/permissions": "维护菜单结构和权限点。",
+  "/dashboard/organizations": "维护机构主体信息。",
+  "/dashboard/departments": "维护部门层级与归属。",
+  "/dashboard/audit": "查询系统操作、登录和文件访问日志。",
 };
 
 export default function ProfilePage() {
@@ -48,102 +44,158 @@ export default function ProfilePage() {
   const storedUser = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(storedUser);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
-  const [fileLogs, setFileLogs] = useState<FileAccessLog[]>([]);
-  const canViewAudit = Boolean(currentUser?.permissions.includes("audit:log:view") || currentUser?.permissions.includes("*"));
 
   const load = useCallback(async () => {
     try {
       const user = await apiGet<CurrentUser>("/auth/me");
       setCurrentUser(user);
       setUser(user);
-      if (user.permissions.includes("audit:log:view") || user.permissions.includes("*")) {
-        const [operations, logins, files] = await Promise.all([
-          apiGet<PageResult<AuditLog>>("/audit-logs", { page: 1, size: 10 }),
-          apiGet<PageResult<LoginLog>>("/login-logs", { page: 1, size: 10 }),
-          apiGet<PageResult<FileAccessLog>>("/file-access-logs", { page: 1, size: 10 }),
-        ]);
-        setAuditLogs(operations.records);
-        setLoginLogs(logins.records);
-        setFileLogs(files.records);
-      }
     } catch (error) {
-      if (!isAuthRedirectError(error)) message.error(getApiErrorMessage(error, "个人信息加载失败"));
+      if (!isAuthRedirectError(error)) {
+        message.error(getApiErrorMessage(error, "个人信息加载失败"));
+      }
     }
   }, [message, setUser]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const auditColumns = useMemo<TableProps<AuditLog>["columns"]>(() => [
-    { title: "操作人", dataIndex: "operatorName", render: (value) => value || "系统" },
-    { title: "模块", dataIndex: "operationModule" },
-    { title: "动作", dataIndex: "operationType" },
-    { title: "业务对象", dataIndex: "bizType" },
-    { title: "结果", dataIndex: "operationResult", render: (value) => <Tag color={value === "SUCCESS" ? "green" : "red"}>{value}</Tag> },
-    { title: "时间", dataIndex: "operationTime", render: (value) => value ? new Date(value).toLocaleString() : "-" },
-  ], []);
+  const permissionSummary = useMemo(() => {
+    if (!currentUser) return [];
+    return permissionAreas
+      .filter((area) =>
+        area.prefixes.some((prefix) =>
+          currentUser.permissions.some(
+            (permission) => permission === "*" || permission.startsWith(prefix),
+          ),
+        ),
+      )
+      .map((area) => area.label);
+  }, [currentUser]);
 
-  const loginColumns = useMemo<TableProps<LoginLog>["columns"]>(() => [
-    { title: "账号", dataIndex: "username" },
-    { title: "结果", dataIndex: "loginResult", render: (value) => <Tag color={value === "SUCCESS" ? "green" : "red"}>{value}</Tag> },
-    { title: "失败原因", dataIndex: "failureReason", render: (value) => value || "-" },
-    { title: "IP", dataIndex: "ipAddress" },
-    { title: "时间", dataIndex: "loggedInAt", render: (value) => value ? new Date(value).toLocaleString() : "-" },
-  ], []);
+  const managementEntries = useMemo(
+    () =>
+      authAdminRoutes.filter(
+        (route) =>
+          route.path !== "/dashboard" &&
+          Boolean(managementDescriptions[route.path]) &&
+          hasUserPermission(currentUser, route.permission),
+      ),
+    [currentUser],
+  );
 
-  const fileColumns = useMemo<TableProps<FileAccessLog>["columns"]>(() => [
-    { title: "用户", dataIndex: "operatorName", render: (value) => value || "系统" },
-    { title: "文件 ID", dataIndex: "fileId" },
-    { title: "操作", dataIndex: "accessType" },
-    { title: "结果", dataIndex: "accessResult" },
-    { title: "时间", dataIndex: "operationTime", render: (value) => value ? new Date(value).toLocaleString() : "-" },
-  ], []);
+  const canInspectPermissionCodes = Boolean(
+    currentUser?.roleCodes.some((role) => role === "ADMIN" || role === "AUDITOR"),
+  );
 
   return (
     <SiteLayout>
       <div className={styles.pageStack}>
-        <PageBanner sealText="PERSONAL DESK" title="个人主页" subtitle="当前用户、角色、权限和审计信息均由登录会话与权限服务实时提供。" />
-        <section className={styles.contentGrid}>
+        <PageBanner
+          sealText="PERSONAL DESK"
+          title="个人主页"
+          subtitle="查看当前账号身份、功能权限与可访问的管理入口。"
+        />
+
+        <section className={pageStyles.overviewGrid}>
           <Card className={styles.panel} variant="borderless">
-            <div className={styles.panelBody}>
-              <Avatar icon={<UserOutlined />} size={72} />
-              <Descriptions bordered column={1} size="small">
-                <Descriptions.Item label="姓名">{currentUser?.realName || "-"}</Descriptions.Item>
-                <Descriptions.Item label="账号">{currentUser?.username || "-"}</Descriptions.Item>
-                <Descriptions.Item label="组织 ID">{currentUser?.organizationId || "-"}</Descriptions.Item>
-                <Descriptions.Item label="部门 ID">{currentUser?.departmentId || "-"}</Descriptions.Item>
-                <Descriptions.Item label="角色">{currentUser?.roleCodes.join("、") || "-"}</Descriptions.Item>
-              </Descriptions>
+            <div className={pageStyles.identityHeader}>
+              <UserAvatar avatarUrl={currentUser?.avatarUrl} iconSize={30} size={72} />
+              <div className={pageStyles.identityTitle}>
+                <Typography.Title level={3}>
+                  {currentUser?.realName || currentUser?.username || "当前用户"}
+                </Typography.Title>
+                <Typography.Text type="secondary">{currentUser?.username || "-"}</Typography.Text>
+              </div>
+              <Link href="/settings">
+                <Button icon={<Settings size={16} />}>个人设置</Button>
+              </Link>
             </div>
+            <Descriptions bordered column={{ xs: 1, md: 2 }} size="small">
+              <Descriptions.Item label="组织 ID">
+                {currentUser?.organizationId || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="部门 ID">
+                {currentUser?.departmentId || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="角色" span={{ xs: 1, md: 2 }}>
+                {currentUser?.roleCodes.length
+                  ? currentUser.roleCodes.map((role) => <Tag key={role}>{role}</Tag>)
+                  : "-"}
+              </Descriptions.Item>
+            </Descriptions>
           </Card>
-          <div className={styles.metricGrid}>
-            <MetricCard description="当前会话包含的角色。" title="角色数" value={currentUser?.roleCodes.length ?? 0} />
-            <MetricCard description="当前用户已获授权限。" title="权限数" value={currentUser?.permissions.length ?? 0} />
-            <MetricCard description="最近加载的操作日志。" title="操作日志" value={auditLogs.length} />
-            <MetricCard description="最近加载的文件访问记录。" title="文件日志" value={fileLogs.length} />
+
+          <div className={pageStyles.summaryGrid}>
+            <MetricCard
+              description="当前账号已分配的角色。"
+              title="角色"
+              value={currentUser?.roleCodes.length ?? 0}
+            />
+            <MetricCard
+              description="根据权限归纳的可用功能域。"
+              title="功能域"
+              value={permissionSummary.length}
+            />
           </div>
         </section>
-        <section className={styles.contentGrid}>
+
+        <section className={pageStyles.detailsGrid}>
           <InfoCard title="当前权限">
-            <List
-              dataSource={currentUser?.permissions || []}
-              locale={{ emptyText: "暂无权限数据" }}
-              renderItem={(permission) => <List.Item><Tag>{permission}</Tag></List.Item>}
-            />
-          </InfoCard>
-          <InfoCard title="管理入口">
-            <div className={styles.sectionStack}>
-              <Typography.Paragraph type="secondary">用户、角色、组织和权限的维护集中在后台管理，避免个人页重复提供管理入口。</Typography.Paragraph>
-              <Link href="/dashboard"><Button type="primary">进入后台管理</Button></Link>
+            <div className={pageStyles.permissionContent}>
+              <Typography.Paragraph type="secondary">
+                以下内容按当前账号权限归纳，具体操作仍由页面和接口权限共同校验。
+              </Typography.Paragraph>
+              <div className={pageStyles.permissionTags}>
+                {permissionSummary.length ? (
+                  permissionSummary.map((area) => (
+                    <Tag className={pageStyles.permissionTag} key={area}>
+                      <ShieldCheck size={14} />
+                      {area}
+                    </Tag>
+                  ))
+                ) : (
+                  <Typography.Text type="secondary">暂无可用功能权限</Typography.Text>
+                )}
+              </div>
+              {canInspectPermissionCodes ? (
+                <Collapse
+                  ghost
+                  items={[
+                    {
+                      key: "permission-codes",
+                      label: "查看技术权限编码",
+                      children: (
+                        <div className={pageStyles.codeTags}>
+                          {currentUser?.permissions.map((permission) => (
+                            <Tag key={permission}>{permission}</Tag>
+                          ))}
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
+              ) : null}
             </div>
           </InfoCard>
+
+          {managementEntries.length ? (
+            <InfoCard title="管理入口">
+              <div className={pageStyles.managementList}>
+                {managementEntries.map((route) => (
+                  <Link className={pageStyles.managementEntry} href={route.path} key={route.path}>
+                    <span>
+                      <strong>{route.title}</strong>
+                      <small>{managementDescriptions[route.path]}</small>
+                    </span>
+                    <ArrowRight size={17} />
+                  </Link>
+                ))}
+              </div>
+            </InfoCard>
+          ) : null}
         </section>
-        {canViewAudit ? <Tabs items={[
-          { key: "operation", label: "操作日志", children: <DataTable<AuditLog> columns={auditColumns} dataSource={auditLogs} pagination={false} rowKey="id" /> },
-          { key: "login", label: "登录日志", children: <DataTable<LoginLog> columns={loginColumns} dataSource={loginLogs} pagination={false} rowKey="id" /> },
-          { key: "file", label: "文件访问日志", children: <DataTable<FileAccessLog> columns={fileColumns} dataSource={fileLogs} pagination={false} rowKey="id" /> },
-        ]} /> : <InfoCard title="审计日志"><Typography.Text type="secondary">当前角色没有审计日志查看权限。</Typography.Text></InfoCard>}
       </div>
     </SiteLayout>
   );

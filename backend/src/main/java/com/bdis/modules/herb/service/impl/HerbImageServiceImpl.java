@@ -129,13 +129,13 @@ public class HerbImageServiceImpl implements HerbImageService {
         HerbImageEntity image = getActiveImage(id);
         requireOwner(image);
         Long fileId = fileResourceService.resolveFileId(image.getImageUrl());
+        if (fileId != null) {
+            fileResourceService.delete(fileId);
+        }
         image.setUpdatedAt(LocalDateTime.now());
         int affected = herbImageMapper.logicalDeleteById(image);
         if (affected == 0) {
             throw new BusinessException("Herb image not found or already deleted");
-        }
-        if (fileId != null) {
-            fileResourceService.delete(fileId);
         }
     }
 

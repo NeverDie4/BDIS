@@ -29,5 +29,7 @@ public class UserVO {
 
     private LocalDateTime lastLoginAt;
 
+    private Boolean mustChangePassword;
+
     private List<RoleVO> roles;
 }

@@ -16,11 +16,13 @@ export type CurrentUser = {
   userId: number;
   username: string;
   realName?: string;
+  avatarUrl?: string;
   organizationId?: number;
   departmentId?: number;
   roleCodes: string[];
   roleIds: number[];
   permissions: string[];
+  mustChangePassword?: boolean;
 };
 
 export type LoginResult = {
@@ -28,6 +30,8 @@ export type LoginResult = {
   tokenType: "Bearer";
   expiresIn: number;
   user: CurrentUser;
+  preferredLandingPath?: string;
+  mustChangePassword?: boolean;
 };
 
 export type MenuItem = {
@@ -36,6 +40,7 @@ export type MenuItem = {
   menuCode: string;
   menuName: string;
   routePath?: string;
+  componentPath?: string;
   icon?: string;
   visible?: number;
   sortOrder?: number;
@@ -77,6 +82,7 @@ export type User = {
   departmentId?: number;
   status?: number;
   lastLoginAt?: string;
+  mustChangePassword?: boolean;
   roles?: Role[];
 };
 

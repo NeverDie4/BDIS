@@ -2,7 +2,9 @@
 
 import axios from "axios";
 import type { ApiResult } from "@/types/api";
+import { buildLoginUrl, getCurrentRelativeUrl } from "./auth-navigation";
 import { clearStoredToken, getStoredToken } from "./auth-token";
+import { getOrCreateDeviceId } from "./device-id";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
 const AUTH_REDIRECT_FLAG = "__bdisAuthRedirect";
@@ -10,6 +12,14 @@ const AUTH_REDIRECT_FLAG = "__bdisAuthRedirect";
 type AuthRedirectError = {
   [AUTH_REDIRECT_FLAG]?: true;
 };
+
+function isPasswordChangeRequired(error: unknown) {
+  return (
+    axios.isAxiosError<ApiResult<unknown>>(error) &&
+    error.response?.status === 403 &&
+    error.response.data?.code === "PASSWORD_CHANGE_REQUIRED"
+  );
+}
 
 export const request = axios.create({
   baseURL: API_BASE_URL,
@@ -20,6 +30,10 @@ export const request = axios.create({
 });
 
 request.interceptors.request.use((config) => {
+  const deviceId = getOrCreateDeviceId();
+  if (deviceId) {
+    config.headers["X-Device-Id"] = deviceId;
+  }
   const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -30,11 +44,18 @@ request.interceptors.request.use((config) => {
 request.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
+    if (isPasswordChangeRequired(error) && typeof window !== "undefined") {
+      const securitySettingsUrl = "/settings?tab=security";
+      if (`${window.location.pathname}${window.location.search}` !== securitySettingsUrl) {
+        window.location.href = securitySettingsUrl;
+      }
+      return Promise.reject(error);
+    }
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       clearStoredToken();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         (error as AuthRedirectError)[AUTH_REDIRECT_FLAG] = true;
-        window.location.href = "/login";
+        window.location.href = buildLoginUrl(getCurrentRelativeUrl());
       }
     }
     return Promise.reject(error);

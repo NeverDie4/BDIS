@@ -7,6 +7,7 @@ public class AuditRecordDTO {
 
     private String operationModule;
     private String operationType;
+    private String operationDesc;
     private String bizType;
     private Long bizId;
     private String operationResult = "SUCCESS";

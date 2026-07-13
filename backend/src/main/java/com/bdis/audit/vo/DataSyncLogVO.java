@@ -7,9 +7,11 @@ import lombok.Data;
 public class DataSyncLogVO {
 
     private Long id;
+    private String traceId;
     private String syncType;
     private String sourceType;
     private String targetType;
+    private Long targetId;
     private Long taskId;
     private Long exchangeId;
     private String businessType;
@@ -19,5 +21,7 @@ public class DataSyncLogVO {
     private Integer successCount;
     private Integer failureCount;
     private String failureReason;
+    private Long operatorId;
+    private String operatorName;
     private LocalDateTime operationTime;
 }

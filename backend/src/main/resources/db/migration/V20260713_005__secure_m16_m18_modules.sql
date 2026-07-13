@@ -1,3 +1,4 @@
+-- M16-M18 permissions and archive uniqueness, ordered after merged branch migrations.
 INSERT IGNORE INTO `auth_permission`
 (`permission_code`, `permission_name`, `permission_type`, `description`, `status`)
 VALUES
@@ -74,6 +75,32 @@ JOIN `auth_permission` permission
     'performance:record:audit')
 WHERE role.role_code = 'REVIEWER';
 
-ALTER TABLE `eval_archive`
-    DROP INDEX `idx_eval_archive_application_id`,
-    ADD UNIQUE KEY `uk_eval_archive_application_id` (`application_id`);
+SET @drop_eval_archive_index_sql = (
+    SELECT IF(
+        COUNT(*) > 0,
+        'ALTER TABLE `eval_archive` DROP INDEX `idx_eval_archive_application_id`',
+        'SELECT 1'
+    )
+    FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+      AND table_name = 'eval_archive'
+      AND index_name = 'idx_eval_archive_application_id'
+);
+PREPARE drop_eval_archive_index_stmt FROM @drop_eval_archive_index_sql;
+EXECUTE drop_eval_archive_index_stmt;
+DEALLOCATE PREPARE drop_eval_archive_index_stmt;
+
+SET @add_eval_archive_unique_sql = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE `eval_archive` ADD UNIQUE KEY `uk_eval_archive_application_id` (`application_id`)',
+        'SELECT 1'
+    )
+    FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+      AND table_name = 'eval_archive'
+      AND index_name = 'uk_eval_archive_application_id'
+);
+PREPARE add_eval_archive_unique_stmt FROM @add_eval_archive_unique_sql;
+EXECUTE add_eval_archive_unique_stmt;
+DEALLOCATE PREPARE add_eval_archive_unique_stmt;

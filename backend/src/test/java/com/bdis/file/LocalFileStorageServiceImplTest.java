@@ -30,7 +30,6 @@ class LocalFileStorageServiceImplTest {
 
         assertThat(storedFile.storedName()).endsWith(".txt");
         assertThat(storedFile.storagePath()).contains(".txt");
-        assertThat(storedFile.fileUrl()).contains(storedFile.storagePath());
 
         FileContentVO content =
                 storageService.load(

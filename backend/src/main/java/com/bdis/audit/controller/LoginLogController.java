@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/login-logs")
-@RequirePermission("audit:log:view")
+@RequirePermission("audit:login:view")
 public class LoginLogController {
 
     private final LoginLogService loginLogService;

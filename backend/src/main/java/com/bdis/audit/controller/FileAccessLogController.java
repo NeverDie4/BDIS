@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/file-access-logs")
-@RequirePermission("audit:log:view")
+@RequirePermission("audit:file:view")
 public class FileAccessLogController {
 
     private final FileAccessLogService fileAccessLogService;

@@ -12,5 +12,6 @@ public class LoginLogVO {
     private String loginResult;
     private String failureReason;
     private String ipAddress;
+    private String userAgent;
     private LocalDateTime loggedInAt;
 }

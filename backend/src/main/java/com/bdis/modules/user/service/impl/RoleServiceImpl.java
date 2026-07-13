@@ -22,6 +22,7 @@ import com.bdis.modules.user.mapper.UserRoleMapper;
 import com.bdis.modules.user.query.RoleQuery;
 import com.bdis.modules.user.service.RoleService;
 import com.bdis.modules.user.vo.RoleVO;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -80,11 +81,14 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public Long create(RoleCreateDTO dto) {
+        if ("system".equals(dto.getRoleType())) {
+            throw new DuplicateResourceException("系统角色只能由系统初始化");
+        }
         ensureCodeAvailable(dto.getRoleCode(), null);
         RoleEntity role = new RoleEntity();
         role.setRoleCode(dto.getRoleCode());
         role.setRoleName(dto.getRoleName());
-        role.setRoleType(dto.getRoleType());
+        role.setRoleType("business");
         role.setDataScope(StringUtils.hasText(dto.getDataScope()) ? dto.getDataScope() : "self");
         role.setDescription(dto.getDescription());
         role.setSortOrder(dto.getSortOrder());
@@ -97,6 +101,7 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public void update(Long id, RoleUpdateDTO dto) {
         RoleEntity role = requireRole(id);
+        validateProtectedRoleUpdate(role, dto);
         if (dto.getRoleName() != null) {
             role.setRoleName(dto.getRoleName());
         }
@@ -122,7 +127,10 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional
     public void delete(Long id) {
-        requireRole(id);
+        RoleEntity role = requireRole(id);
+        if (isSystemRole(role)) {
+            throw new DuplicateResourceException("系统角色不能删除");
+        }
         Long usedCount =
                 userRoleMapper.selectCount(
                         new LambdaQueryWrapper<UserRoleEntity>().eq(UserRoleEntity::getRoleId, id));
@@ -163,6 +171,19 @@ public class RoleServiceImpl implements RoleService {
         }
     }
 
+    @Override
+    public List<Long> permissionIds(Long id) {
+        requireRole(id);
+        return rolePermissionMapper
+                .selectList(
+                        new LambdaQueryWrapper<RolePermissionEntity>()
+                                .eq(RolePermissionEntity::getRoleId, id)
+                                .orderByAsc(RolePermissionEntity::getPermissionId))
+                .stream()
+                .map(RolePermissionEntity::getPermissionId)
+                .toList();
+    }
+
     private RoleEntity requireRole(Long id) {
         RoleEntity role = roleMapper.selectById(id);
         if (role == null) {
@@ -178,6 +199,24 @@ public class RoleServiceImpl implements RoleService {
         if (existed != null && (excludeId == null || !existed.getId().equals(excludeId))) {
             throw new DuplicateResourceException("角色编码已存在");
         }
+    }
+
+    private void validateProtectedRoleUpdate(RoleEntity role, RoleUpdateDTO dto) {
+        if (dto.getRoleType() != null && !dto.getRoleType().equals(role.getRoleType())) {
+            throw new DuplicateResourceException("角色类型创建后不能修改");
+        }
+        if (isSystemRole(role) && dto.getStatus() != null && dto.getStatus() == 0) {
+            throw new DuplicateResourceException("系统角色不能停用");
+        }
+        if (isSystemRole(role)
+                && dto.getDataScope() != null
+                && !dto.getDataScope().equals(role.getDataScope())) {
+            throw new DuplicateResourceException("系统角色的数据范围不能修改");
+        }
+    }
+
+    private boolean isSystemRole(RoleEntity role) {
+        return "system".equals(role.getRoleType());
     }
 
     private RoleVO toVO(RoleEntity role) {

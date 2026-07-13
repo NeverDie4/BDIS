@@ -5,8 +5,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.BusinessAccessService;
+import com.bdis.common.security.BusinessReferenceAccessService;
 import com.bdis.file.service.FileResourceService;
-import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.modules.declaration.dto.DeclarationArchiveItemRequest;
 import com.bdis.modules.declaration.entity.DeclarationArchiveEntity;
 import com.bdis.modules.declaration.entity.DeclarationEntity;
@@ -29,7 +29,7 @@ class DeclarationWorkflowServiceTest {
     @Mock private DeclarationArchiveMapper archiveMapper;
     @Mock private DeclarationArchiveItemMapper archiveItemMapper;
     @Mock private BusinessAccessService accessService;
-    @Mock private BusinessReferenceValidator referenceValidator;
+    @Mock private BusinessReferenceAccessService referenceAccessService;
     @Mock private FileResourceService fileResourceService;
     @InjectMocks private DeclarationArchiveServiceImpl archiveService;
 
@@ -59,6 +59,6 @@ class DeclarationWorkflowServiceTest {
 
         archiveService.addArchiveItem(4L, request);
 
-        verify(referenceValidator).validate("eval_attachment", 8L);
+        verify(referenceAccessService).validate("eval_attachment", 8L);
     }
 }

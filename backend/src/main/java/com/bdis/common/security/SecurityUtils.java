@@ -16,4 +16,13 @@ public final class SecurityUtils {
         }
         return user;
     }
+
+    public static SessionAuthenticationDetails currentSession() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !(authentication.getDetails() instanceof SessionAuthenticationDetails details)) {
+            throw new UnauthorizedException("当前会话信息不存在，请重新登录");
+        }
+        return details;
+    }
 }
