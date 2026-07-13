@@ -7,8 +7,10 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.course.constant.CoursePublishStatus;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.entity.ExperimentStepEntity;
@@ -76,7 +78,9 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public CourseDetailVO getDetail(Long id) {
-        CourseDetailVO vo = toDetailVO(requireActive(id));
+        CourseEntity course = requireActive(id);
+        requireCourseAccess(course, false);
+        CourseDetailVO vo = toDetailVO(course);
         vo.setSteps(experimentStepService.listByCourseId(id));
         vo.setResources(courseResourceService.listByCourseId(id, null));
         return vo;
@@ -118,8 +122,12 @@ public class CourseServiceImpl implements CourseService {
     @Transactional
     public CourseDetailVO update(Long id, CourseUpdateRequest request) {
         CourseEntity existing = requireActive(id);
+        requireCourseAccess(existing, true);
         CoursePublishStatus.requireEditable(existing.getPublishStatus());
         validateUpdate(request);
+        if (!Objects.equals(request.getVersion(), existing.getVersion())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Course version conflict");
+        }
         validateTimeRange(request.getStartedAt(), request.getEndedAt());
         ensureCourseNoAvailable(request.getCourseNo(), id);
         validateTeacher(request.getTeacherId());
@@ -146,6 +154,7 @@ public class CourseServiceImpl implements CourseService {
     @Transactional
     public void delete(Long id) {
         CourseEntity existing = requireActive(id);
+        requireCourseAccess(existing, true);
         CoursePublishStatus.requireDeletable(existing.getPublishStatus());
         Long recordCount = courseMapper.countActiveExperimentRecords(id);
         if (recordCount != null && recordCount > 0) {
@@ -161,8 +170,10 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional
-    public void publish(Long id) {
+    public void publish(Long id, Integer version) {
         CourseEntity existing = requireActive(id);
+        requireCourseAccess(existing, true);
+        checkVersion(existing, version);
         CoursePublishStatus.requirePublishable(existing.getPublishStatus());
         Long stepCount =
                 experimentStepMapper.selectCount(
@@ -188,8 +199,10 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional
-    public void offline(Long id) {
+    public void offline(Long id, Integer version) {
         CourseEntity existing = requireActive(id);
+        requireCourseAccess(existing, true);
+        checkVersion(existing, version);
         CoursePublishStatus.requireOfflineable(existing.getPublishStatus());
         existing.setPublishStatus(CoursePublishStatus.OFFLINE);
         existing.setUpdatedAt(LocalDateTime.now());
@@ -211,6 +224,12 @@ public class CourseServiceImpl implements CourseService {
         return entity;
     }
 
+    private void checkVersion(CourseEntity entity, Integer version) {
+        if (version == null || !Objects.equals(version, entity.getVersion())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Course version conflict");
+        }
+    }
+
     private void validateCreate(CourseCreateRequest request) {
         if (request == null
                 || !StringUtils.hasText(request.getCourseNo())
@@ -226,8 +245,9 @@ public class CourseServiceImpl implements CourseService {
                 || !StringUtils.hasText(request.getCourseNo())
                 || !StringUtils.hasText(request.getCourseName())
                 || !StringUtils.hasText(request.getCourseType())
-                || request.getTeacherId() == null) {
-            throw new BusinessException("Course number, name, type and teacher are required");
+                || request.getTeacherId() == null
+                || request.getVersion() == null) {
+            throw new BusinessException("Course number, name, type, teacher and version are required");
         }
     }
 
@@ -271,6 +291,7 @@ public class CourseServiceImpl implements CourseService {
                 CourseEntity::getPublishStatus,
                 query.getPublishStatus());
         wrapper.eq(query.getStatus() != null, CourseEntity::getStatus, query.getStatus());
+        applyUserScope(wrapper);
         wrapper.ge(
                 query.getStartedFrom() != null,
                 CourseEntity::getStartedAt,
@@ -278,6 +299,50 @@ public class CourseServiceImpl implements CourseService {
         wrapper.le(query.getStartedTo() != null, CourseEntity::getStartedAt, query.getStartedTo());
         wrapper.orderByDesc(CourseEntity::getCreatedAt).orderByDesc(CourseEntity::getId);
         return wrapper;
+    }
+
+    private void applyUserScope(LambdaQueryWrapper<CourseEntity> wrapper) {
+        if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (isStudent()) {
+            wrapper.eq(CourseEntity::getPublishStatus, CoursePublishStatus.PUBLISHED);
+            return;
+        }
+        wrapper.and(scope -> scope.eq(CourseEntity::getCreatedBy, userId)
+                .or().eq(CourseEntity::getTeacherId, userId));
+    }
+
+    private void requireCourseAccess(CourseEntity course, boolean manage) {
+        if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (isStudent()) {
+            if (manage || !CoursePublishStatus.PUBLISHED.equals(course.getPublishStatus())) {
+                throw new ForbiddenException("Student cannot manage or view this course");
+            }
+            return;
+        }
+        if (!Objects.equals(userId, course.getCreatedBy())
+                && !Objects.equals(userId, course.getTeacherId())) {
+            throw new ForbiddenException("Course is outside the current user's scope");
+        }
+    }
+
+    private boolean hasScopedIdentity() {
+        return !CurrentUserUtils.currentRoleCodes().isEmpty();
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role));
+    }
+
+    private boolean isStudent() {
+        return CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
     }
 
     private void normalizePage(CourseQuery query) {
@@ -331,6 +396,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setUpdatedAt(entity.getUpdatedAt());
         vo.setCreatedBy(entity.getCreatedBy());
         vo.setUpdatedBy(entity.getUpdatedBy());
+        vo.setVersion(entity.getVersion());
         return vo;
     }
 

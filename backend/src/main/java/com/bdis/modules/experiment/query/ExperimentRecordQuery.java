@@ -29,4 +29,8 @@ public class ExperimentRecordQuery {
     @Min(1)
     @Max(100)
     private Integer pageSize = 10;
+
+    private Long scopeUserId;
+
+    private Boolean scopeAll;
 }

@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.research.constant.ResearchProjectStatus;
@@ -71,7 +73,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     @Override
     @Transactional
     public Long add(Long projectId, ProjectMemberAddRequest request) {
-        ResearchProjectStatus.assertMutable(requireProject(projectId));
+        ResearchProjectEntity project = requireProject(projectId);
+        requireProjectAccess(project, true);
+        ResearchProjectStatus.assertMutable(project);
         validateRole(request == null ? null : request.getMemberRole());
         if ("leader".equals(request.getMemberRole())) throw new BusinessException("A second leader cannot be added");
         UserEntity user = requireUser(request.getUserId());
@@ -93,7 +97,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     @Override
     @Transactional
     public void updateRole(Long projectId, Long userId, ProjectMemberUpdateRequest request) {
-        ResearchProjectStatus.assertMutable(requireProject(projectId));
+        ResearchProjectEntity project = requireProject(projectId);
+        requireProjectAccess(project, true);
+        ResearchProjectStatus.assertMutable(project);
         validateRole(request == null ? null : request.getMemberRole());
         if ("leader".equals(request.getMemberRole())) throw new BusinessException("Ordinary member cannot become leader");
         ProjectMemberEntity member = requireMember(projectId, userId);
@@ -107,7 +113,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     @Override
     @Transactional
     public void remove(Long projectId, Long userId) {
-        ResearchProjectStatus.assertMutable(requireProject(projectId));
+        ResearchProjectEntity project = requireProject(projectId);
+        requireProjectAccess(project, true);
+        ResearchProjectStatus.assertMutable(project);
         ProjectMemberEntity member = requireMember(projectId, userId);
         if ("leader".equals(member.getMemberRole())) throw new BusinessException("Project leader cannot leave");
         if (!"active".equals(member.getMemberStatus())) throw new BusinessException("Member has already left");
@@ -119,7 +127,26 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     private ResearchProjectEntity requireProject(Long projectId) {
         ResearchProjectEntity project = projectMapper.selectById(projectId);
         if (project == null) throw new ResourceNotFoundException("Research project not found");
+        requireProjectAccess(project, false);
         return project;
+    }
+
+    private void requireProjectAccess(ResearchProjectEntity project, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, project.getLeaderId())) {
+            return;
+        }
+        if (!manage && projectMapper.existsActiveMember(project.getId(), userId)) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the project leader can manage project members"
+                        : "User is not an active project member");
     }
 
     private ProjectMemberEntity requireMember(Long projectId, Long userId) {

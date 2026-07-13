@@ -60,6 +60,7 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
     public PageResult<TrainingFeedbackListVO> page(TrainingFeedbackQuery query) {
         TrainingFeedbackQuery safe = query == null ? new TrainingFeedbackQuery() : query;
         validateQuery(safe);
+        applyScope(safe);
         Page<TrainingFeedbackListVO> page = feedbackMapper.selectPageVO(
                 Page.of(safe.getPageNo(), safe.getPageSize()), safe);
         return PageResult.of(page.getRecords(), page);
@@ -71,6 +72,7 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
         requirePositive(id, "Training feedback id");
         TrainingFeedbackDetailVO detail = feedbackMapper.selectDetailById(id);
         if (detail == null) throw new ResourceNotFoundException("Training feedback not found");
+        requireFeedbackAccess(detail.getUserId(), detail.getTrainingRecordId());
         return detail;
     }
 
@@ -189,6 +191,34 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
         if (!Objects.equals(ownerId, currentUserId)) {
             throw new ForbiddenException("Only the participant can submit or update feedback");
         }
+    }
+
+    private void applyScope(TrainingFeedbackQuery query) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            query.setScopeAll(true);
+        } else {
+            query.setScopeAll(false);
+            query.setScopeUserId(CurrentUserUtils.currentUserId());
+        }
+    }
+
+    private void requireFeedbackAccess(Long feedbackUserId, Long recordId) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        TrainingRecordEntity record = requireRecord(recordId);
+        TrainingPlanEntity plan = requireActivePlan(record.getPlanId());
+        if (Objects.equals(feedbackUserId, userId)
+                || Objects.equals(plan.getOwnerId(), userId)
+                || Objects.equals(plan.getTrainerId(), userId)) {
+            return;
+        }
+        throw new ForbiddenException("Training feedback is outside the current user's scope");
     }
 
     private void requirePositive(Long id, String label) {

@@ -19,7 +19,7 @@ public interface CourseService {
 
     void delete(Long id);
 
-    void publish(Long id);
+    void publish(Long id, Integer version);
 
-    void offline(Long id);
+    void offline(Long id, Integer version);
 }

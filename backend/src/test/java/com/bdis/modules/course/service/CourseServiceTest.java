@@ -8,9 +8,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.audit.dto.AuditRecordDTO;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.mapper.CourseMapper;
 import com.bdis.modules.course.mapper.ExperimentStepMapper;
@@ -28,12 +31,16 @@ import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class CourseServiceTest {
@@ -61,7 +68,52 @@ class CourseServiceTest {
                         experimentStepService,
                         courseResourceService,
                         userMapper,
-                        auditLogService);
+                auditLogService);
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void teacherCannotReadAnotherTeachersCourse() {
+        setUser(8L, "TEACHER");
+        when(courseMapper.selectById(11L)).thenReturn(activeCourse());
+
+        assertThatThrownBy(() -> courseService.getDetail(11L))
+                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> courseService.update(11L, validUpdateRequest()))
+                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> courseService.publish(11L, 0))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void administratorCanReadAnotherTeachersCourse() {
+        setUser(99L, "ADMIN");
+        when(courseMapper.selectById(11L)).thenReturn(activeCourse());
+
+        assertThat(courseService.getDetail(11L)).isNotNull();
+    }
+
+    @Test
+    void teacherListBuildsCreatorOrResponsibleTeacherScope() {
+        setUser(8L, "TEACHER");
+        when(courseMapper.selectPage(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        courseService.page(new CourseQuery());
+
+        ArgumentCaptor<LambdaQueryWrapper<CourseEntity>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(courseMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue()).isNotNull();
+    }
+
+    private void setUser(Long id, String role) {
+        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
+                Set.of(role), Set.of(), Set.of("edu:course:detail"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test
@@ -228,7 +280,7 @@ class CourseServiceTest {
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());
         when(experimentStepMapper.selectCount(any())).thenReturn(0L);
 
-        assertThatThrownBy(() -> courseService.publish(11L))
+        assertThatThrownBy(() -> courseService.publish(11L, 0))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("at least one active experiment step");
     }
@@ -239,7 +291,7 @@ class CourseServiceTest {
         when(experimentStepMapper.selectCount(any())).thenReturn(1L);
         when(courseMapper.updateById(any(CourseEntity.class))).thenReturn(1);
 
-        courseService.publish(11L);
+        courseService.publish(11L, 0);
 
         ArgumentCaptor<CourseEntity> captor = ArgumentCaptor.forClass(CourseEntity.class);
         verify(courseMapper).updateById(captor.capture());
@@ -259,7 +311,7 @@ class CourseServiceTest {
         when(courseMapper.selectById(11L)).thenReturn(published);
         when(courseMapper.updateById(any(CourseEntity.class))).thenReturn(1);
 
-        courseService.offline(11L);
+        courseService.offline(11L, 0);
 
         ArgumentCaptor<CourseEntity> captor = ArgumentCaptor.forClass(CourseEntity.class);
         verify(courseMapper).updateById(captor.capture());
@@ -276,7 +328,7 @@ class CourseServiceTest {
         when(experimentStepMapper.selectCount(any())).thenReturn(1L);
         when(courseMapper.updateById(any(CourseEntity.class))).thenReturn(1);
 
-        courseService.publish(11L);
+        courseService.publish(11L, 0);
 
         ArgumentCaptor<CourseEntity> captor = ArgumentCaptor.forClass(CourseEntity.class);
         verify(courseMapper).updateById(captor.capture());
@@ -289,7 +341,7 @@ class CourseServiceTest {
         published.setPublishStatus("published");
         when(courseMapper.selectById(11L)).thenReturn(published);
 
-        assertThatThrownBy(() -> courseService.publish(11L))
+        assertThatThrownBy(() -> courseService.publish(11L, 0))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Only draft or offline");
     }
@@ -298,7 +350,7 @@ class CourseServiceTest {
     void draftCourseCannotBeTakenOffline() {
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());
 
-        assertThatThrownBy(() -> courseService.offline(11L))
+        assertThatThrownBy(() -> courseService.offline(11L, 0))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Only published course");
     }
@@ -309,7 +361,7 @@ class CourseServiceTest {
         offline.setPublishStatus("offline");
         when(courseMapper.selectById(11L)).thenReturn(offline);
 
-        assertThatThrownBy(() -> courseService.offline(11L))
+        assertThatThrownBy(() -> courseService.offline(11L, 0))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Only published course");
     }
@@ -373,6 +425,7 @@ class CourseServiceTest {
         request.setCourseName("Updated course");
         request.setCourseType("experiment");
         request.setTeacherId(7L);
+        request.setVersion(0);
         return request;
     }
 
@@ -386,6 +439,7 @@ class CourseServiceTest {
         entity.setPublishStatus("draft");
         entity.setStatus(1);
         entity.setIsDeleted(0);
+        entity.setVersion(0);
         return entity;
     }
 }

@@ -24,6 +24,9 @@ public class CourseUpdateRequest {
     @NotNull(message = "teacherId is required")
     private Long teacherId;
 
+    @NotNull(message = "version is required")
+    private Integer version;
+
     private String description;
 
     @Size(max = 500, message = "videoUrl must not exceed 500 characters")

@@ -13,6 +13,7 @@ import com.bdis.modules.course.entity.CourseResourceEntity;
 import com.bdis.modules.course.mapper.CourseResourceMapper;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.training.constant.TrainingMaterialSourceType;
 import com.bdis.modules.training.constant.TrainingMaterialType;
 import com.bdis.modules.training.entity.TrainingMaterialEntity;
@@ -48,6 +49,7 @@ public class TrainingMaterialServiceImpl implements TrainingMaterialService {
     private final TrainingMaterialMapper materialMapper;
     private final TrainingPlanMaterialMapper relationMapper;
     private final FileResourceMapper fileMapper;
+    private final FileAccessGuard fileAccessGuard;
     private final CourseResourceMapper courseResourceMapper;
     private final UserMapper userMapper;
     private final AuditLogService auditLogService;
@@ -58,10 +60,12 @@ public class TrainingMaterialServiceImpl implements TrainingMaterialService {
             FileResourceMapper fileMapper,
             CourseResourceMapper courseResourceMapper,
             UserMapper userMapper,
+            FileAccessGuard fileAccessGuard,
             AuditLogService auditLogService) {
         this.materialMapper = materialMapper;
         this.relationMapper = relationMapper;
         this.fileMapper = fileMapper;
+        this.fileAccessGuard = fileAccessGuard;
         this.courseResourceMapper = courseResourceMapper;
         this.userMapper = userMapper;
         this.auditLogService = auditLogService;
@@ -230,6 +234,7 @@ public class TrainingMaterialServiceImpl implements TrainingMaterialService {
 
     private FileResourceEntity validateSource(Long fileId, String sourceType, Long sourceResourceId) {
         FileResourceEntity file = requireActiveFile(fileId);
+        fileAccessGuard.requireAuthenticatedAccess(file);
         if (TrainingMaterialSourceType.COURSE_RESOURCE.equals(sourceType)) {
             CourseResourceEntity resource = courseResourceMapper.selectById(sourceResourceId);
             if (resource == null

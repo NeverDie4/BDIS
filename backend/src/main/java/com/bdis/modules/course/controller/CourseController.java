@@ -4,6 +4,7 @@ import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
+import com.bdis.modules.course.request.CourseStatusChangeRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
 import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.vo.CourseDetailVO;
@@ -68,16 +69,18 @@ public class CourseController {
     }
 
     @PostMapping("/{id}/publish")
-    public Result<Void> publish(@PathVariable @Positive Long id) {
+    public Result<Void> publish(
+            @PathVariable @Positive Long id, @Valid @RequestBody CourseStatusChangeRequest request) {
         authorizationService.requirePermission("edu:course:publish");
-        courseService.publish(id);
+        courseService.publish(id, request.getVersion());
         return Result.success();
     }
 
     @PostMapping("/{id}/offline")
-    public Result<Void> offline(@PathVariable @Positive Long id) {
+    public Result<Void> offline(
+            @PathVariable @Positive Long id, @Valid @RequestBody CourseStatusChangeRequest request) {
         authorizationService.requirePermission("edu:course:publish");
-        courseService.offline(id);
+        courseService.offline(id, request.getVersion());
         return Result.success();
     }
 }

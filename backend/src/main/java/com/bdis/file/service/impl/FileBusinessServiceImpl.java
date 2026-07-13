@@ -18,17 +18,18 @@ import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.vo.FileResourceVO;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Comparator;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FileBusinessServiceImpl implements FileBusinessService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FileBusinessServiceImpl.class);
 
     private final FileBusinessMapper fileBusinessMapper;
     private final FileResourceMapper fileResourceMapper;
@@ -69,6 +70,9 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         if (file == null) {
             throw new ResourceNotFoundException("文件不存在");
         }
+        if (Objects.equals(file.getStatus(), 0)) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "文件已禁用");
+        }
         if (validateAccess) {
             fileAccessGuard.requireAuthenticatedAccess(file);
         }
@@ -86,6 +90,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         entity.setBizType(dto.getBizType());
         entity.setBizId(dto.getBizId());
         entity.setFileUsage(dto.getFileUsage());
+        entity.setSortOrder(dto.getSortOrder() == null ? 0 : dto.getSortOrder());
         entity.setRemark(dto.getRemark());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setCreatedBy(CurrentUserUtils.currentUserId());
@@ -155,17 +160,39 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     public List<FileResourceVO> listByBusiness(String bizType, Long bizId, String fileUsage) {
         businessReferenceValidator.validate(bizType, bizId);
         List<FileBusinessEntity> relations =
-                fileBusinessMapper.selectList(
+                new ArrayList<>(fileBusinessMapper.selectList(
                         new LambdaQueryWrapper<FileBusinessEntity>()
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
                                 .eq(fileUsage != null && !fileUsage.isBlank(),
                                         FileBusinessEntity::getFileUsage, fileUsage)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
-                                .orderByDesc(FileBusinessEntity::getId));
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
+                                .orderByAsc(FileBusinessEntity::getId)));
+        if (relations.isEmpty()) {
+            return List.of();
+        }
+        relations.sort(
+                Comparator.comparing(
+                                FileBusinessEntity::getSortOrder,
+                                Comparator.nullsFirst(Integer::compareTo))
+                        .thenComparing(
+                                FileBusinessEntity::getCreatedAt,
+                                Comparator.nullsFirst(LocalDateTime::compareTo))
+                        .thenComparing(FileBusinessEntity::getId));
+        List<Long> fileIds =
+                relations.stream()
+                        .map(FileBusinessEntity::getFileId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<Long, FileResourceEntity> files = new LinkedHashMap<>();
+        for (FileResourceEntity file : fileResourceMapper.selectByIds(fileIds)) {
+            files.put(file.getId(), file);
+        }
         return relations.stream()
                 .map(FileBusinessEntity::getFileId)
-                .map(fileResourceMapper::selectById)
+                .map(files::get)
                 .filter(entity -> entity != null)
                 .map(this::toFileVO)
                 .toList();
@@ -190,6 +217,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
                                 .orderByAsc(FileBusinessEntity::getId))
                 .stream()
                 .map(this::toVO)
@@ -221,10 +249,6 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         audit.setOperationType(operationType);
         audit.setBizType(bizType);
         audit.setBizId(bizId);
-        try {
-            auditLogService.record(audit);
-        } catch (RuntimeException exception) {
-            LOGGER.warn("Failed to persist file business audit log", exception);
-        }
+        auditLogService.record(audit);
     }
 }

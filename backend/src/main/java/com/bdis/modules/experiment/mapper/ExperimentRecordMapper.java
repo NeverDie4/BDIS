@@ -70,6 +70,17 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
             </if>
             <if test="query.recordedFrom != null">AND er.recorded_at &gt;= #{query.recordedFrom}</if>
             <if test="query.recordedTo != null">AND er.recorded_at &lt;= #{query.recordedTo}</if>
+            <if test="query.scopeAll != true">
+              AND (er.recorder_id = #{query.scopeUserId}
+                   OR EXISTS (SELECT 1 FROM edu_course scoped_course
+                              WHERE scoped_course.id = er.course_id
+                                AND scoped_course.teacher_id = #{query.scopeUserId}
+                                AND scoped_course.is_deleted = 0)
+                   OR EXISTS (SELECT 1 FROM research_project scoped_project
+                              WHERE scoped_project.id = er.project_id
+                                AND scoped_project.leader_id = #{query.scopeUserId}
+                                AND scoped_project.is_deleted = 0))
+            </if>
             ORDER BY er.recorded_at DESC, er.id DESC
             </script>
             """)

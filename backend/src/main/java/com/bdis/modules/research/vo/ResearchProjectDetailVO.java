@@ -24,6 +24,7 @@ public class ResearchProjectDetailVO {
     private LocalDateTime updatedAt;
     private Long createdBy;
     private Long updatedBy;
+    private Integer version;
     private List<ProjectMemberVO> members = List.of();
     private List<ProjectMaterialVO> materials = List.of();
     private List<ResearchAchievementListVO> achievements = List.of();

@@ -6,6 +6,7 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.service.FileBusinessService;
@@ -74,6 +75,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         normalizePage(safeQuery);
         validateRecordedRange(safeQuery.getRecordedFrom(), safeQuery.getRecordedTo());
         validateArchiveStatus(safeQuery.getArchiveStatus());
+        applyScope(safeQuery);
         Page<ExperimentRecordListVO> page =
                 recordMapper.selectPageVO(
                         Page.of(safeQuery.getPageNo(), safeQuery.getPageSize()), safeQuery);
@@ -90,6 +92,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         if (detail == null) {
             throw new ResourceNotFoundException("Experiment record not found");
         }
+        requireRecordAccess(detail.getRecorderId(), detail.getCourseId(), detail.getProjectId(), false);
         return detail;
     }
 
@@ -146,6 +149,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional
     public void update(Long id, ExperimentRecordUpdateRequest request) {
         ExperimentRecordEntity entity = requireActive(id);
+        requireRecordOwner(entity);
         ExperimentArchiveStatus.assertMutable(entity.getArchiveStatus());
         validateUpdate(request, entity);
         Long operatorId = CurrentUserUtils.currentUserId();
@@ -170,6 +174,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional
     public void delete(Long id) {
         ExperimentRecordEntity entity = requireActive(id);
+        requireRecordOwner(entity);
         ExperimentArchiveStatus.assertDeletable(entity.getArchiveStatus());
         if (fileBusinessService.existsByBusiness(BIZ_TYPE, id)) {
             throw new BusinessException(
@@ -190,6 +195,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long id, ExperimentRecordSubmitRequest request) {
         ExperimentRecordEntity entity = requireActive(id);
+        requireRecordOwner(entity);
         ExperimentArchiveStatus.assertSubmittable(entity.getArchiveStatus());
         validateWorkflowVersion(request == null ? null : request.getVersion(), entity.getVersion());
         validateSubmissionCompleteness(entity);
@@ -211,6 +217,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional(rollbackFor = Exception.class)
     public void archive(Long id, ExperimentRecordArchiveRequest request) {
         ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
         ExperimentArchiveStatus.assertArchivable(entity.getArchiveStatus());
         validateWorkflowVersion(request == null ? null : request.getVersion(), entity.getVersion());
         if (entity.getSubmittedAt() == null || entity.getSubmittedBy() == null) {
@@ -238,7 +245,8 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Override
     @Transactional(readOnly = true)
     public List<FileResourceVO> listAttachments(Long id, String fileUsage) {
-        requireActive(id);
+        ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), false);
         validateAttachmentUsage(fileUsage, false);
         String normalizedUsage = StringUtils.hasText(fileUsage) ? fileUsage.trim() : null;
         return fileBusinessService.listByBusiness(BIZ_TYPE, id, normalizedUsage);
@@ -249,6 +257,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     public FileBusinessVO bindAttachment(
             Long id, ExperimentRecordAttachmentBindRequest request) {
         ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
         ExperimentArchiveStatus.assertMutable(entity.getArchiveStatus());
         validateAttachmentRequest(request);
         requireCurrentOperator();
@@ -272,6 +281,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional(rollbackFor = Exception.class)
     public void unbindAttachment(Long id, Long fileId) {
         ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
         ExperimentArchiveStatus.assertMutable(entity.getArchiveStatus());
         if (fileId == null || fileId <= 0) {
             throw new BusinessException("File id must be positive");
@@ -460,6 +470,55 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         } else if (query.getPageSize() > 100) {
             query.setPageSize(100);
         }
+    }
+
+    private void applyScope(ExperimentRecordQuery query) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            query.setScopeAll(true);
+        } else {
+            query.setScopeAll(false);
+            query.setScopeUserId(CurrentUserUtils.currentUserId());
+        }
+    }
+
+    private void requireRecordOwner(ExperimentRecordEntity entity) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            return;
+        }
+        if (!Objects.equals(entity.getRecorderId(), CurrentUserUtils.currentUserId())) {
+            throw new ForbiddenException("Only the record creator can submit this record");
+        }
+    }
+
+    private void requireRecordAccess(Long recorderId, Long courseId, Long projectId, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(recorderId, userId)) {
+            return;
+        }
+        if (courseId != null) {
+            CourseEntity course = recordMapper.selectCourseByIdIncludingDeleted(courseId);
+            if (course != null && Objects.equals(course.getTeacherId(), userId)) {
+                return;
+            }
+        }
+        if (projectId != null) {
+            ResearchProjectEntity project = recordMapper.selectProjectByIdIncludingDeleted(projectId);
+            if (project != null && Objects.equals(project.getLeaderId(), userId)) {
+                return;
+            }
+        }
+        throw new ForbiddenException(
+                manage ? "Experiment record is outside the current user's scope"
+                        : "Experiment record is not accessible to the current user");
     }
 
     private void recordAudit(String operationType, Long recordId) {

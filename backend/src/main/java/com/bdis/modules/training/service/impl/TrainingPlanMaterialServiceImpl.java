@@ -4,8 +4,10 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.training.constant.TrainingPublishStatus;
@@ -57,14 +59,16 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
     @Override
     @Transactional(readOnly = true)
     public List<TrainingPlanMaterialVO> list(Long planId) {
-        requireActivePlan(planId);
+        TrainingPlanEntity plan = requireActivePlan(planId);
+        requirePlanAccess(plan, false);
         return relationMapper.selectListVO(planId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long bind(Long planId, TrainingPlanMaterialBindRequest request) {
-        requireEditablePlan(planId);
+        TrainingPlanEntity plan = requireEditablePlan(planId);
+        requirePlanAccess(plan, true);
         if (request == null || request.getMaterialId() == null || request.getMaterialId() <= 0) {
             throw new BusinessException("Training material id is required");
         }
@@ -100,7 +104,8 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void unbind(Long planId, Long materialId) {
-        requireEditablePlan(planId);
+        TrainingPlanEntity plan = requireEditablePlan(planId);
+        requirePlanAccess(plan, true);
         if (materialId == null || materialId <= 0) {
             throw new BusinessException("Training material id must be positive");
         }
@@ -141,6 +146,21 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
             throw conflict("Only draft training plans can modify materials");
         }
         return plan;
+    }
+
+    private void requirePlanAccess(TrainingPlanEntity plan, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the training plan owner can manage materials"
+                        : "Training plan materials are outside the current user's scope");
     }
 
     private TrainingMaterialEntity requireEnabledMaterial(Long id) {

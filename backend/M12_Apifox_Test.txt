@@ -1,1 +1,0 @@
-BDIS M12 Apifox integration test

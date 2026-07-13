@@ -5,7 +5,10 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
+import com.bdis.common.constants.SecurityConstants;
+import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.vo.FileBusinessVO;
@@ -73,6 +76,7 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     @Transactional
     public Long bind(Long projectId, ProjectMaterialBindRequest request) {
         ResearchProjectEntity project = requireProject(projectId);
+        requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
         validateRequest(request);
         FileResourceEntity file = requireActiveFile(request.getFileId());
@@ -91,6 +95,7 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     @Transactional
     public void unbind(Long projectId, Long fileId) {
         ResearchProjectEntity project = requireProject(projectId);
+        requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
         FileBusinessEntity relation = businessMapper.selectOne(new LambdaQueryWrapper<FileBusinessEntity>()
                 .eq(FileBusinessEntity::getFileId, fileId).eq(FileBusinessEntity::getBizType, BIZ_TYPE).eq(FileBusinessEntity::getBizId, projectId));
@@ -102,7 +107,26 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     private ResearchProjectEntity requireProject(Long projectId) {
         ResearchProjectEntity project = projectMapper.selectById(projectId);
         if (project == null) throw new ResourceNotFoundException("Research project not found");
+        requireProjectAccess(project, false);
         return project;
+    }
+
+    private void requireProjectAccess(ResearchProjectEntity project, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, project.getLeaderId())) {
+            return;
+        }
+        if (!manage && projectMapper.existsActiveMember(project.getId(), userId)) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the project leader can manage project materials"
+                        : "User is not an active project member");
     }
 
     private FileResourceEntity requireActiveFile(Long fileId) {

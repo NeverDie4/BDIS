@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.training.entity.TrainingPlanEntity;
 import com.bdis.modules.training.entity.TrainingRecordEntity;
 import com.bdis.modules.training.mapper.TrainingFeedbackMapper;
@@ -27,6 +29,7 @@ import com.bdis.modules.user.mapper.UserMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -52,6 +55,35 @@ class TrainingRecordServiceTest {
     }
 
     @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+
+    @Test
+    void learnerCannotReadAnotherLearnersRecordButAdministratorCan() {
+        TrainingRecordDetailVO detail = new TrainingRecordDetailVO();
+        detail.setId(1L);
+        detail.setUserId(7L);
+        detail.setPlanId(2L);
+        TrainingPlanEntity plan = new TrainingPlanEntity();
+        plan.setId(2L);
+        plan.setOwnerId(6L);
+        plan.setTrainerId(6L);
+        plan.setStatus(1);
+        plan.setIsDeleted(0);
+        when(recordMapper.selectDetailById(1L)).thenReturn(detail);
+        when(planMapper.selectByIdIncludingDeleted(2L)).thenReturn(plan);
+        setUser(8L, "STUDENT");
+
+        assertThrows(ForbiddenException.class, () -> service.getDetail(1L));
+
+        setUser(99L, "ADMIN");
+        assertNotNull(service.getDetail(1L));
+    }
+
+    private void setUser(Long id, String role) {
+        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
+                Set.of(role), Set.of(), Set.of("edu:training-record:detail"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, "n/a"));
+    }
 
     @Test
     void pageUsesSingleJoinedMapperQueryAndValidatesFilters() {

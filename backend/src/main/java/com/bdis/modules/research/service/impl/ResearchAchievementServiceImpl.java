@@ -7,10 +7,13 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.research.constant.ResearchAchievementStage;
 import com.bdis.modules.research.constant.ResearchAchievementStatus;
 import com.bdis.modules.research.constant.ResearchAchievementType;
@@ -43,14 +46,16 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
     private final ResearchAchievementMapper achievementMapper;
     private final ResearchProjectMapper projectMapper;
     private final FileResourceMapper fileResourceMapper;
+    private final FileAccessGuard fileAccessGuard;
     private final AuditLogService auditLogService;
 
     public ResearchAchievementServiceImpl(ResearchAchievementMapper achievementMapper,
             ResearchProjectMapper projectMapper, FileResourceMapper fileResourceMapper,
-            AuditLogService auditLogService) {
+            FileAccessGuard fileAccessGuard, AuditLogService auditLogService) {
         this.achievementMapper = achievementMapper;
         this.projectMapper = projectMapper;
         this.fileResourceMapper = fileResourceMapper;
+        this.fileAccessGuard = fileAccessGuard;
         this.auditLogService = auditLogService;
     }
 
@@ -67,6 +72,7 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
     @Override
     public ResearchAchievementDetailVO getDetail(Long id) {
         ResearchAchievementEntity entity = requireActive(id);
+        requireProjectAccess(entity.getProjectId(), false);
         return toDetail(entity);
     }
 
@@ -147,6 +153,7 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
     @Override
     public List<ResearchAchievementListVO> listByProjectId(Long projectId) {
         if (projectId == null) return List.of();
+        requireProjectAccess(projectId, false);
         return toList(achievementMapper.selectList(new LambdaQueryWrapper<ResearchAchievementEntity>()
                 .eq(ResearchAchievementEntity::getProjectId, projectId)
                 .orderByDesc(ResearchAchievementEntity::getCreatedAt)
@@ -155,6 +162,7 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
 
     @Override
     public ResearchAchievementSummaryVO summarizeByProjectId(Long projectId) {
+        if (projectId != null) requireProjectAccess(projectId, false);
         ResearchAchievementSummaryVO summary = new ResearchAchievementSummaryVO();
         List<ResearchAchievementEntity> records = projectId == null ? List.of()
                 : achievementMapper.selectList(new LambdaQueryWrapper<ResearchAchievementEntity>()
@@ -185,7 +193,27 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
         if (ResearchProjectStatus.COMPLETED.equals(project.getProjectStatus())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "completed project cannot be modified");
         }
+        requireProjectAccess(projectId, true);
         return project;
+    }
+
+    private void requireProjectAccess(Long projectId, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+            return;
+        }
+        ResearchProjectEntity project = projectMapper.selectById(projectId);
+        Long userId = CurrentUserUtils.currentUserId();
+        if (project != null && Objects.equals(userId, project.getLeaderId())) {
+            return;
+        }
+        if (!manage && projectMapper.existsActiveMember(projectId, userId)) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the project leader can manage project achievements"
+                        : "User is not an active project member");
     }
 
     private void validateCreate(ResearchAchievementCreateRequest request) {
@@ -209,6 +237,7 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
         if (file == null || !Objects.equals(file.getStatus(), 1) || !Objects.equals(file.getIsDeleted(), 0)) {
             throw new ResourceNotFoundException("File not found or inactive");
         }
+        fileAccessGuard.requireAuthenticatedAccess(file);
     }
 
     private LambdaQueryWrapper<ResearchAchievementEntity> buildWrapper(ResearchAchievementQuery query) {
@@ -223,6 +252,16 @@ public class ResearchAchievementServiceImpl implements ResearchAchievementServic
         wrapper.eq(StringUtils.hasText(query.getAchievementStatus()), ResearchAchievementEntity::getAchievementStatus, query.getAchievementStatus());
         wrapper.ge(query.getPublishedFrom() != null, ResearchAchievementEntity::getPublishedAt, query.getPublishedFrom());
         wrapper.le(query.getPublishedTo() != null, ResearchAchievementEntity::getPublishedAt, query.getPublishedTo());
+        if (!CurrentUserUtils.currentRoleCodes().isEmpty()
+                && CurrentUserUtils.currentRoleCodes().stream()
+                        .noneMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+            wrapper.apply(
+                    "project_id IN (SELECT scoped_project.id FROM research_project scoped_project "
+                            + "WHERE scoped_project.leader_id = {0} OR EXISTS (SELECT 1 FROM rel_project_member scoped_member "
+                            + "WHERE scoped_member.project_id = scoped_project.id "
+                            + "AND scoped_member.user_id = {0} AND scoped_member.member_status = 'active'))",
+                    CurrentUserUtils.currentUserId());
+        }
         return wrapper.orderByDesc(ResearchAchievementEntity::getCreatedAt).orderByDesc(ResearchAchievementEntity::getId);
     }
 

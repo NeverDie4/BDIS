@@ -8,9 +8,9 @@ type EvaluationModuleTabsProps = {
 };
 
 const items = [
-  { key: "workspace", label: "评价工作台" },
-  { key: "tasks", label: "评价任务" },
-  { key: "indicators", label: "指标体系" },
+  { key: "workspace", label: "评价工作台", disabled: true },
+  { key: "tasks", label: "评价任务（开发中）", disabled: true },
+  { key: "indicators", label: "指标体系（开发中）", disabled: true },
   { key: "archives", label: "申报档案" },
 ];
 

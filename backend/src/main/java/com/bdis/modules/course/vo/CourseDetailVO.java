@@ -26,6 +26,7 @@ public class CourseDetailVO {
     private LocalDateTime updatedAt;
     private Long createdBy;
     private Long updatedBy;
+    private Integer version;
     private List<ExperimentStepVO> steps = List.of();
     private List<CourseResourceVO> resources = List.of();
 }

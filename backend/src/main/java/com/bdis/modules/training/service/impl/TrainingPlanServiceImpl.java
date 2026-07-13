@@ -7,8 +7,10 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.mapper.CourseMapper;
 import com.bdis.modules.training.constant.TrainingPlanType;
@@ -81,6 +83,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     @Transactional(readOnly = true)
     public TrainingPlanDetailVO getDetail(Long id) {
         TrainingPlanEntity entity = requireActive(id);
+        requirePlanAccess(entity, false);
         Lookup lookup = loadLookup(List.of(entity));
         TrainingPlanDetailVO vo = new TrainingPlanDetailVO();
         copyListFields(entity, vo, lookup);
@@ -139,6 +142,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, TrainingPlanUpdateRequest request) {
         TrainingPlanEntity entity = requireActive(id);
+        requirePlanAccess(entity, true);
         requireDraft(entity, "Only draft training plans can be updated");
         if (request == null || request.getVersion() == null) {
             throw new BusinessException("Training plan update request and version are required");
@@ -176,6 +180,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         TrainingPlanEntity entity = requireActive(id);
+        requirePlanAccess(entity, true);
         requireDraft(entity, "Only draft training plans can be deleted");
         Long count = planMapper.countRecords(id);
         if (count != null && count > 0) {
@@ -196,6 +201,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id, TrainingPlanPublishRequest request) {
         TrainingPlanEntity entity = requireActive(id);
+        requirePlanAccess(entity, true);
         requireDraft(entity, "Only draft training plans can be published");
         if (request == null || request.getVersion() == null) {
             throw new BusinessException("Training plan publish version is required");
@@ -222,6 +228,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     @Transactional(rollbackFor = Exception.class)
     public void close(Long id, TrainingPlanCloseRequest request) {
         TrainingPlanEntity entity = requireActive(id);
+        requirePlanAccess(entity, true);
         if (request == null || !StringUtils.hasText(request.getReason())) {
             throw new BusinessException("Training plan close reason is required");
         }
@@ -345,8 +352,40 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         wrapper.le(query.getStartedTo() != null, TrainingPlanEntity::getStartedAt, query.getStartedTo());
         wrapper.ge(query.getEndedFrom() != null, TrainingPlanEntity::getEndedAt, query.getEndedFrom());
         wrapper.le(query.getEndedTo() != null, TrainingPlanEntity::getEndedAt, query.getEndedTo());
+        applyUserScope(wrapper);
         wrapper.orderByDesc(TrainingPlanEntity::getStartedAt).orderByDesc(TrainingPlanEntity::getId);
         return wrapper;
+    }
+
+    private void applyUserScope(LambdaQueryWrapper<TrainingPlanEntity> wrapper) {
+        if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        wrapper.and(scope -> scope.eq(TrainingPlanEntity::getOwnerId, userId)
+                .or().eq(TrainingPlanEntity::getTrainerId, userId));
+    }
+
+    private void requirePlanAccess(TrainingPlanEntity plan, boolean manage) {
+        if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the training plan owner can manage this plan"
+                        : "Training plan is outside the current user's scope");
+    }
+
+    private boolean hasScopedIdentity() {
+        return !CurrentUserUtils.currentRoleCodes().isEmpty();
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role));
     }
 
     private Lookup loadLookup(List<TrainingPlanEntity> entities) {

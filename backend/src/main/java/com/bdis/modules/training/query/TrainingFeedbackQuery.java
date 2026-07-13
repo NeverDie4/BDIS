@@ -21,4 +21,6 @@ public class TrainingFeedbackQuery {
     @Min(1) @Max(100) private Integer pageSize = 10;
     private String sortField = "submittedAt";
     private String sortOrder = "desc";
+    private Long scopeUserId;
+    private Boolean scopeAll;
 }

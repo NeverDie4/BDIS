@@ -7,8 +7,10 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
@@ -112,6 +114,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     @Override
     public ResearchProjectDetailVO getDetail(Long id) {
         ResearchProjectEntity entity = requireActive(id);
+        requireProjectAccess(entity, false);
         UserEntity leader = entity.getLeaderId() == null ? null : userMapper.selectById(entity.getLeaderId());
         HerbEntity species = entity.getSpeciesId() == null ? null : herbSpeciesMapper.selectById(entity.getSpeciesId());
         ResearchProjectDetailVO vo = new ResearchProjectDetailVO();
@@ -176,9 +179,11 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     @Transactional
     public void update(Long id, ResearchProjectUpdateRequest request) {
         ResearchProjectEntity entity = requireActive(id);
+        requireProjectAccess(entity, true);
         ResearchProjectStatus.assertMutable(entity);
         if (request == null) throw new BusinessException("Project update request is required");
-        if (request.getVersion() != null && !Objects.equals(request.getVersion(), entity.getVersion())) {
+        if (request.getVersion() == null
+                || !Objects.equals(request.getVersion(), entity.getVersion())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Project version conflict");
         }
         if (!StringUtils.hasText(request.getProjectName()) || !StringUtils.hasText(request.getProjectType())) {
@@ -204,6 +209,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     @Transactional
     public void changeLeader(Long id, ResearchProjectLeaderChangeRequest request) {
         ResearchProjectEntity project = requireActive(id);
+        requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
         validateLeaderChangeRequest(request, project);
         UserEntity newLeader = requireLeader(request.getNewLeaderId());
@@ -255,6 +261,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     @Transactional
     public void changeStatus(Long id, ResearchProjectStatusChangeRequest request) {
         ResearchProjectEntity project = requireActive(id);
+        requireProjectAccess(project, true);
         if (request == null || !StringUtils.hasText(request.getTargetStatus()) || request.getVersion() == null) {
             throw new BusinessException("Target status and version are required");
         }
@@ -382,7 +389,46 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         wrapper.eq(StringUtils.hasText(query.getProjectStatus()), ResearchProjectEntity::getProjectStatus, query.getProjectStatus());
         wrapper.ge(query.getStartedFrom() != null, ResearchProjectEntity::getStartedAt, query.getStartedFrom());
         wrapper.le(query.getStartedTo() != null, ResearchProjectEntity::getStartedAt, query.getStartedTo());
+        applyUserScope(wrapper);
         return wrapper.orderByDesc(ResearchProjectEntity::getCreatedAt).orderByDesc(ResearchProjectEntity::getId);
+    }
+
+    private void applyUserScope(LambdaQueryWrapper<ResearchProjectEntity> wrapper) {
+        if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        wrapper.apply(
+                "(leader_id = {0} OR EXISTS (SELECT 1 FROM rel_project_member rpm "
+                        + "WHERE rpm.project_id = research_project.id AND rpm.user_id = {0} "
+                        + "AND rpm.member_status = 'active'))",
+                userId);
+    }
+
+    private void requireProjectAccess(ResearchProjectEntity project, boolean manage) {
+        if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, project.getLeaderId())) {
+            return;
+        }
+        ProjectMemberEntity member = memberMapper.selectByProjectIdAndUserId(project.getId(), userId);
+        if (!manage && member != null && "active".equals(member.getMemberStatus())) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the project leader can manage this project"
+                        : "User is not an active project member");
+    }
+
+    private boolean hasScopedIdentity() {
+        return !CurrentUserUtils.currentRoleCodes().isEmpty();
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role));
     }
 
     private ResearchProjectListVO toListVO(ResearchProjectEntity entity, UserEntity leader, HerbEntity species) {
@@ -402,6 +448,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         vo.setProjectStatus(entity.getProjectStatus()); vo.setStartedAt(entity.getStartedAt()); vo.setEndedAt(entity.getEndedAt());
         vo.setStatus(entity.getStatus()); vo.setRemark(entity.getRemark()); vo.setCreatedAt(entity.getCreatedAt()); vo.setUpdatedAt(entity.getUpdatedAt());
         vo.setCreatedBy(entity.getCreatedBy()); vo.setUpdatedBy(entity.getUpdatedBy());
+        vo.setVersion(entity.getVersion());
     }
 
     private void recordAudit(String operation, Long id) {

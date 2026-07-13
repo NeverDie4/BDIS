@@ -18,6 +18,7 @@ import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.impl.FileBusinessServiceImpl;
 import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileBusinessMapper;
@@ -40,6 +41,7 @@ class FileBusinessServiceTest {
     @Mock private FileBusinessMapper businessMapper;
     @Mock private FileResourceMapper resourceMapper;
     @Mock private BusinessReferenceValidator referenceValidator;
+    @Mock private FileAccessGuard fileAccessGuard;
     @Mock private AuditLogService auditLogService;
 
     private FileBusinessService service;
@@ -48,7 +50,8 @@ class FileBusinessServiceTest {
     void setUp() {
         service =
                 new FileBusinessServiceImpl(
-                        businessMapper, resourceMapper, referenceValidator, auditLogService);
+                        businessMapper, resourceMapper, referenceValidator, fileAccessGuard,
+                        auditLogService);
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken("7", "n/a"));
     }

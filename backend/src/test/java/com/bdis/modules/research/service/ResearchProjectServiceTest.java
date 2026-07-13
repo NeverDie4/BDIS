@@ -9,8 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
@@ -27,11 +30,16 @@ import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class ResearchProjectServiceTest {
@@ -50,6 +58,56 @@ class ResearchProjectServiceTest {
     void setUp() {
         service = new ResearchProjectServiceImpl(
                 projectMapper, memberMapper, userMapper, herbSpeciesMapper, memberService, materialService, auditLogService);
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void nonMemberCannotReadProjectButActiveMemberCan() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setLeaderId(7L);
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(8L, "TEACHER");
+        when(memberMapper.selectByProjectIdAndUserId(100L, 8L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getDetail(100L))
+                .isInstanceOf(ForbiddenException.class);
+
+        ProjectMemberEntity active = new ProjectMemberEntity();
+        active.setProjectId(100L);
+        active.setUserId(8L);
+        active.setMemberStatus("active");
+        when(memberMapper.selectByProjectIdAndUserId(100L, 8L)).thenReturn(active);
+        assertThat(service.getDetail(100L)).isNotNull();
+
+        ResearchProjectUpdateRequest update = new ResearchProjectUpdateRequest();
+        update.setProjectName("Changed");
+        update.setProjectType("research");
+        update.setVersion(0);
+        assertThatThrownBy(() -> service.update(100L, update))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void projectListBuildsLeaderOrActiveMemberScope() {
+        setUser(8L, "TEACHER");
+        when(projectMapper.selectPage(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.page(new com.bdis.modules.research.query.ResearchProjectQuery());
+
+        ArgumentCaptor<LambdaQueryWrapper<ResearchProjectEntity>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(projectMapper).selectPage(any(), captor.capture());
+        assertThat(captor.getValue()).isNotNull();
+    }
+
+    private void setUser(Long id, String role) {
+        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
+                Set.of(role), Set.of(), Set.of("research:project:detail"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test
@@ -171,6 +229,7 @@ class ResearchProjectServiceTest {
         ResearchProjectUpdateRequest request = new ResearchProjectUpdateRequest();
         request.setProjectName("Updated");
         request.setProjectType("research");
+        request.setVersion(0);
         service.update(100L, request);
 
         assertThat(existing.getProjectName()).isEqualTo("Updated");
@@ -215,6 +274,7 @@ class ResearchProjectServiceTest {
         project.setProjectStatus("planning");
         project.setStatus(1);
         project.setIsDeleted(0);
+        project.setVersion(0);
         return project;
     }
 }

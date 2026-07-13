@@ -43,6 +43,11 @@ public interface TrainingFeedbackMapper extends BaseMapper<TrainingFeedbackEntit
             <if test="query.submittedTo != null">
               AND f.submitted_at &lt;= #{query.submittedTo}
             </if>
+            <if test="query.scopeAll != true">
+              AND (f.user_id = #{query.scopeUserId}
+                   OR p.owner_id = #{query.scopeUserId}
+                   OR p.trainer_id = #{query.scopeUserId})
+            </if>
             ORDER BY
             <choose>
               <when test="query.sortField == 'rating'">f.rating</when>

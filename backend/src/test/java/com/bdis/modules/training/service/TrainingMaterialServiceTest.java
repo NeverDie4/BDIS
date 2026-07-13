@@ -19,6 +19,7 @@ import com.bdis.modules.training.query.TrainingMaterialQuery;
 import com.bdis.modules.training.request.TrainingMaterialCreateRequest;
 import com.bdis.modules.training.request.TrainingMaterialUpdateRequest;
 import com.bdis.modules.training.service.impl.TrainingMaterialServiceImpl;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.util.List;
@@ -34,6 +35,7 @@ class TrainingMaterialServiceTest {
     @Mock TrainingMaterialMapper materialMapper;
     @Mock TrainingPlanMaterialMapper relationMapper;
     @Mock FileResourceMapper fileMapper;
+    @Mock FileAccessGuard fileAccessGuard;
     @Mock CourseResourceMapper courseResourceMapper;
     @Mock UserMapper userMapper;
     @Mock AuditLogService auditLogService;
@@ -41,7 +43,8 @@ class TrainingMaterialServiceTest {
 
     @BeforeEach void setUp() {
         service = new TrainingMaterialServiceImpl(
-                materialMapper, relationMapper, fileMapper, courseResourceMapper, userMapper, auditLogService);
+                materialMapper, relationMapper, fileMapper, courseResourceMapper, userMapper,
+                fileAccessGuard, auditLogService);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("7", "n/a"));
     }

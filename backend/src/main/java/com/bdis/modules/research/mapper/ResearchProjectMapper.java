@@ -9,4 +9,9 @@ public interface ResearchProjectMapper extends BaseMapper<ResearchProjectEntity>
 
     @Select("SELECT * FROM research_project WHERE project_no = #{projectNo} LIMIT 1")
     ResearchProjectEntity selectByProjectNoIncludingDeleted(@Param("projectNo") String projectNo);
+
+    @Select("SELECT COUNT(1) > 0 FROM rel_project_member "
+            + "WHERE project_id = #{projectId} AND user_id = #{userId} "
+            + "AND member_status = 'active'")
+    boolean existsActiveMember(@Param("projectId") Long projectId, @Param("userId") Long userId);
 }

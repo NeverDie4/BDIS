@@ -6,6 +6,7 @@ import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.modules.training.constant.AttendanceStatus;
@@ -72,6 +73,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
     public PageResult<TrainingRecordListVO> page(TrainingRecordQuery query) {
         TrainingRecordQuery safe = query == null ? new TrainingRecordQuery() : query;
         validateQuery(safe);
+        applyScope(safe);
         Page<TrainingRecordListVO> page =
                 recordMapper.selectPageVO(
                         Page.of(safe.getPageNo(), safe.getPageSize()), safe);
@@ -84,6 +86,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         if (id == null || id <= 0) throw new BusinessException("Training record id must be positive");
         TrainingRecordDetailVO vo = recordMapper.selectDetailById(id);
         if (vo == null) throw new ResourceNotFoundException("Training record not found");
+        requireRecordAccess(vo.getUserId(), vo.getPlanId(), false);
         vo.setFeedback(feedbackMapper.selectDetailByRecordId(id));
         return vo;
     }
@@ -96,6 +99,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         }
         requireCurrentOperator();
         TrainingPlanEntity plan = requireActivePlan(request.getPlanId());
+        requirePlanManager(plan);
         requireWritablePlan(plan);
         requireActiveUser(request.getUserId(), "Participant");
         if (recordMapper.selectByPlanAndUser(request.getPlanId(), request.getUserId()) != null) {
@@ -136,6 +140,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         }
         requireCurrentOperator();
         TrainingPlanEntity plan = requireActivePlan(planId);
+        requirePlanManager(plan);
         requireWritablePlan(plan);
 
         List<Long> requested = request.getUserIds();
@@ -216,6 +221,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         requireCurrentOperator();
         TrainingRecordEntity entity = requireRecord(id);
         TrainingPlanEntity plan = requireActivePlan(entity.getPlanId());
+        requireRecordAccess(entity.getUserId(), entity.getPlanId(), true);
         requireWritablePlan(plan);
         if (TrainingStatus.COMPLETED.equals(entity.getTrainingStatus())) {
             throw conflict("Completed training records are read-only");
@@ -272,6 +278,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         requireCurrentOperator();
         TrainingRecordEntity record = requireRecord(id);
         TrainingPlanEntity plan = requireActivePlan(record.getPlanId());
+        requireRecordAccess(record.getUserId(), record.getPlanId(), true);
         requireWritablePlan(plan);
         if (!isPristine(record) || defaultZero(feedbackMapper.countByRecordId(id)) > 0) {
             throw conflict("Training record has process data or feedback and cannot be removed");
@@ -370,6 +377,49 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         TrainingRecordEntity entity = recordMapper.selectById(id);
         if (entity == null) throw new ResourceNotFoundException("Training record not found");
         return entity;
+    }
+
+    private void applyScope(TrainingRecordQuery query) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            query.setScopeAll(true);
+        } else {
+            query.setScopeAll(false);
+            query.setScopeUserId(CurrentUserUtils.currentUserId());
+        }
+    }
+
+    private void requireRecordAccess(Long participantId, Long planId, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, participantId) && !manage) {
+            return;
+        }
+        TrainingPlanEntity plan = requireActivePlan(planId);
+        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+            return;
+        }
+        throw new ForbiddenException(
+                manage ? "Only the training owner can modify this record"
+                        : "Training record is outside the current user's scope");
+    }
+
+    private void requirePlanManager(TrainingPlanEntity plan) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+            return;
+        }
+        throw new ForbiddenException("Only the training plan owner can manage participants");
     }
 
     private void requireCurrentOperator() {

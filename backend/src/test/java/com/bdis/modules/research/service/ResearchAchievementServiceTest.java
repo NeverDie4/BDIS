@@ -19,6 +19,7 @@ import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.request.ResearchAchievementCreateRequest;
 import com.bdis.modules.research.request.ResearchAchievementUpdateRequest;
 import com.bdis.modules.research.service.impl.ResearchAchievementServiceImpl;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.research.vo.ResearchAchievementDetailVO;
 import com.bdis.modules.research.vo.ResearchAchievementSummaryVO;
 import java.util.List;
@@ -34,6 +35,7 @@ class ResearchAchievementServiceTest {
     @Mock private ResearchAchievementMapper achievementMapper;
     @Mock private ResearchProjectMapper projectMapper;
     @Mock private FileResourceMapper fileResourceMapper;
+    @Mock private FileAccessGuard fileAccessGuard;
     @Mock private AuditLogService auditLogService;
 
     private ResearchAchievementServiceImpl service;
@@ -41,7 +43,8 @@ class ResearchAchievementServiceTest {
     @BeforeEach
     void setUp() {
         service = new ResearchAchievementServiceImpl(
-                achievementMapper, projectMapper, fileResourceMapper, auditLogService);
+                achievementMapper, projectMapper, fileResourceMapper, fileAccessGuard,
+                auditLogService);
     }
 
     @Test

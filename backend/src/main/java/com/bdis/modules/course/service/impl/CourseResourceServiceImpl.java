@@ -5,8 +5,10 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.modules.course.constant.CoursePublishStatus;
@@ -178,13 +180,36 @@ public class CourseResourceServiceImpl implements CourseResourceService {
         if (course == null) {
             throw new ResourceNotFoundException("Course not found");
         }
+        requireCourseAccess(course, false);
         return course;
     }
 
     private CourseEntity requireEditableCourse(Long courseId) {
         CourseEntity course = requireCourse(courseId);
+        requireCourseAccess(course, true);
         CoursePublishStatus.requireEditable(course.getPublishStatus());
         return course;
+    }
+
+    private void requireCourseAccess(CourseEntity course, boolean manage) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+            return;
+        }
+        Long userId = CurrentUserUtils.currentUserId();
+        boolean student = CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
+        if (student) {
+            if (manage || !CoursePublishStatus.PUBLISHED.equals(course.getPublishStatus())) {
+                throw new ForbiddenException("Student cannot access this course resource");
+            }
+            return;
+        }
+        if (!Objects.equals(userId, course.getCreatedBy())
+                && !Objects.equals(userId, course.getTeacherId())) {
+            throw new ForbiddenException("Course is outside the current user's scope");
+        }
     }
 
     private FileResourceEntity requireActiveFile(Long fileId) {

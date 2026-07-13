@@ -3,6 +3,7 @@ package com.bdis.file.support;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.modules.permission.service.AuthorizationService;
 import com.bdis.modules.permission.service.DataScopeService;
@@ -56,6 +57,13 @@ public class BusinessReferenceValidator {
                             "research_project",
                             new BusinessReference("research_project", "file:resource:view")),
                     Map.entry(
+                            "edu_course",
+                            new BusinessReference("edu_course", "edu:course:detail")),
+                    Map.entry(
+                            "edu_experiment_record",
+                            new BusinessReference(
+                                    "edu_experiment_record", "edu:experiment-record:detail")),
+                    Map.entry(
                             "edu_training_plan",
                             new BusinessReference("edu_training_plan", "file:resource:view")),
                     Map.entry(
@@ -98,7 +106,14 @@ public class BusinessReferenceValidator {
                         Long.class,
                         bizId);
         if (count == null || count == 0) {
-            throw new BusinessException(ResultCodeEnum.NOT_FOUND, "关联业务对象不存在");
+            String message =
+                    switch (normalizedType) {
+                        case "edu_course" -> "Course not found";
+                        case "edu_experiment_record" -> "Experiment record not found";
+                        case "research_project" -> "Research project not found";
+                        default -> "关联业务对象不存在";
+                    };
+            throw new ResourceNotFoundException(message);
         }
         if (!hasRowAccess(normalizedType, bizId)) {
             throw new ForbiddenException("业务对象超出当前数据范围");

@@ -17,4 +17,6 @@ public class TrainingRecordQuery {
     private LocalDateTime recordedTo;
     @Min(1) private Integer pageNo = 1;
     @Min(1) @Max(100) private Integer pageSize = 10;
+    private Long scopeUserId;
+    private Boolean scopeAll;
 }

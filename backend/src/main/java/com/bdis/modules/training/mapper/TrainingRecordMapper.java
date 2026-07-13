@@ -70,6 +70,11 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
             </if>
             <if test="query.recordedFrom != null">AND r.created_at &gt;= #{query.recordedFrom}</if>
             <if test="query.recordedTo != null">AND r.created_at &lt;= #{query.recordedTo}</if>
+            <if test="query.scopeAll != true">
+              AND (r.user_id = #{query.scopeUserId}
+                   OR p.owner_id = #{query.scopeUserId}
+                   OR p.trainer_id = #{query.scopeUserId})
+            </if>
             ORDER BY r.updated_at DESC, r.id DESC
             </script>
             """)

@@ -19,6 +19,8 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.experiment.constant.ExperimentArchiveStatus;
@@ -37,6 +39,7 @@ import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,6 +133,47 @@ class ExperimentRecordServiceTest {
                 ResultCodeEnum.NOT_FOUND,
                 assertThrows(BusinessException.class, () -> service.getDetail(99L))
                         .getResultCode());
+    }
+
+    @Test
+    void otherUserCannotReadOrOperateAnotherUsersRecordButAdminCan() {
+        ExperimentRecordEntity record = draftRecord();
+        when(recordMapper.selectById(1L)).thenReturn(record);
+        when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(activeCourse(2L));
+        ExperimentRecordDetailVO detail = new ExperimentRecordDetailVO();
+        detail.setId(1L);
+        detail.setRecorderId(7L);
+        detail.setCourseId(2L);
+        when(recordMapper.selectDetailById(1L)).thenReturn(detail);
+        setUser(8L, "TEACHER");
+
+        assertThrows(ForbiddenException.class, () -> service.getDetail(1L));
+        assertThrows(ForbiddenException.class, () -> service.update(1L, validUpdate()));
+        assertThrows(ForbiddenException.class, () -> service.listAttachments(1L, null));
+
+        setUser(99L, "ADMIN");
+        when(recordMapper.selectDetailById(1L)).thenReturn(detail);
+        assertNotNull(service.getDetail(1L));
+    }
+
+    @Test
+    void recordListPassesCurrentUserScopeToMapperQuery() {
+        setUser(8L, "TEACHER");
+        when(recordMapper.selectPageVO(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.page(new ExperimentRecordQuery());
+
+        ArgumentCaptor<ExperimentRecordQuery> captor = ArgumentCaptor.forClass(ExperimentRecordQuery.class);
+        verify(recordMapper).selectPageVO(any(), captor.capture());
+        assertEquals(8L, captor.getValue().getScopeUserId());
+        assertEquals(Boolean.FALSE, captor.getValue().getScopeAll());
+    }
+
+    private void setUser(Long id, String role) {
+        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
+                Set.of(role), Set.of(), Set.of("edu:experiment-record:detail"));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test

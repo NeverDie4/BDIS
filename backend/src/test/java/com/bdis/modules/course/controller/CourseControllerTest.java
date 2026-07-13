@@ -82,12 +82,18 @@ class CourseControllerTest {
 
     @Test
     void publishAndOfflineCourseUseDedicatedPermission() throws Exception {
-        mockMvc.perform(post("/courses/11/publish"))
+        mockMvc.perform(
+                        post("/courses/11/publish")
+                                .contentType("application/json")
+                                .content("{\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"));
         verify(authorizationService).requirePermission("edu:course:publish");
 
-        mockMvc.perform(post("/courses/11/offline"))
+        mockMvc.perform(
+                        post("/courses/11/offline")
+                                .contentType("application/json")
+                                .content("{\"version\":0}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"));
         verify(authorizationService, org.mockito.Mockito.times(2))
