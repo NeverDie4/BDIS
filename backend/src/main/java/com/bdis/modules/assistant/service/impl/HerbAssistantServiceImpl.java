@@ -58,9 +58,9 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
 
     private static final String IMAGE_EXPLAIN_SYSTEM_PROMPT =
             "你是中药材图谱识别系统的 AI 小助手。现在用户询问某张采集图片的识别结果。"
-                    + "请根据后端提供的图片、最终识别、本地图谱候选和豆包辅助识别数据回答。"
+                    + "请根据后端提供的图片、最终识别、本地图谱候选和大模型辅助识别数据回答。"
                     + "不要编造不存在的数据，不要声称已经执行复核或重新识别。"
-                    + "回答要说明最终识别结果、置信度、本地图谱候选是否一致、豆包结果是否支持、是否需要人工复核和下一步建议。";
+                    + "回答要说明最终识别结果、置信度、本地图谱候选是否一致、大模型结果是否支持、是否需要人工复核和下一步建议。";
 
     private static final String GUIDE_RESOURCE_PATH = "assistant/herb-system-guide.md";
 
@@ -69,7 +69,7 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
     private static final Pattern BATCH_CODE_PATTERN = Pattern.compile("(?i)\\bBATCH[-_A-Z0-9]+\\b");
 
     private static final String DEFAULT_GUIDE_CONTEXT =
-            "本系统用于中药材图谱识别、采集任务管理、批次档案管理和识别结果复核。" + "常见流程包括上传采集图片、本地图谱匹配、低置信度时豆包辅助识别、生成识别结论和人工复核。";
+            "本系统用于中药材图谱识别、采集任务管理、批次档案管理和识别结果复核。" + "常见流程包括上传采集图片、本地图谱匹配、低置信度时大模型辅助识别、生成识别结论和人工复核。";
 
     private final HerbAssistantProperties properties;
     private final HerbAssistantRagProperties ragProperties;
@@ -455,7 +455,7 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
                 + safeText(context.getResultSource())
                 + "，复核状态为 "
                 + safeText(context.getReviewStatus())
-                + "。如果该图片仍需复核，建议管理员结合 TopK 图谱候选和豆包辅助结果进行确认。";
+                + "。如果该图片仍需复核，建议管理员结合 TopK 图谱候选和大模型辅助结果进行确认。";
     }
 
     private String buildBatchExplainPrompt(HerbAssistantBatchContextVO context, String question) {
@@ -537,10 +537,10 @@ public class HerbAssistantServiceImpl implements HerbAssistantService {
                         .append('\n');
             }
         }
-        builder.append("\n豆包辅助：\n");
+        builder.append("\n大模型辅助：\n");
         HerbAssistantRecognitionContextVO recognition = context.getRecognition();
         if (recognition == null) {
-            builder.append("暂无豆包辅助识别记录。\n");
+            builder.append("暂无大模型辅助识别记录。\n");
         } else {
             builder.append("识别药材：").append(safeText(recognition.getSpeciesName())).append('\n');
             builder.append("置信度：").append(safePercentage(recognition.getConfidence())).append('\n');

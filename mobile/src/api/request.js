@@ -58,7 +58,7 @@ function parseUploadResponse(data) {
   return data
 }
 
-function handleBusinessResponse(responseData) {
+function handleBusinessResponse(responseData, showErrorToast = true) {
   const result = responseData || {}
 
   if (isSuccessCode(result.code)) {
@@ -68,7 +68,9 @@ function handleBusinessResponse(responseData) {
     }
   }
 
-  showError(getResultMessage(result, '操作失败'))
+  if (showErrorToast) {
+    showError(getResultMessage(result, '操作失败'))
+  }
   return {
     ok: false,
     error: result
@@ -83,6 +85,7 @@ export function request(options = {}) {
     header = {},
     loading = false,
     skipAuthRedirect = false,
+    showErrorToast = true,
     timeout = config.timeout
   } = options
   const upperMethod = method.toUpperCase()
@@ -121,12 +124,14 @@ export function request(options = {}) {
             msg: `请求失败：${res.statusCode}`,
             data: res.data
           }
-          showError(error.msg)
+          if (showErrorToast) {
+            showError(error.msg)
+          }
           reject(error)
           return
         }
 
-        const result = handleBusinessResponse(res.data)
+        const result = handleBusinessResponse(res.data, showErrorToast)
         if (result.ok) {
           resolve(result.data)
         } else {
@@ -134,7 +139,9 @@ export function request(options = {}) {
         }
       },
       fail: (error) => {
-        showError('网络异常，请检查后端服务是否启动')
+        if (showErrorToast) {
+          showError('网络异常，请检查后端服务是否启动')
+        }
         reject(error)
       },
       complete: () => {

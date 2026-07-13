@@ -14,9 +14,23 @@ public class GrowthRecordVO {
 
     private Long id;
 
+    private Long batchId;
+
+    private String batchName;
+
+    private Long taskId;
+
+    private String taskName;
+
     private Long speciesId;
 
     private String speciesName;
+
+    private Long baseId;
+
+    private String baseName;
+
+    private String collectPlace;
 
     private Long distributionId;
 
@@ -32,6 +46,8 @@ public class GrowthRecordVO {
 
     private String growthStage;
 
+    private BigDecimal plantHeight;
+
     private String soilType;
 
     private BigDecimal soilPh;
@@ -39,6 +55,18 @@ public class GrowthRecordVO {
     private BigDecimal temperature;
 
     private BigDecimal humidity;
+
+    private BigDecimal soilMoisture;
+
+    private BigDecimal light;
+
+    private BigDecimal stemDiameter;
+
+    private String leafColor;
+
+    private String floweringStatus;
+
+    private String growthEvaluation;
 
     private String weather;
 
@@ -61,6 +89,20 @@ public class GrowthRecordVO {
     private LocalDateTime archivedAt;
 
     private LocalDateTime collectedAt;
+
+    private String traceCode;
+
+    private String traceQrcodeUrl;
+
+    private String tracePublicUrl;
+
+    private Integer publicVisible;
+
+    private LocalDateTime traceGeneratedTime;
+
+    private Long traceGeneratedBy;
+
+    private String traceGeneratedByName;
 
     private String remark;
 

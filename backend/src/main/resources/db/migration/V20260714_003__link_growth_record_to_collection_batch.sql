@@ -1,0 +1,16 @@
+ALTER TABLE `herb_growth_record`
+  ADD COLUMN `batch_id` BIGINT NULL DEFAULT NULL COMMENT '采集批次 ID' AFTER `id`,
+  ADD COLUMN `task_id` BIGINT NULL DEFAULT NULL COMMENT '采集任务 ID（查询冗余）' AFTER `batch_id`,
+  ADD COLUMN `species_name` VARCHAR(150) NULL DEFAULT NULL COMMENT '药材名称快照' AFTER `species_id`,
+  ADD COLUMN `base_id` BIGINT NULL DEFAULT NULL COMMENT '基地 ID' AFTER `species_name`,
+  ADD COLUMN `base_name` VARCHAR(150) NULL DEFAULT NULL COMMENT '基地名称快照' AFTER `base_id`,
+  ADD COLUMN `plant_height` DECIMAL(10,2) NULL DEFAULT NULL COMMENT '株高 cm' AFTER `growth_stage`,
+  ADD COLUMN `soil_moisture` DECIMAL(5,2) NULL DEFAULT NULL COMMENT '土壤湿度 %' AFTER `humidity`,
+  ADD COLUMN `light` DECIMAL(12,2) NULL DEFAULT NULL COMMENT '光照 lx' AFTER `soil_moisture`,
+  ADD COLUMN `stem_diameter` DECIMAL(10,2) NULL DEFAULT NULL COMMENT '茎粗 mm' AFTER `light`,
+  ADD COLUMN `leaf_color` VARCHAR(64) NULL DEFAULT NULL COMMENT '叶色' AFTER `stem_diameter`,
+  ADD COLUMN `flowering_status` VARCHAR(100) NULL DEFAULT NULL COMMENT '开花情况' AFTER `leaf_color`,
+  ADD COLUMN `growth_evaluation` VARCHAR(500) NULL DEFAULT NULL COMMENT '生长评价' AFTER `flowering_status`,
+  ADD UNIQUE KEY `uk_herb_growth_record_batch_id` (`batch_id`),
+  ADD KEY `idx_herb_growth_record_task_id` (`task_id`),
+  ADD KEY `idx_herb_growth_record_base_id` (`base_id`);

@@ -8,6 +8,7 @@ import com.bdis.modules.spectrum.dto.HerbIdentifyRequest;
 import com.bdis.modules.spectrum.service.HerbIdentificationService;
 import com.bdis.modules.spectrum.vo.HerbIdentificationVO;
 import java.time.LocalDateTime;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class MobileBatchAutoIdentificationExecutor {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Async("mobileAutoIdentificationExecutor")
     public void identifyBoundImage(Long batchId, Long imageId, MobileBatchIdentifyRequest request) {
         HerbBatchImageEntity binding = getBoundBinding(batchId, imageId);
         HerbIdentificationVO identification = identify(imageId, request);
