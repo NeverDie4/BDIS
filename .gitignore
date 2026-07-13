@@ -81,3 +81,5 @@ CLAUDE.md
 # OS
 .DS_Store
 Thumbs.db
+# Local database snapshots may contain credentials and business data.
+/biomed_dev_before_migrate_*.sql

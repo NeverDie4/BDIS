@@ -33,6 +33,9 @@ public class BusinessReferenceValidator {
                             "herb_growth_record",
                             new BusinessReference("herb_growth_record", "growth:record:view")),
                     Map.entry(
+                            "map_point",
+                            new BusinessReference("herb_distribution", "map:point:view")),
+                    Map.entry(
                             "herb_batch",
                             new BusinessReference("herb_batch", "growth:record:view")),
                     Map.entry(

@@ -67,6 +67,9 @@ public interface MapPointMapper extends BaseMapper<MapPointEntity> {
             <if test="baseId != null">
               AND d.base_id = #{baseId}
             </if>
+            <if test="includeDisabled == null or includeDisabled == false">
+              AND d.status = 1
+            </if>
             ORDER BY d.updated_at DESC, d.id DESC
             </script>
             """)
@@ -74,5 +77,6 @@ public interface MapPointMapper extends BaseMapper<MapPointEntity> {
             @Param("keyword") String keyword,
             @Param("district") String district,
             @Param("speciesId") Long speciesId,
-            @Param("baseId") Long baseId);
+            @Param("baseId") Long baseId,
+            @Param("includeDisabled") Boolean includeDisabled);
 }

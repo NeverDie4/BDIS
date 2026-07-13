@@ -3,6 +3,7 @@
 import { App, Button, Image, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { ImageUp, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { getFileRequestErrorMessage, uploadFile, type FileResource } from "@/lib/files";
 import styles from "./FileUploadField.module.css";
 
@@ -14,6 +15,7 @@ interface FileUploadFieldProps {
   bizType?: string;
   bizId?: number;
   fileUsage?: string;
+  accessLevel?: "private" | "public";
   buttonText?: string;
   onUploaded?: (file: FileResource) => void;
 }
@@ -26,10 +28,36 @@ export function FileUploadField({
   bizType,
   bizId,
   fileUsage,
+  accessLevel,
   buttonText = "上传文件",
   onUploaded,
 }: FileUploadFieldProps) {
   const { message } = App.useApp();
+  const [previewUrl, setPreviewUrl] = useState(value);
+  const localPreviewUrlRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!localPreviewUrlRef.current) {
+      setPreviewUrl(value);
+    }
+  }, [value]);
+
+  useEffect(
+    () => () => {
+      if (localPreviewUrlRef.current) {
+        URL.revokeObjectURL(localPreviewUrlRef.current);
+      }
+    },
+    [],
+  );
+
+  function replaceLocalPreview(nextUrl?: string) {
+    if (localPreviewUrlRef.current) {
+      URL.revokeObjectURL(localPreviewUrlRef.current);
+    }
+    localPreviewUrlRef.current = nextUrl;
+    setPreviewUrl(nextUrl ?? value);
+  }
 
   function beforeUpload(file: File) {
     if (accept === "image/*" && !file.type.startsWith("image/")) {
@@ -44,14 +72,19 @@ export function FileUploadField({
   }
 
   const customRequest: UploadProps["customRequest"] = async (options) => {
+    const file = options.file as File;
+    const nextPreviewUrl = accept === "image/*" ? URL.createObjectURL(file) : undefined;
     try {
-      const file = options.file as File;
-      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage });
+      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage, accessLevel });
+      replaceLocalPreview(nextPreviewUrl);
       onChange?.(uploaded.fileUrl);
       onUploaded?.(uploaded);
       options.onSuccess?.(uploaded);
       message.success("文件上传成功");
     } catch (error) {
+      if (nextPreviewUrl) {
+        URL.revokeObjectURL(nextPreviewUrl);
+      }
       options.onError?.(error as Error);
       message.error(getFileRequestErrorMessage(error));
     }
@@ -67,10 +100,19 @@ export function FileUploadField({
             className={styles.remove}
             aria-label="移除已上传文件"
             icon={<X size={13} />}
-            onClick={() => onChange?.(undefined)}
+            onClick={() => {
+              replaceLocalPreview(undefined);
+              setPreviewUrl(undefined);
+              onChange?.(undefined);
+            }}
           />
           {accept === "image/*" ? (
-            <Image className={styles.image} src={value} alt="已上传图片" preview={false} />
+            <Image
+              className={styles.image}
+              src={previewUrl ?? value}
+              alt="已上传图片"
+              preview={false}
+            />
           ) : (
             <div className={styles.fileName}>{value}</div>
           )}

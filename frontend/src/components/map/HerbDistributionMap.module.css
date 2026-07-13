@@ -1,27 +1,65 @@
 .shell {
   display: flex;
-  min-height: calc(100vh - 48px);
+  min-height: calc(100vh - 220px);
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .toolbar {
-  display: flex;
+  display: grid;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  grid-template-columns:
+    minmax(180px, 0.85fr) minmax(180px, 0.85fr) minmax(190px, 0.9fr) minmax(190px, 0.9fr)
+    minmax(300px, 1.45fr) auto;
+  gap: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  padding: 12px 16px;
+}
+
+.filterField {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.filterLabel {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .filterSelect {
-  min-width: 150px;
+  width: 100%;
+  min-width: 0;
+}
+
+.keywordInput {
+  width: 100%;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.toolbarActions > button {
+  min-width: 64px;
 }
 
 .contentGrid {
   display: grid;
   min-height: 640px;
   flex: 1;
-  grid-template-columns: 320px minmax(520px, 1fr) 360px;
-  gap: 12px;
+  grid-template-columns: clamp(320px, 20vw, 380px) minmax(560px, 1fr) clamp(360px, 23vw, 440px);
+  gap: 10px;
 }
 
 .pointListPanel,
@@ -48,6 +86,17 @@
   font-size: 12px;
 }
 
+.pointActions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pointActions :global(.ant-btn) {
+  min-width: 0;
+  padding-inline: 6px;
+}
+
 .pointList {
   display: flex;
   max-height: 570px;
@@ -61,13 +110,12 @@
   display: grid;
   width: 100%;
   align-items: center;
-  grid-template-columns: 54px 1fr auto;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  cursor: pointer;
-  padding: 8px;
+  padding: 7px 6px;
   text-align: left;
 }
 
@@ -75,6 +123,19 @@
 .pointItemActive {
   border-color: rgba(22, 101, 52, 0.22);
   background: rgba(240, 253, 244, 0.82);
+}
+
+.pointSummary {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
 }
 
 .pointThumb {
@@ -111,6 +172,169 @@
   font-size: 12px;
 }
 
+.pointStatus,
+.viewPointButton {
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pointStatus {
+  border-radius: 5px;
+  padding: 4px 7px;
+}
+
+.pointStatus:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.pointStatusEnabled {
+  background: #e8f4e5;
+  color: #2f7d4a;
+}
+
+.pointStatusDisabled {
+  background: #f1f2f4;
+  color: #6b7280;
+}
+
+.viewPointButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: transparent;
+  color: #166534;
+  font-weight: 600;
+  padding: 5px 0;
+}
+
+.mapPanel {
+  display: flex;
+  min-width: 0;
+  min-height: 640px;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 12px;
+}
+
+.mapPanelFullscreen {
+  position: fixed;
+  top: var(--map-fullscreen-top, 78px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 19;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: 0 -1px 18px rgba(15, 23, 42, 0.14);
+}
+
+.mapPanelFullscreen .mapWrap,
+.mapPanelFullscreen .mapCanvas {
+  min-height: 0;
+}
+
+.mapPanelFullscreen .mapStatistics {
+  display: none;
+}
+
+.mapPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mapPanelHeader h2 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.mapStatistics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.statCard {
+  display: flex;
+  min-width: 0;
+  height: 68px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(191, 166, 113, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 253, 247, 0.96);
+  padding: 9px 12px;
+}
+
+.statIcon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eef5d8;
+  color: #6f9238;
+}
+
+.statCard:nth-child(1) .statIcon {
+  background: #fbf0d4;
+  color: #b38835;
+}
+
+.statCard:nth-child(3) .statIcon {
+  background: #edf2dc;
+  color: #78964a;
+}
+
+.statCard:nth-child(4) .statIcon {
+  background: #edf4df;
+  color: #678b43;
+}
+
+.statContent {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.statContent small {
+  overflow: hidden;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statContent strong {
+  color: #14532d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.statContent em {
+  margin-left: 3px;
+  color: #475569;
+  font-family: inherit;
+  font-size: 12px;
+  font-style: normal;
+}
+
 .mapWrap {
   position: relative;
   min-height: 640px;
@@ -119,6 +343,11 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-panel);
+}
+
+.mapPanel .mapWrap,
+.mapPanel .mapCanvas {
+  min-height: 540px;
 }
 
 .detailPanel {
@@ -140,6 +369,12 @@
   font-size: 18px;
 }
 
+.detailTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .detailHeader p {
   margin: 6px 0 0;
   color: #64748b;
@@ -157,6 +392,41 @@
   font-size: 14px;
 }
 
+.sectionTitleRow h4 {
+  margin: 0;
+}
+
+.detailHero {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.detailCover {
+  display: flex;
+  width: 86px;
+  height: 112px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #e8f4e5;
+  background-position: center;
+  background-size: cover;
+  color: #2f7d4a;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.herbIdentity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
 .infoRows {
   display: grid;
   grid-template-columns: 72px 1fr;
@@ -166,8 +436,28 @@
 }
 
 .infoRows strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: #0f172a;
   font-weight: 600;
+}
+
+.coordinateRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.coordinateRow span {
+  display: grid;
+  gap: 4px;
+}
+
+.coordinateRow strong {
+  color: #0f172a;
+  font-size: 13px;
 }
 
 .detailText {
@@ -177,10 +467,43 @@
   line-height: 1.7;
 }
 
-.collectionForm {
+.latestCollection {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px 6px;
+}
+
+.latestCollectionGrid,
+.collectionHistoryGrid {
   display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px minmax(0, 1fr);
+  gap: 8px 10px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.latestCollectionGrid strong,
+.collectionHistoryGrid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.viewAllButton {
+  display: flex !important;
+  align-items: center;
+  gap: 2px;
+  padding-inline: 4px !important;
+}
+
+.collectionActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-top: 10px;
 }
 
 .collectionList {
@@ -214,6 +537,47 @@
 
 .collectionItem p {
   margin: 6px 0 0;
+}
+
+.collectionHistoryList {
+  display: flex;
+  max-height: 62vh;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 2px 4px 2px 0;
+}
+
+.collectionHistoryItem {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.collectionHistoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.collectionHistoryHeader strong {
+  color: #14532d;
+}
+
+.collectionHistoryHeader span,
+.collectionHistoryItem p {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.collectionHistoryItem p {
+  margin: 10px 0 0;
+  line-height: 1.6;
 }
 
 .mapCanvas {
@@ -293,11 +657,18 @@
   color: #ffffff;
 }
 
-.measureMapButton {
+.mapTopActions {
   position: absolute;
   top: 18px;
   right: 18px;
   z-index: 1050;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.measureMapButton,
+.fullscreenMapButton {
   display: inline-flex;
   height: 40px;
   align-items: center;
@@ -319,7 +690,13 @@
     transform 0.18s ease;
 }
 
-.measureMapButton:hover {
+.fullscreenMapButton {
+  width: 40px;
+  padding: 0;
+}
+
+.measureMapButton:hover,
+.fullscreenMapButton:hover {
   background: #ffffff;
   box-shadow: 0 5px 14px rgba(15, 23, 42, 0.2);
   transform: translateY(-1px);
@@ -557,9 +934,25 @@
   gap: 8px;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1320px) {
+  .toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .keywordField {
+    grid-column: 1 / -1;
+  }
+
+  .toolbarActions {
+    justify-content: flex-end;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1200px) {
+
   .contentGrid {
-    grid-template-columns: 260px minmax(420px, 1fr);
+    grid-template-columns: 290px minmax(460px, 1fr);
   }
 
   .detailPanel {
@@ -570,21 +963,49 @@
 
 @media (max-width: 720px) {
   .toolbar {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    padding: 12px;
   }
 
-  .filterSelect {
-    width: 100%;
+  .keywordField,
+  .toolbarActions {
+    grid-column: auto;
+  }
+
+  .filterField {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .toolbarActions {
+    justify-content: stretch;
+  }
+
+  .toolbarActions > button {
+    flex: 1;
   }
 
   .contentGrid {
     grid-template-columns: 1fr;
   }
 
+  .mapStatistics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mapPanelHeader h2 {
+    font-size: 16px;
+  }
+
   .pointListPanel,
   .detailPanel {
     min-height: auto;
+  }
+
+  .latestCollectionGrid,
+  .collectionHistoryGrid {
+    grid-template-columns: 70px minmax(0, 1fr);
   }
 
   .pointList {
@@ -596,11 +1017,25 @@
     min-height: 520px;
   }
 
+  .mapPanel .mapWrap,
+  .mapPanel .mapCanvas {
+    min-height: 520px;
+  }
+
   .measureMapButton {
-    top: 12px;
-    right: 12px;
     height: 38px;
     padding: 0 10px;
+  }
+
+  .mapTopActions {
+    top: 12px;
+    right: 12px;
+    gap: 6px;
+  }
+
+  .fullscreenMapButton {
+    width: 38px;
+    height: 38px;
   }
 
   .mapControls {

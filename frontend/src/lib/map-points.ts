@@ -1,5 +1,6 @@
 import { request } from "@/lib/request";
 import axios from "axios";
+import { toBrowserFileUrl } from "@/lib/files";
 
 export interface ApiResult<T> {
   code: string;
@@ -112,6 +113,7 @@ export interface MapPointQuery {
   district?: string;
   speciesId?: number;
   baseId?: number;
+  includeDisabled?: boolean;
 }
 
 export function getMapPointRequestErrorMessage(error: unknown, action: string) {
@@ -132,17 +134,31 @@ export function getMapPointRequestErrorMessage(error: unknown, action: string) {
 
 export async function fetchMapPoints(params?: MapPointQuery) {
   const response = await request.get<ApiResult<MapPoint[]>>("/map-points", { params });
-  return response.data.data;
+  return response.data.data.map(withBrowserCoverUrl);
 }
 
 export async function createMapPoint(payload: MapPointPayload) {
   const response = await request.post<ApiResult<MapPoint>>("/map-points", payload);
-  return response.data.data;
+  return withBrowserCoverUrl(response.data.data);
 }
 
 export async function updateMapPoint(pointId: number, payload: MapPointPayload) {
   const response = await request.put<ApiResult<MapPoint>>(`/map-points/${pointId}`, payload);
-  return response.data.data;
+  return withBrowserCoverUrl(response.data.data);
+}
+
+export async function updateMapPointStatus(pointId: number, status: 0 | 1) {
+  const response = await request.patch<ApiResult<MapPoint>>(`/map-points/${pointId}/status`, { status });
+  return withBrowserCoverUrl(response.data.data);
+}
+
+function withBrowserCoverUrl(point: MapPoint): MapPoint {
+  return {
+    ...point,
+    coverImageUrl: point.coverImageUrl
+      ? toBrowserFileUrl(point.coverImageUrl)
+      : point.coverImageUrl,
+  };
 }
 
 export async function deleteMapPoint(pointId: number) {

@@ -8,6 +8,7 @@ import com.bdis.modules.map.dto.MapPointUpsertRequest;
 import com.bdis.modules.map.entity.MapPointEntity;
 import com.bdis.modules.map.mapper.MapPointMapper;
 import com.bdis.modules.map.query.MapPointQuery;
+import com.bdis.modules.map.service.MapCoverFileService;
 import com.bdis.modules.map.service.MapPointService;
 import com.bdis.modules.map.vo.MapPointVO;
 import java.time.format.DateTimeFormatter;
@@ -29,10 +30,16 @@ public class MapPointServiceImpl implements MapPointService {
 
     private final HerbMapper herbMapper;
 
+    private final MapCoverFileService mapCoverFileService;
+
     @Override
     public List<MapPointVO> listMapPoints(MapPointQuery query) {
         return mapPointMapper.selectMapPoints(
-                query.getKeyword(), query.getDistrict(), query.getSpeciesId(), query.getBaseId());
+                query.getKeyword(),
+                query.getDistrict(),
+                query.getSpeciesId(),
+                query.getBaseId(),
+                query.getIncludeDisabled());
     }
 
     @Override
@@ -41,8 +48,12 @@ public class MapPointServiceImpl implements MapPointService {
         Long speciesId = resolveSpeciesId(request);
         MapPointEntity entity = new MapPointEntity();
         fillMapPoint(entity, request, speciesId);
+        entity.setCoverImageUrl(null);
         entity.setCreatedBy(SecurityUtils.currentUser().getUserId());
         mapPointMapper.insert(entity);
+        entity.setCoverImageUrl(
+                mapCoverFileService.replaceCover(entity.getId(), null, request.getCoverImageUrl()));
+        mapPointMapper.updateById(entity);
         return findCreatedOrUpdated(entity.getId());
     }
 
@@ -53,8 +64,25 @@ public class MapPointServiceImpl implements MapPointService {
         if (entity == null) {
             throw new ResourceNotFoundException("地图点位不存在");
         }
+        String previousCoverUrl = entity.getCoverImageUrl();
         Long speciesId = resolveSpeciesId(request);
         fillMapPoint(entity, request, speciesId);
+        entity.setCoverImageUrl(
+                mapCoverFileService.replaceCover(
+                        pointId, previousCoverUrl, request.getCoverImageUrl()));
+        entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
+        mapPointMapper.updateById(entity);
+        return findCreatedOrUpdated(pointId);
+    }
+
+    @Override
+    @Transactional
+    public MapPointVO updateMapPointStatus(Long pointId, Integer status) {
+        MapPointEntity entity = mapPointMapper.selectById(pointId);
+        if (entity == null) {
+            throw new ResourceNotFoundException("地图点位不存在");
+        }
+        entity.setStatus(status);
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
         mapPointMapper.updateById(entity);
         return findCreatedOrUpdated(pointId);
@@ -68,6 +96,7 @@ public class MapPointServiceImpl implements MapPointService {
             throw new ResourceNotFoundException("地图点位不存在");
         }
         Long operatorId = SecurityUtils.currentUser().getUserId();
+        mapCoverFileService.deleteCover(pointId, entity.getCoverImageUrl());
         entity.setDeletedBy(operatorId);
         entity.setUpdatedBy(operatorId);
         mapPointMapper.updateById(entity);
@@ -180,7 +209,6 @@ public class MapPointServiceImpl implements MapPointService {
         entity.setDistributionType(defaultText(request.getDistributionType(), "cultivated"));
         entity.setDistributionLevel(request.getDistributionLevel());
         entity.setDistributionDesc(request.getDistributionDesc());
-        entity.setCoverImageUrl(request.getCoverImageUrl());
         entity.setLastCollectedAt(request.getLastCollectedAt());
         entity.setSourceType(defaultText(request.getSourceType(), "pc"));
         entity.setDataSource(defaultText(request.getDataSource(), "map"));
@@ -188,7 +216,7 @@ public class MapPointServiceImpl implements MapPointService {
     }
 
     private MapPointVO findCreatedOrUpdated(Long pointId) {
-        List<MapPointVO> points = mapPointMapper.selectMapPoints(null, null, null, null);
+        List<MapPointVO> points = mapPointMapper.selectMapPoints(null, null, null, null, true);
         return points.stream()
                 .filter(point -> pointId.equals(point.getId()))
                 .findFirst()
