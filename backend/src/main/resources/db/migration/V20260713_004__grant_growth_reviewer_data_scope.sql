@@ -1,5 +1,4 @@
--- Reviewers must be able to discover collection tasks and submitted growth records
--- even when the reviewer account is not assigned to an organization or department.
+-- Preserve existing reviewer scope rules. Add the role's default department scope only when absent.
 INSERT INTO auth_data_scope (
     role_id,
     resource_type,
@@ -12,24 +11,22 @@ INSERT INTO auth_data_scope (
     remark
 )
 SELECT
-    id,
+    role.id,
     'herb_growth_record',
-    'all',
+    'department',
     NULL,
     NULL,
     NULL,
     1,
     0,
-    'Reviewers can access growth records pending review'
-FROM auth_role
-WHERE role_code = 'REVIEWER'
-  AND is_deleted = 0
-ON DUPLICATE KEY UPDATE
-    scope_type = 'all',
-    organization_id = NULL,
-    department_id = NULL,
-    custom_rule = NULL,
-    status = 1,
-    is_deleted = 0,
-    remark = 'Reviewers can access growth records pending review',
-    updated_at = CURRENT_TIMESTAMP;
+    'Reviewer growth records follow the existing department data scope'
+FROM auth_role role
+WHERE role.role_code = 'REVIEWER'
+  AND role.is_deleted = 0
+  AND NOT EXISTS (
+      SELECT 1
+      FROM auth_data_scope scope
+      WHERE scope.role_id = role.id
+        AND scope.resource_type = 'herb_growth_record'
+        AND scope.is_deleted = 0
+  );

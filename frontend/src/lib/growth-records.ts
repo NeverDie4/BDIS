@@ -347,6 +347,14 @@ export function getGrowthTraceQrCode(recordId: number) {
   return apiGet<GrowthTraceQrCodeApi>(`/growth-records/${recordId}/trace-qrcode`);
 }
 
+export async function downloadGrowthTraceQrCode(recordId: number) {
+  const response = await request.get<Blob>(
+    `/growth-records/${recordId}/trace-qrcode/content`,
+    { responseType: "blob" },
+  );
+  return response.data;
+}
+
 export function enableGrowthPublicTrace(recordId: number) {
   return apiPut<GrowthTraceQrCodeApi>(`/growth-records/${recordId}/trace/public-enable`);
 }

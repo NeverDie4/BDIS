@@ -206,6 +206,15 @@ public class FileResourceServiceImpl implements FileResourceService {
         if (!"public".equalsIgnoreCase(entity.getAccessLevel())) {
             throw new ResourceNotFoundException("公开文件不存在");
         }
+        return loadContent(entity);
+    }
+
+    @Override
+    public FileContentVO internalContent(Long fileId) {
+        return loadContent(requireFile(fileId));
+    }
+
+    private FileContentVO loadContent(FileResourceEntity entity) {
         return fileStorageService.load(
                 entity.getStoragePath(),
                 entity.getOriginalFilename(),

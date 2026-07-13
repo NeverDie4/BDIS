@@ -1,6 +1,7 @@
 package com.bdis.modules.growth.service;
 
 import com.bdis.common.core.PageResult;
+import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.growth.dto.GrowthAuditCommentRequest;
 import com.bdis.modules.growth.dto.GrowthAuditRequest;
 import com.bdis.modules.growth.dto.GrowthRecordCreateRequest;
@@ -10,8 +11,8 @@ import com.bdis.modules.growth.vo.GrowthAuditHistoryVO;
 import com.bdis.modules.growth.vo.GrowthChartPointVO;
 import com.bdis.modules.growth.vo.GrowthPublicTraceArchiveVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
-import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
+import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import java.util.List;
 
 public interface GrowthRecordService {
@@ -61,7 +62,7 @@ public interface GrowthRecordService {
 
     GrowthTraceQrCodeVO generateTraceCode(Long id);
 
-    GrowthTraceQrCodeVO generateTraceQrCode(Long id, String publicBaseUrl);
+    GrowthTraceQrCodeVO generateTraceQrCode(Long id);
 
     GrowthTraceQrCodeVO getTraceQrCode(Long id);
 
@@ -70,4 +71,10 @@ public interface GrowthRecordService {
     GrowthTraceQrCodeVO disablePublicTrace(Long id);
 
     GrowthPublicTraceArchiveVO publicTrace(String traceCode);
+
+    FileContentVO traceQrCodeContent(Long id);
+
+    FileContentVO publicTraceQrCode(String traceCode);
+
+    FileContentVO publicTraceImage(String traceCode, Long imageId);
 }

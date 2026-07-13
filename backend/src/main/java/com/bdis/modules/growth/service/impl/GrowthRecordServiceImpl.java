@@ -9,10 +9,15 @@ import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.common.security.SecurityUtils;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.file.vo.FileContentVO;
+import com.bdis.modules.collection.constant.HerbBatchStatusConstants;
+import com.bdis.modules.collection.constant.HerbCollectionTaskStatusConstants;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.dictionary.support.DictionaryReferenceValidator;
 import com.bdis.modules.growth.dto.GrowthAuditCommentRequest;
 import com.bdis.modules.growth.dto.GrowthAuditRequest;
@@ -28,15 +33,17 @@ import com.bdis.modules.growth.query.GrowthRecordQuery;
 import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthAuditHistoryVO;
 import com.bdis.modules.growth.vo.GrowthChartPointVO;
+import com.bdis.modules.growth.vo.GrowthPublicAuditVO;
 import com.bdis.modules.growth.vo.GrowthPublicTraceArchiveVO;
+import com.bdis.modules.growth.vo.GrowthPublicTraceEventVO;
 import com.bdis.modules.growth.vo.GrowthPublicTraceImageVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
-import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
+import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
-import com.bdis.modules.herb.vo.HerbImageVO;
 import com.bdis.modules.herb.mapper.HerbMapper;
+import com.bdis.modules.herb.vo.HerbImageVO;
 import com.bdis.modules.map.entity.MapPointEntity;
 import com.bdis.modules.map.mapper.MapPointMapper;
 import com.bdis.modules.permission.service.DataScopeService;
@@ -59,10 +66,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
-import org.springframework.beans.factory.annotation.Value;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.PathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -79,6 +87,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     @Value("${bdis.file.storage-path:./storage}")
     private String storagePath = "./storage";
 
+    @Value("${bdis.trace.public-web-base-url:http://localhost:3000}")
+    private String publicWebBaseUrl = "http://localhost:3000";
+
     private final GrowthRecordMapper growthRecordMapper;
     private final GrowthAuditRecordMapper growthAuditRecordMapper;
     private final GrowthTraceEventMapper growthTraceEventMapper;
@@ -90,6 +101,8 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     private final UserMapper userMapper;
     private final DataScopeService dataScopeService;
     private final DictionaryReferenceValidator dictionaryReferenceValidator;
+    private final CollectionAccessService collectionAccessService;
+    private final FileResourceService fileResourceService;
 
     public GrowthRecordServiceImpl(
             GrowthRecordMapper growthRecordMapper,
@@ -102,7 +115,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
             HerbImageMapper herbImageMapper,
             UserMapper userMapper,
             DataScopeService dataScopeService,
-            DictionaryReferenceValidator dictionaryReferenceValidator) {
+            DictionaryReferenceValidator dictionaryReferenceValidator,
+            CollectionAccessService collectionAccessService,
+            FileResourceService fileResourceService) {
         this.growthRecordMapper = growthRecordMapper;
         this.growthAuditRecordMapper = growthAuditRecordMapper;
         this.growthTraceEventMapper = growthTraceEventMapper;
@@ -114,6 +129,8 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         this.userMapper = userMapper;
         this.dataScopeService = dataScopeService;
         this.dictionaryReferenceValidator = dictionaryReferenceValidator;
+        this.collectionAccessService = collectionAccessService;
+        this.fileResourceService = fileResourceService;
     }
 
     @Override
@@ -350,7 +367,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     @Override
     @Transactional
     public GrowthRecordVO createForBatch(Long batchId, GrowthRecordUpsertRequest request) {
-        HerbBatchEntity batch = requireBatch(batchId);
+        HerbBatchEntity batch = requireWritableBatch(batchId);
         Long count =
                 growthRecordMapper.selectCount(
                         new LambdaQueryWrapper<GrowthRecordEntity>()
@@ -379,7 +396,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     @Transactional
     public GrowthRecordVO updateForBatch(
             Long batchId, Long recordId, GrowthRecordUpsertRequest request) {
-        HerbBatchEntity batch = requireBatch(batchId);
+        HerbBatchEntity batch = requireWritableBatch(batchId);
         GrowthRecordEntity entity = requireRecord(recordId);
         if (!Objects.equals(batchId, entity.getBatchId())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "生长记录不属于指定批次");
@@ -472,9 +489,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
 
     @Override
     public PageResult<GrowthRecordVO> reviewPage(GrowthRecordQuery query) {
-        if (!StringUtils.hasText(query.getReviewStatus())) {
-            query.setReviewStatus("submitted");
-        }
+        query.setReviewStatus("submitted");
         return page(query);
     }
 
@@ -511,12 +526,16 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
 
     @Override
     @Transactional
-    public GrowthTraceQrCodeVO generateTraceQrCode(Long id, String publicBaseUrl) {
+    public GrowthTraceQrCodeVO generateTraceQrCode(Long id) {
         GrowthRecordEntity entity = requireRecord(id);
         requireTraceManageAccess(entity);
         ensureTraceCode(entity, true);
         String traceUrl = traceUrl(entity.getTraceCode());
-        String qrCodeUrl = writeQrCode(entity.getId(), entity.getTraceCode(), fullTraceUrl(publicBaseUrl, traceUrl));
+        String qrCodeUrl =
+                writeQrCode(
+                        entity.getId(),
+                        entity.getTraceCode(),
+                        fullTraceUrl(publicWebBaseUrl, traceUrl));
         entity.setTraceQrcodeUrl(qrCodeUrl);
         entity.setTracePublicUrl(traceUrl);
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
@@ -581,6 +600,45 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
 
     @Override
     public GrowthPublicTraceArchiveVO publicTrace(String traceCode) {
+        GrowthRecordEntity entity = requirePublicTrace(traceCode);
+        GrowthPublicTraceArchiveVO archive = toPublicTraceArchive(entity);
+        archive.setImages(loadPublicImages(entity.getBatchId(), entity.getTraceCode()));
+        archive.setAuditHistory(
+                loadAuditHistory(entity.getId()).stream().map(this::toPublicAudit).toList());
+        archive.setTraceTimeline(
+                loadTraceEvents(entity.getId()).stream().map(this::toPublicTraceEvent).toList());
+        applyLatestAudit(archive);
+        return archive;
+    }
+
+    @Override
+    public FileContentVO traceQrCodeContent(Long id) {
+        GrowthRecordEntity entity = requireRecord(id);
+        requireAccess(entity);
+        return loadTraceQrCode(entity);
+    }
+
+    @Override
+    public FileContentVO publicTraceQrCode(String traceCode) {
+        return loadTraceQrCode(requirePublicTrace(traceCode));
+    }
+
+    @Override
+    public FileContentVO publicTraceImage(String traceCode, Long imageId) {
+        GrowthRecordEntity entity = requirePublicTrace(traceCode);
+        HerbImageVO image =
+                herbImageMapper.selectByBatchId(entity.getBatchId()).stream()
+                        .filter(item -> Objects.equals(item.getId(), imageId))
+                        .findFirst()
+                        .orElseThrow(() -> new ResourceNotFoundException("公开溯源图片不存在"));
+        Long fileId = fileResourceService.resolveFileId(image.getImageUrl());
+        if (fileId == null) {
+            throw new ResourceNotFoundException("公开溯源图片文件不存在");
+        }
+        return fileResourceService.internalContent(fileId);
+    }
+
+    private GrowthRecordEntity requirePublicTrace(String traceCode) {
         if (!StringUtils.hasText(traceCode)) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "溯源码不能为空");
         }
@@ -594,12 +652,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         if (!Integer.valueOf(1).equals(entity.getPublicVisible())) {
             throw new ForbiddenException("该溯源档案暂未公开");
         }
-        GrowthPublicTraceArchiveVO archive = toPublicTraceArchive(entity);
-        archive.setImages(loadPublicImages(entity.getBatchId()));
-        archive.setAuditHistory(loadAuditHistory(entity.getId()));
-        archive.setTraceTimeline(loadTraceEvents(entity.getId()));
-        applyLatestAudit(archive);
-        return archive;
+        return entity;
     }
 
     private List<GrowthTraceEventVO> loadTraceEvents(Long id) {
@@ -645,8 +698,8 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                                                 audit.getBeforeStatus(),
                                                 audit.getAfterStatus(),
                                                 audit.getReviewerId(),
-                        audit.getReviewedAt(),
-                        audit.getReviewComment())));
+                                                audit.getReviewedAt(),
+                                                audit.getReviewComment())));
         return legacyEvents;
     }
 
@@ -737,6 +790,27 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         return batch;
     }
 
+    private HerbBatchEntity requireWritableBatch(Long batchId) {
+        HerbBatchEntity batch = requireBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
+        if (Set.of(HerbBatchStatusConstants.ARCHIVED, HerbBatchStatusConstants.CANCELLED)
+                .contains(batch.getBatchStatus())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "当前批次状态不可填写生长记录");
+        }
+        HerbCollectionTaskEntity task = herbCollectionTaskMapper.selectById(batch.getTaskId());
+        if (task == null) {
+            throw new ResourceNotFoundException("采集任务不存在");
+        }
+        collectionAccessService.requireTaskExecution(task);
+        if (Set.of(
+                        HerbCollectionTaskStatusConstants.COMPLETED,
+                        HerbCollectionTaskStatusConstants.CANCELLED)
+                .contains(task.getTaskStatus())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "当前任务状态不可填写生长记录");
+        }
+        return batch;
+    }
+
     private void applyBatchContext(GrowthRecordEntity entity, HerbBatchEntity batch) {
         entity.setBatchId(batch.getId());
         entity.setTaskId(batch.getTaskId());
@@ -749,7 +823,14 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     private String normalizeMetric(String metric) {
         String safeMetric = StringUtils.hasText(metric) ? metric : "plantHeight";
         Set<String> supported =
-                Set.of("plantHeight", "temperature", "humidity", "soilMoisture", "soilPh", "light");
+                Set.of(
+                        "plantHeight",
+                        "temperature",
+                        "humidity",
+                        "soilMoisture",
+                        "soilPh",
+                        "light",
+                        "sampleWeight");
         if (!supported.contains(safeMetric)) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "不支持的生长趋势指标");
         }
@@ -763,6 +844,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
             case "soilMoisture" -> point.getSoilMoisture();
             case "soilPh" -> point.getSoilPh();
             case "light" -> point.getLight();
+            case "sampleWeight" -> point.getSampleWeight();
             default -> point.getPlantHeight();
         };
     }
@@ -862,7 +944,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
             Path target = directory.resolve(fileName).normalize();
             BitMatrix matrix = new QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 320, 320);
             MatrixToImageWriter.writeToPath(matrix, "PNG", target);
-            return "/api/files/trace/qrcode/" + fileName;
+            return "/api/growth-records/" + recordId + "/trace-qrcode/content";
         } catch (IOException | RuntimeException ex) {
             throw new BusinessException(ResultCodeEnum.SYSTEM_ERROR, "生成溯源二维码失败");
         } catch (Exception ex) {
@@ -881,6 +963,29 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         return publicBaseUrl.replaceAll("/+$", "") + traceUrl;
     }
 
+    private FileContentVO loadTraceQrCode(GrowthRecordEntity entity) {
+        if (!StringUtils.hasText(entity.getTraceCode())
+                || !StringUtils.hasText(entity.getTraceQrcodeUrl())) {
+            throw new ResourceNotFoundException("溯源二维码尚未生成");
+        }
+        Path directory = Path.of(storagePath, "trace", "qrcode").toAbsolutePath().normalize();
+        String fileName = "growth_" + entity.getId() + "_" + entity.getTraceCode() + ".png";
+        Path target = directory.resolve(fileName).normalize();
+        if (!target.startsWith(directory) || !Files.isRegularFile(target)) {
+            throw new ResourceNotFoundException("溯源二维码文件不存在");
+        }
+        FileContentVO content = new FileContentVO();
+        content.setResource(new PathResource(target));
+        content.setFileName(fileName);
+        content.setContentType("image/png");
+        try {
+            content.setFileSize(Files.size(target));
+        } catch (IOException ex) {
+            throw new BusinessException(ResultCodeEnum.SYSTEM_ERROR, "读取溯源二维码失败");
+        }
+        return content;
+    }
+
     private GrowthTraceQrCodeVO toTraceQrCodeVO(GrowthRecordEntity entity) {
         GrowthTraceQrCodeVO vo = new GrowthTraceQrCodeVO();
         vo.setRecordId(entity.getId());
@@ -897,6 +1002,12 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         GrowthPublicTraceArchiveVO archive = new GrowthPublicTraceArchiveVO();
         archive.setRecordId(entity.getId());
         archive.setTraceCode(entity.getTraceCode());
+        archive.setTraceUrl(entity.getTracePublicUrl());
+        archive.setQrCodeUrl(
+                StringUtils.hasText(entity.getTraceQrcodeUrl())
+                        ? "/api/trace/growth/" + entity.getTraceCode() + "/qrcode"
+                        : null);
+        archive.setPublicVisible(entity.getPublicVisible() == null ? 0 : entity.getPublicVisible());
         archive.setSpeciesName(record.getSpeciesName());
         archive.setHerbName(record.getSpeciesName());
         archive.setTaskId(entity.getTaskId());
@@ -924,18 +1035,18 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         return archive;
     }
 
-    private List<GrowthPublicTraceImageVO> loadPublicImages(Long batchId) {
+    private List<GrowthPublicTraceImageVO> loadPublicImages(Long batchId, String traceCode) {
         if (batchId == null) {
             return List.of();
         }
         return herbImageMapper.selectByBatchId(batchId).stream()
-                .map(this::toPublicTraceImage)
+                .map(image -> toPublicTraceImage(image, traceCode))
                 .toList();
     }
 
-    private GrowthPublicTraceImageVO toPublicTraceImage(HerbImageVO image) {
+    private GrowthPublicTraceImageVO toPublicTraceImage(HerbImageVO image, String traceCode) {
         GrowthPublicTraceImageVO vo = new GrowthPublicTraceImageVO();
-        vo.setImageUrl(image.getImageUrl());
+        vo.setImageUrl("/api/trace/growth/" + traceCode + "/images/" + image.getId());
         vo.setImageType(image.getImageType());
         vo.setImageRole(image.getImageRole());
         vo.setUploadTime(
@@ -960,11 +1071,34 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         if (archive.getAuditHistory().isEmpty()) {
             return;
         }
-        GrowthAuditHistoryVO latest = archive.getAuditHistory().getLast();
+        GrowthPublicAuditVO latest = archive.getAuditHistory().getLast();
         archive.setLatestAuditResult(latest.getAfterStatus());
         archive.setLatestAuditComment(latest.getComment());
         archive.setLatestAuditTime(latest.getOperateTime());
         archive.setReviewerName(latest.getOperatorName());
+    }
+
+    private GrowthPublicAuditVO toPublicAudit(GrowthAuditHistoryVO audit) {
+        GrowthPublicAuditVO vo = new GrowthPublicAuditVO();
+        vo.setActionType(audit.getActionType());
+        vo.setBeforeStatus(audit.getBeforeStatus());
+        vo.setAfterStatus(audit.getAfterStatus());
+        vo.setOperatorName(audit.getOperatorName());
+        vo.setComment(audit.getComment());
+        vo.setOperateTime(audit.getOperateTime());
+        return vo;
+    }
+
+    private GrowthPublicTraceEventVO toPublicTraceEvent(GrowthTraceEventVO event) {
+        GrowthPublicTraceEventVO vo = new GrowthPublicTraceEventVO();
+        vo.setEventType(event.getEventType());
+        vo.setEventTitle(event.getEventTitle());
+        vo.setEventContent(event.getEventContent());
+        vo.setBeforeStatus(event.getBeforeStatus());
+        vo.setAfterStatus(event.getAfterStatus());
+        vo.setOperatorName(event.getOperatorName());
+        vo.setEventTime(event.getEventTime());
+        return vo;
     }
 
     private void applyDataScope(LambdaQueryWrapper<GrowthRecordEntity> wrapper) {

@@ -3,6 +3,7 @@ package com.bdis.modules.growth.controller;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.common.security.RequirePermission;
+import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.growth.dto.GrowthAuditCommentRequest;
 import com.bdis.modules.growth.dto.GrowthAuditRequest;
 import com.bdis.modules.growth.dto.GrowthRecordUpsertRequest;
@@ -10,10 +11,16 @@ import com.bdis.modules.growth.query.GrowthRecordQuery;
 import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthAuditHistoryVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
-import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
+import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +29,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/growth-records")
@@ -134,13 +140,17 @@ public class GrowthRecordController {
 
     @PostMapping("/{id}/trace-qrcode/generate")
     public Result<GrowthTraceQrCodeVO> generateTraceQrCode(@PathVariable Long id) {
-        return Result.success(
-                growthRecordService.generateTraceQrCode(id, currentPublicBaseUrl()));
+        return Result.success(growthRecordService.generateTraceQrCode(id));
     }
 
     @GetMapping("/{id}/trace-qrcode")
     public Result<GrowthTraceQrCodeVO> getTraceQrCode(@PathVariable Long id) {
         return Result.success(growthRecordService.getTraceQrCode(id));
+    }
+
+    @GetMapping("/{id}/trace-qrcode/content")
+    public ResponseEntity<Resource> traceQrCodeContent(@PathVariable Long id) {
+        return fileResponse(growthRecordService.traceQrCodeContent(id));
     }
 
     @PutMapping("/{id}/trace/public-enable")
@@ -153,7 +163,14 @@ public class GrowthRecordController {
         return Result.success(growthRecordService.disablePublicTrace(id));
     }
 
-    private String currentPublicBaseUrl() {
-        return ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+    private ResponseEntity<Resource> fileResponse(FileContentVO content) {
+        ContentDisposition disposition =
+                ContentDisposition.inline()
+                        .filename(content.getFileName(), StandardCharsets.UTF_8)
+                        .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(content.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(content.getResource());
     }
 }

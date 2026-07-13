@@ -21,8 +21,7 @@ class HerbImageMapperContractTest {
             String mapper = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 
             assertFalse(
-                    mapper.contains("i.uploader_name"),
-                    "herb_image has no uploader_name column");
+                    mapper.contains("i.uploader_name"), "herb_image has no uploader_name column");
             assertTrue(
                     mapper.contains("COALESCE(u.real_name, u.username) AS uploader_name"),
                     "uploader name must be resolved from sys_user");

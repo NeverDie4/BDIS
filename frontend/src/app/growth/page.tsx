@@ -14,6 +14,7 @@ import {
   approveGrowthRecord,
   buildGrowthChartData,
   disableGrowthPublicTrace,
+  downloadGrowthTraceQrCode,
   enableGrowthPublicTrace,
   fetchGrowthAuditHistory,
   fetchGrowthBatchImages,
@@ -26,7 +27,6 @@ import {
   generateGrowthTraceQrCode,
   getGrowthTraceQrCode,
   rejectGrowthRecord,
-  resolveGrowthResourceUrl,
   submitGrowthRecord,
   type GrowthAuditHistoryApi,
   type GrowthBatchImageApi,
@@ -54,6 +54,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   submitted: { label: "待审核", color: "#d97706" },
   approved: { label: "已通过", color: "#2f7d4f" },
   rejected: { label: "已驳回", color: "#b94a48" },
+  archived: { label: "已归档", color: "#70877a" },
 };
 
 const IMAGE_TYPE_LABELS: Record<string, string> = {
@@ -166,12 +167,13 @@ function formatTooltipMetric(value: number | null | undefined) {
 
 function getTooltipStatus(status?: string) {
   const meta = STATUS_META[status || "draft"];
-  if (!meta || status === "archived") return null;
+  if (!meta) return null;
   const styles: Record<string, { color: string; background: string; border: string }> = {
     draft: { color: "#6f7f72", background: "#f2f1ec", border: "#ded8cc" },
     submitted: { color: "#d97706", background: "#fff4df", border: "#f4d6a5" },
     approved: { color: "#2f7d4f", background: "#eef7ef", border: "#cce3d0" },
     rejected: { color: "#b94a48", background: "#fff0ee", border: "#efcfca" },
+    archived: { color: "#5d7467", background: "#edf3ee", border: "#cfdbd1" },
   };
   return { ...meta, ...(styles[status || "draft"] || styles.draft) };
 }
@@ -523,10 +525,7 @@ export default function GrowthPage() {
     void loadChart();
   }, [loadChart]);
 
-  const visiblePoints = useMemo(
-    () => points.filter((point) => STATUS_META[point.auditStatus || "draft"]),
-    [points],
-  );
+  const visiblePoints = useMemo(() => points, [points]);
   const statusPoints = useMemo(
     () =>
       status === "all"
@@ -756,9 +755,8 @@ export default function GrowthPage() {
       return;
     }
     try {
-      const response = await fetch(resolveGrowthResourceUrl(traceQrCode.qrCodeUrl));
-      if (!response.ok) throw new Error("二维码下载失败");
-      const objectUrl = URL.createObjectURL(await response.blob());
+      if (!selectedRecord?.id) throw new Error("未选择生长记录");
+      const objectUrl = URL.createObjectURL(await downloadGrowthTraceQrCode(selectedRecord.id));
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
       anchor.download = `growth-trace-${traceQrCode.traceCode || selectedRecord?.id}.png`;

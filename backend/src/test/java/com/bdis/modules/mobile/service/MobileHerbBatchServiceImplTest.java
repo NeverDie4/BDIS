@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,17 +52,19 @@ class MobileHerbBatchServiceImplTest {
 
     @Test
     void autoIdentificationExecutorUsesIndependentTransaction() throws Exception {
-        Transactional transactional =
-                MobileBatchAutoIdentificationExecutor.class
-                        .getMethod(
-                                "identifyBoundImage",
-                                Long.class,
-                                Long.class,
-                                com.bdis.modules.mobile.dto.MobileBatchIdentifyRequest.class)
-                        .getAnnotation(Transactional.class);
+        var method =
+                MobileBatchAutoIdentificationExecutor.class.getMethod(
+                        "identifyBoundImage",
+                        Long.class,
+                        Long.class,
+                        com.bdis.modules.mobile.dto.MobileBatchIdentifyRequest.class);
+        Transactional transactional = method.getAnnotation(Transactional.class);
+        Async async = method.getAnnotation(Async.class);
 
         assertThat(transactional).isNotNull();
         assertThat(transactional.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
+        assertThat(async).isNotNull();
+        assertThat(async.value()).isEqualTo("mobileAutoIdentificationExecutor");
     }
 
     @Test

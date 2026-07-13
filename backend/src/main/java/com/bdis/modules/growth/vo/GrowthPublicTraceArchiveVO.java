@@ -11,6 +11,9 @@ public class GrowthPublicTraceArchiveVO {
 
     private Long recordId;
     private String traceCode;
+    private String traceUrl;
+    private String qrCodeUrl;
+    private Integer publicVisible;
     private String speciesName;
     private String herbName;
     private Long taskId;
@@ -44,6 +47,6 @@ public class GrowthPublicTraceArchiveVO {
     private String reviewerName;
 
     private List<GrowthPublicTraceImageVO> images = new ArrayList<>();
-    private List<GrowthAuditHistoryVO> auditHistory = new ArrayList<>();
-    private List<GrowthTraceEventVO> traceTimeline = new ArrayList<>();
+    private List<GrowthPublicAuditVO> auditHistory = new ArrayList<>();
+    private List<GrowthPublicTraceEventVO> traceTimeline = new ArrayList<>();
 }

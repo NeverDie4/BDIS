@@ -3,18 +3,24 @@ package com.bdis.modules.growth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.CurrentUser;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.dictionary.support.DictionaryReferenceValidator;
 import com.bdis.modules.growth.dto.GrowthAuditCommentRequest;
 import com.bdis.modules.growth.dto.GrowthRecordUpsertRequest;
@@ -24,23 +30,31 @@ import com.bdis.modules.growth.entity.GrowthTraceEventEntity;
 import com.bdis.modules.growth.mapper.GrowthAuditRecordMapper;
 import com.bdis.modules.growth.mapper.GrowthRecordMapper;
 import com.bdis.modules.growth.mapper.GrowthTraceEventMapper;
+import com.bdis.modules.growth.query.GrowthRecordQuery;
 import com.bdis.modules.growth.service.impl.GrowthRecordServiceImpl;
 import com.bdis.modules.growth.vo.GrowthChartPointVO;
 import com.bdis.modules.growth.vo.GrowthPublicTraceArchiveVO;
 import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
-import com.bdis.modules.herb.vo.HerbImageVO;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbMapper;
+import com.bdis.modules.herb.vo.HerbImageVO;
 import com.bdis.modules.map.mapper.MapPointMapper;
 import com.bdis.modules.permission.service.DataScopeService;
 import com.bdis.modules.permission.vo.DataScopeResultVO;
 import com.bdis.modules.user.mapper.UserMapper;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,12 +74,14 @@ class GrowthRecordServiceImplTest {
     @Mock private GrowthTraceEventMapper growthTraceEventMapper;
     @Mock private HerbBatchMapper herbBatchMapper;
     @Mock private HerbCollectionTaskMapper herbCollectionTaskMapper;
+    @Mock private CollectionAccessService collectionAccessService;
     @Mock private MapPointMapper mapPointMapper;
     @Mock private HerbMapper herbMapper;
     @Mock private HerbImageMapper herbImageMapper;
     @Mock private UserMapper userMapper;
     @Mock private DataScopeService dataScopeService;
     @Mock private DictionaryReferenceValidator dictionaryReferenceValidator;
+    @Mock private FileResourceService fileResourceService;
 
     private GrowthRecordServiceImpl service;
     @org.junit.jupiter.api.io.TempDir Path tempDir;
@@ -84,8 +100,11 @@ class GrowthRecordServiceImplTest {
                         herbImageMapper,
                         userMapper,
                         dataScopeService,
-                        dictionaryReferenceValidator);
+                        dictionaryReferenceValidator,
+                        collectionAccessService,
+                        fileResourceService);
         ReflectionTestUtils.setField(service, "storagePath", tempDir.toString());
+        ReflectionTestUtils.setField(service, "publicWebBaseUrl", "http://localhost:3000");
         DataScopeResultVO allScope = new DataScopeResultVO();
         allScope.setAllIncluded(true);
         lenient()
@@ -111,15 +130,37 @@ class GrowthRecordServiceImplTest {
 
     @Test
     void createForBatchRejectsSecondGrowthRecord() {
-        HerbBatchEntity batch = new HerbBatchEntity();
-        batch.setId(20L);
-        batch.setTaskId(30L);
+        HerbBatchEntity batch = writableBatch();
         when(herbBatchMapper.selectById(20L)).thenReturn(batch);
+        when(herbCollectionTaskMapper.selectById(30L)).thenReturn(activeTask());
         when(growthRecordMapper.selectCount(any())).thenReturn(1L);
 
         assertThatThrownBy(() -> service.createForBatch(20L, new GrowthRecordUpsertRequest()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已存在生长记录");
+    }
+
+    @Test
+    void createForBatchRejectsBatchOutsideCurrentUserOwnership() {
+        HerbBatchEntity batch = writableBatch();
+        when(herbBatchMapper.selectById(20L)).thenReturn(batch);
+        doThrow(new ForbiddenException("batch forbidden"))
+                .when(collectionAccessService)
+                .requireBatchOwner(batch);
+
+        assertThatThrownBy(() -> service.createForBatch(20L, new GrowthRecordUpsertRequest()))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("batch forbidden");
+    }
+
+    @Test
+    void createForBatchRejectsArchivedBatch() {
+        HerbBatchEntity batch = writableBatch();
+        batch.setBatchStatus("archived");
+        when(herbBatchMapper.selectById(20L)).thenReturn(batch);
+
+        assertThatThrownBy(() -> service.createForBatch(20L, new GrowthRecordUpsertRequest()))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -140,6 +181,37 @@ class GrowthRecordServiceImplTest {
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getMetric()).isEqualTo("temperature");
         assertThat(result.getFirst().getValue()).isEqualByComparingTo("22.50");
+    }
+
+    @Test
+    void chartSupportsSampleWeightMetric() {
+        HerbCollectionTaskEntity task = new HerbCollectionTaskEntity();
+        task.setId(30L);
+        when(herbCollectionTaskMapper.selectById(30L)).thenReturn(task);
+        GrowthRecordEntity record = new GrowthRecordEntity();
+        record.setId(40L);
+        when(growthRecordMapper.selectList(any())).thenReturn(List.of(record));
+        GrowthChartPointVO point = new GrowthChartPointVO();
+        point.setRecordId(40L);
+        point.setSampleWeight(new BigDecimal("125.50"));
+        when(growthRecordMapper.selectChartPoints(30L, List.of(40L))).thenReturn(List.of(point));
+
+        List<GrowthChartPointVO> result = service.getChartByTaskId(30L, "sampleWeight");
+
+        assertThat(result.getFirst().getMetric()).isEqualTo("sampleWeight");
+        assertThat(result.getFirst().getValue()).isEqualByComparingTo("125.50");
+    }
+
+    @Test
+    void reviewPageAlwaysForcesSubmittedStatus() {
+        GrowthRecordQuery query = new GrowthRecordQuery();
+        query.setReviewStatus("draft");
+        when(growthRecordMapper.selectPage(any(), any())).thenReturn(new Page<>());
+
+        service.reviewPage(query);
+
+        assertThat(query.getReviewStatus()).isEqualTo("submitted");
+        verify(dataScopeService).resolveForCurrentUser("herb_growth_record");
     }
 
     @Test
@@ -315,17 +387,28 @@ class GrowthRecordServiceImplTest {
     }
 
     @Test
-    void generateQrCodeCreatesTraceCodeWhenMissing() {
+    void generateQrCodeTargetsWebArchiveAndUsesControlledContentEndpoint() throws Exception {
         login(3L, "ADMIN");
         GrowthRecordEntity record = record("approved", 1L);
         when(growthRecordMapper.selectById(100L)).thenReturn(record);
         when(growthRecordMapper.selectCount(any())).thenReturn(0L);
 
-        GrowthTraceQrCodeVO result =
-                service.generateTraceQrCode(100L, "http://localhost:8080/api");
+        GrowthTraceQrCodeVO result = service.generateTraceQrCode(100L);
 
         assertThat(result.getTraceCode()).startsWith("TRACE_GROWTH_");
-        assertThat(result.getQrCodeUrl()).startsWith("/api/files/trace/qrcode/growth_100_");
+        assertThat(result.getQrCodeUrl()).isEqualTo("/api/growth-records/100/trace-qrcode/content");
+        Path qrCodeFile =
+                tempDir.resolve("trace/qrcode/growth_100_" + result.getTraceCode() + ".png");
+        BufferedImage image = ImageIO.read(qrCodeFile.toFile());
+        String qrContent =
+                new MultiFormatReader()
+                        .decode(
+                                new BinaryBitmap(
+                                        new HybridBinarizer(
+                                                new BufferedImageLuminanceSource(image))))
+                        .getText();
+        assertThat(qrContent)
+                .isEqualTo("http://localhost:3000/trace/growth/" + result.getTraceCode());
         ArgumentCaptor<GrowthTraceEventEntity> captor =
                 ArgumentCaptor.forClass(GrowthTraceEventEntity.class);
         verify(growthTraceEventMapper, org.mockito.Mockito.times(2)).insert(captor.capture());
@@ -370,6 +453,8 @@ class GrowthRecordServiceImplTest {
     void publicTraceReturnsArchiveImagesAuditAndEvents() {
         GrowthRecordEntity record = record("approved", 1L);
         record.setTraceCode("TRACE_GROWTH_EXISTING");
+        record.setTracePublicUrl("/trace/growth/TRACE_GROWTH_EXISTING");
+        record.setTraceQrcodeUrl("/api/growth-records/100/trace-qrcode/content");
         record.setPublicVisible(1);
         record.setBatchId(20L);
         record.setTaskId(30L);
@@ -386,6 +471,7 @@ class GrowthRecordServiceImplTest {
         task.setCollectPlace("标本园");
         when(herbCollectionTaskMapper.selectById(30L)).thenReturn(task);
         HerbImageVO image = new HerbImageVO();
+        image.setId(1L);
         image.setImageUrl("/api/files/1/content");
         image.setImageType("现场图");
         image.setImageRole("whole_plant");
@@ -406,12 +492,54 @@ class GrowthRecordServiceImplTest {
         GrowthPublicTraceArchiveVO archive = service.publicTrace("TRACE_GROWTH_EXISTING");
 
         assertThat(archive.getRecordId()).isEqualTo(100L);
+        assertThat(archive.getTraceUrl()).isEqualTo("/trace/growth/TRACE_GROWTH_EXISTING");
+        assertThat(archive.getQrCodeUrl())
+                .isEqualTo("/api/trace/growth/TRACE_GROWTH_EXISTING/qrcode");
+        assertThat(archive.getPublicVisible()).isEqualTo(1);
         assertThat(archive.getBatchName()).isEqualTo("采集批次A");
         assertThat(archive.getTaskName()).isEqualTo("采集任务A");
         assertThat(archive.getImages()).hasSize(1);
+        assertThat(archive.getImages().getFirst().getImageUrl())
+                .isEqualTo("/api/trace/growth/TRACE_GROWTH_EXISTING/images/1");
         assertThat(archive.getAuditHistory()).hasSize(1);
         assertThat(archive.getTraceTimeline()).hasSize(1);
+        assertThat(
+                        Arrays.stream(
+                                        archive.getAuditHistory()
+                                                .getFirst()
+                                                .getClass()
+                                                .getDeclaredFields())
+                                .map(java.lang.reflect.Field::getName))
+                .doesNotContain("operatorId", "operatorRole");
+        assertThat(
+                        Arrays.stream(
+                                        archive.getTraceTimeline()
+                                                .getFirst()
+                                                .getClass()
+                                                .getDeclaredFields())
+                                .map(java.lang.reflect.Field::getName))
+                .doesNotContain("operatorId", "operatorRole", "metadataJson");
         assertThat(archive.getLatestAuditResult()).isEqualTo("approved");
+    }
+
+    @Test
+    void publicTraceImageRequiresPublishedRecordAndBatchMembership() {
+        GrowthRecordEntity record = record("approved", 1L);
+        record.setTraceCode("TRACE_GROWTH_EXISTING");
+        record.setPublicVisible(1);
+        record.setBatchId(20L);
+        when(growthRecordMapper.selectOne(any())).thenReturn(record);
+        HerbImageVO image = new HerbImageVO();
+        image.setId(1L);
+        image.setImageUrl("/api/files/9/content");
+        when(herbImageMapper.selectByBatchId(20L)).thenReturn(List.of(image));
+        when(fileResourceService.resolveFileId(image.getImageUrl())).thenReturn(9L);
+        FileContentVO content = new FileContentVO();
+        when(fileResourceService.internalContent(9L)).thenReturn(content);
+
+        assertThat(service.publicTraceImage("TRACE_GROWTH_EXISTING", 1L)).isSameAs(content);
+        assertThatThrownBy(() -> service.publicTraceImage("TRACE_GROWTH_EXISTING", 2L))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     private void assertAudit(String action, String before, String after) {
@@ -449,6 +577,21 @@ class GrowthRecordServiceImplTest {
         record.setReviewStatus(status);
         record.setCreatedAt(LocalDateTime.parse("2026-07-12T09:00:00"));
         return record;
+    }
+
+    private HerbBatchEntity writableBatch() {
+        HerbBatchEntity batch = new HerbBatchEntity();
+        batch.setId(20L);
+        batch.setTaskId(30L);
+        batch.setBatchStatus("collecting");
+        return batch;
+    }
+
+    private HerbCollectionTaskEntity activeTask() {
+        HerbCollectionTaskEntity task = new HerbCollectionTaskEntity();
+        task.setId(30L);
+        task.setTaskStatus("in_progress");
+        return task;
     }
 
     private GrowthRecordUpsertRequest upsert() {

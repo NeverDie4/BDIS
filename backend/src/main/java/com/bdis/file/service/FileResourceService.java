@@ -23,6 +23,8 @@ public interface FileResourceService {
 
     FileContentVO publicContent(Long fileId);
 
+    FileContentVO internalContent(Long fileId);
+
     Path resolveLocalPath(String fileUrl);
 
     Long resolveFileId(String fileUrl);

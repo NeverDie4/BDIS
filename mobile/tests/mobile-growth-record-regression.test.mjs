@@ -57,6 +57,7 @@ test('批次详情展示唯一生长记录并支持刷新、编辑和提交', as
   assert.match(source, /submitGrowthRecord/)
   assert.match(source, /pages\/growth\/form\?batchId=/)
   assert.match(source, /\['draft',\s*'rejected'\]\.includes/)
+  assert.match(source, /archived:\s*'已归档'/)
 })
 
 test('生长记录表单已注册且 Web 继续读取任务趋势接口', async () => {

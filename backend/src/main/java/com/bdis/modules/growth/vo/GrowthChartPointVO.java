@@ -22,6 +22,7 @@ public class GrowthChartPointVO {
     private BigDecimal soilMoisture;
     private BigDecimal soilPh;
     private BigDecimal light;
+    private BigDecimal sampleWeight;
     private String growthStage;
     private String collectorName;
     private String auditStatus;

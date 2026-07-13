@@ -390,7 +390,8 @@ function formatGrowthStatus(status) {
     draft: '草稿',
     submitted: '待审核',
     approved: '已通过',
-    rejected: '已驳回'
+    rejected: '已驳回',
+    archived: '已归档'
   }[status] || '草稿'
 }
 

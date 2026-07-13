@@ -1,11 +1,10 @@
 "use client";
 
 import axios from "axios";
-import { App, Button } from "antd";
+import { App, Button, Image } from "antd";
 import { Copy, Download, FileSearch, Printer, QrCode } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SecureImageThumb } from "@/components/common/SecureImageThumb";
 import {
   getPublicGrowthTrace,
   resolveGrowthResourceUrl,
@@ -20,6 +19,7 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
   submitted: { label: "待审核", className: styles.statusSubmitted },
   approved: { label: "已通过", className: styles.statusApproved },
   rejected: { label: "已驳回", className: styles.statusRejected },
+  archived: { label: "已归档", className: styles.statusDraft },
 };
 
 const IMAGE_TYPE_LABELS: Record<string, string> = {
@@ -194,7 +194,11 @@ export default function PublicGrowthTracePage() {
             {archive.auditStatus === "approved" ? <div className={styles.approvalStamp}>审核通过<small>数据可信</small></div> : null}
             {archive.qrCodeUrl ? (
               <div className={styles.coverQr}>
-                <SecureImageThumb src={archive.qrCodeUrl} alt={`${herbName}溯源二维码`} />
+                <Image
+                  src={resolveGrowthResourceUrl(archive.qrCodeUrl)}
+                  alt={`${herbName}溯源二维码`}
+                  preview
+                />
                 <span>扫码查验档案</span>
               </div>
             ) : null}
@@ -249,7 +253,11 @@ export default function PublicGrowthTracePage() {
             <div className={styles.imageGrid}>
               {images.map((image, index) => (
                 <figure key={`${image.imageUrl}-${index}`}>
-                  <SecureImageThumb src={image.imageUrl} alt={`${herbName}现场图片 ${index + 1}`} />
+                  <Image
+                    src={resolveGrowthResourceUrl(image.imageUrl)}
+                    alt={`${herbName}现场图片 ${index + 1}`}
+                    preview
+                  />
                   <figcaption><strong>{IMAGE_TYPE_LABELS[image.imageRole || image.imageType || ""] || "现场图片"}</strong><span>{image.uploaderName || "采集人员"} · {formatTime(image.uploadTime)}</span></figcaption>
                 </figure>
               ))}

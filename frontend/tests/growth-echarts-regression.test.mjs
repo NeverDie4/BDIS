@@ -191,6 +191,11 @@ test("growth 页面用户可见文案统一使用观测点", () => {
   assert.match(pageSource, /有效观测点数/);
 });
 
+test("growth 页面识别后端归档状态且不从趋势数据中过滤归档记录", () => {
+  assert.match(pageSource, /archived:\s*\{\s*label:\s*"已归档"/);
+  assert.match(pageSource, /const visiblePoints = useMemo\(\(\) => points, \[points\]\)/);
+});
+
 test("顶部三区使用统一间距、轻量指标标签和同款 KPI 卡", () => {
   assert.match(cssSource, /\.heroBanner\s*\{[^}]*height:\s*228px;/s);
   assert.match(cssSource, /\.heroCopy h1\s*\{[^}]*font-size:\s*44px;/s);
@@ -279,6 +284,8 @@ test("growth 溯源 API 与右侧二维码卡使用后端真实契约", () => {
   assert.match(dataSource, /disableGrowthPublicTrace/);
   assert.match(dataSource, /\/trace\/public-disable/);
   assert.match(dataSource, /getPublicGrowthTrace/);
+  assert.match(dataSource, /downloadGrowthTraceQrCode/);
+  assert.match(dataSource, /responseType:\s*"blob"/);
   assert.match(dataSource, /axios\.get<ApiResult<GrowthPublicTraceArchiveApi>>/);
   assert.doesNotMatch(dataSource, /getPublicGrowthTrace[\s\S]{0,180}apiGet/);
   assert.match(pageSource, />溯源二维码</);
@@ -288,6 +295,7 @@ test("growth 溯源 API 与右侧二维码卡使用后端真实契约", () => {
   assert.match(pageSource, /公开溯源已关闭/);
   assert.match(pageSource, /TRACE_EVENT_LABELS/);
   assert.match(cssSource, /\.traceQrCard/);
+  assert.doesNotMatch(pageSource, /fetch\(resolveGrowthResourceUrl\(traceQrCode\.qrCodeUrl\)\)/);
 });
 
 test("管理员打开未公开溯源前必须先开启公开查询", () => {
@@ -308,6 +316,9 @@ test("公开生长溯源页提供档案、错误状态、盖章和打印能力",
   assert.match(publicTracePageSource, /审核通过/);
   assert.match(publicTracePageSource, /数据可信/);
   assert.match(publicTracePageSource, /window\.print\(\)/);
+  assert.doesNotMatch(publicTracePageSource, /SecureImageThumb/);
+  assert.match(publicTracePageSource, /resolveGrowthResourceUrl\(archive\.qrCodeUrl\)/);
+  assert.match(publicTracePageSource, /resolveGrowthResourceUrl\(image\.imageUrl\)/);
   assert.doesNotMatch(publicTracePageSource, /<SiteLayout/);
   assert.match(publicTraceCssSource, /@media print/);
   assert.match(publicTraceCssSource, /@page\s*\{\s*size:\s*A4/);
@@ -338,8 +349,9 @@ test("审核员拥有生长记录审核所需的显式数据范围", () => {
   const migrationSource = readFileSync(reviewerScopeMigrationUrl, "utf8");
   assert.match(migrationSource, /role_code\s*=\s*'REVIEWER'/i);
   assert.match(migrationSource, /'herb_growth_record'/i);
-  assert.match(migrationSource, /'all'/i);
-  assert.match(migrationSource, /ON DUPLICATE KEY UPDATE/i);
+  assert.doesNotMatch(migrationSource, /'all'/i);
+  assert.doesNotMatch(migrationSource, /ON DUPLICATE KEY UPDATE/i);
+  assert.match(migrationSource, /NOT EXISTS/i);
 });
 
 test("growth 固定详情使用剩余高度滚动且末端内容不被裁切", () => {
