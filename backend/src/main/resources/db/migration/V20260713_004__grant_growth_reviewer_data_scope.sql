@@ -19,7 +19,7 @@ SELECT
     NULL,
     1,
     0,
-    'Reviewer growth records follow the existing department data scope'
+    'growth-reviewer-scope-migration-20260713-004'
 FROM auth_role role
 WHERE role.role_code = 'REVIEWER'
   AND role.is_deleted = 0

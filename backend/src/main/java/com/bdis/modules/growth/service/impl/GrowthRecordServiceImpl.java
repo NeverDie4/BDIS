@@ -299,6 +299,14 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                 && !"rejected".equals(entity.getReviewStatus())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "当前状态不允许编辑");
         }
+        if (entity.getBatchId() != null) {
+            HerbBatchEntity batch = requireWritableBatch(entity.getBatchId());
+            if (request.getSpeciesId() != null
+                    && !Objects.equals(request.getSpeciesId(), batch.getSpeciesId())) {
+                throw new BusinessException(ResultCodeEnum.CONFLICT, "药材品种必须与所属采集批次一致");
+            }
+            request.setSpeciesId(batch.getSpeciesId());
+        }
         validateReferences(request);
         String metadataJson = buildUpdateMetadata(entity, request);
         apply(entity, request);
@@ -1073,7 +1081,6 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         }
         GrowthPublicAuditVO latest = archive.getAuditHistory().getLast();
         archive.setLatestAuditResult(latest.getAfterStatus());
-        archive.setLatestAuditComment(latest.getComment());
         archive.setLatestAuditTime(latest.getOperateTime());
         archive.setReviewerName(latest.getOperatorName());
     }
@@ -1084,7 +1091,6 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         vo.setBeforeStatus(audit.getBeforeStatus());
         vo.setAfterStatus(audit.getAfterStatus());
         vo.setOperatorName(audit.getOperatorName());
-        vo.setComment(audit.getComment());
         vo.setOperateTime(audit.getOperateTime());
         return vo;
     }
@@ -1093,7 +1099,6 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         GrowthPublicTraceEventVO vo = new GrowthPublicTraceEventVO();
         vo.setEventType(event.getEventType());
         vo.setEventTitle(event.getEventTitle());
-        vo.setEventContent(event.getEventContent());
         vo.setBeforeStatus(event.getBeforeStatus());
         vo.setAfterStatus(event.getAfterStatus());
         vo.setOperatorName(event.getOperatorName());

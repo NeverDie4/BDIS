@@ -280,6 +280,39 @@ class GrowthRecordServiceImplTest {
     }
 
     @Test
+    void genericUpdateRejectsRecordFromCancelledBatch() {
+        login(1L, "COLLECTOR");
+        GrowthRecordEntity record = record("draft", 1L);
+        record.setBatchId(20L);
+        HerbBatchEntity batch = writableBatch();
+        batch.setBatchStatus("cancelled");
+        when(growthRecordMapper.selectById(100L)).thenReturn(record);
+        when(herbBatchMapper.selectById(20L)).thenReturn(batch);
+
+        assertThatThrownBy(() -> service.update(100L, upsert()))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("resultCode", ResultCodeEnum.CONFLICT);
+    }
+
+    @Test
+    void genericUpdateRejectsSpeciesDifferentFromBoundBatch() {
+        login(1L, "COLLECTOR");
+        GrowthRecordEntity record = record("draft", 1L);
+        record.setBatchId(20L);
+        HerbBatchEntity batch = writableBatch();
+        batch.setSpeciesId(10L);
+        GrowthRecordUpsertRequest request = upsert();
+        request.setSpeciesId(11L);
+        when(growthRecordMapper.selectById(100L)).thenReturn(record);
+        when(herbBatchMapper.selectById(20L)).thenReturn(batch);
+        when(herbCollectionTaskMapper.selectById(30L)).thenReturn(activeTask());
+
+        assertThatThrownBy(() -> service.update(100L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("resultCode", ResultCodeEnum.CONFLICT);
+    }
+
+    @Test
     void draftCannotBeApproved() {
         login(2L, "REVIEWER");
         when(growthRecordMapper.selectById(100L)).thenReturn(record("draft", 1L));

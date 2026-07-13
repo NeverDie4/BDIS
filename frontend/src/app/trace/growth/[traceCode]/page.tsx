@@ -9,7 +9,7 @@ import {
   getPublicGrowthTrace,
   resolveGrowthResourceUrl,
   type GrowthPublicTraceArchiveApi,
-  type GrowthTraceEventApi,
+  type GrowthPublicTraceEventApi,
 } from "@/lib/growth-records";
 import type { ApiResult } from "@/types/api";
 import styles from "./page.module.css";
@@ -64,15 +64,18 @@ function statusTransition(before?: string, after?: string) {
   return afterLabel || beforeLabel || "状态未变化";
 }
 
-function eventTitle(event: GrowthTraceEventApi) {
-  return event.eventTitle || TRACE_EVENT_LABELS[event.eventType] || TRACE_EVENT_LABELS[event.action] || "溯源事件";
+function eventTitle(event: GrowthPublicTraceEventApi) {
+  return event.eventTitle || TRACE_EVENT_LABELS[event.eventType] || "溯源事件";
 }
 
 function Metric({ label, value, unit }: { label: string; value?: number | string; unit?: string }) {
   return (
     <div className={styles.metricCard}>
       <span>{label}</span>
-      <strong>{value ?? "-"}{value != null && unit ? <small>{unit}</small> : null}</strong>
+      <strong>
+        {value ?? "-"}
+        {value != null && unit ? <small>{unit}</small> : null}
+      </strong>
     </div>
   );
 }
@@ -147,15 +150,21 @@ export default function PublicGrowthTracePage() {
   }
 
   if (loading) {
-    return <main className={styles.statePage}><div className={styles.loader} /><p>正在加载溯源档案...</p></main>;
+    return (
+      <main className={styles.statePage}>
+        <div className={styles.loader} />
+        <p>正在加载溯源档案...</p>
+      </main>
+    );
   }
 
   if (!archive || errorKind) {
-    const errorCopy = errorKind === "private"
-      ? ["该溯源档案暂未公开", "该记录尚未开启公开查询，请联系管理员开启公开溯源。"]
-      : errorKind === "missing"
-        ? ["未找到对应溯源档案", "请确认溯源码是否正确，或联系系统管理员。"]
-        : ["溯源档案加载失败", "请稍后重试。"];
+    const errorCopy =
+      errorKind === "private"
+        ? ["该溯源档案暂未公开", "该记录尚未开启公开查询，请联系管理员开启公开溯源。"]
+        : errorKind === "missing"
+          ? ["未找到对应溯源档案", "请确认溯源码是否正确，或联系系统管理员。"]
+          : ["溯源档案加载失败", "请稍后重试。"];
     return (
       <main className={styles.statePage}>
         <FileSearch size={42} />
@@ -174,7 +183,10 @@ export default function PublicGrowthTracePage() {
     <main className={styles.page}>
       <header className={styles.brandBar}>
         <div className={styles.brandMark}>本草</div>
-        <div><strong>本草研究院标本馆</strong><span>Herbarium Research Hall</span></div>
+        <div>
+          <strong>本草研究院标本馆</strong>
+          <span>Herbarium Research Hall</span>
+        </div>
         <p>中药材数字溯源档案</p>
       </header>
 
@@ -183,15 +195,23 @@ export default function PublicGrowthTracePage() {
           <div>
             <span className={styles.eyebrow}>DIGITAL TRACE ARCHIVE</span>
             <h1>{herbName}</h1>
-            <p>{archive.batchName || "采集批次未记录"} · {formatTime(archive.collectTime)}</p>
+            <p>
+              {archive.batchName || "采集批次未记录"} · {formatTime(archive.collectTime)}
+            </p>
             <div className={styles.coverMeta}>
-              <span>溯源码 <b>{archive.traceCode}</b></span>
+              <span>
+                溯源码 <b>{archive.traceCode}</b>
+              </span>
               <span className={status?.className}>{status?.label || "状态未记录"}</span>
               <span>数据来源：生物医药数字信息系统</span>
             </div>
           </div>
           <div className={styles.coverAside}>
-            {archive.auditStatus === "approved" ? <div className={styles.approvalStamp}>审核通过<small>数据可信</small></div> : null}
+            {archive.auditStatus === "approved" ? (
+              <div className={styles.approvalStamp}>
+                审核通过<small>数据可信</small>
+              </div>
+            ) : null}
             {archive.qrCodeUrl ? (
               <div className={styles.coverQr}>
                 <Image
@@ -206,25 +226,49 @@ export default function PublicGrowthTracePage() {
         </section>
 
         <div className={`${styles.actions} ${styles.noPrint}`}>
-          <Button icon={<Copy size={16} />} onClick={() => void copyLink()}>复制溯源链接</Button>
-          {archive.qrCodeUrl ? <Button icon={<Download size={16} />} onClick={() => void downloadQrCode()}>下载二维码</Button> : null}
-          <Button type="primary" icon={<Printer size={16} />} onClick={() => window.print()}>打印溯源档案</Button>
+          <Button icon={<Copy size={16} />} onClick={() => void copyLink()}>
+            复制溯源链接
+          </Button>
+          {archive.qrCodeUrl ? (
+            <Button icon={<Download size={16} />} onClick={() => void downloadQrCode()}>
+              下载二维码
+            </Button>
+          ) : null}
+          <Button type="primary" icon={<Printer size={16} />} onClick={() => window.print()}>
+            打印溯源档案
+          </Button>
         </div>
 
         <section className={styles.section}>
-          <header><h2>基础档案</h2><p>采集任务、批次与现场归属信息</p></header>
+          <header>
+            <h2>基础档案</h2>
+            <p>采集任务、批次与现场归属信息</p>
+          </header>
           <dl className={styles.infoGrid}>
             {[
-              ["药材名称", herbName], ["采集任务", archive.taskName], ["采集批次", archive.batchName],
-              ["基地名称", archive.baseName], ["采集地点", archive.collectPlace], ["采集时间", formatTime(archive.collectTime)],
-              ["采集员", archive.collectorName], ["生长阶段", archive.growthStage],
-            ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || "-"}</dd></div>)}
+              ["药材名称", herbName],
+              ["采集任务", archive.taskName],
+              ["采集批次", archive.batchName],
+              ["基地名称", archive.baseName],
+              ["采集地点", archive.collectPlace],
+              ["采集时间", formatTime(archive.collectTime)],
+              ["采集员", archive.collectorName],
+              ["生长阶段", archive.growthStage],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value || "-"}</dd>
+              </div>
+            ))}
           </dl>
         </section>
 
         <div className={styles.metricSections}>
           <section className={styles.section}>
-            <header><h2>环境指标</h2><p>采集现场气候与土壤观测</p></header>
+            <header>
+              <h2>环境指标</h2>
+              <p>采集现场气候与土壤观测</p>
+            </header>
             <div className={styles.metricGrid}>
               <Metric label="温度" value={archive.temperature} unit="℃" />
               <Metric label="湿度" value={archive.humidity} unit="%" />
@@ -235,7 +279,10 @@ export default function PublicGrowthTracePage() {
             </div>
           </section>
           <section className={styles.section}>
-            <header><h2>生长指标</h2><p>植株形态与现场生长评价</p></header>
+            <header>
+              <h2>生长指标</h2>
+              <p>植株形态与现场生长评价</p>
+            </header>
             <div className={styles.metricGrid}>
               <Metric label="株高" value={archive.plantHeight} unit="cm" />
               <Metric label="茎粗" value={archive.stemDiameter} unit="mm" />
@@ -248,7 +295,10 @@ export default function PublicGrowthTracePage() {
         </div>
 
         <section className={styles.section}>
-          <header><h2>现场图片证据</h2><p>以下图片来自该采集批次，用于佐证本次生长记录。</p></header>
+          <header>
+            <h2>现场图片证据</h2>
+            <p>以下图片来自该采集批次，用于佐证本次生长记录。</p>
+          </header>
           {images.length ? (
             <div className={styles.imageGrid}>
               {images.map((image, index) => (
@@ -258,41 +308,86 @@ export default function PublicGrowthTracePage() {
                     alt={`${herbName}现场图片 ${index + 1}`}
                     preview
                   />
-                  <figcaption><strong>{IMAGE_TYPE_LABELS[image.imageRole || image.imageType || ""] || "现场图片"}</strong><span>{image.uploaderName || "采集人员"} · {formatTime(image.uploadTime)}</span></figcaption>
+                  <figcaption>
+                    <strong>
+                      {IMAGE_TYPE_LABELS[image.imageRole || image.imageType || ""] || "现场图片"}
+                    </strong>
+                    <span>
+                      {image.uploaderName || "采集人员"} · {formatTime(image.uploadTime)}
+                    </span>
+                  </figcaption>
                 </figure>
               ))}
             </div>
-          ) : <div className={styles.empty}><QrCode size={28} /><strong>暂无现场图片证据</strong></div>}
+          ) : (
+            <div className={styles.empty}>
+              <QrCode size={28} />
+              <strong>暂无现场图片证据</strong>
+            </div>
+          )}
         </section>
 
         <section className={styles.section}>
-          <header><h2>审核信息</h2><p>档案当前审核结论与最近一次审核记录</p></header>
+          <header>
+            <h2>审核信息</h2>
+            <p>档案当前审核结论与最近一次审核记录</p>
+          </header>
           {archive.latestAuditResult || archive.latestAuditTime ? (
             <dl className={styles.auditCard}>
-              <div><dt>当前状态</dt><dd>{statusLabel(archive.auditStatus)}</dd></div>
-              <div><dt>审核结果</dt><dd>{archive.latestAuditResult || "-"}</dd></div>
-              <div><dt>审核人</dt><dd>{archive.reviewerName || "-"}</dd></div>
-              <div><dt>审核时间</dt><dd>{formatTime(archive.latestAuditTime)}</dd></div>
-              <div className={styles.auditComment}><dt>审核意见</dt><dd>{archive.latestAuditComment || "无审核意见"}</dd></div>
+              <div>
+                <dt>当前状态</dt>
+                <dd>{statusLabel(archive.auditStatus)}</dd>
+              </div>
+              <div>
+                <dt>审核结果</dt>
+                <dd>{archive.latestAuditResult || "-"}</dd>
+              </div>
+              <div>
+                <dt>审核人</dt>
+                <dd>{archive.reviewerName || "-"}</dd>
+              </div>
+              <div>
+                <dt>审核时间</dt>
+                <dd>{formatTime(archive.latestAuditTime)}</dd>
+              </div>
             </dl>
-          ) : <div className={styles.empty}><strong>暂无审核记录</strong></div>}
+          ) : (
+            <div className={styles.empty}>
+              <strong>暂无审核记录</strong>
+            </div>
+          )}
         </section>
 
         <section className={styles.section}>
-          <header><h2>溯源时间线</h2><p>从记录创建到公开查询的完整档案链路</p></header>
+          <header>
+            <h2>溯源时间线</h2>
+            <p>从记录创建到公开查询的完整档案链路</p>
+          </header>
           {timeline.length ? (
             <ol className={styles.timeline}>
               {timeline.map((event, index) => (
                 <li key={`${event.eventType}-${event.eventTime || index}`}>
                   <i />
-                  <div><strong>{eventTitle(event)}</strong><span>{statusTransition(event.beforeStatus, event.afterStatus)}</span><p>{event.eventContent || event.comment || "-"}</p><small>{event.operatorName || "系统"} · {formatTime(event.eventTime)}</small></div>
+                  <div>
+                    <strong>{eventTitle(event)}</strong>
+                    <span>{statusTransition(event.beforeStatus, event.afterStatus)}</span>
+                    <small>
+                      {event.operatorName || "系统"} · {formatTime(event.eventTime)}
+                    </small>
+                  </div>
                 </li>
               ))}
             </ol>
-          ) : <div className={styles.empty}><strong>暂无溯源事件</strong></div>}
+          ) : (
+            <div className={styles.empty}>
+              <strong>暂无溯源事件</strong>
+            </div>
+          )}
         </section>
 
-        <footer className={styles.footer}>本溯源档案由生物医药数字信息系统根据采集记录、审核记录和溯源事件自动生成。</footer>
+        <footer className={styles.footer}>
+          本溯源档案由生物医药数字信息系统根据采集记录、审核记录和溯源事件自动生成。
+        </footer>
       </div>
     </main>
   );

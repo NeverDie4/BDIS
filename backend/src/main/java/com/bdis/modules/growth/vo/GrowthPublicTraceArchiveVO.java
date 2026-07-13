@@ -42,7 +42,6 @@ public class GrowthPublicTraceArchiveVO {
     private BigDecimal sampleWeight;
 
     private String latestAuditResult;
-    private String latestAuditComment;
     private LocalDateTime latestAuditTime;
     private String reviewerName;
 

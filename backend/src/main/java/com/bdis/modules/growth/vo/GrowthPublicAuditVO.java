@@ -10,6 +10,5 @@ public class GrowthPublicAuditVO {
     private String beforeStatus;
     private String afterStatus;
     private String operatorName;
-    private String comment;
     private LocalDateTime operateTime;
 }

@@ -81,13 +81,7 @@ export type GrowthTraceEventApi = {
 };
 
 export type GrowthMetricKey =
-  | "plantHeight"
-  | "temperature"
-  | "humidity"
-  | "soilMoisture"
-  | "soilPh"
-  | "light"
-  | "sampleWeight";
+  "plantHeight" | "temperature" | "humidity" | "soilMoisture" | "soilPh" | "light" | "sampleWeight";
 
 export type GrowthTaskApi = {
   id: number;
@@ -129,10 +123,7 @@ export type GrowthChartDatum = GrowthChartPointApi & {
 };
 
 export type GrowthChartEmptyReason =
-  | "no-records"
-  | "no-status-records"
-  | "no-metric-values"
-  | "metric-missing";
+  "no-records" | "no-status-records" | "no-metric-values" | "metric-missing";
 
 export type GrowthChartBuildResult = {
   validPoints: GrowthChartDatum[];
@@ -151,6 +142,22 @@ export type GrowthAuditHistoryApi = {
   operateTime?: string;
 };
 
+export type GrowthPublicAuditApi = {
+  actionType: string;
+  beforeStatus?: string;
+  afterStatus?: string;
+  operatorName?: string;
+  operateTime?: string;
+};
+
+export type GrowthPublicTraceEventApi = {
+  eventType: string;
+  eventTitle?: string;
+  beforeStatus?: string;
+  afterStatus?: string;
+  operatorName?: string;
+  eventTime?: string;
+};
 export type GrowthTraceQrCodeApi = {
   recordId: number;
   traceCode?: string;
@@ -199,12 +206,11 @@ export type GrowthPublicTraceArchiveApi = {
   growthEvaluation?: string;
   sampleWeight?: number;
   latestAuditResult?: string;
-  latestAuditComment?: string;
   latestAuditTime?: string;
   reviewerName?: string;
   images?: GrowthPublicTraceImageApi[];
-  auditHistory?: GrowthAuditHistoryApi[];
-  traceTimeline?: GrowthTraceEventApi[];
+  auditHistory?: GrowthPublicAuditApi[];
+  traceTimeline?: GrowthPublicTraceEventApi[];
 };
 
 export type GrowthRecordPayload = {
@@ -348,10 +354,9 @@ export function getGrowthTraceQrCode(recordId: number) {
 }
 
 export async function downloadGrowthTraceQrCode(recordId: number) {
-  const response = await request.get<Blob>(
-    `/growth-records/${recordId}/trace-qrcode/content`,
-    { responseType: "blob" },
-  );
+  const response = await request.get<Blob>(`/growth-records/${recordId}/trace-qrcode/content`, {
+    responseType: "blob",
+  });
   return response.data;
 }
 

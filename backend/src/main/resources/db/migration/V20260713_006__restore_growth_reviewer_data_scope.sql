@@ -10,5 +10,6 @@ SET `scope`.`scope_type` = `role`.`data_scope`,
 WHERE `role`.`role_code` = 'REVIEWER'
   AND `scope`.`resource_type` = 'herb_growth_record'
   AND `scope`.`scope_type` = 'all'
+  AND `scope`.`remark` = 'Reviewers can access growth records pending review'
   AND `role`.`data_scope` <> 'all'
   AND `scope`.`is_deleted` = 0;
