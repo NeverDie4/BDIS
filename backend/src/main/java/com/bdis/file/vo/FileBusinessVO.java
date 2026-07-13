@@ -12,6 +12,7 @@ public class FileBusinessVO {
     private Long bizId;
     private String fileUsage;
     private Integer sortOrder;
+    private Long createdBy;
     private LocalDateTime createdAt;
     private String remark;
 }

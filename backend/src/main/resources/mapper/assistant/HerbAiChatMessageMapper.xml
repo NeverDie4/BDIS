@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.mapper.HerbAiChatMessageMapper">
+    <resultMap id="MessageVOResultMap" type="com.bdis.modules.assistant.vo.HerbAiChatMessageVO">
+        <result column="role" property="role"/>
+        <result column="content" property="content"/>
+        <result column="model_name" property="modelName"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_ai_chat_message (
+            session_id, user_id, role, content, model_name, token_count, source,
+            error_message, create_time, update_time, is_deleted
+        ) VALUES (
+            #{sessionId}, #{userId}, #{role}, #{content}, #{modelName}, #{tokenCount}, #{source},
+            #{errorMessage}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <select id="selectBySessionId" resultMap="MessageVOResultMap">
+        SELECT role, content, model_name, create_time
+        FROM herb_ai_chat_message
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
+        ORDER BY create_time ASC, id ASC
+    </select>
+
+    <update id="logicDeleteBySessionId">
+        UPDATE herb_ai_chat_message
+        SET is_deleted = 1, update_time = NOW()
+        WHERE session_id = #{sessionId} AND user_id = #{userId} AND is_deleted = 0
+    </update>
+</mapper>

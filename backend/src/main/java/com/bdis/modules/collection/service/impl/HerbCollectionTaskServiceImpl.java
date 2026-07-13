@@ -10,6 +10,8 @@ import com.bdis.modules.collection.dto.HerbCollectionTaskUpdateRequest;
 import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.service.HerbCollectionTaskService;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbCollectionTaskListVO;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
 import com.bdis.modules.herb.entity.HerbEntity;
@@ -34,12 +36,15 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
 
     private final HerbCollectionTaskMapper herbCollectionTaskMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
+    private final CollectionAccessService collectionAccessService;
 
     public HerbCollectionTaskServiceImpl(
             HerbCollectionTaskMapper herbCollectionTaskMapper,
-            HerbSpeciesMapper herbSpeciesMapper) {
+            HerbSpeciesMapper herbSpeciesMapper,
+            CollectionAccessService collectionAccessService) {
         this.herbCollectionTaskMapper = herbCollectionTaskMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
+        this.collectionAccessService = collectionAccessService;
     }
 
     @Override
@@ -50,6 +55,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
             throw new BusinessException("Task code already exists");
         }
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
+        collectionAccessService.requireAssignableCollector(request.getCollectorId());
         String taskStatus =
                 normalizeStatus(request.getTaskStatus(), HerbCollectionTaskStatusConstants.DRAFT);
 
@@ -74,6 +80,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         entity.setIsDeleted(0);
         entity.setStatus(1);
         entity.setVersion(0);
+        entity.setCreatedBy(collectionAccessService.currentUserId());
+        entity.setUpdatedBy(collectionAccessService.currentUserId());
         herbCollectionTaskMapper.insert(entity);
         return entity.getId() == null ? toVO(entity) : getById(entity.getId());
     }
@@ -82,7 +90,9 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     @Transactional
     public HerbCollectionTaskVO update(Long id, HerbCollectionTaskUpdateRequest request) {
         HerbCollectionTaskEntity existing = getActiveEntity(id);
+        collectionAccessService.requireTaskManage(existing);
         validateUpdateRequest(request);
+        collectionAccessService.requireAssignableCollector(request.getCollectorId());
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
         String taskStatus = normalizeStatus(request.getTaskStatus(), existing.getTaskStatus());
 
@@ -100,6 +110,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         existing.setDescription(request.getDescription());
         existing.setRemark(request.getRemark());
         existing.setUpdatedAt(LocalDateTime.now());
+        existing.setUpdatedBy(collectionAccessService.currentUserId());
         int affected = herbCollectionTaskMapper.updateById(existing);
         if (affected == 0) {
             throw new BusinessException("Collection task not found or already deleted");
@@ -111,6 +122,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     @Transactional
     public void delete(Long id) {
         HerbCollectionTaskEntity existing = getActiveEntity(id);
+        collectionAccessService.requireTaskManage(existing);
         Long batchCount = herbCollectionTaskMapper.countBatchByTaskId(id);
         if (batchCount != null && batchCount > 0) {
             throw new BusinessException(
@@ -124,6 +136,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
 
     @Override
     public HerbCollectionTaskVO getById(Long id) {
+        collectionAccessService.requireTaskAccess(getActiveEntity(id));
         HerbCollectionTaskVO detail = herbCollectionTaskMapper.selectDetailById(id);
         if (detail == null) {
             throw new BusinessException("Collection task not found");
@@ -137,10 +150,12 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
                 request == null ? new HerbCollectionTaskQueryRequest() : request;
         normalizePageRequest(safeRequest);
         safeRequest.setExcludedStatuses(null);
-        Long total = herbCollectionTaskMapper.countPage(safeRequest);
+        CollectionAccessScope scope = collectionAccessService.currentScope();
+        Long total = herbCollectionTaskMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbCollectionTaskVO> records =
-                herbCollectionTaskMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
+                herbCollectionTaskMapper.selectPage(
+                        safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -149,9 +164,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     public PageResult<HerbCollectionTaskVO> myTasks(HerbCollectionTaskMyQueryRequest request) {
         HerbCollectionTaskMyQueryRequest safeRequest =
                 request == null ? new HerbCollectionTaskMyQueryRequest() : request;
-        if (safeRequest.getCollectorId() == null) {
-            throw new BusinessException("Collector id is required");
-        }
+        safeRequest.setCollectorId(collectionAccessService.currentUserId());
         normalizePageRequest(safeRequest);
         if (!StringUtils.hasText(safeRequest.getTaskStatus())) {
             safeRequest.setIncludedStatuses(
@@ -184,13 +197,15 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
             validateStatus(safeRequest.getTaskStatus());
             safeRequest.setExcludedStatuses(null);
         }
-        return herbCollectionTaskMapper.selectList(safeRequest);
+        return herbCollectionTaskMapper.selectList(
+                safeRequest, collectionAccessService.currentScope());
     }
 
     @Override
     @Transactional
     public HerbCollectionTaskVO publish(Long id) {
         HerbCollectionTaskEntity existing = getActiveEntity(id);
+        collectionAccessService.requireTaskManage(existing);
         if (!HerbCollectionTaskStatusConstants.DRAFT.equals(existing.getTaskStatus())) {
             throw new BusinessException("Only draft tasks can be published");
         }
@@ -201,6 +216,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     @Transactional
     public HerbCollectionTaskVO start(Long id) {
         HerbCollectionTaskEntity existing = getActiveEntity(id);
+        collectionAccessService.requireTaskExecution(existing);
         if (!HerbCollectionTaskStatusConstants.PUBLISHED.equals(existing.getTaskStatus())) {
             throw new BusinessException("Only published tasks can be started");
         }
@@ -211,6 +227,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     @Transactional
     public HerbCollectionTaskVO complete(Long id) {
         HerbCollectionTaskEntity existing = getActiveEntity(id);
+        collectionAccessService.requireTaskExecution(existing);
         if (!HerbCollectionTaskStatusConstants.IN_PROGRESS.equals(existing.getTaskStatus())) {
             throw new BusinessException("Only in-progress tasks can be completed");
         }
@@ -221,6 +238,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
     @Transactional
     public HerbCollectionTaskVO cancel(Long id) {
         HerbCollectionTaskEntity existing = getActiveEntity(id);
+        collectionAccessService.requireTaskManage(existing);
         if (HerbCollectionTaskStatusConstants.COMPLETED.equals(existing.getTaskStatus())) {
             throw new BusinessException("Completed tasks cannot be cancelled");
         }

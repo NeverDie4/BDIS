@@ -18,6 +18,14 @@ public class MobileImageIdentificationVO {
 
     private String imageUrl;
 
+    private String imageName;
+
+    private String imageRole;
+
+    private String collectPlace;
+
+    private LocalDateTime collectTime;
+
     private Long finalSpeciesId;
 
     private String finalSpeciesName;

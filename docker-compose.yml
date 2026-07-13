@@ -10,9 +10,14 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${MYSQL_DOCKER_PORT:-3307}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -26,6 +31,45 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ai-recognition:
+    build:
+      context: ./ai_service
+      target: recognition
+    container_name: bdis-ai-recognition
+    restart: unless-stopped
+    command: uvicorn recognize_app:app --host 0.0.0.0 --port 8001
+    environment:
+      ARK_API_KEY: ${ARK_API_KEY:-}
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ai-feature:
+    build:
+      context: ./ai_service
+      target: feature
+    container_name: bdis-ai-feature
+    restart: unless-stopped
+    command: uvicorn feature_app:app --host 0.0.0.0 --port 8002
+    volumes:
+      - ai-model-cache:/root/.cache/torch
+    expose:
+      - "8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
 
   backend:
     build:
@@ -33,8 +77,10 @@ services:
     container_name: bdis-backend
     restart: unless-stopped
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker
       MYSQL_HOST: mysql
@@ -45,8 +91,39 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
-      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-false}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+      BDIS_BOOTSTRAP_TOKEN: ${BDIS_BOOTSTRAP_TOKEN:?set BDIS_BOOTSTRAP_TOKEN in .env}
+      BDIS_JWT_SECRET: ${BDIS_JWT_SECRET:?set BDIS_JWT_SECRET in .env}
+      BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES: ${BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES:-120}
       BDIS_FILE_STORAGE_PATH: /app/storage
+      FILE_ATLAS_IMPORT_PATH: /app/import/herb_atlas
+      HERB_RECOGNITION_ENABLED: ${HERB_RECOGNITION_ENABLED:-false}
+      HERB_RECOGNITION_SERVICE_URL: http://ai-recognition:8001/recognize
+      HERB_FEATURE_ENABLED: ${HERB_FEATURE_ENABLED:-true}
+      HERB_FEATURE_TIMEOUT_SECONDS: ${HERB_FEATURE_TIMEOUT_SECONDS:-30}
+      HERB_FEATURE_MODEL_VERSION: ${HERB_FEATURE_MODEL_VERSION:-resnet50-imagenet-v1}
+      HERB_FEATURE_RECOVERY_ENABLED: ${HERB_FEATURE_RECOVERY_ENABLED:-true}
+      HERB_FEATURE_RECOVERY_INITIAL_DELAY_MS: ${HERB_FEATURE_RECOVERY_INITIAL_DELAY_MS:-5000}
+      HERB_FEATURE_RECOVERY_INTERVAL_MS: ${HERB_FEATURE_RECOVERY_INTERVAL_MS:-60000}
+      HERB_FEATURE_SERVICE_URL: http://ai-feature:8002/feature
+      HERB_FEATURE_EXTRACTION_SERVICE_URL: http://ai-feature:8002/extract-feature
+      HERB_ASSISTANT_ENABLED: ${HERB_ASSISTANT_ENABLED:-true}
+      HERB_ASSISTANT_MOCK_ENABLED: ${HERB_ASSISTANT_MOCK_ENABLED:-false}
+      HERB_ASSISTANT_MODEL: ${HERB_ASSISTANT_MODEL:-}
+      HERB_ASSISTANT_BASE_URL: ${HERB_ASSISTANT_BASE_URL:-}
+      HERB_ASSISTANT_API_KEY: ${HERB_ASSISTANT_API_KEY:-}
+      HERB_ASSISTANT_TIMEOUT_SECONDS: ${HERB_ASSISTANT_TIMEOUT_SECONDS:-60}
+      HERB_ASSISTANT_RAG_ENABLED: ${HERB_ASSISTANT_RAG_ENABLED:-true}
+      HERB_ASSISTANT_RAG_MOCK_EMBEDDING_ENABLED: ${HERB_ASSISTANT_RAG_MOCK_EMBEDDING_ENABLED:-true}
+      HERB_ASSISTANT_RAG_EMBEDDING_ENABLED: ${HERB_ASSISTANT_RAG_EMBEDDING_ENABLED:-false}
+      HERB_ASSISTANT_RAG_EMBEDDING_MODEL: ${HERB_ASSISTANT_RAG_EMBEDDING_MODEL:-}
+      HERB_ASSISTANT_RAG_EMBEDDING_BASE_URL: ${HERB_ASSISTANT_RAG_EMBEDDING_BASE_URL:-}
+      HERB_ASSISTANT_RAG_EMBEDDING_API_KEY: ${HERB_ASSISTANT_RAG_EMBEDDING_API_KEY:-}
+      HERB_ASSISTANT_RAG_VECTOR_STORE_PATH: /app/storage/vector-store/herb-knowledge.json
+      HERB_ASSISTANT_RAG_CHUNK_SIZE: ${HERB_ASSISTANT_RAG_CHUNK_SIZE:-800}
+      HERB_ASSISTANT_RAG_CHUNK_OVERLAP: ${HERB_ASSISTANT_RAG_CHUNK_OVERLAP:-100}
+      HERB_ASSISTANT_RAG_TOP_K: ${HERB_ASSISTANT_RAG_TOP_K:-5}
+      HERB_ASSISTANT_RAG_SIMILARITY_THRESHOLD: ${HERB_ASSISTANT_RAG_SIMILARITY_THRESHOLD:-0.6}
     volumes:
       - bdis-storage:/app/storage
     ports:
@@ -54,9 +131,10 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080/api}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
     container_name: bdis-frontend
     restart: unless-stopped
     depends_on:
@@ -80,3 +158,4 @@ volumes:
   mysql-data:
   redis-data:
   bdis-storage:
+  ai-model-cache:

@@ -78,6 +78,19 @@
           AND is_deleted = 0
     </update>
 
+    <update id="updateActiveFailure"
+            parameterType="com.bdis.modules.spectrum.entity.HerbImageFeatureEntity">
+        UPDATE herb_image_feature
+        SET extract_time = #{extractTime},
+            error_message = #{errorMessage},
+            updated_at = #{updatedAt}
+        WHERE image_id = #{imageId}
+          AND feature_model = #{featureModel}
+          AND feature_version = #{featureVersion}
+          AND extract_status = 'failed'
+          AND is_deleted = 0
+    </update>
+
     <select id="existsSuccessByImageIdAndModel" resultType="int">
         SELECT COUNT(1)
         FROM herb_image_feature
@@ -106,6 +119,27 @@
         FROM herb_image_feature
         WHERE image_id = #{imageId}
           AND extract_status = 'success'
+          AND is_deleted = 0
+        ORDER BY extract_time DESC, created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectLatestByImageId" resultMap="FeatureVOResultMap">
+        SELECT
+        'image' AS target_type,
+        image_id AS target_id,
+        image_id,
+        species_id,
+        feature_code,
+        feature_vector,
+        feature_dimension,
+        feature_model,
+        feature_version,
+        extract_status,
+        extract_time,
+        error_message
+        FROM herb_image_feature
+        WHERE image_id = #{imageId}
           AND is_deleted = 0
         ORDER BY extract_time DESC, created_at DESC
         LIMIT 1

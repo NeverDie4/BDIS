@@ -107,7 +107,12 @@ class SecurityConfigTest {
     }
 
     @Test
-    void uploadedFilesRemainPubliclyReadable() throws Exception {
-        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isNotFound());
+    void privateStoragePathRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void publicFileEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(get("/public-files/1/content")).andExpect(status().isNotFound());
     }
 }

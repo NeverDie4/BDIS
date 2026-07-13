@@ -2,6 +2,7 @@ package com.bdis.modules.collection.mapper;
 
 import com.bdis.modules.collection.dto.HerbBatchQueryRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.collection.vo.HerbBatchListVO;
 import com.bdis.modules.collection.vo.HerbBatchVO;
 import java.util.List;
@@ -19,14 +20,19 @@ public interface HerbBatchMapper {
 
     HerbBatchEntity selectByBatchCode(@Param("batchCode") String batchCode);
 
-    Long countPage(@Param("query") HerbBatchQueryRequest query);
+    Long countPage(
+            @Param("query") HerbBatchQueryRequest query,
+            @Param("scope") CollectionAccessScope scope);
 
     List<HerbBatchVO> selectPage(
             @Param("query") HerbBatchQueryRequest query,
+            @Param("scope") CollectionAccessScope scope,
             @Param("offset") Long offset,
             @Param("pageSize") Integer pageSize);
 
-    List<HerbBatchListVO> selectList(@Param("query") HerbBatchQueryRequest query);
+    List<HerbBatchListVO> selectList(
+            @Param("query") HerbBatchQueryRequest query,
+            @Param("scope") CollectionAccessScope scope);
 
     int logicDeleteById(@Param("id") Long id);
 

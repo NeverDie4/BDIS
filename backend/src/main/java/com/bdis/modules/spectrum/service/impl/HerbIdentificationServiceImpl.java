@@ -2,10 +2,14 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.CurrentUser;
+import com.bdis.common.security.SecurityUtils;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.config.HerbIdentificationProperties;
 import com.bdis.modules.spectrum.constant.HerbMatchResultConstants;
 import com.bdis.modules.spectrum.constant.HerbProcessStatusConstants;
@@ -54,6 +58,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     private final HerbRecognitionService herbRecognitionService;
     private final HerbIdentificationProperties properties;
     private final ObjectMapper objectMapper;
+    private final HerbImageAccessService herbImageAccessService;
 
     public HerbIdentificationServiceImpl(
             HerbImageMapper herbImageMapper,
@@ -65,7 +70,8 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             HerbImageMatchService herbImageMatchService,
             HerbRecognitionService herbRecognitionService,
             HerbIdentificationProperties properties,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            HerbImageAccessService herbImageAccessService) {
         this.herbImageMapper = herbImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.herbImageFeatureMapper = herbImageFeatureMapper;
@@ -76,6 +82,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         this.herbRecognitionService = herbRecognitionService;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.herbImageAccessService = herbImageAccessService;
     }
 
     @Override
@@ -125,11 +132,12 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         HerbIdentificationQueryRequest safeRequest =
                 request == null ? new HerbIdentificationQueryRequest() : request;
         normalizePageRequest(safeRequest);
-        Long total = identificationResultMapper.countPage(safeRequest);
+        CollectionAccessScope scope = herbImageAccessService.currentScope();
+        Long total = identificationResultMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbIdentificationPageVO> records =
                 identificationResultMapper.selectPage(
-                        safeRequest, offset, safeRequest.getPageSize());
+                        safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -137,26 +145,43 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
     @Override
     @Transactional
     public HerbIdentificationVO review(Long id, HerbIdentificationReviewRequest request) {
+        validateReviewRequest(request);
         HerbIdentificationResultEntity result = identificationResultMapper.selectActiveById(id);
         if (result == null) {
             throw new BusinessException("Identification result not found");
         }
-        HerbIdentificationReviewRequest safeRequest =
-                request == null ? new HerbIdentificationReviewRequest() : request;
-        HerbEntity species = resolveReviewSpecies(safeRequest);
-        result.setFinalSpeciesId(
-                species == null ? safeRequest.getFinalSpeciesId() : species.getId());
-        result.setFinalSpeciesName(resolveReviewSpeciesName(safeRequest, species));
-        applyReviewStatus(result, safeRequest);
-        result.setReviewComment(safeRequest.getReviewComment());
-        result.setReviewerId(safeRequest.getReviewerId());
-        result.setReviewerName(safeRequest.getReviewerName());
+        HerbImageEntity image = getActiveImage(result.getImageId());
+        HerbEntity species = resolveReviewSpecies(request);
+        result.setFinalSpeciesId(species == null ? null : species.getId());
+        result.setFinalSpeciesName(species == null ? null : species.getHerbName());
+        applyReviewStatus(result, request);
+        result.setReviewComment(request.getReviewComment());
+        CurrentUser reviewer = SecurityUtils.currentUser();
+        result.setReviewerId(reviewer.getUserId());
+        result.setReviewerName(
+                StringUtils.hasText(reviewer.getRealName())
+                        ? reviewer.getRealName()
+                        : reviewer.getUsername());
         result.setReviewTime(LocalDateTime.now());
         result.setUpdatedAt(result.getReviewTime());
         identificationResultMapper.updateReviewResult(result);
-        HerbImageEntity image = getActiveImage(result.getImageId());
         updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.REVIEWED);
         return latest(image.getId());
+    }
+
+    private void validateReviewRequest(HerbIdentificationReviewRequest request) {
+        if (request == null) {
+            throw new BusinessException("Review request is required");
+        }
+        String reviewStatus = request.getReviewStatus();
+        if (!HerbReviewStatusConstants.CONFIRMED.equals(reviewStatus)
+                && !HerbReviewStatusConstants.REJECTED.equals(reviewStatus)) {
+            throw new BusinessException("Review status must be confirmed or rejected");
+        }
+        if (HerbReviewStatusConstants.CONFIRMED.equals(reviewStatus)
+                && (request.getFinalSpeciesId() == null || request.getFinalSpeciesId() <= 0)) {
+            throw new BusinessException("Final species is required for confirmed review");
+        }
     }
 
     private HerbImageEntity getActiveImage(Long imageId) {
@@ -167,6 +192,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         if (image == null) {
             throw new BusinessException("Herb image not found");
         }
+        herbImageAccessService.requireAccess(image);
         return image;
     }
 
@@ -264,11 +290,9 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
 
     private String localSuggestion(String matchResult) {
         return switch (matchResult) {
-            case HerbMatchResultConstants.MATCHED ->
-                    "Local atlas similarity is high and can be used as a preliminary result";
-            case HerbMatchResultConstants.UNCERTAIN ->
-                    "Local atlas has candidates but confidence is insufficient, manual review is required";
-            default -> "Local atlas cannot make a reliable judgment, manual review is required";
+            case HerbMatchResultConstants.MATCHED -> "本地图谱相似度较高，可作为初步识别结果";
+            case HerbMatchResultConstants.UNCERTAIN -> "本地图谱存在候选结果，但置信度不足，建议人工复核";
+            default -> "本地图谱无法作出可靠判断，建议人工复核";
         };
     }
 
@@ -290,14 +314,6 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             throw new BusinessException("Herb species not found");
         }
         return species;
-    }
-
-    private String resolveReviewSpeciesName(
-            HerbIdentificationReviewRequest request, HerbEntity species) {
-        if (StringUtils.hasText(request.getFinalSpeciesName())) {
-            return request.getFinalSpeciesName();
-        }
-        return species == null ? null : species.getHerbName();
     }
 
     private String rawSummary(
@@ -344,7 +360,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         vo.setMatchResult(result.getMatchResult());
         vo.setNeedReview(result.getNeedReview() != null && result.getNeedReview() == 1);
         vo.setReviewStatus(result.getReviewStatus());
-        vo.setSuggestion(result.getSuggestion());
+        vo.setSuggestion(localizedSuggestion(result.getSuggestion()));
         vo.setReviewComment(result.getReviewComment());
         vo.setReviewerId(result.getReviewerId());
         vo.setReviewerName(result.getReviewerName());
@@ -368,7 +384,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         vo.setMatchResult(result.getMatchResult());
         vo.setNeedReview(result.getNeedReview());
         vo.setReviewStatus(result.getReviewStatus());
-        vo.setSuggestion(result.getSuggestion());
+        vo.setSuggestion(localizedSuggestion(result.getSuggestion()));
         vo.setReviewComment(result.getReviewComment());
         vo.setReviewerId(result.getReviewerId());
         vo.setReviewerName(result.getReviewerName());
@@ -394,7 +410,7 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
         vo.setImageCode(image.getImageNo());
         vo.setImageUrl(image.getImageUrl());
         vo.setNeedReview(true);
-        vo.setSuggestion("No identification result found");
+        vo.setSuggestion("暂未生成识别结果，请先执行识别");
         return vo;
     }
 
@@ -421,30 +437,56 @@ public class HerbIdentificationServiceImpl implements HerbIdentificationService 
             result.setResultSource(HerbResultSourceConstants.MANUAL_REVIEW);
             result.setNeedReview(1);
             result.setReviewStatus(HerbReviewStatusConstants.REJECTED);
-            result.setSuggestion("Manual review rejected, re-processing is required");
+            result.setSuggestion("人工复核未通过，需要重新识别");
             return;
         }
         result.setResultSource(HerbResultSourceConstants.MANUAL_REVIEW);
         result.setNeedReview(0);
         result.setReviewStatus(HerbReviewStatusConstants.CONFIRMED);
-        result.setSuggestion("Manual review confirmed");
+        result.setSuggestion("人工复核已确认");
     }
 
     private String doubaoSuggestion(
             HerbImageMatchVO localMatch, HerbRecognitionVO doubaoRecognition) {
         if (doubaoAgreedWithLocalCandidate(localMatch, doubaoRecognition)) {
             markDoubaoAgreedCandidate(localMatch, doubaoRecognition);
-            return "Doubao auxiliary recognition agrees with a local atlas candidate; manual review should focus on that herb";
+            return "豆包辅助识别与本地图谱候选一致，建议重点复核该候选药材";
         }
-        return "Doubao auxiliary recognition differs from local atlas candidates; manual review is required";
+        return "豆包辅助识别与本地图谱候选不一致，建议人工复核";
     }
 
     private String lowConfidenceSuggestion(String doubaoError) {
         if (StringUtils.hasText(doubaoError)) {
-            return "Local atlas cannot make a reliable judgment; Doubao review failed: "
-                    + doubaoError;
+            return "本地图谱无法作出可靠判断，豆包辅助识别失败：" + doubaoError;
         }
-        return "Local atlas cannot make a reliable judgment, manual review is required";
+        return "本地图谱无法作出可靠判断，建议人工复核";
+    }
+
+    private String localizedSuggestion(String suggestion) {
+        if (!StringUtils.hasText(suggestion)) {
+            return suggestion;
+        }
+        String doubaoFailurePrefix =
+                "Local atlas cannot make a reliable judgment; Doubao review failed: ";
+        if (suggestion.startsWith(doubaoFailurePrefix)) {
+            return "本地图谱无法作出可靠判断，豆包辅助识别失败：" + suggestion.substring(doubaoFailurePrefix.length());
+        }
+        return switch (suggestion) {
+            case "Local atlas similarity is high and can be used as a preliminary result" ->
+                    "本地图谱相似度较高，可作为初步识别结果";
+            case "Local atlas has candidates but confidence is insufficient, manual review is required" ->
+                    "本地图谱存在候选结果，但置信度不足，建议人工复核";
+            case "Local atlas cannot make a reliable judgment, manual review is required" ->
+                    "本地图谱无法作出可靠判断，建议人工复核";
+            case "Doubao auxiliary recognition agrees with a local atlas candidate; manual review should focus on that herb" ->
+                    "豆包辅助识别与本地图谱候选一致，建议重点复核该候选药材";
+            case "Doubao auxiliary recognition differs from local atlas candidates; manual review is required" ->
+                    "豆包辅助识别与本地图谱候选不一致，建议人工复核";
+            case "No identification result found" -> "暂未生成识别结果，请先执行识别";
+            case "Manual review rejected, re-processing is required" -> "人工复核未通过，需要重新识别";
+            case "Manual review confirmed" -> "人工复核已确认";
+            default -> suggestion;
+        };
     }
 
     private boolean doubaoAgreedWithLocalCandidate(

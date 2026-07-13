@@ -1,15 +1,19 @@
 package com.bdis.modules.spectrum.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.config.HerbIdentificationProperties;
 import com.bdis.modules.spectrum.dto.HerbIdentificationReviewRequest;
 import com.bdis.modules.spectrum.dto.HerbIdentifyRequest;
@@ -25,12 +29,17 @@ import com.bdis.modules.spectrum.vo.HerbRecognitionVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class HerbIdentificationServiceTest {
@@ -51,10 +60,24 @@ class HerbIdentificationServiceTest {
 
     @Mock private HerbRecognitionService herbRecognitionService;
 
+    @Mock private HerbImageAccessService herbImageAccessService;
+
     private HerbIdentificationService herbIdentificationService;
 
     @BeforeEach
     void setUp() {
+        CurrentUser reviewer =
+                new CurrentUser(
+                        9L,
+                        "reviewer",
+                        "Reviewer A",
+                        null,
+                        null,
+                        Set.of("REVIEWER"),
+                        Set.of(4L),
+                        Set.of("herb:identification:review"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(reviewer, null));
         herbIdentificationService =
                 new HerbIdentificationServiceImpl(
                         herbImageMapper,
@@ -66,7 +89,13 @@ class HerbIdentificationServiceTest {
                         herbImageMatchService,
                         herbRecognitionService,
                         identificationProperties(),
-                        new ObjectMapper());
+                        new ObjectMapper(),
+                        herbImageAccessService);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -85,6 +114,7 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getResultSource()).isEqualTo("local_match");
         assertThat(captor.getValue().getMatchResult()).isEqualTo("matched");
         assertThat(captor.getValue().getNeedReview()).isZero();
+        assertThat(captor.getValue().getSuggestion()).isEqualTo("本地图谱相似度较高，可作为初步识别结果");
         assertThat(result.getNeedReview()).isFalse();
         verify(herbRecognitionService, never()).recognizeByDoubao(any());
     }
@@ -108,6 +138,7 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(captor.getValue().getFinalConfidence()).isEqualByComparingTo("0.5100");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
+        assertThat(captor.getValue().getSuggestion()).isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
         assertThat(result.getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(result.getDoubaoRecognition().getPredictedName()).isEqualTo("Wuzhimaotao");
     }
@@ -139,8 +170,20 @@ class HerbIdentificationServiceTest {
         verify(identificationResultMapper).insertResult(captor.capture());
         assertThat(captor.getValue().getResultSource()).isEqualTo("local_match");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
-        assertThat(captor.getValue().getSuggestion()).contains("timeout");
+        assertThat(captor.getValue().getSuggestion()).contains("豆包辅助识别失败").contains("timeout");
         assertThat(captor.getValue().getRawSummary()).contains("timeout");
+    }
+
+    @Test
+    void translatesLegacyEnglishSuggestionForExistingResults() {
+        String suggestion =
+                ReflectionTestUtils.invokeMethod(
+                        herbIdentificationService,
+                        "localizedSuggestion",
+                        "Doubao auxiliary recognition differs from local atlas candidates; manual"
+                                + " review is required");
+
+        assertThat(suggestion).isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
     }
 
     @Test
@@ -156,6 +199,7 @@ class HerbIdentificationServiceTest {
         when(herbSpeciesMapper.selectActiveById(2L)).thenReturn(species);
         HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
         request.setFinalSpeciesId(2L);
+        request.setReviewStatus("confirmed");
         request.setReviewComment("confirmed");
 
         herbIdentificationService.review(9L, request);
@@ -166,6 +210,59 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getResultSource()).isEqualTo("manual_review");
         assertThat(captor.getValue().getNeedReview()).isZero();
         assertThat(captor.getValue().getReviewStatus()).isEqualTo("confirmed");
+        assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Dangshen");
+        assertThat(captor.getValue().getReviewerId()).isEqualTo(9L);
+        assertThat(captor.getValue().getReviewerName()).isEqualTo("Reviewer A");
+    }
+
+    @Test
+    void reviewRejectsNullRequest() {
+        assertThatThrownBy(() -> herbIdentificationService.review(9L, null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Review request is required");
+    }
+
+    @Test
+    void reviewRejectsUnknownStatus() {
+        HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
+        request.setFinalSpeciesId(2L);
+        request.setReviewStatus("confirmd");
+
+        assertThatThrownBy(() -> herbIdentificationService.review(9L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Review status must be confirmed or rejected");
+    }
+
+    @Test
+    void reviewRequiresSpeciesWhenConfirmed() {
+        HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
+        request.setReviewStatus("confirmed");
+
+        assertThatThrownBy(() -> herbIdentificationService.review(9L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Final species is required for confirmed review");
+    }
+
+    @Test
+    void reviewAllowsRejectionWithoutSpecies() {
+        HerbIdentificationResultEntity existing = new HerbIdentificationResultEntity();
+        existing.setId(9L);
+        existing.setImageId(1L);
+        when(identificationResultMapper.selectActiveById(9L)).thenReturn(existing);
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(image());
+        HerbIdentificationReviewRequest request = new HerbIdentificationReviewRequest();
+        request.setReviewStatus("rejected");
+        request.setReviewComment("wrong image");
+
+        herbIdentificationService.review(9L, request);
+
+        ArgumentCaptor<HerbIdentificationResultEntity> captor =
+                ArgumentCaptor.forClass(HerbIdentificationResultEntity.class);
+        verify(identificationResultMapper).updateReviewResult(captor.capture());
+        assertThat(captor.getValue().getReviewStatus()).isEqualTo("rejected");
+        assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
+        assertThat(captor.getValue().getFinalSpeciesId()).isNull();
+        assertThat(captor.getValue().getFinalSpeciesName()).isNull();
     }
 
     private HerbIdentificationProperties identificationProperties() {

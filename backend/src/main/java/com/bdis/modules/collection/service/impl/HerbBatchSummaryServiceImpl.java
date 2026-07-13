@@ -10,6 +10,7 @@ import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.service.HerbBatchSummaryService;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchIdentificationItemVO;
 import com.bdis.modules.collection.vo.HerbBatchImageVO;
 import com.bdis.modules.collection.vo.HerbBatchSpeciesStatVO;
@@ -37,20 +38,24 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
     private final HerbBatchMapper herbBatchMapper;
     private final HerbBatchImageMapper herbBatchImageMapper;
     private final HerbSpeciesMapper herbSpeciesMapper;
+    private final CollectionAccessService collectionAccessService;
 
     public HerbBatchSummaryServiceImpl(
             HerbBatchMapper herbBatchMapper,
             HerbBatchImageMapper herbBatchImageMapper,
-            HerbSpeciesMapper herbSpeciesMapper) {
+            HerbSpeciesMapper herbSpeciesMapper,
+            CollectionAccessService collectionAccessService) {
         this.herbBatchMapper = herbBatchMapper;
         this.herbBatchImageMapper = herbBatchImageMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
+        this.collectionAccessService = collectionAccessService;
     }
 
     @Override
     @Transactional
     public HerbBatchSummaryVO refreshSummary(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchOwner(batch);
         if (HerbBatchStatusConstants.ARCHIVED.equals(batch.getBatchStatus())
                 || HerbBatchStatusConstants.CANCELLED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Archived or cancelled batch cannot refresh summary");
@@ -69,6 +74,7 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
     @Override
     public HerbBatchSummaryVO getSummary(Long batchId) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchAccess(batch);
         List<HerbBatchIdentificationItemVO> items = listIdentificationItems(batch.getId());
         HerbBatchSummaryVO summary = baseSummary(batch, items);
         summary.setSpeciesStats(buildSpeciesStats(items, identifiedCount(items)));
@@ -77,7 +83,7 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
 
     @Override
     public List<HerbBatchIdentificationItemVO> listIdentificationItems(Long batchId) {
-        getActiveBatch(batchId);
+        collectionAccessService.requireBatchAccess(getActiveBatch(batchId));
         HerbBatchImageQueryRequest query = new HerbBatchImageQueryRequest();
         query.setBindStatus(HerbBatchImageStatusConstants.BOUND);
         return herbBatchImageMapper.selectBatchImagesWithIdentification(batchId, query).stream()
@@ -89,6 +95,7 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
     @Transactional
     public HerbBatchSummaryVO confirm(Long batchId, HerbBatchConfirmRequest request) {
         HerbBatchEntity batch = getActiveBatch(batchId);
+        collectionAccessService.requireBatchReview(batch);
         if (HerbBatchStatusConstants.ARCHIVED.equals(batch.getBatchStatus())
                 || HerbBatchStatusConstants.CANCELLED.equals(batch.getBatchStatus())) {
             throw new BusinessException("Archived or cancelled batch cannot confirm summary");
@@ -118,8 +125,13 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
         batch.setQualityScore(request.getQualityScore());
         batch.setEvaluationSummary(request.getEvaluationSummary());
         batch.setBatchStatus(HerbBatchStatusConstants.CONFIRMED);
-        batch.setRemark(buildConfirmRemark(request));
+        batch.setRemark(
+                buildConfirmRemark(
+                        request,
+                        collectionAccessService.currentUserId(),
+                        collectionAccessService.currentUserDisplayName()));
         batch.setUpdatedAt(LocalDateTime.now());
+        batch.setUpdatedBy(collectionAccessService.currentUserId());
         int affected = herbBatchMapper.updateStatisticsById(batch);
         if (affected == 0) {
             throw new BusinessException("Failed to confirm batch summary");
@@ -383,24 +395,25 @@ public class HerbBatchSummaryServiceImpl implements HerbBatchSummaryService {
         return item;
     }
 
-    private String buildConfirmRemark(HerbBatchConfirmRequest request) {
+    private String buildConfirmRemark(
+            HerbBatchConfirmRequest request, Long reviewerId, String reviewerName) {
         StringBuilder builder = new StringBuilder();
         if (StringUtils.hasText(request.getRemark())) {
             builder.append(request.getRemark());
         }
-        if (request.getReviewerId() != null || StringUtils.hasText(request.getReviewerName())) {
+        if (reviewerId != null || StringUtils.hasText(reviewerName)) {
             if (!builder.isEmpty()) {
                 builder.append("；");
             }
             builder.append("确认人：");
-            if (request.getReviewerId() != null) {
-                builder.append(request.getReviewerId());
+            if (reviewerId != null) {
+                builder.append(reviewerId);
             }
-            if (StringUtils.hasText(request.getReviewerName())) {
-                if (request.getReviewerId() != null) {
+            if (StringUtils.hasText(reviewerName)) {
+                if (reviewerId != null) {
                     builder.append("/");
                 }
-                builder.append(request.getReviewerName());
+                builder.append(reviewerName);
             }
         }
         return builder.toString();

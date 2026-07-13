@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.spectrum.dto.HerbAtlasQueryRequest;
 import com.bdis.modules.spectrum.dto.HerbAtlasUpdateRequest;
 import com.bdis.modules.spectrum.dto.HerbAtlasUploadRequest;
@@ -24,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/herb/atlas")
+@RequirePermission("herb:identification:view")
 public class HerbAtlasController {
 
     private final HerbAtlasService herbAtlasService;
@@ -33,6 +35,7 @@ public class HerbAtlasController {
     }
 
     @PostMapping("/upload")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbAtlasVO> upload(
             @RequestPart("file") MultipartFile file,
             @Valid @ModelAttribute HerbAtlasUploadRequest request) {
@@ -40,12 +43,14 @@ public class HerbAtlasController {
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("herb:identification:execute")
     public Result<HerbAtlasVO> update(
             @PathVariable Long id, @RequestBody HerbAtlasUpdateRequest request) {
         return Result.success(herbAtlasService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("herb:identification:execute")
     public Result<Void> delete(@PathVariable Long id) {
         herbAtlasService.delete(id);
         return Result.success();

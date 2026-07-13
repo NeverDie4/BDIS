@@ -24,14 +24,16 @@ export function identifyBatchImage(batchId, imageId, data = {}) {
   return request({
     url: `${prefix}/batches/${batchId}/images/${imageId}/identify`,
     method: 'POST',
-    data
+    data,
+    timeout: 180000
   })
 }
 
 export function identifyMissingImages(batchId) {
   return request({
     url: `${prefix}/batches/${batchId}/identify-missing-images`,
-    method: 'POST'
+    method: 'POST',
+    timeout: 180000
   })
 }
 

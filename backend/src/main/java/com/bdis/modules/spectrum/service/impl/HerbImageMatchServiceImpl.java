@@ -2,8 +2,10 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.modules.collection.support.CollectionAccessScope;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.constant.HerbMatchResultConstants;
 import com.bdis.modules.spectrum.constant.HerbProcessStatusConstants;
 import com.bdis.modules.spectrum.dto.HerbImageMatchQueryRequest;
@@ -46,16 +48,19 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
     private final HerbImageFeatureMapper herbImageFeatureMapper;
     private final HerbImageMatchMapper herbImageMatchMapper;
     private final ObjectMapper objectMapper;
+    private final HerbImageAccessService herbImageAccessService;
 
     public HerbImageMatchServiceImpl(
             HerbImageMapper herbImageMapper,
             HerbImageFeatureMapper herbImageFeatureMapper,
             HerbImageMatchMapper herbImageMatchMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            HerbImageAccessService herbImageAccessService) {
         this.herbImageMapper = herbImageMapper;
         this.herbImageFeatureMapper = herbImageFeatureMapper;
         this.herbImageMatchMapper = herbImageMatchMapper;
         this.objectMapper = objectMapper;
+        this.herbImageAccessService = herbImageAccessService;
     }
 
     @Override
@@ -119,10 +124,12 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
         HerbImageMatchQueryRequest safeRequest =
                 request == null ? new HerbImageMatchQueryRequest() : request;
         normalizePageRequest(safeRequest);
-        Long total = herbImageMatchMapper.countPage(safeRequest);
+        CollectionAccessScope scope = herbImageAccessService.currentScope();
+        Long total = herbImageMatchMapper.countPage(safeRequest, scope);
         Long offset = (long) (safeRequest.getPageNum() - 1) * safeRequest.getPageSize();
         List<HerbImageMatchPageVO> records =
-                herbImageMatchMapper.selectPage(safeRequest, offset, safeRequest.getPageSize());
+                herbImageMatchMapper.selectPage(
+                        safeRequest, scope, offset, safeRequest.getPageSize());
         return new PageResult<>(
                 total, safeRequest.getPageNum(), safeRequest.getPageSize(), records);
     }
@@ -135,6 +142,7 @@ public class HerbImageMatchServiceImpl implements HerbImageMatchService {
         if (image == null) {
             throw new BusinessException("Herb image not found");
         }
+        herbImageAccessService.requireAccess(image);
         return image;
     }
 

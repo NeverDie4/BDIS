@@ -196,8 +196,22 @@
         SELECT COUNT(1)
         FROM herb_identification_result r
         INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_growth_record gr
+          ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <where>
             r.is_deleted = 0
+            <if test="scope != null and !scope.allIncluded">
+                AND (
+                    i.uploader_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR gr.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
             <if test="query.imageId != null">
                 AND r.image_id = #{query.imageId}
             </if>
@@ -233,8 +247,22 @@
         <include refid="PageColumns"/>
         FROM herb_identification_result r
         INNER JOIN herb_image i ON i.id = r.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_growth_record gr
+          ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <where>
             r.is_deleted = 0
+            <if test="scope != null and !scope.allIncluded">
+                AND (
+                    i.uploader_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR gr.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
             <if test="query.imageId != null">
                 AND r.image_id = #{query.imageId}
             </if>

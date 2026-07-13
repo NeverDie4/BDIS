@@ -36,13 +36,19 @@ import com.bdis.modules.spectrum.vo.HerbIdentificationVO;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MobileHerbBatchServiceImpl.class);
 
     private final HerbBatchMapper herbBatchMapper;
     private final HerbBatchImageMapper herbBatchImageMapper;
@@ -52,6 +58,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
     private final HerbIdentificationService herbIdentificationService;
     private final HerbBatchSummaryService herbBatchSummaryService;
     private final HerbBatchStatusService herbBatchStatusService;
+    private final MobileBatchAutoIdentificationExecutor autoIdentificationExecutor;
 
     public MobileHerbBatchServiceImpl(
             HerbBatchMapper herbBatchMapper,
@@ -61,7 +68,8 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
             HerbBatchImageService herbBatchImageService,
             HerbIdentificationService herbIdentificationService,
             HerbBatchSummaryService herbBatchSummaryService,
-            HerbBatchStatusService herbBatchStatusService) {
+            HerbBatchStatusService herbBatchStatusService,
+            MobileBatchAutoIdentificationExecutor autoIdentificationExecutor) {
         this.herbBatchMapper = herbBatchMapper;
         this.herbBatchImageMapper = herbBatchImageMapper;
         this.herbCollectionTaskMapper = herbCollectionTaskMapper;
@@ -70,6 +78,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         this.herbIdentificationService = herbIdentificationService;
         this.herbBatchSummaryService = herbBatchSummaryService;
         this.herbBatchStatusService = herbBatchStatusService;
+        this.autoIdentificationExecutor = autoIdentificationExecutor;
     }
 
     @Override
@@ -108,7 +117,8 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         result.setAutoIdentifySuccess(false);
         result.setMessage("uploaded and bound");
         if (Boolean.TRUE.equals(safeRequest.getAutoIdentify())) {
-            identifyBoundImage(batchId, image.getId(), new MobileBatchIdentifyRequest(), result);
+            identifyBoundImageAfterCommit(batchId, image.getId(), new MobileBatchIdentifyRequest());
+            result.setMessage("uploaded and bound, identification queued");
         }
         return result;
     }
@@ -207,28 +217,36 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
 
     @Override
     public MobileImageIdentificationVO latestIdentification(Long imageId) {
-        return toMobileIdentificationVO(herbIdentificationService.latest(imageId));
+        HerbIdentificationVO identification = herbIdentificationService.latest(imageId);
+        HerbImageVO image = herbImageService.getById(imageId);
+        return toMobileIdentificationVO(identification, image);
     }
 
-    private void identifyBoundImage(
-            Long batchId,
-            Long imageId,
-            MobileBatchIdentifyRequest request,
-            MobileBatchImageUploadResultVO result) {
-        try {
-            HerbBatchImageEntity binding = getBoundBinding(batchId, imageId);
-            HerbIdentificationVO identification = identify(imageId, request);
-            updateBindingIdentification(binding, identification.getId());
-            HerbBatchImageVO detail =
-                    herbBatchImageMapper.selectDetailByBatchIdAndImageId(batchId, imageId);
-            fillUploadResult(result, detail);
-            result.setAutoIdentifySuccess(true);
-            result.setMessage("uploaded, bound and identified");
-        } catch (RuntimeException exception) {
-            result.setAutoIdentifySuccess(false);
-            result.setMessage(
-                    "uploaded and bound, but identification failed: " + exception.getMessage());
+    private void identifyBoundImageAfterCommit(
+            Long batchId, Long imageId, MobileBatchIdentifyRequest request) {
+        Runnable task =
+                () -> {
+                    try {
+                        autoIdentificationExecutor.identifyBoundImage(batchId, imageId, request);
+                    } catch (RuntimeException exception) {
+                        LOGGER.warn(
+                                "Auto identification failed after image upload, batchId={}, imageId={}: {}",
+                                batchId,
+                                imageId,
+                                exception.getMessage());
+                    }
+                };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            task.run();
+            return;
         }
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        task.run();
+                    }
+                });
     }
 
     private HerbIdentificationVO identify(Long imageId, MobileBatchIdentifyRequest request) {
@@ -413,12 +431,16 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
     }
 
     private MobileImageIdentificationVO toMobileIdentificationVO(
-            HerbIdentificationVO identification) {
+            HerbIdentificationVO identification, HerbImageVO image) {
         MobileImageIdentificationVO vo = new MobileImageIdentificationVO();
         vo.setId(identification.getId());
         vo.setImageId(identification.getImageId());
         vo.setImageCode(identification.getImageCode());
         vo.setImageUrl(identification.getImageUrl());
+        vo.setImageName(image == null ? null : image.getImageName());
+        vo.setImageRole(image == null ? null : image.getImageType());
+        vo.setCollectPlace(image == null ? null : image.getCollectPlace());
+        vo.setCollectTime(image == null ? null : image.getCollectTime());
         vo.setFinalSpeciesId(identification.getFinalSpeciesId());
         vo.setFinalSpeciesName(identification.getFinalSpeciesName());
         vo.setFinalConfidence(identification.getFinalConfidence());
@@ -428,9 +450,6 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         vo.setReviewStatus(identification.getReviewStatus());
         vo.setSuggestion(identification.getSuggestion());
         vo.setLocalCandidates(identification.getLocalCandidates());
-        if (identification.getDoubaoRecognition() != null) {
-            identification.getDoubaoRecognition().setRawResult(null);
-        }
         vo.setDoubaoRecognition(identification.getDoubaoRecognition());
         vo.setIdentifyTime(identification.getIdentifyTime());
         return vo;

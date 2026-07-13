@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
+import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.spectrum.dto.HerbImageMatchRequest;
 import com.bdis.modules.spectrum.mapper.HerbImageFeatureMapper;
 import com.bdis.modules.spectrum.mapper.HerbImageMatchMapper;
@@ -35,6 +36,8 @@ class HerbImageMatchServiceTest {
 
     @Mock private HerbImageMatchMapper herbImageMatchMapper;
 
+    @Mock private HerbImageAccessService herbImageAccessService;
+
     private HerbImageMatchService herbImageMatchService;
 
     @BeforeEach
@@ -44,7 +47,8 @@ class HerbImageMatchServiceTest {
                         herbImageMapper,
                         herbImageFeatureMapper,
                         herbImageMatchMapper,
-                        new ObjectMapper());
+                        new ObjectMapper(),
+                        herbImageAccessService);
     }
 
     @Test

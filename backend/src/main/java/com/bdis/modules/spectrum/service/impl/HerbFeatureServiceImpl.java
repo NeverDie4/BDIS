@@ -1,7 +1,7 @@
 package com.bdis.modules.spectrum.service.impl;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.spectrum.client.FeatureExtractionClient;
@@ -32,13 +32,14 @@ import org.springframework.util.CollectionUtils;
 public class HerbFeatureServiceImpl implements HerbFeatureService {
 
     private static final String STATUS_SUCCESS = "success";
+    private static final String STATUS_FAILED = "failed";
 
     private final HerbAtlasMapper herbAtlasMapper;
     private final HerbImageMapper herbImageMapper;
     private final HerbAtlasFeatureMapper herbAtlasFeatureMapper;
     private final HerbImageFeatureMapper herbImageFeatureMapper;
     private final FeatureExtractionClient featureExtractionClient;
-    private final FileStorageService fileStorageService;
+    private final FileResourceService fileResourceService;
     private final ObjectMapper objectMapper;
     private final HerbFeatureProperties properties;
 
@@ -48,7 +49,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
             HerbAtlasFeatureMapper herbAtlasFeatureMapper,
             HerbImageFeatureMapper herbImageFeatureMapper,
             FeatureExtractionClient featureExtractionClient,
-            FileStorageService fileStorageService,
+            FileResourceService fileResourceService,
             ObjectMapper objectMapper,
             HerbFeatureProperties properties) {
         this.herbAtlasMapper = herbAtlasMapper;
@@ -56,26 +57,31 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         this.herbAtlasFeatureMapper = herbAtlasFeatureMapper;
         this.herbImageFeatureMapper = herbImageFeatureMapper;
         this.featureExtractionClient = featureExtractionClient;
-        this.fileStorageService = fileStorageService;
+        this.fileResourceService = fileResourceService;
         this.objectMapper = objectMapper;
         this.properties = properties;
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public FeatureExtractResultVO extractAtlasFeature(Long atlasId) {
         SpectrumEntity atlas = getActiveAtlas(atlasId);
         return extractAtlasFeature(atlas);
     }
 
     private FeatureExtractResultVO extractAtlasFeature(SpectrumEntity atlas) {
-        Path imagePath = fileStorageService.resolve(atlas.getImageUrl());
-        FeatureExtractionClientResponse response = extractValidFeature(imagePath);
-        HerbAtlasFeatureEntity feature = buildAtlasFeature(atlas, response);
-        herbAtlasFeatureMapper.deleteActiveByAtlasIdAndModel(
-                atlas.getId(), feature.getFeatureModel(), feature.getFeatureVersion());
-        herbAtlasFeatureMapper.insertFeature(feature);
-        return toAtlasVO(feature, "Feature extracted successfully", false);
+        try {
+            Path imagePath = fileResourceService.resolveLocalPath(atlas.getImageUrl());
+            FeatureExtractionClientResponse response = extractValidFeature(imagePath);
+            HerbAtlasFeatureEntity feature = buildAtlasFeature(atlas, response);
+            herbAtlasFeatureMapper.deleteActiveByAtlasIdAndModel(
+                    atlas.getId(), feature.getFeatureModel(), feature.getFeatureVersion());
+            herbAtlasFeatureMapper.insertFeature(feature);
+            return toAtlasVO(feature, "Feature extracted successfully", false);
+        } catch (RuntimeException exception) {
+            saveAtlasFailure(atlas, exception);
+            throw featureException(exception);
+        }
     }
 
     @Override
@@ -133,22 +139,28 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public FeatureExtractResultVO extractImageFeature(Long imageId) {
         HerbImageEntity image = getActiveImage(imageId);
-        Path imagePath = fileStorageService.resolve(image.getImageUrl());
-        FeatureExtractionClientResponse response = extractValidFeature(imagePath);
-        HerbImageFeatureEntity feature = buildImageFeature(image, response);
-        herbImageFeatureMapper.deleteActiveByImageIdAndModel(
-                image.getId(), feature.getFeatureModel(), feature.getFeatureVersion());
-        herbImageFeatureMapper.insertFeature(feature);
-        updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.FEATURE_EXTRACTED);
-        return toImageVO(feature, "Feature extracted successfully", false);
+        try {
+            Path imagePath = fileResourceService.resolveLocalPath(image.getImageUrl());
+            FeatureExtractionClientResponse response = extractValidFeature(imagePath);
+            HerbImageFeatureEntity feature = buildImageFeature(image, response);
+            herbImageFeatureMapper.deleteActiveByImageIdAndModel(
+                    image.getId(), feature.getFeatureModel(), feature.getFeatureVersion());
+            herbImageFeatureMapper.insertFeature(feature);
+            updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.FEATURE_EXTRACTED);
+            return toImageVO(feature, "Feature extracted successfully", false);
+        } catch (RuntimeException exception) {
+            saveImageFailure(image, exception);
+            updateImageProcessStatus(image.getId(), HerbProcessStatusConstants.FAILED);
+            throw featureException(exception);
+        }
     }
 
     @Override
     public FeatureExtractResultVO getAtlasFeature(Long atlasId, boolean includeVector) {
-        FeatureExtractResultVO vo = herbAtlasFeatureMapper.selectLatestSuccessByAtlasId(atlasId);
+        FeatureExtractResultVO vo = herbAtlasFeatureMapper.selectLatestByAtlasId(atlasId);
         if (vo == null) {
             throw new BusinessException("Atlas feature not found");
         }
@@ -157,7 +169,7 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
 
     @Override
     public FeatureExtractResultVO getImageFeature(Long imageId, boolean includeVector) {
-        FeatureExtractResultVO vo = herbImageFeatureMapper.selectLatestSuccessByImageId(imageId);
+        FeatureExtractResultVO vo = herbImageFeatureMapper.selectLatestByImageId(imageId);
         if (vo == null) {
             throw new BusinessException("Image feature not found");
         }
@@ -230,6 +242,70 @@ public class HerbFeatureServiceImpl implements HerbFeatureService {
         feature.setSpeciesId(image.getSpeciesId());
         fillCommonFeature(feature, response, now);
         return feature;
+    }
+
+    private void saveAtlasFailure(SpectrumEntity atlas, RuntimeException exception) {
+        HerbAtlasFeatureEntity feature = new HerbAtlasFeatureEntity();
+        feature.setAtlasId(atlas.getId());
+        feature.setSpeciesId(atlas.getSpeciesId());
+        fillFailedFeature(feature, failureMessage(exception));
+        if (herbAtlasFeatureMapper.updateActiveFailure(feature) == 0) {
+            herbAtlasFeatureMapper.insertFeature(feature);
+        }
+    }
+
+    private void saveImageFailure(HerbImageEntity image, RuntimeException exception) {
+        HerbImageFeatureEntity feature = new HerbImageFeatureEntity();
+        feature.setImageId(image.getId());
+        feature.setSpeciesId(image.getSpeciesId());
+        fillFailedFeature(feature, failureMessage(exception));
+        if (herbImageFeatureMapper.updateActiveFailure(feature) == 0) {
+            herbImageFeatureMapper.insertFeature(feature);
+        }
+    }
+
+    private void fillFailedFeature(HerbAtlasFeatureEntity feature, String errorMessage) {
+        LocalDateTime now = LocalDateTime.now();
+        feature.setFeatureCode(properties.getModelName() + "_" + properties.getModelVersion());
+        feature.setFeatureModel(properties.getModelName());
+        feature.setFeatureVersion(properties.getModelVersion());
+        feature.setExtractStatus(STATUS_FAILED);
+        feature.setExtractTime(now);
+        feature.setErrorMessage(errorMessage);
+        feature.setCreatedAt(now);
+        feature.setUpdatedAt(now);
+        feature.setIsDeleted(0);
+        feature.setStatus(1);
+        feature.setVersion(0);
+    }
+
+    private void fillFailedFeature(HerbImageFeatureEntity feature, String errorMessage) {
+        LocalDateTime now = LocalDateTime.now();
+        feature.setFeatureCode(properties.getModelName() + "_" + properties.getModelVersion());
+        feature.setFeatureModel(properties.getModelName());
+        feature.setFeatureVersion(properties.getModelVersion());
+        feature.setExtractStatus(STATUS_FAILED);
+        feature.setExtractTime(now);
+        feature.setErrorMessage(errorMessage);
+        feature.setCreatedAt(now);
+        feature.setUpdatedAt(now);
+        feature.setIsDeleted(0);
+        feature.setStatus(1);
+        feature.setVersion(0);
+    }
+
+    private String failureMessage(RuntimeException exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            message = exception.getClass().getSimpleName();
+        }
+        return message.length() <= 500 ? message : message.substring(0, 500);
+    }
+
+    private BusinessException featureException(RuntimeException exception) {
+        return exception instanceof BusinessException businessException
+                ? businessException
+                : new BusinessException(failureMessage(exception));
     }
 
     private void fillCommonFeature(

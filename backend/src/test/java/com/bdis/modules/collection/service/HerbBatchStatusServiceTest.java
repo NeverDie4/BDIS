@@ -13,6 +13,7 @@ import com.bdis.modules.collection.dto.HerbBatchConfirmStatusRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
 import com.bdis.modules.collection.service.impl.HerbBatchStatusServiceImpl;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchStatusVO;
 import com.bdis.modules.collection.vo.HerbBatchVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,11 +28,14 @@ class HerbBatchStatusServiceTest {
 
     @Mock private HerbBatchMapper herbBatchMapper;
 
+    @Mock private CollectionAccessService collectionAccessService;
+
     private HerbBatchStatusService herbBatchStatusService;
 
     @BeforeEach
     void setUp() {
-        herbBatchStatusService = new HerbBatchStatusServiceImpl(herbBatchMapper);
+        herbBatchStatusService =
+                new HerbBatchStatusServiceImpl(herbBatchMapper, collectionAccessService);
     }
 
     @Test

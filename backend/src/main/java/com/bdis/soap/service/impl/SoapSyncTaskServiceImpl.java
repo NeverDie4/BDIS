@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
@@ -61,7 +60,6 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public SoapExchangeRecordVO createAndExecute(SoapSyncTaskDTO dto) {
         SoapSyncTaskEntity task = new SoapSyncTaskEntity();
         task.setTaskNo("SOAP-" + UUID.randomUUID());
@@ -123,7 +121,6 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public SoapExchangeRecordVO retry(Long jobId, SoapRetryDTO dto) {
         SoapSyncTaskEntity task = taskMapper.selectById(jobId);
         if (task == null) {
@@ -145,7 +142,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         taskMapper.updateById(task);
         String responseXml = null;
         String parsedPayload = null;
-        String status = "SUCCESS";
+        String status = "FAILED";
         String errorMessage = null;
         SoapImportResultVO importResult = null;
         try {
@@ -156,7 +153,8 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
             importResult =
                     soapImportService.parseAndPrepareImport(task.getResourceType(), responseXml);
             parsedPayload = objectMapper.writeValueAsString(importResult.getParsedData());
-            task.setSyncStatus("SUCCESS");
+            status = importResult.getStatus();
+            task.setSyncStatus(status);
         } catch (Exception exception) {
             status = "FAILED";
             errorMessage = exception.getMessage();
@@ -182,7 +180,11 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         record.setUpdatedAt(LocalDateTime.now());
         exchangeRecordMapper.insert(record);
         recordSync(task, record, importResult, status, errorMessage);
-        recordAudit("SUCCESS".equals(status) ? "EXECUTE_SUCCESS" : "EXECUTE_FAILED", task.getId());
+        recordAudit(
+                "SUCCESS".equals(status)
+                        ? "EXECUTE_SUCCESS"
+                        : "FAILED".equals(status) ? "EXECUTE_FAILED" : "EXECUTE_PREPARED",
+                task.getId());
         return toExchangeVO(record);
     }
 

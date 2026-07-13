@@ -1,6 +1,7 @@
 package com.bdis.modules.collection.controller;
 
 import com.bdis.common.core.Result;
+import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.collection.dto.HerbBatchImageBatchBindRequest;
 import com.bdis.modules.collection.dto.HerbBatchImageBindRequest;
 import com.bdis.modules.collection.dto.HerbBatchImageQueryRequest;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping
+@RequirePermission("growth:record:view")
 public class HerbBatchImageController {
 
     private final HerbBatchImageService herbBatchImageService;
@@ -33,12 +35,14 @@ public class HerbBatchImageController {
     }
 
     @PostMapping("/herb/batch/{batchId}/image")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchImageVO> bind(
             @PathVariable Long batchId, @Valid @RequestBody HerbBatchImageBindRequest request) {
         return Result.success(herbBatchImageService.bind(batchId, request));
     }
 
     @PostMapping("/herb/batch/{batchId}/images")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchImageBindResultVO> batchBind(
             @PathVariable Long batchId,
             @Valid @RequestBody HerbBatchImageBatchBindRequest request) {
@@ -46,6 +50,7 @@ public class HerbBatchImageController {
     }
 
     @DeleteMapping("/herb/batch/{batchId}/image/{imageId}")
+    @RequirePermission("growth:record:update")
     public Result<Void> unbind(@PathVariable Long batchId, @PathVariable Long imageId) {
         herbBatchImageService.unbind(batchId, imageId);
         return Result.success();
@@ -63,12 +68,14 @@ public class HerbBatchImageController {
     }
 
     @PutMapping("/herb/batch/{batchId}/image/{imageId}/primary")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchImageVO> setPrimary(
             @PathVariable Long batchId, @PathVariable Long imageId) {
         return Result.success(herbBatchImageService.setPrimary(batchId, imageId));
     }
 
     @PutMapping("/herb/batch/{batchId}/image/{imageId}")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchImageVO> update(
             @PathVariable Long batchId,
             @PathVariable Long imageId,
@@ -77,6 +84,7 @@ public class HerbBatchImageController {
     }
 
     @PostMapping("/herb/batch/{batchId}/image/statistics/refresh")
+    @RequirePermission("growth:record:update")
     public Result<HerbBatchImageStatisticsVO> refreshStatistics(@PathVariable Long batchId) {
         return Result.success(herbBatchImageService.refreshStatistics(batchId));
     }

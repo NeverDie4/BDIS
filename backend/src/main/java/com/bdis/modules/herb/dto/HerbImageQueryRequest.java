@@ -13,6 +13,8 @@ public class HerbImageQueryRequest {
 
     private Long speciesId;
 
+    private Long growthRecordId;
+
     private String keyword;
 
     private String uploadSource;

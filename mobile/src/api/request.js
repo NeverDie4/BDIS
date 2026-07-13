@@ -1,4 +1,5 @@
 import config from '../config'
+import { clearAuthSession, getAuthHeader, redirectToLogin } from '../utils/auth'
 
 function buildUrl(url, data = {}, method = 'GET') {
   const isAbsoluteUrl = /^https?:\/\//i.test(url)
@@ -29,6 +30,18 @@ function showError(message) {
   })
 }
 
+function isUnauthorized(result, statusCode) {
+  return statusCode === 401 || result.code === 401 || result.code === 'UNAUTHORIZED'
+}
+
+function isSuccessCode(code) {
+  return code === 200 || code === '200' || code === 'SUCCESS'
+}
+
+function getResultMessage(result, fallback) {
+  return result?.msg || result?.message || fallback
+}
+
 function parseUploadResponse(data) {
   if (typeof data === 'string') {
     try {
@@ -48,14 +61,14 @@ function parseUploadResponse(data) {
 function handleBusinessResponse(responseData) {
   const result = responseData || {}
 
-  if (result.code === 200) {
+  if (isSuccessCode(result.code)) {
     return {
       ok: true,
       data: result.data
     }
   }
 
-  showError(result.msg || '操作失败')
+  showError(getResultMessage(result, '操作失败'))
   return {
     ok: false,
     error: result
@@ -68,9 +81,12 @@ export function request(options = {}) {
     method = 'GET',
     data = {},
     header = {},
-    loading = false
+    loading = false,
+    skipAuthRedirect = false,
+    timeout = config.timeout
   } = options
   const upperMethod = method.toUpperCase()
+  const authHeader = getAuthHeader()
 
   if (loading) {
     uni.showLoading({
@@ -83,12 +99,22 @@ export function request(options = {}) {
       url: buildUrl(url, data, upperMethod),
       method: upperMethod,
       data: upperMethod === 'GET' ? {} : data,
-      timeout: config.timeout,
+      timeout,
       header: {
         'Content-Type': 'application/json; charset=utf-8',
+        ...(authHeader ? { Authorization: authHeader } : {}),
         ...header
       },
       success: (res) => {
+        if (isUnauthorized(res.data || {}, res.statusCode)) {
+          clearAuthSession()
+          if (!skipAuthRedirect) {
+            redirectToLogin()
+          }
+          reject(res.data || { code: 'UNAUTHORIZED', msg: '未登录或登录已失效' })
+          return
+        }
+
         if (res.statusCode < 200 || res.statusCode >= 300) {
           const error = {
             code: res.statusCode,
@@ -129,6 +155,7 @@ export function uploadFile(options = {}) {
     loading = false,
     timeout = config.timeout
   } = options
+  const authHeader = getAuthHeader()
 
   if (loading) {
     uni.showLoading({
@@ -143,8 +170,19 @@ export function uploadFile(options = {}) {
       name: 'file',
       formData,
       timeout,
-      header,
+      header: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        ...header
+      },
       success: (res) => {
+        const responseData = parseUploadResponse(res.data)
+        if (isUnauthorized(responseData || {}, res.statusCode)) {
+          clearAuthSession()
+          redirectToLogin()
+          reject(responseData || { code: 'UNAUTHORIZED', msg: '未登录或登录已失效' })
+          return
+        }
+
         if (res.statusCode < 200 || res.statusCode >= 300) {
           const error = {
             code: res.statusCode,
@@ -156,7 +194,7 @@ export function uploadFile(options = {}) {
           return
         }
 
-        const result = handleBusinessResponse(parseUploadResponse(res.data))
+        const result = handleBusinessResponse(responseData)
         if (result.ok) {
           resolve(result.data)
         } else {

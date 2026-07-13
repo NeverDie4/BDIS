@@ -1,7 +1,7 @@
 package com.bdis.modules.spectrum.client;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.file.service.FileStorageService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.spectrum.config.HerbRecognitionProperties;
 import com.bdis.modules.spectrum.vo.HerbRecognitionCandidateVO;
@@ -27,15 +27,15 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
 
     private final HerbRecognitionProperties properties;
     private final ObjectMapper objectMapper;
-    private final FileStorageService fileStorageService;
+    private final FileResourceService fileResourceService;
 
     public HerbRecognitionClientImpl(
             HerbRecognitionProperties properties,
             ObjectMapper objectMapper,
-            FileStorageService fileStorageService) {
+            FileResourceService fileResourceService) {
         this.properties = properties;
         this.objectMapper = objectMapper;
-        this.fileStorageService = fileStorageService;
+        this.fileResourceService = fileResourceService;
     }
 
     @Override
@@ -61,7 +61,7 @@ public class HerbRecognitionClientImpl implements HerbRecognitionClient {
     }
 
     private Path resolveImagePath(String imageUrl) {
-        return fileStorageService.resolve(imageUrl);
+        return fileResourceService.resolveLocalPath(imageUrl);
     }
 
     private RestTemplate restTemplate() {

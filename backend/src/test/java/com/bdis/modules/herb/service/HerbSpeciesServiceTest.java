@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.modules.dictionary.support.DictionaryReferenceValidator;
 import com.bdis.modules.herb.dto.HerbSpeciesCreateRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesQueryRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesUpdateRequest;
@@ -28,11 +29,14 @@ class HerbSpeciesServiceTest {
 
     @Mock private HerbSpeciesMapper herbSpeciesMapper;
 
+    @Mock private DictionaryReferenceValidator dictionaryReferenceValidator;
+
     private HerbSpeciesService herbSpeciesService;
 
     @BeforeEach
     void setUp() {
-        herbSpeciesService = new HerbSpeciesServiceImpl(herbSpeciesMapper);
+        herbSpeciesService =
+                new HerbSpeciesServiceImpl(herbSpeciesMapper, dictionaryReferenceValidator);
     }
 
     @Test
