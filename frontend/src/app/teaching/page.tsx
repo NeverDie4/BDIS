@@ -3,7 +3,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 
 export default function TeachingPage() {
   return (
-    <SiteLayout>
+    <SiteLayout contentMode="fluid">
       <TeachingPageClient />
     </SiteLayout>
   );

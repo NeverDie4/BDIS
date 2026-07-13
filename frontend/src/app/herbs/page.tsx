@@ -3,7 +3,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 
 export default function HerbsPage() {
   return (
-    <SiteLayout>
+    <SiteLayout contentMode="fluid">
       <HerbResourceClient />
     </SiteLayout>
   );

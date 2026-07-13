@@ -13,7 +13,7 @@ import { SearchBar } from "@/components/common/SearchBar";
 import { StatusTag } from "@/components/common/StatusTag";
 import { TraceTimeline } from "@/components/feature/TraceTimeline";
 import type { TraceStatus } from "@/components/feature/TraceTimeline";
-import { PageBanner } from "@/components/layout/PageBanner";
+import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { growthRecords, traceEvents } from "@/mocks/growth";
 import type { GrowthRecord } from "@/types/growth";
@@ -80,12 +80,13 @@ export default function GrowthPage() {
   ];
 
   return (
-    <SiteLayout>
+    <SiteLayout contentMode="fluid">
       <div className={styles.pageStack}>
-        <PageBanner
-          sealText="GROWTH RECORDS"
+        <ModuleHeroBanner
+          eyebrow="GROWTH RECORDS"
+          sealText="观测"
           title="生长数据采集档案"
-          subtitle="承载中药材生长阶段、环境指标、定位、采集人快照和图片上传记录。"
+          description="承载中药材生长阶段、环境指标、定位、采集人快照和图片上传记录。"
         />
 
         <div className={styles.metricGrid}>

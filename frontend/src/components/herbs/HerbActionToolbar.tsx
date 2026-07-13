@@ -15,7 +15,7 @@ export function HerbActionToolbar() {
   return (
     <div className={styles.toolbar}>
       <Space className={styles.toolbarLeft} size={8} wrap>
-        <Button icon={<PlusOutlined />} type="primary" onClick={() => undefined}>
+        <Button disabled icon={<PlusOutlined />} title="功能开发中" type="primary">
           新增
         </Button>
         <Button disabled icon={<EditOutlined />} onClick={() => undefined}>

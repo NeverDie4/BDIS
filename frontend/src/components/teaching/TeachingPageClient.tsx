@@ -1,10 +1,12 @@
 "use client";
 
+import { PlusOutlined } from "@ant-design/icons";
+import { Button } from "antd";
 import type { Key } from "react";
 import { useState } from "react";
+import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { TeachingFilterPanel } from "./TeachingFilterPanel";
 import { TeachingModuleTabs } from "./TeachingModuleTabs";
-import { TeachingPageHeader } from "./TeachingPageHeader";
 import { TeachingWorkspace } from "./TeachingWorkspace";
 import type { CourseRecord, TeachingTabKey } from "./types";
 import styles from "./teaching.module.css";
@@ -34,8 +36,16 @@ export function TeachingPageClient() {
 
   return (
     <div className={styles.teachingPage}>
-      <TeachingPageHeader
+      <ModuleHeroBanner
+        actions={
+          <Button disabled icon={<PlusOutlined />} title="功能开发中" type="primary">
+            新增课程
+          </Button>
+        }
         description={activePageMeta.description}
+        eyebrow="TEACHING & RESEARCH"
+        sealText="教学"
+        className={styles.moduleHero}
         title={activePageMeta.title}
       />
       <TeachingModuleTabs activeTab={activeTab} onTabChange={setActiveTab} />

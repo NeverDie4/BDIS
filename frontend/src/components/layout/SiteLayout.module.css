@@ -27,9 +27,19 @@
   padding: 36px 0 0;
 }
 
+.fluid {
+  width: 100%;
+  margin-inline: 0;
+}
+
 @media (max-width: 640px) {
   .main {
     width: min(100% - 24px, var(--layout-max-width));
     padding-top: 24px;
+  }
+
+  .main.fluid {
+    width: 100%;
+    margin-inline: 0;
   }
 }

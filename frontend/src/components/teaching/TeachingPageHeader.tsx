@@ -14,7 +14,7 @@ export function TeachingPageHeader({ title, description }: TeachingPageHeaderPro
         <p>{description}</p>
       </div>
       <div className={styles.pageHeaderAction}>
-        <Button type="primary" onClick={() => undefined}>
+        <Button disabled title="功能开发中" type="primary">
           新增课程
         </Button>
       </div>
