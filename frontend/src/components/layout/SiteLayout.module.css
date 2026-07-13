@@ -30,6 +30,7 @@
 .fluid {
   width: 100%;
   margin-inline: 0;
+  padding-top: 0;
 }
 
 @media (max-width: 640px) {

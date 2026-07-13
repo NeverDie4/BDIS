@@ -5,6 +5,24 @@
   align-items: flex-start;
 }
 
+.compact {
+  gap: var(--space-md);
+  align-items: center;
+  padding: 4px 12px;
+}
+
+.compact .copy h2 {
+  font-size: 15px !important;
+}
+
+.compact .copy p {
+  display: none;
+}
+
+.compact .actions {
+  gap: 6px;
+}
+
 .copy {
   min-width: 0;
 }

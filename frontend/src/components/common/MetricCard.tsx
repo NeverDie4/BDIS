@@ -11,6 +11,7 @@ type MetricCardProps = {
   icon?: React.ReactNode;
   description?: React.ReactNode;
   className?: string;
+  variant?: "default" | "flat" | "compact";
 };
 
 export function MetricCard({
@@ -21,9 +22,10 @@ export function MetricCard({
   icon,
   description,
   className,
+  variant = "default",
 }: MetricCardProps) {
   return (
-    <Card className={`${styles.card} ${className ?? ""}`} variant="borderless">
+    <Card className={`${styles.card} ${styles[variant]} ${className ?? ""}`} variant="borderless">
       <div className={styles.topLine}>
         <Typography.Text className={styles.title}>{title}</Typography.Text>
         {icon ? <span className={styles.icon}>{icon}</span> : null}
