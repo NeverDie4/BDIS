@@ -1,4 +1,4 @@
-package com.bdis.file.support;
+package com.bdis.common.security;
 
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
@@ -11,10 +11,13 @@ import com.bdis.modules.permission.vo.DataScopeResultVO;
 import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-@Component
-public class BusinessReferenceValidator {
+/**
+ * Validates cross-module business references without coupling the file module to business tables.
+ */
+@Service
+public class BusinessReferenceAccessService {
 
     private static final Map<String, BusinessReference> REFERENCES =
             Map.ofEntries(
@@ -74,7 +77,7 @@ public class BusinessReferenceValidator {
     private final AuthorizationService authorizationService;
     private final DataScopeService dataScopeService;
 
-    public BusinessReferenceValidator(
+    public BusinessReferenceAccessService(
             JdbcTemplate jdbcTemplate,
             AuthorizationService authorizationService,
             DataScopeService dataScopeService) {
@@ -117,15 +120,6 @@ public class BusinessReferenceValidator {
         }
         if (!hasRowAccess(normalizedType, bizId)) {
             throw new ForbiddenException("业务对象超出当前数据范围");
-        }
-    }
-
-    public boolean canAccess(String bizType, Long bizId) {
-        try {
-            validate(bizType, bizId);
-            return true;
-        } catch (BusinessException exception) {
-            return false;
         }
     }
 

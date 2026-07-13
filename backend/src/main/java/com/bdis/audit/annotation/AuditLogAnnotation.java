@@ -13,5 +13,7 @@ public @interface AuditLogAnnotation {
 
     String operationType();
 
+    String description() default "";
+
     String bizType() default "";
 }

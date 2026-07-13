@@ -1,5 +1,6 @@
 package com.bdis.file.controller;
 
+import com.bdis.audit.annotation.AuditLogAnnotation;
 import com.bdis.common.core.Result;
 import com.bdis.common.security.RequirePermission;
 import com.bdis.file.dto.FileBusinessBindDTO;
@@ -25,11 +26,21 @@ public class FileBusinessController {
     }
 
     @PostMapping
+    @AuditLogAnnotation(
+            module = "M05_FILE",
+            operationType = "BIND",
+            description = "绑定业务附件",
+            bizType = "file_business")
     public Result<FileBusinessVO> bind(@Valid @RequestBody FileBusinessBindDTO dto) {
         return Result.success(fileBusinessService.bind(dto));
     }
 
     @DeleteMapping("/{relationId}")
+    @AuditLogAnnotation(
+            module = "M05_FILE",
+            operationType = "UNBIND",
+            description = "解绑业务附件",
+            bizType = "file_business")
     public Result<Void> unbind(@PathVariable Long relationId) {
         fileBusinessService.unbind(relationId);
         return Result.success();

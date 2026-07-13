@@ -34,9 +34,10 @@ public class JwtUtils {
         this.objectMapper = objectMapper;
     }
 
-    public String generate(CurrentUser user) {
+    public IssuedToken generate(CurrentUser user) {
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plusSeconds(properties.getAccessTokenTtlMinutes() * 60);
+        String jti = UUID.randomUUID().toString();
         Map<String, Object> header = new HashMap<>();
         header.put("alg", "HS256");
         header.put("typ", "JWT");
@@ -44,11 +45,12 @@ public class JwtUtils {
         payload.put("iss", properties.getIssuer());
         payload.put("sub", String.valueOf(user.getUserId()));
         payload.put("username", user.getUsername());
-        payload.put("jti", UUID.randomUUID().toString());
+        payload.put("jti", jti);
         payload.put("iat", issuedAt.getEpochSecond());
         payload.put("exp", expiresAt.getEpochSecond());
         String unsignedToken = encodeJson(header) + "." + encodeJson(payload);
-        return unsignedToken + "." + sign(unsignedToken);
+        String accessToken = unsignedToken + "." + sign(unsignedToken);
+        return new IssuedToken(accessToken, jti, issuedAt, expiresAt);
     }
 
     public JwtClaims parse(String token) {

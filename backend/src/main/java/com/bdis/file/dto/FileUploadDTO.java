@@ -17,7 +17,7 @@ public class FileUploadDTO {
     private Long businessId;
     private String fileUsage;
 
-    @Pattern(regexp = "private|public", message = "访问级别只能是 private 或 public")
+    @Pattern(regexp = "private", message = "上传文件只能先保存为 private")
     private String accessLevel = "private";
 
     private String remark;

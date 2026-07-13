@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.security.BusinessAccessService;
-import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.common.security.BusinessReferenceAccessService;
 import com.bdis.modules.evaluation.dto.EvaluationTaskRequest;
 import com.bdis.modules.evaluation.entity.EvaluationResultEntity;
 import com.bdis.modules.evaluation.entity.EvaluationScoreRecordEntity;
@@ -37,7 +37,7 @@ public class EvaluationTaskServiceImpl implements EvaluationTaskService {
     private final EvaluationResultMapper resultMapper;
 
     private final BusinessAccessService accessService;
-    private final BusinessReferenceValidator referenceValidator;
+    private final BusinessReferenceAccessService referenceAccessService;
 
     @Override
     public IPage<EvaluationTaskEntity> listTasks(EvaluationTaskQuery query) {
@@ -70,7 +70,7 @@ public class EvaluationTaskServiceImpl implements EvaluationTaskService {
     @Override
     public EvaluationTaskEntity createTask(EvaluationTaskRequest request) {
         accessService.requirePermission("evaluation:task:create");
-        referenceValidator.validate(request.getTargetType(), request.getTargetId());
+        referenceAccessService.validate(request.getTargetType(), request.getTargetId());
         Long operatorId = accessService.currentUserId();
         EvaluationTaskEntity entity = new EvaluationTaskEntity();
         entity.setTaskNo(defaultText(request.getTaskNo(), generateNo("EVAL-TASK")));

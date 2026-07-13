@@ -22,7 +22,7 @@ export function PortalPage({ eyebrow, title, description, tags = [], cards }: Po
 
       <div className={styles.cardGrid}>
         {cards.map((card) => (
-          <Card className={styles.card} key={card.title} bordered={false}>
+          <Card className={styles.card} key={card.title} variant="borderless">
             <Typography.Title level={3}>{card.title}</Typography.Title>
             <Typography.Paragraph>{card.description}</Typography.Paragraph>
           </Card>

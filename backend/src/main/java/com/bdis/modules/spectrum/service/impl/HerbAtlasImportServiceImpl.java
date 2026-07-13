@@ -2,6 +2,7 @@ package com.bdis.modules.spectrum.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
@@ -71,8 +72,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
             HerbSpeciesMapper herbSpeciesMapper,
             FileResourceService fileResourceService,
             FileBusinessService fileBusinessService,
-            @Value("${file.atlas-import-path:import/herb_atlas}") String defaultImportPath,
-            @Value("${herb.atlas.auto-import:false}") boolean autoImport) {
+            @Value("${file.atlas-import-path:import/herb_atlas}") String defaultImportPath) {
         this.herbAtlasMapper = herbAtlasMapper;
         this.herbAtlasTagMapper = herbAtlasTagMapper;
         this.herbSpeciesMapper = herbSpeciesMapper;
@@ -108,29 +108,6 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
             throw new BusinessException("Failed to scan atlas import path");
         }
         return result;
-    }
-
-    @Override
-    public int reconcileFileResources() {
-        int migrated = 0;
-        for (SpectrumEntity atlas : herbAtlasMapper.selectLegacyFileCandidates()) {
-            try {
-                FileResourceVO file =
-                        fileResourceService.registerPublic(
-                                atlas.getImageUrl(), atlas.getAtlasTitle(), "历史图谱文件资源迁移");
-                bindAtlasFile(file.getId(), atlas.getId());
-                if (herbAtlasMapper.updateImageUrl(atlas.getId(), file.getFileUrl()) > 0) {
-                    migrated++;
-                }
-            } catch (RuntimeException exception) {
-                // Keep the legacy URL so the next startup can retry idempotently.
-                LOGGER.warn(
-                        "Failed to migrate atlas file resource: atlasId={}",
-                        atlas.getId(),
-                        exception);
-            }
-        }
-        return migrated;
     }
 
     private Path resolveImportRoot(HerbAtlasImportRequest request) {
@@ -303,11 +280,14 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         SpectrumEntity atlas = null;
         try {
             String herbCodeLower = speciesCode.toLowerCase(Locale.ROOT);
-            file = fileResourceService.importPublic(image, imageName, "图谱批量导入：" + speciesCode);
+            file = fileResourceService.importPrivate(image, imageName, "图谱批量导入：" + speciesCode);
             LocalDateTime now = LocalDateTime.now();
             atlas = buildAtlas(species, speciesCode, imageName, file.getFileUrl(), now);
             herbAtlasMapper.insertAtlas(atlas);
             bindAtlasFile(file.getId(), atlas.getId());
+            fileResourceService.publishForBusiness(file.getId(), "herb_atlas", atlas.getId());
+            atlas.setImageUrl("/api/public-files/" + file.getId() + "/content");
+            herbAtlasMapper.updateImageUrl(atlas.getId(), atlas.getImageUrl());
             herbAtlasTagMapper.insertTags(defaultTags(atlas.getId(), herbCodeLower, now));
             result.addSuccess(imageName, speciesCode, "Imported successfully");
         } catch (RuntimeException exception) {
@@ -323,7 +303,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         bind.setBizId(atlasId);
         bind.setFileUsage("atlas_image");
         bind.setRemark("图谱标准图片");
-        fileBusinessService.bindSystem(bind);
+        fileBusinessService.bind(bind);
     }
 
     private void cleanupFailedImport(SpectrumEntity atlas, FileResourceVO file) {
@@ -349,9 +329,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         }
         if (file != null && file.getId() != null) {
             runCleanup(
-                    () -> fileResourceService.deleteSystem(file.getId()),
-                    "file resource",
-                    file.getId());
+                    () -> fileResourceService.delete(file.getId()), "file resource", file.getId());
         }
     }
 
@@ -385,6 +363,7 @@ public class HerbAtlasImportServiceImpl implements HerbAtlasImportService {
         atlas.setSourceType(DEFAULT_SOURCE);
         atlas.setIdentificationPoints(DEFAULT_DESCRIPTION);
         atlas.setStatus(1);
+        atlas.setCreatedBy(CurrentUserUtils.currentUserId());
         atlas.setCreatedAt(now);
         atlas.setUpdatedAt(now);
         atlas.setIsDeleted(0);

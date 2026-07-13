@@ -1,6 +1,7 @@
 package com.bdis.modules.user.service;
 
 import com.bdis.common.core.PageResult;
+import com.bdis.modules.user.dto.AdminPasswordResetDTO;
 import com.bdis.modules.user.dto.RoleAssignDTO;
 import com.bdis.modules.user.dto.UserCreateDTO;
 import com.bdis.modules.user.dto.UserUpdateDTO;
@@ -22,4 +23,6 @@ public interface UserService {
     void delete(Long id);
 
     void assignRoles(Long id, RoleAssignDTO dto);
+
+    void resetPassword(Long id, AdminPasswordResetDTO dto);
 }

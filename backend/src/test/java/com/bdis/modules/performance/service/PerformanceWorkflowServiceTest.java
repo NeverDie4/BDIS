@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.BusinessAccessService;
-import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.common.security.BusinessReferenceAccessService;
 import com.bdis.modules.performance.dto.PerformanceRequest;
 import com.bdis.modules.performance.entity.PerformanceEntity;
 import com.bdis.modules.performance.mapper.PerformanceAuditMapper;
@@ -27,7 +27,7 @@ class PerformanceWorkflowServiceTest {
     @Mock private PerformanceAuditMapper auditMapper;
     @Mock private PerformanceMaterialService materialService;
     @Mock private BusinessAccessService accessService;
-    @Mock private BusinessReferenceValidator referenceValidator;
+    @Mock private BusinessReferenceAccessService referenceAccessService;
 
     @Test
     void creationUsesAuthenticatedUserAndAlwaysStartsAsDraft() {
@@ -40,7 +40,7 @@ class PerformanceWorkflowServiceTest {
                         auditMapper,
                         materialService,
                         accessService,
-                        referenceValidator);
+                        referenceAccessService);
         PerformanceRequest request = new PerformanceRequest();
         request.setSourceType("eval_application");
         request.setSourceId(2L);
@@ -58,7 +58,7 @@ class PerformanceWorkflowServiceTest {
 
         assertThat(result.getUserId()).isEqualTo(5L);
         assertThat(result.getIdentifyStatus()).isEqualTo("draft");
-        verify(referenceValidator).validate("eval_application", 2L);
+        verify(referenceAccessService).validate("eval_application", 2L);
     }
 
     private PerformanceEntity inserted;

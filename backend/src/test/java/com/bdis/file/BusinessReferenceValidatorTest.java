@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ResourceNotFoundException;
-import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.common.security.BusinessReferenceAccessService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -28,7 +28,7 @@ class BusinessReferenceValidatorTest {
     void eduCourseReferenceRequiresAnActiveCourse() {
         when(jdbcTemplate.queryForObject(any(String.class), any(Class.class), any(Long.class)))
                 .thenReturn(0L);
-        BusinessReferenceValidator validator = validator();
+        BusinessReferenceAccessService validator = validator();
 
         assertThatThrownBy(() -> validator.validate("edu_course", 11L))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -39,7 +39,7 @@ class BusinessReferenceValidatorTest {
     void eduCourseReferenceAcceptsAnExistingCourse() {
         when(jdbcTemplate.queryForObject(any(String.class), any(Class.class), any(Long.class)))
                 .thenReturn(1L);
-        BusinessReferenceValidator validator = validator();
+        BusinessReferenceAccessService validator = validator();
 
         validator.validate("edu_course", 11L);
     }
@@ -48,7 +48,7 @@ class BusinessReferenceValidatorTest {
     void researchProjectReferenceRequiresAnExistingProject() {
         when(jdbcTemplate.queryForObject(any(String.class), any(Class.class), any(Long.class)))
                 .thenReturn(0L);
-        BusinessReferenceValidator validator = validator();
+        BusinessReferenceAccessService validator = validator();
 
         assertThatThrownBy(() -> validator.validate("research_project", 12L))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -59,7 +59,7 @@ class BusinessReferenceValidatorTest {
     void researchProjectReferenceAcceptsAnExistingProject() {
         when(jdbcTemplate.queryForObject(any(String.class), any(Class.class), any(Long.class)))
                 .thenReturn(1L);
-        BusinessReferenceValidator validator = validator();
+        BusinessReferenceAccessService validator = validator();
 
         validator.validate("research_project", 12L);
     }
@@ -98,9 +98,9 @@ class BusinessReferenceValidatorTest {
                 .isInstanceOf(BusinessException.class);
     }
 
-    private BusinessReferenceValidator validator() {
+    private BusinessReferenceAccessService validator() {
         lenient().when(authorizationService.hasPermission(any(String.class))).thenReturn(true);
-        return new BusinessReferenceValidator(
+        return new BusinessReferenceAccessService(
                 jdbcTemplate, authorizationService, dataScopeService);
     }
 }

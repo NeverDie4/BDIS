@@ -7,6 +7,8 @@ import com.bdis.common.exception.DuplicateResourceException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
+import com.bdis.modules.settings.service.UserSessionService;
+import com.bdis.modules.user.dto.AdminPasswordResetDTO;
 import com.bdis.modules.user.dto.RoleAssignDTO;
 import com.bdis.modules.user.dto.UserCreateDTO;
 import com.bdis.modules.user.dto.UserUpdateDTO;
@@ -20,6 +22,7 @@ import com.bdis.modules.user.query.UserQuery;
 import com.bdis.modules.user.service.UserService;
 import com.bdis.modules.user.vo.RoleVO;
 import com.bdis.modules.user.vo.UserVO;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,7 +32,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -42,57 +44,26 @@ public class UserServiceImpl implements UserService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final UserSessionService userSessionService;
+
     public UserServiceImpl(
             UserMapper userMapper,
             RoleMapper roleMapper,
             UserRoleMapper userRoleMapper,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            UserSessionService userSessionService) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
         this.passwordEncoder = passwordEncoder;
+        this.userSessionService = userSessionService;
     }
 
     @Override
     public PageResult<UserVO> page(UserQuery query) {
-        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(query.getKeyword())) {
-            wrapper.and(
-                    condition ->
-                            condition
-                                    .like(UserEntity::getUsername, query.getKeyword())
-                                    .or()
-                                    .like(UserEntity::getRealName, query.getKeyword())
-                                    .or()
-                                    .like(UserEntity::getPhoneNumber, query.getKeyword()));
-        }
-        if (query.getStatus() != null) {
-            wrapper.eq(UserEntity::getStatus, query.getStatus());
-        }
-        if (query.getOrganizationId() != null) {
-            wrapper.eq(UserEntity::getOrganizationId, query.getOrganizationId());
-        }
-        if (query.getDepartmentId() != null) {
-            wrapper.eq(UserEntity::getDepartmentId, query.getDepartmentId());
-        }
-        wrapper.orderByDesc(UserEntity::getId);
         Page<UserEntity> page =
-                userMapper.selectPage(Page.of(query.getPage(), query.getSize()), wrapper);
+                userMapper.selectUserPage(Page.of(query.getPage(), query.getSize()), query);
         List<UserVO> records = attachRoles(page.getRecords());
-        if (query.getRoleId() != null) {
-            records =
-                    records.stream()
-                            .filter(
-                                    user ->
-                                            user.getRoles().stream()
-                                                    .anyMatch(
-                                                            role ->
-                                                                    role.getId()
-                                                                            .equals(
-                                                                                    query
-                                                                                            .getRoleId())))
-                            .toList();
-        }
         return PageResult.of(records, page);
     }
 
@@ -115,6 +86,7 @@ public class UserServiceImpl implements UserService {
         user.setEmail(dto.getEmail());
         user.setOrganizationId(dto.getOrganizationId());
         user.setDepartmentId(dto.getDepartmentId());
+        user.setMustChangePassword(!Boolean.FALSE.equals(dto.getMustChangePassword()));
         user.setStatus(1);
         user.setCreatedBy(SecurityUtils.currentUser().getUserId());
         userMapper.insert(user);
@@ -156,6 +128,18 @@ public class UserServiceImpl implements UserService {
     public void assignRoles(Long id, RoleAssignDTO dto) {
         requireUser(id);
         replaceRoles(id, dto.getRoleIds());
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(Long id, AdminPasswordResetDTO dto) {
+        UserEntity user = requireUser(id);
+        user.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
+        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setMustChangePassword(!Boolean.FALSE.equals(dto.getMustChangePassword()));
+        user.setUpdatedBy(SecurityUtils.currentUser().getUserId());
+        userMapper.updateById(user);
+        userSessionService.revokeAllForUser(id, "admin_password_reset");
     }
 
     private void applyUpdate(UserEntity user, UserUpdateDTO dto) {
@@ -263,6 +247,7 @@ public class UserServiceImpl implements UserService {
         vo.setDepartmentId(user.getDepartmentId());
         vo.setStatus(user.getStatus());
         vo.setLastLoginAt(user.getLastLoginAt());
+        vo.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
         return vo;
     }
 

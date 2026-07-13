@@ -1,6 +1,7 @@
 package com.bdis.common.utils;
 
 import com.bdis.common.security.CurrentUser;
+import com.bdis.common.web.TraceIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +37,9 @@ public final class CurrentUserUtils {
         if (authentication.getPrincipal() instanceof CurrentUser user) {
             return user.getUsername();
         }
-        return authentication.getName();
+        return "anonymousUser".equals(authentication.getName())
+                ? "anonymous"
+                : authentication.getName();
     }
 
     public static Set<String> currentRoleCodes() {
@@ -48,13 +51,21 @@ public final class CurrentUserUtils {
     }
 
     public static String currentIp() {
+        return currentRequest().map(CurrentUserUtils::clientIp).orElse(null);
+    }
+
+    public static String clientIp(HttpServletRequest request) {
+        return Optional.ofNullable(request.getHeader("X-Forwarded-For"))
+                .filter(value -> !value.isBlank())
+                .map(value -> value.split(","))
+                .map(parts -> parts[parts.length - 1].trim())
+                .orElse(request.getRemoteAddr());
+    }
+
+    public static String currentTraceId() {
         return currentRequest()
-                .map(
-                        request ->
-                                Optional.ofNullable(request.getHeader("X-Forwarded-For"))
-                                        .filter(value -> !value.isBlank())
-                                        .map(value -> value.split(",")[0].trim())
-                                        .orElse(request.getRemoteAddr()))
+                .map(request -> request.getAttribute(TraceIdFilter.REQUEST_ATTRIBUTE))
+                .map(Object::toString)
                 .orElse(null);
     }
 
@@ -70,7 +81,7 @@ public final class CurrentUserUtils {
         return currentRequest().map(HttpServletRequest::getRequestURI).orElse(null);
     }
 
-    private static Optional<HttpServletRequest> currentRequest() {
+    public static Optional<HttpServletRequest> currentRequest() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
             return Optional.of(attrs.getRequest());
         }

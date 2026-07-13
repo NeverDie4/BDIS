@@ -30,6 +30,8 @@ import com.bdis.modules.performance.service.PerformanceAuditService;
 import com.bdis.modules.performance.service.PerformanceMaterialService;
 import com.bdis.modules.performance.service.PerformanceService;
 import com.bdis.modules.performance.service.PerformanceStandardService;
+import com.bdis.modules.settings.service.UserSessionService;
+import com.bdis.modules.user.mapper.UserMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -64,6 +66,8 @@ class M16M17M18AuthenticationTest {
     @MockBean private JwtUtils jwtUtils;
     @MockBean private TokenBlacklistService tokenBlacklistService;
     @MockBean private CurrentUserService currentUserService;
+    @MockBean private UserSessionService userSessionService;
+    @MockBean private UserMapper userMapper;
     @MockBean private EvaluationStandardService evaluationStandardService;
     @MockBean private EvaluationTaskService evaluationTaskService;
     @MockBean private EvaluationScoreService evaluationScoreService;

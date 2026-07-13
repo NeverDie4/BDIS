@@ -6,6 +6,7 @@ import com.bdis.modules.user.dto.RolePermissionAssignDTO;
 import com.bdis.modules.user.dto.RoleUpdateDTO;
 import com.bdis.modules.user.query.RoleQuery;
 import com.bdis.modules.user.vo.RoleVO;
+import java.util.List;
 
 public interface RoleService {
 
@@ -20,4 +21,6 @@ public interface RoleService {
     void delete(Long id);
 
     void assignPermissions(Long id, RolePermissionAssignDTO dto);
+
+    List<Long> permissionIds(Long id);
 }

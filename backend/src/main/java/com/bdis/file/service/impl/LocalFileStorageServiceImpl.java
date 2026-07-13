@@ -62,7 +62,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
             throw new FileStorageException("文件保存失败", exception);
         }
         String storagePath = storageRoot.relativize(targetPath).toString().replace('\\', '/');
-        return new StoredFile(storedName, storagePath, "/api/files/" + storagePath);
+        return new StoredFile(storedName, storagePath);
     }
 
     private void validateFile(MultipartFile file) {
@@ -97,7 +97,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
             throw new FileStorageException("文件保存失败", exception);
         }
         String storagePath = storageRoot.relativize(targetPath).toString().replace('\\', '/');
-        return new StoredFile(storedName, storagePath, "/api/files/" + storagePath);
+        return new StoredFile(storedName, storagePath);
     }
 
     @Override

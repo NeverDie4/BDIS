@@ -345,12 +345,4 @@
         ORDER BY a.id ASC
     </select>
 
-    <select id="selectLegacyFileCandidates" resultMap="AtlasResultMap">
-        SELECT
-        <include refid="AtlasColumns"/>
-        FROM herb_atlas
-        WHERE is_deleted = 0
-          AND image_url LIKE '/api/files/uploads/%'
-        ORDER BY id ASC
-    </select>
 </mapper>
