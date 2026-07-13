@@ -63,8 +63,8 @@ class SecurityConfigTest {
     }
 
     @Test
-    void privateStoragePathRequiresAuthentication() throws Exception {
-        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isUnauthorized());
+    void privateStoragePathIsNotExposed() throws Exception {
+        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isNotFound());
     }
 
     @Test

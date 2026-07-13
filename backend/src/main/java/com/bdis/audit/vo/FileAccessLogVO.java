@@ -12,5 +12,6 @@ public class FileAccessLogVO {
     private String operatorName;
     private String accessType;
     private String accessResult;
+    private String ipAddress;
     private LocalDateTime operationTime;
 }

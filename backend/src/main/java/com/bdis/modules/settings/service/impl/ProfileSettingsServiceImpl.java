@@ -1,14 +1,13 @@
 package com.bdis.modules.settings.service.impl;
 
 import com.bdis.common.exception.BusinessException;
-import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.FileStorageException;
 import com.bdis.common.exception.PasswordVerificationException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.common.security.SecurityUtils;
-import com.bdis.modules.file.entity.FileResourceEntity;
-import com.bdis.modules.file.mapper.FileResourceMapper;
-import com.bdis.modules.settings.dto.AvatarUpdateRequest;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.settings.dto.PasswordUpdateRequest;
 import com.bdis.modules.settings.dto.ProfileUpdateRequest;
 import com.bdis.modules.settings.service.ProfileSettingsService;
@@ -20,14 +19,26 @@ import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.DepartmentMapper;
 import com.bdis.modules.user.mapper.OrganizationMapper;
 import com.bdis.modules.user.mapper.UserMapper;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ProfileSettingsServiceImpl implements ProfileSettingsService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProfileSettingsServiceImpl.class);
+    private static final long MAX_AVATAR_SIZE = 5L * 1024 * 1024;
+    private static final Set<String> AVATAR_EXTENSIONS =
+            Set.of("jpg", "jpeg", "png", "gif", "webp");
 
     private final UserMapper userMapper;
 
@@ -35,7 +46,7 @@ public class ProfileSettingsServiceImpl implements ProfileSettingsService {
 
     private final DepartmentMapper departmentMapper;
 
-    private final FileResourceMapper fileResourceMapper;
+    private final FileResourceService fileResourceService;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -45,13 +56,13 @@ public class ProfileSettingsServiceImpl implements ProfileSettingsService {
             UserMapper userMapper,
             OrganizationMapper organizationMapper,
             DepartmentMapper departmentMapper,
-            FileResourceMapper fileResourceMapper,
+            FileResourceService fileResourceService,
             PasswordEncoder passwordEncoder,
             UserSessionService userSessionService) {
         this.userMapper = userMapper;
         this.organizationMapper = organizationMapper;
         this.departmentMapper = departmentMapper;
-        this.fileResourceMapper = fileResourceMapper;
+        this.fileResourceService = fileResourceService;
         this.passwordEncoder = passwordEncoder;
         this.userSessionService = userSessionService;
     }
@@ -81,33 +92,37 @@ public class ProfileSettingsServiceImpl implements ProfileSettingsService {
 
     @Override
     @Transactional
-    public ProfileVO updateAvatar(AvatarUpdateRequest request) {
+    public ProfileVO updateAvatar(MultipartFile file) {
+        validateAvatar(file);
         UserEntity user = requireCurrentUser();
-        FileResourceEntity file = fileResourceMapper.selectById(request.getFileId());
-        if (file == null || file.getStatus() == null || file.getStatus() != 1) {
-            throw new ResourceNotFoundException("头像文件不存在");
-        }
-        if (!user.getId().equals(file.getUploaderId())) {
-            throw new ForbiddenException("只能使用本人上传的图片作为头像");
-        }
-        if (!"image".equalsIgnoreCase(file.getFileType())
-                || !StringUtils.hasText(file.getContentType())
-                || !file.getContentType().toLowerCase().startsWith("image/")) {
-            throw new BusinessException("头像文件必须是图片");
-        }
-        user.setAvatarUrl("/api/files/" + file.getId() + "/content");
+        Long previousFileId = fileResourceService.resolveFileId(user.getAvatarUrl());
+        var uploaded = fileResourceService.uploadOwnedPrivateImage(file, "用户头像");
+        user.setAvatarUrl(uploaded.getFileUrl());
         user.setUpdatedBy(user.getId());
         userMapper.updateById(user);
+        cleanupPreviousAvatar(previousFileId, uploaded.getId());
         return toVO(user);
+    }
+
+    @Override
+    public FileContentVO avatarContent() {
+        UserEntity user = requireCurrentUser();
+        Long fileId = fileResourceService.resolveFileId(user.getAvatarUrl());
+        if (fileId == null) {
+            throw new ResourceNotFoundException("头像不存在");
+        }
+        return fileResourceService.content(fileId, "inline");
     }
 
     @Override
     @Transactional
     public ProfileVO clearAvatar() {
         UserEntity user = requireCurrentUser();
+        Long previousFileId = fileResourceService.resolveFileId(user.getAvatarUrl());
         user.setAvatarUrl(null);
         user.setUpdatedBy(user.getId());
         userMapper.updateById(user);
+        cleanupPreviousAvatar(previousFileId, null);
         return toVO(user);
     }
 
@@ -146,7 +161,8 @@ public class ProfileSettingsServiceImpl implements ProfileSettingsService {
         vo.setRealName(user.getRealName());
         vo.setPhoneNumber(user.getPhoneNumber());
         vo.setEmail(user.getEmail());
-        vo.setAvatarUrl(user.getAvatarUrl());
+        vo.setAvatarUrl(
+                StringUtils.hasText(user.getAvatarUrl()) ? "/api/me/profile/avatar/content" : null);
         vo.setOrganizationId(user.getOrganizationId());
         vo.setDepartmentId(user.getDepartmentId());
         vo.setRoleCodes(currentUser.getRoleCodes());
@@ -169,5 +185,68 @@ public class ProfileSettingsServiceImpl implements ProfileSettingsService {
     private String normalizeNullable(String value) {
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private void validateAvatar(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("头像文件不能为空");
+        }
+        if (file.getSize() > MAX_AVATAR_SIZE) {
+            throw new BusinessException("头像文件不能超过5MB");
+        }
+        String extension = StringUtils.getFilenameExtension(file.getOriginalFilename());
+        if (extension == null || !AVATAR_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))) {
+            throw new BusinessException("头像仅支持 JPG、PNG、GIF 或 WebP 图片");
+        }
+        String contentType = file.getContentType();
+        if (!StringUtils.hasText(contentType)
+                || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new BusinessException("头像文件类型不正确");
+        }
+        try (InputStream input = file.getInputStream()) {
+            byte[] header = input.readNBytes(12);
+            if (!matchesImageSignature(header)) {
+                throw new BusinessException("头像文件内容不是有效图片");
+            }
+        } catch (IOException exception) {
+            throw new FileStorageException("头像文件读取失败", exception);
+        }
+    }
+
+    private boolean matchesImageSignature(byte[] value) {
+        boolean jpeg =
+                value.length >= 3
+                        && (value[0] & 0xFF) == 0xFF
+                        && (value[1] & 0xFF) == 0xD8
+                        && (value[2] & 0xFF) == 0xFF;
+        boolean png =
+                value.length >= 8
+                        && (value[0] & 0xFF) == 0x89
+                        && value[1] == 0x50
+                        && value[2] == 0x4E
+                        && value[3] == 0x47;
+        boolean gif = value.length >= 6 && value[0] == 'G' && value[1] == 'I' && value[2] == 'F';
+        boolean webp =
+                value.length >= 12
+                        && value[0] == 'R'
+                        && value[1] == 'I'
+                        && value[2] == 'F'
+                        && value[3] == 'F'
+                        && value[8] == 'W'
+                        && value[9] == 'E'
+                        && value[10] == 'B'
+                        && value[11] == 'P';
+        return jpeg || png || gif || webp;
+    }
+
+    private void cleanupPreviousAvatar(Long previousFileId, Long currentFileId) {
+        if (previousFileId == null || previousFileId.equals(currentFileId)) {
+            return;
+        }
+        try {
+            fileResourceService.delete(previousFileId);
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Failed to clean up replaced avatar file {}", previousFileId, exception);
+        }
     }
 }

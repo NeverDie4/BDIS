@@ -6,10 +6,13 @@ import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.file.vo.FileResourceVO;
 import java.nio.file.Path;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface FileResourceService {
 
     FileResourceVO upload(FileUploadDTO dto);
+
+    FileResourceVO uploadOwnedPrivateImage(MultipartFile file, String remark);
 
     FileResourceVO importPublic(Path sourceFile, String originalFilename, String remark);
 

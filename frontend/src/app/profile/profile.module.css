@@ -1,0 +1,133 @@
+.overviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: var(--space-lg);
+  align-items: stretch;
+}
+
+.identityHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-md);
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.identityTitle {
+  min-width: 0;
+}
+
+.identityTitle :global(.ant-typography) {
+  margin: 0;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.summaryGrid > * {
+  min-width: 0;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.permissionContent {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.permissionContent :global(.ant-typography) {
+  margin-bottom: 0;
+}
+
+.permissionTags,
+.codeTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.permissionTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  color: var(--color-title);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.codeTags :global(.ant-tag) {
+  margin: 0;
+}
+
+.managementList {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.managementEntry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: 64px;
+  padding: 10px 12px;
+  color: var(--color-text);
+  border: 1px solid rgba(var(--color-border-rgb), 0.8);
+  border-radius: var(--radius-button);
+  background: rgba(var(--color-texture-rgb), 0.6);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.managementEntry:hover {
+  color: var(--color-title);
+  border-color: rgba(var(--color-primary-rgb), 0.36);
+  background: rgba(var(--color-primary-rgb), 0.06);
+}
+
+.managementEntry span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.managementEntry strong {
+  color: var(--color-title);
+}
+
+.managementEntry small {
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 1080px) {
+  .overviewGrid,
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .identityHeader {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .identityHeader > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+}

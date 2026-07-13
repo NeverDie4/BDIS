@@ -7,6 +7,7 @@ import type { CurrentUser, LoginResult } from "@/types/api";
 import { LockKeyhole, UserRound } from "lucide-react";
 import { App, Button, Form, Input, Tabs, Typography } from "antd";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type LoginForm = {
   username: string;
@@ -24,8 +25,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { message } = App.useApp();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [bootstrapSubmitting, setBootstrapSubmitting] = useState(false);
 
   async function login(values: LoginForm) {
+    if (loginSubmitting) return;
+    setLoginSubmitting(true);
     try {
       const result = await apiPost<LoginResult>("/auth/sessions", values);
       setAuth(result.accessToken, result.user);
@@ -44,15 +49,21 @@ export default function LoginPage() {
       router.replace(returnUrl);
     } catch (error) {
       message.error(getApiErrorMessage(error, "登录失败"));
+    } finally {
+      setLoginSubmitting(false);
     }
   }
 
   async function bootstrap(values: BootstrapForm) {
+    if (bootstrapSubmitting) return;
+    setBootstrapSubmitting(true);
     try {
       await apiPost<CurrentUser>("/auth/bootstrap-admin", values);
       message.success("管理员已初始化，请使用该账号登录");
     } catch (error) {
       message.error(getApiErrorMessage(error, "管理员初始化失败"));
+    } finally {
+      setBootstrapSubmitting(false);
     }
   }
 
@@ -87,7 +98,7 @@ export default function LoginPage() {
                       autoComplete="current-password"
                     />
                   </Form.Item>
-                  <Button type="primary" htmlType="submit" block>
+                  <Button type="primary" htmlType="submit" block loading={loginSubmitting}>
                     登录
                   </Button>
                 </Form>
@@ -135,7 +146,7 @@ export default function LoginPage() {
                   <Form.Item name="email" label="邮箱">
                     <Input />
                   </Form.Item>
-                  <Button type="primary" htmlType="submit" block>
+                  <Button type="primary" htmlType="submit" block loading={bootstrapSubmitting}>
                     创建管理员
                   </Button>
                 </Form>

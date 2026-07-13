@@ -1,6 +1,7 @@
 package com.bdis.modules.settings.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.exception.UnauthorizedException;
 import com.bdis.common.security.IssuedToken;
@@ -29,6 +30,7 @@ import org.springframework.util.StringUtils;
 public class UserSessionServiceImpl implements UserSessionService {
 
     private static final String ACTIVE = "active";
+    private static final String DEVICE_ID_HEADER = "X-Device-Id";
 
     private static final ZoneId SYSTEM_ZONE = ZoneId.systemDefault();
 
@@ -51,9 +53,21 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Transactional
     public SessionAuthenticationDetails create(
             Long userId, IssuedToken token, HttpServletRequest request) {
+        String deviceId = normalizeDeviceId(request.getHeader(DEVICE_ID_HEADER));
+        expireElapsedSessions(userId);
+        if (deviceId != null) {
+            sessionMapper
+                    .selectList(
+                            new LambdaQueryWrapper<UserSessionEntity>()
+                                    .eq(UserSessionEntity::getUserId, userId)
+                                    .eq(UserSessionEntity::getDeviceId, deviceId)
+                                    .eq(UserSessionEntity::getSessionStatus, ACTIVE))
+                    .forEach(session -> revoke(session, "replaced_by_new_login"));
+        }
         UserSessionEntity session = new UserSessionEntity();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(userId);
+        session.setDeviceId(deviceId);
         session.setTokenJti(token.jti());
         session.setClientType(resolveClientType(request.getHeader("User-Agent")));
         session.setDeviceName(resolveDeviceName(request.getHeader("User-Agent")));
@@ -124,6 +138,7 @@ public class UserSessionServiceImpl implements UserSessionService {
     public List<UserSessionVO> listCurrentUserSessions() {
         Long userId = SecurityUtils.currentUser().getUserId();
         String currentJti = SecurityUtils.currentSession().jti();
+        expireElapsedSessions(userId);
         return sessionMapper
                 .selectList(
                         new LambdaQueryWrapper<UserSessionEntity>()
@@ -190,6 +205,26 @@ public class UserSessionServiceImpl implements UserSessionService {
                         session.getTokenJti(),
                         session.getIssuedAt().atZone(SYSTEM_ZONE).toInstant(),
                         session.getExpiresAt().atZone(SYSTEM_ZONE).toInstant()));
+    }
+
+    private void expireElapsedSessions(Long userId) {
+        sessionMapper.update(
+                null,
+                new LambdaUpdateWrapper<UserSessionEntity>()
+                        .eq(UserSessionEntity::getUserId, userId)
+                        .eq(UserSessionEntity::getSessionStatus, ACTIVE)
+                        .le(UserSessionEntity::getExpiresAt, LocalDateTime.now())
+                        .set(UserSessionEntity::getSessionStatus, "expired"));
+    }
+
+    private String normalizeDeviceId(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.length() <= 64 && normalized.matches("[A-Za-z0-9_-]{16,64}")
+                ? normalized
+                : null;
     }
 
     private UserSessionVO toVO(UserSessionEntity session, String currentJti) {

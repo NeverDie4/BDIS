@@ -173,7 +173,6 @@ modules.xxx
 | --- | --- | --- |
 | `SecurityConfig` | `config` | Token 认证、访问控制和 CORS 配置。 |
 | `MyBatisPlusConfig` | `config` | MyBatis Plus 分页插件配置。 |
-| `StaticResourceConfig` | `config` | 本地上传文件静态资源映射。 |
 | `OpenApiConfig` | `config` | OpenAPI 接口文档配置。 |
 
 ### 6.6 工具类和常量类
@@ -304,7 +303,7 @@ public interface HerbMapper extends BaseMapper<HerbEntity> {
 | M02 用户角色 | `UserController`、`RoleController`、`OrganizationController`、`DepartmentController` | `UserService`、`RoleService`、`OrganizationService`、`DepartmentService` | 用户、角色、组织、部门维护。 |
 | M03 权限控制 | `MenuController`、`PermissionController`、`AuthorizationController`、`DataScopeController` | `MenuService`、`PermissionService`、`AuthorizationService`、`DataScopeService` | 菜单、权限点、权限判定、数据范围。 |
 | M04 数据字典 | `DictTypeController`、`DictItemController`、`RegionController` | `DictTypeService`、`DictItemService`、`RegionService` | 字典类型、字典项、区域字典。 |
-| M05 文件资源 | `FileResourceController`、`FileBusinessController` | `FileResourceService`、`FileBusinessService` | 上传、预览、下载、业务绑定。 |
+| M05 文件资源 | `FileResourceController`、`PublicFileController`、`FileBusinessController` | `FileResourceService`、`FileBusinessService` | 上传、受控预览、下载、公开内容读取和业务绑定。 |
 | M06 操作审计 | `AuditLogController`、`LoginLogController`、`FileAccessLogController`、`DataSyncLogController` | `AuditLogService`、`LoginLogService`、`FileAccessLogService`、`DataSyncLogService` | 登录、操作、文件访问、数据同步日志查询。 |
 
 ### 9.2 中药材核心数据模块
@@ -550,9 +549,10 @@ Converter 用于避免 Controller 或 Service 中堆积对象转换代码。简�
 
 | 类名 | 类型 | 职责 |
 | --- | --- | --- |
-| `FileResourceController` | Controller | 文件上传、预览、下载、删除。 |
+| `FileResourceController` | Controller | 私有文件上传、鉴权预览、下载和删除。 |
+| `PublicFileController` | Controller | 只读取显式公开的文件内容。 |
 | `FileBusinessController` | Controller | 文件与业务对象绑定、解绑。 |
-| `FileResourceService` | Service | 维护文件元数据，统一处理文件主数据。 |
+| `FileResourceService` | Service | 维护文件元数据、受控内容地址、访问校验和访问日志。 |
 | `FileBusinessService` | Service | 维护 `bizType + bizId + fileId` 关系。 |
 | `FileStorageService` | Service | 抽象本地存储或对象存储。 |
 | `LocalFileStorageServiceImpl` | ServiceImpl | 本地文件存储实现。 |

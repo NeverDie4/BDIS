@@ -1,6 +1,6 @@
 "use client";
 
-import { App, Form, Input, Skeleton } from "antd";
+import { Alert, App, Button, Form, Input, Skeleton } from "antd";
 import { useEffect } from "react";
 import { useSettingNamespace } from "@/hooks/settings/useSettingNamespace";
 import { getApiErrorMessage } from "@/lib/request";
@@ -20,6 +20,17 @@ export function NotificationSettings() {
     if (setting.data) form.setFieldsValue(setting.data.values);
   }, [form, setting.data]);
   if (setting.isLoading) return <Skeleton active />;
+  if (setting.isError) {
+    return (
+      <Alert
+        showIcon
+        type="error"
+        message="通知偏好加载失败"
+        description={getApiErrorMessage(setting.error)}
+        action={<Button onClick={() => void setting.refetch()}>重新加载</Button>}
+      />
+    );
+  }
   return (
     <SettingsSection title="通知偏好">
       <Form
@@ -57,6 +68,7 @@ export function NotificationSettings() {
                 form.setFieldsValue(data.values);
                 setDirty(false);
               },
+              onError: (error) => message.error(getApiErrorMessage(error, "恢复默认值失败")),
             })
           }
         />

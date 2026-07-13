@@ -60,6 +60,7 @@ export function SettingsShell() {
     if (nextKey === activeTab?.key) return;
     if (!hasUnsavedChanges) {
       setActiveKey(nextKey);
+      replaceTabUrl(nextKey);
       return;
     }
     modal.confirm({
@@ -70,6 +71,7 @@ export function SettingsShell() {
       onOk: () => {
         setDirtySections(new Set());
         setActiveKey(nextKey);
+        replaceTabUrl(nextKey);
       },
     });
   }
@@ -103,4 +105,10 @@ export function SettingsShell() {
       </div>
     </SettingsDirtyContext.Provider>
   );
+}
+
+function replaceTabUrl(tab: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", tab);
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
 }

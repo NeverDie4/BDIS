@@ -77,7 +77,7 @@ export function resolvePostLoginPath(
     return preferredPath;
   }
 
-  if (hasUserPermission(user, "auth:center:view")) {
+  if (hasUserPermission(user, "auth:dashboard:view")) {
     return "/dashboard";
   }
 

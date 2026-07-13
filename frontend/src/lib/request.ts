@@ -4,6 +4,7 @@ import axios from "axios";
 import type { ApiResult } from "@/types/api";
 import { buildLoginUrl, getCurrentRelativeUrl } from "./auth-navigation";
 import { clearStoredToken, getStoredToken } from "./auth-token";
+import { getOrCreateDeviceId } from "./device-id";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
 const AUTH_REDIRECT_FLAG = "__bdisAuthRedirect";
@@ -29,6 +30,10 @@ export const request = axios.create({
 });
 
 request.interceptors.request.use((config) => {
+  const deviceId = getOrCreateDeviceId();
+  if (deviceId) {
+    config.headers["X-Device-Id"] = deviceId;
+  }
   const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

@@ -14,6 +14,8 @@ public class CurrentUserVO {
 
     private String realName;
 
+    private String avatarUrl;
+
     private Long organizationId;
 
     private Long departmentId;

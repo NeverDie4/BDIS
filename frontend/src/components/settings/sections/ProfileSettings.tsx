@@ -1,12 +1,12 @@
 "use client";
 
-import { App, Avatar, Button, Descriptions, Form, Input, Skeleton, Space, Upload } from "antd";
+import { Alert, App, Button, Descriptions, Form, Input, Skeleton, Space, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImageUp, Trash2, UserRound } from "lucide-react";
+import { ImageUp, Trash2 } from "lucide-react";
 import { useEffect } from "react";
-import { uploadFile } from "@/lib/files";
-import { apiDelete, apiGet, apiPatch, apiPut, getApiErrorMessage } from "@/lib/request";
+import { UserAvatar } from "@/components/common/UserAvatar";
+import { apiDelete, apiGet, apiPatch, getApiErrorMessage, request } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ProfileSettings as ProfileSettingsData } from "@/types/settings";
 import { SettingsFormActions } from "../SettingsFormActions";
@@ -41,7 +41,13 @@ export function ProfileSettings() {
   });
   const clearAvatar = useMutation({
     mutationFn: () => apiDelete<ProfileSettingsData>("/me/profile/avatar"),
-    onSuccess: (data) => queryClient.setQueryData(["settings", "profile"], data),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["settings", "profile"], data);
+      queryClient.removeQueries({ queryKey: ["user-avatar"] });
+      if (authUser) setUser({ ...authUser, avatarUrl: undefined });
+      message.success("头像已清除");
+    },
+    onError: (error) => message.error(getApiErrorMessage(error, "头像清除失败")),
   });
   const uploadProps: UploadProps = {
     accept: "image/*",
@@ -52,15 +58,24 @@ export function ProfileSettings() {
         message.error("请选择图片文件");
         return Upload.LIST_IGNORE;
       }
+      if (file.size > 5 * 1024 * 1024) {
+        message.error("头像文件不能超过5MB");
+        return Upload.LIST_IGNORE;
+      }
       return true;
     },
     customRequest: async ({ file, onSuccess, onError }) => {
       try {
-        const uploaded = await uploadFile(file as File);
-        const data = await apiPut<ProfileSettingsData>("/me/profile/avatar", {
-          fileId: uploaded.id,
-        });
+        const formData = new FormData();
+        formData.append("file", file as File);
+        const response = await request.put<{ data: ProfileSettingsData }>(
+          "/me/profile/avatar",
+          formData,
+        );
+        const data = response.data.data;
         queryClient.setQueryData(["settings", "profile"], data);
+        queryClient.removeQueries({ queryKey: ["user-avatar"] });
+        if (authUser) setUser({ ...authUser, avatarUrl: data.avatarUrl });
         onSuccess?.(data);
         message.success("头像已更新");
       } catch (error) {
@@ -71,11 +86,22 @@ export function ProfileSettings() {
   };
 
   if (profile.isLoading) return <Skeleton active />;
+  if (profile.isError) {
+    return (
+      <Alert
+        showIcon
+        type="error"
+        message="个人资料加载失败"
+        description={getApiErrorMessage(profile.error)}
+        action={<Button onClick={() => void profile.refetch()}>重新加载</Button>}
+      />
+    );
+  }
   return (
     <div className={styles.sectionStack}>
       <SettingsSection title="个人资料">
         <div className={styles.profileHeader}>
-          <Avatar icon={<UserRound size={28} />} size={68} />
+          <UserAvatar avatarUrl={profile.data?.avatarUrl} iconSize={28} size={68} />
           <Space wrap>
             <Upload {...uploadProps}>
               <Button icon={<ImageUp size={16} />}>更换头像</Button>
@@ -121,9 +147,7 @@ export function ProfileSettings() {
           <Descriptions.Item label="机构">
             {profile.data?.organizationName || "-"}
           </Descriptions.Item>
-          <Descriptions.Item label="部门">
-            {profile.data?.departmentName || "-"}
-          </Descriptions.Item>
+          <Descriptions.Item label="部门">{profile.data?.departmentName || "-"}</Descriptions.Item>
         </Descriptions>
       </SettingsSection>
     </div>

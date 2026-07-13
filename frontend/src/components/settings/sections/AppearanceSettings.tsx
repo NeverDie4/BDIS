@@ -1,6 +1,6 @@
 "use client";
 
-import { App, Form, Skeleton } from "antd";
+import { Alert, App, Button, Form, Skeleton } from "antd";
 import { useEffect } from "react";
 import { getApiErrorMessage } from "@/lib/request";
 import { useSettingNamespace } from "@/hooks/settings/useSettingNamespace";
@@ -33,6 +33,27 @@ export function AppearanceSettings() {
     }
   }, [common.data, common.isLoading, commonForm, setting.isLoading]);
   if (setting.isLoading || common.isLoading) return <Skeleton active />;
+  if (setting.isError || common.isError) {
+    const error = setting.error || common.error;
+    return (
+      <Alert
+        showIcon
+        type="error"
+        message="界面偏好加载失败"
+        description={getApiErrorMessage(error)}
+        action={
+          <Button
+            onClick={() => {
+              void setting.refetch();
+              void common.refetch();
+            }}
+          >
+            重新加载
+          </Button>
+        }
+      />
+    );
+  }
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <SettingsSection title="常规偏好">
@@ -78,6 +99,7 @@ export function AppearanceSettings() {
                   commonForm.setFieldsValue(data.values);
                   setCommonDirty(false);
                 },
+                onError: (error) => message.error(getApiErrorMessage(error, "恢复默认值失败")),
               })
             }
           />
@@ -124,6 +146,7 @@ export function AppearanceSettings() {
                   form.setFieldsValue(data.values);
                   setAppearanceDirty(false);
                 },
+                onError: (error) => message.error(getApiErrorMessage(error, "恢复默认值失败")),
               })
             }
           />

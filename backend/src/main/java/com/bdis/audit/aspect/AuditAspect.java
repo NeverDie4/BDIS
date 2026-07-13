@@ -150,6 +150,8 @@ public class AuditAspect {
     private boolean isSelfAudited(String uri) {
         return uri.contains("/files")
                 || uri.contains("/file-relations")
-                || uri.contains("/soap-exchange-jobs");
+                || uri.contains("/soap-exchange-jobs")
+                || uri.endsWith("/auth/sessions")
+                || uri.endsWith("/auth/bootstrap-admin");
     }
 }

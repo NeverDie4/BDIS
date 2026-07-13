@@ -1,11 +1,13 @@
 "use client";
 
-import { App, Avatar, Dropdown } from "antd";
+import { App, Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import { LogOut, Settings, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { apiDelete } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
+import { UserAvatar } from "@/components/common/UserAvatar";
 import styles from "./UserMenu.module.css";
 
 export function UserMenu() {
@@ -20,12 +22,12 @@ export function UserMenu() {
     {
       key: "profile",
       icon: <UserRound size={16} />,
-      label: "个人主页",
+      label: <Link href="/profile">个人主页</Link>,
     },
     {
       key: "settings",
       icon: <Settings size={16} />,
-      label: "个人设置",
+      label: <Link href="/settings">个人设置</Link>,
     },
     { type: "divider" },
     {
@@ -37,12 +39,7 @@ export function UserMenu() {
   ];
 
   async function onClick({ key }: { key: string }) {
-    if (key === "profile") {
-      router.push("/profile");
-      return;
-    }
-    if (key === "settings") {
-      router.push("/settings");
+    if (key !== "logout") {
       return;
     }
     try {
@@ -63,7 +60,12 @@ export function UserMenu() {
       popupRender={(menu) => (
         <div className={styles.popup}>
           <div className={styles.identity}>
-            <Avatar className={styles.identityAvatar} icon={<UserRound size={19} />} size={42} />
+            <UserAvatar
+              avatarUrl={user?.avatarUrl}
+              className={styles.identityAvatar}
+              iconSize={19}
+              size={42}
+            />
             <div className={styles.identityText}>
               <strong>{displayName}</strong>
               <span>{user?.username || "-"}</span>
@@ -78,7 +80,7 @@ export function UserMenu() {
       )}
     >
       <button aria-label="打开用户菜单" className={styles.avatarButton} type="button">
-        <Avatar icon={<UserRound size={18} />} size={34} />
+        <UserAvatar avatarUrl={user?.avatarUrl} iconSize={18} size={34} />
       </button>
     </Dropdown>
   );

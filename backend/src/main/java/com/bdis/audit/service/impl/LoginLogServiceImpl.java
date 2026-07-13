@@ -11,6 +11,7 @@ import com.bdis.modules.audit.entity.LoginLogEntity;
 import com.bdis.modules.audit.mapper.LoginLogMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +29,7 @@ public class LoginLogServiceImpl implements LoginLogService {
         LoginLogEntity entity = new LoginLogEntity();
         entity.setUserId(userId);
         entity.setUsername(username);
-        entity.setLoginResult(result);
+        entity.setLoginResult(normalizeResult(result));
         entity.setFailReason(failureReason);
         entity.setIpAddress(CurrentUserUtils.currentIp());
         entity.setUserAgent(CurrentUserUtils.currentUserAgent());
@@ -38,6 +39,7 @@ public class LoginLogServiceImpl implements LoginLogService {
 
     @Override
     public PageResult<LoginLogVO> page(LoginLogQuery query) {
+        String loginResult = normalizeResult(query.getLoginResult());
         Page<LoginLogEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<LoginLogEntity> wrapper =
                 new LambdaQueryWrapper<LoginLogEntity>()
@@ -46,10 +48,7 @@ public class LoginLogServiceImpl implements LoginLogService {
                                 query.getUsername() != null,
                                 LoginLogEntity::getUsername,
                                 query.getUsername())
-                        .eq(
-                                query.getLoginResult() != null,
-                                LoginLogEntity::getLoginResult,
-                                query.getLoginResult())
+                        .eq(loginResult != null, LoginLogEntity::getLoginResult, loginResult)
                         .orderByDesc(LoginLogEntity::getLoggedInAt);
         Page<LoginLogEntity> result = loginLogMapper.selectPage(page, wrapper);
         List<LoginLogVO> records =
@@ -63,5 +62,9 @@ public class LoginLogServiceImpl implements LoginLogService {
                                 })
                         .toList();
         return PageResult.of(records, result);
+    }
+
+    private String normalizeResult(String value) {
+        return value == null || value.isBlank() ? null : value.toUpperCase(Locale.ROOT);
     }
 }

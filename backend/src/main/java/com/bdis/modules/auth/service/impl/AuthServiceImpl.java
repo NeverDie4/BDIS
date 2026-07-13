@@ -117,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
         userRole.setUserId(user.getId());
         userRole.setRoleId(adminRole.getId());
         userRoleMapper.insert(userRole);
-        recordLogin(user.getId(), user.getUsername(), "success", "bootstrap-admin", request);
+        recordLogin(user.getId(), user.getUsername(), "SUCCESS", "bootstrap-admin", request);
         return toCurrentUserVO(currentUserService.load(user.getId()));
     }
 
@@ -129,11 +129,11 @@ public class AuthServiceImpl implements AuthService {
                         new LambdaQueryWrapper<UserEntity>()
                                 .eq(UserEntity::getUsername, dto.getUsername()));
         if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPasswordHash())) {
-            recordLogin(null, dto.getUsername(), "failed", "账号或密码错误", request);
+            recordLogin(null, dto.getUsername(), "FAILED", "账号或密码错误", request);
             throw new UnauthorizedException("账号或密码错误");
         }
         if (user.getStatus() == null || user.getStatus() != 1) {
-            recordLogin(user.getId(), user.getUsername(), "failed", "账号已停用", request);
+            recordLogin(user.getId(), user.getUsername(), "FAILED", "账号已停用", request);
             throw new UnauthorizedException("账号已停用");
         }
         user.setLastLoginAt(LocalDateTime.now());
@@ -147,7 +147,7 @@ public class AuthServiceImpl implements AuthService {
         vo.setUser(toCurrentUserVO(currentUser));
         vo.setPreferredLandingPath(userPreferenceService.preferredLandingPath(currentUser));
         vo.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
-        recordLogin(user.getId(), user.getUsername(), "success", null, request);
+        recordLogin(user.getId(), user.getUsername(), "SUCCESS", null, request);
         return vo;
     }
 
@@ -199,6 +199,10 @@ public class AuthServiceImpl implements AuthService {
         vo.setRoleIds(user.getRoleIds());
         vo.setPermissions(user.getPermissions());
         UserEntity userEntity = userMapper.selectById(user.getUserId());
+        vo.setAvatarUrl(
+                userEntity != null && StringUtils.hasText(userEntity.getAvatarUrl())
+                        ? "/api/me/profile/avatar/content"
+                        : null);
         vo.setMustChangePassword(
                 userEntity != null && Boolean.TRUE.equals(userEntity.getMustChangePassword()));
         return vo;

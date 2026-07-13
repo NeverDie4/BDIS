@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Drawer, Space, Tooltip, Typography } from "antd";
-import { BellOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { BellOutlined, LoginOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -79,7 +79,15 @@ export function HeaderNav() {
             />
           </Badge>
         </Tooltip>
-        <UserMenu />
+        {status === "authenticated" ? (
+          <UserMenu />
+        ) : status === "unknown" ? (
+          <Button aria-label="正在确认登录状态" loading shape="circle" type="text" />
+        ) : (
+          <Link href="/login">
+            <Button icon={<LoginOutlined />}>登录</Button>
+          </Link>
+        )}
       </Space>
 
       <Drawer

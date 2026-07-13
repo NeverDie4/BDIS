@@ -1,6 +1,6 @@
 "use client";
 
-import { App, Button, Form, Input, List, Popconfirm, Skeleton, Tag } from "antd";
+import { Alert, App, Button, Collapse, Form, Input, List, Popconfirm, Skeleton, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -45,6 +45,7 @@ export function SecuritySettings() {
         void queryClient.invalidateQueries({ queryKey: ["settings", "sessions"] });
       }
     },
+    onError: (error) => message.error(getApiErrorMessage(error, "设备退出失败")),
   });
   const revokeOthers = useMutation({
     mutationFn: () => apiDelete<void>("/me/sessions/others"),
@@ -52,7 +53,65 @@ export function SecuritySettings() {
       message.success("其他设备已退出");
       void queryClient.invalidateQueries({ queryKey: ["settings", "sessions"] });
     },
+    onError: (error) => message.error(getApiErrorMessage(error, "其他设备退出失败")),
   });
+  const now = Date.now();
+  const activeSessions =
+    sessions.data?.filter(
+      (session) => session.status === "active" && new Date(session.expiresAt).getTime() > now,
+    ) ?? [];
+  const historySessions =
+    sessions.data?.filter(
+      (session) => session.status !== "active" || new Date(session.expiresAt).getTime() <= now,
+    ) ?? [];
+
+  function sessionList(data: UserSession[], allowRevoke: boolean) {
+    return (
+      <List
+        dataSource={data}
+        locale={{ emptyText: "暂无会话" }}
+        renderItem={(session) => (
+          <List.Item
+            actions={
+              allowRevoke
+                ? [
+                    <Popconfirm
+                      key="revoke"
+                      title="确认退出该设备？"
+                      onConfirm={() => revoke.mutate(session.sessionId)}
+                    >
+                      <Button
+                        danger
+                        icon={<LogOut size={15} />}
+                        loading={revoke.isPending}
+                        size="small"
+                        type="text"
+                      >
+                        退出
+                      </Button>
+                    </Popconfirm>,
+                  ]
+                : undefined
+            }
+          >
+            <List.Item.Meta
+              avatar={<ShieldCheck size={20} />}
+              title={
+                <span>
+                  {session.deviceName || "未知设备"}{" "}
+                  {session.current ? <Tag color="green">当前设备</Tag> : null}
+                  {!allowRevoke ? <SessionStatusTag status={session.status} /> : null}
+                </span>
+              }
+              description={`${session.ipAddress || "未知 IP"} · 最近活动 ${new Date(
+                session.lastActiveAt,
+              ).toLocaleString()}`}
+            />
+          </List.Item>
+        )}
+      />
+    );
+  }
 
   return (
     <div className={styles.sectionStack}>
@@ -97,50 +156,46 @@ export function SecuritySettings() {
       <SettingsSection title="登录设备">
         {sessions.isLoading ? (
           <Skeleton active />
+        ) : sessions.isError ? (
+          <Alert
+            showIcon
+            type="error"
+            message="登录设备加载失败"
+            description={getApiErrorMessage(sessions.error)}
+            action={<Button onClick={() => void sessions.refetch()}>重新加载</Button>}
+          />
         ) : (
           <>
-            <List
-              dataSource={sessions.data ?? []}
-              locale={{ emptyText: "暂无会话" }}
-              renderItem={(session) => (
-                <List.Item
-                  actions={[
-                    <Popconfirm
-                      key="revoke"
-                      title="确认退出该设备？"
-                      onConfirm={() => revoke.mutate(session.sessionId)}
-                    >
-                      <Button danger icon={<LogOut size={15} />} size="small" type="text">
-                        退出
-                      </Button>
-                    </Popconfirm>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={<ShieldCheck size={20} />}
-                    title={
-                      <span>
-                        {session.deviceName || "未知设备"}{" "}
-                        {session.current ? <Tag color="green">当前设备</Tag> : null}
-                      </span>
-                    }
-                    description={`${session.ipAddress || "未知 IP"} · ${new Date(
-                      session.lastActiveAt,
-                    ).toLocaleString()}`}
-                  />
-                </List.Item>
-              )}
-            />
+            {sessionList(activeSessions, true)}
             <Button
               danger
+              disabled={!activeSessions.some((session) => !session.current)}
               loading={revokeOthers.isPending}
               onClick={() => revokeOthers.mutate()}
             >
               退出其他设备
             </Button>
+            {historySessions.length ? (
+              <Collapse
+                ghost
+                items={[
+                  {
+                    key: "history",
+                    label: `最近登录历史（${historySessions.length}）`,
+                    children: sessionList(historySessions, false),
+                  },
+                ]}
+              />
+            ) : null}
           </>
         )}
       </SettingsSection>
     </div>
   );
+}
+
+function SessionStatusTag({ status }: { status: UserSession["status"] }) {
+  if (status === "revoked") return <Tag>已退出</Tag>;
+  if (status === "expired") return <Tag>已过期</Tag>;
+  return <Tag>已失效</Tag>;
 }

@@ -34,11 +34,14 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class FileResourceServiceImpl implements FileResourceService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FileResourceServiceImpl.class);
+    private static final String PENDING_PRIVATE_URL = "/api/files/0/content";
+    private static final String PENDING_PUBLIC_URL = "/api/public-files/0/content";
 
     private final FileResourceMapper fileResourceMapper;
     private final FileStorageService fileStorageService;
@@ -76,9 +79,8 @@ public class FileResourceServiceImpl implements FileResourceService {
             entity.setFileType(resolveFileType(dto));
             entity.setFileFormat(extension);
             entity.setFileSize(dto.getFile().getSize());
-            entity.setFileUrl(storedFile.fileUrl());
-            entity.setThumbnailUrl(
-                    "image".equals(entity.getFileType()) ? storedFile.fileUrl() : null);
+            entity.setFileUrl(PENDING_PRIVATE_URL);
+            entity.setThumbnailUrl(null);
             entity.setStoragePath(storedFile.storagePath());
             entity.setStorageType("local");
             entity.setAccessLevel(
@@ -95,6 +97,8 @@ public class FileResourceServiceImpl implements FileResourceService {
             entity.setRemark(dto.getRemark());
             entity.setVersion(0);
             fileResourceMapper.insert(entity);
+            applyControlledUrls(entity);
+            fileResourceMapper.updateById(entity);
             bindIfRequested(dto, entity.getId());
             recordAudit("UPLOAD", "file_resource", entity.getId());
             return toVO(entity);
@@ -106,6 +110,16 @@ public class FileResourceServiceImpl implements FileResourceService {
             }
             throw exception;
         }
+    }
+
+    @Override
+    public FileResourceVO uploadOwnedPrivateImage(MultipartFile file, String remark) {
+        FileUploadDTO dto = new FileUploadDTO();
+        dto.setFile(file);
+        dto.setFileType("image");
+        dto.setAccessLevel("private");
+        dto.setRemark(remark);
+        return upload(dto);
     }
 
     @Override
@@ -130,19 +144,18 @@ public class FileResourceServiceImpl implements FileResourceService {
                 || !existingFileUrl.startsWith("/api/files/uploads/")) {
             throw new FileStorageException("只能登记本地历史上传文件");
         }
+        String storagePath = existingFileUrl.substring("/api/files/".length());
         FileResourceEntity existing =
                 fileResourceMapper.selectOne(
                         new LambdaQueryWrapper<FileResourceEntity>()
-                                .eq(FileResourceEntity::getFileUrl, existingFileUrl)
+                                .eq(FileResourceEntity::getStoragePath, storagePath)
                                 .last("limit 1"));
         if (existing != null) {
             return toVO(existing);
         }
         Path storedPath = fileStorageService.resolve(existingFileUrl);
-        String storagePath = existingFileUrl.substring("/api/files/".length());
         FileStorageService.StoredFile storedFile =
-                new FileStorageService.StoredFile(
-                        storedPath.getFileName().toString(), storagePath, existingFileUrl);
+                new FileStorageService.StoredFile(storedPath.getFileName().toString(), storagePath);
         return createSystemFileResource(storedFile, storedPath, originalFilename, "public", remark);
     }
 
@@ -191,11 +204,8 @@ public class FileResourceServiceImpl implements FileResourceService {
                         entity.getOriginalFilename(),
                         entity.getContentType(),
                         entity.getFileSize());
-        FileAccessRecordDTO record = new FileAccessRecordDTO();
-        record.setFileId(fileId);
         String accessType = "attachment".equalsIgnoreCase(disposition) ? "DOWNLOAD" : "PREVIEW";
-        record.setAccessType(accessType);
-        fileAccessLogService.record(record);
+        recordFileAccess(fileId, accessType);
         recordAudit(accessType, "file_resource", fileId);
         return content;
     }
@@ -206,11 +216,14 @@ public class FileResourceServiceImpl implements FileResourceService {
         if (!"public".equalsIgnoreCase(entity.getAccessLevel())) {
             throw new ResourceNotFoundException("公开文件不存在");
         }
-        return fileStorageService.load(
-                entity.getStoragePath(),
-                entity.getOriginalFilename(),
-                entity.getContentType(),
-                entity.getFileSize());
+        FileContentVO content =
+                fileStorageService.load(
+                        entity.getStoragePath(),
+                        entity.getOriginalFilename(),
+                        entity.getContentType(),
+                        entity.getFileSize());
+        recordFileAccess(fileId, "PREVIEW");
+        return content;
     }
 
     @Override
@@ -219,7 +232,7 @@ public class FileResourceServiceImpl implements FileResourceService {
         if (fileId == null) {
             return fileStorageService.resolve(fileUrl);
         }
-        return fileStorageService.resolve(requireFile(fileId).getFileUrl());
+        return fileStorageService.resolve(requireFile(fileId).getStoragePath());
     }
 
     @Override
@@ -236,6 +249,14 @@ public class FileResourceServiceImpl implements FileResourceService {
                         new LambdaQueryWrapper<FileResourceEntity>()
                                 .eq(FileResourceEntity::getFileUrl, fileUrl)
                                 .last("limit 1"));
+        if (entity == null && fileUrl.startsWith("/api/files/uploads/")) {
+            String storagePath = fileUrl.substring("/api/files/".length());
+            entity =
+                    fileResourceMapper.selectOne(
+                            new LambdaQueryWrapper<FileResourceEntity>()
+                                    .eq(FileResourceEntity::getStoragePath, storagePath)
+                                    .last("limit 1"));
+        }
         return entity == null ? null : entity.getId();
     }
 
@@ -278,9 +299,11 @@ public class FileResourceServiceImpl implements FileResourceService {
                     contentType != null && contentType.startsWith("image/") ? "image" : "file");
             entity.setFileFormat(extension);
             entity.setFileSize(Files.size(storedPath));
-            entity.setFileUrl(storedFile.fileUrl());
-            entity.setThumbnailUrl(
-                    "image".equals(entity.getFileType()) ? storedFile.fileUrl() : null);
+            entity.setFileUrl(
+                    "public".equalsIgnoreCase(accessLevel)
+                            ? PENDING_PUBLIC_URL
+                            : PENDING_PRIVATE_URL);
+            entity.setThumbnailUrl(null);
             entity.setStoragePath(storedFile.storagePath());
             entity.setStorageType("local");
             entity.setAccessLevel(accessLevel);
@@ -294,6 +317,8 @@ public class FileResourceServiceImpl implements FileResourceService {
             entity.setRemark(remark);
             entity.setVersion(0);
             fileResourceMapper.insert(entity);
+            applyControlledUrls(entity);
+            fileResourceMapper.updateById(entity);
             recordAudit("IMPORT", "file_resource", entity.getId());
             return toVO(entity);
         } catch (IOException exception) {
@@ -327,6 +352,15 @@ public class FileResourceServiceImpl implements FileResourceService {
             vo.setThumbnailUrl(vo.getFileUrl());
         }
         return vo;
+    }
+
+    private void applyControlledUrls(FileResourceEntity entity) {
+        String contentUrl =
+                "public".equalsIgnoreCase(entity.getAccessLevel())
+                        ? "/api/public-files/" + entity.getId() + "/content"
+                        : "/api/files/" + entity.getId() + "/content";
+        entity.setFileUrl(contentUrl);
+        entity.setThumbnailUrl("image".equals(entity.getFileType()) ? contentUrl : null);
     }
 
     private boolean isAdmin() {
@@ -373,6 +407,13 @@ public class FileResourceServiceImpl implements FileResourceService {
         } catch (RuntimeException exception) {
             LOGGER.warn("Failed to persist file resource audit log", exception);
         }
+    }
+
+    private void recordFileAccess(Long fileId, String accessType) {
+        FileAccessRecordDTO record = new FileAccessRecordDTO();
+        record.setFileId(fileId);
+        record.setAccessType(accessType);
+        fileAccessLogService.record(record);
     }
 
     private void bindIfRequested(FileUploadDTO dto, Long fileId) {

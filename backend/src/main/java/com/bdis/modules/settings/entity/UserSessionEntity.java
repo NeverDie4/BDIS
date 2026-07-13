@@ -19,6 +19,8 @@ public class UserSessionEntity {
 
     private Long userId;
 
+    private String deviceId;
+
     private String tokenJti;
 
     private String clientType;

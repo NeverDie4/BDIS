@@ -11,6 +11,7 @@ import {
   IdCard,
   KeyRound,
   LogOut,
+  ClipboardList,
   Menu as MenuIcon,
   Network,
   ShieldCheck,
@@ -35,6 +36,7 @@ const iconMap: Record<string, React.ReactNode> = {
   key: <KeyRound size={16} />,
   building: <Building2 size={16} />,
   sitemap: <Network size={16} />,
+  "clipboard-list": <ClipboardList size={16} />,
 };
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

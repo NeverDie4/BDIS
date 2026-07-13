@@ -1,7 +1,7 @@
 package com.bdis.modules.settings.controller;
 
 import com.bdis.common.core.Result;
-import com.bdis.modules.settings.dto.AvatarUpdateRequest;
+import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.settings.dto.PasswordUpdateRequest;
 import com.bdis.modules.settings.dto.ProfileUpdateRequest;
 import com.bdis.modules.settings.dto.SettingUpdateRequest;
@@ -12,8 +12,14 @@ import com.bdis.modules.settings.vo.ProfileVO;
 import com.bdis.modules.settings.vo.SettingNamespaceVO;
 import com.bdis.modules.settings.vo.UserSessionVO;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -21,7 +27,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/me")
@@ -52,9 +60,26 @@ public class MeSettingsController {
         return Result.success(profileSettingsService.updateProfile(request));
     }
 
-    @PutMapping("/profile/avatar")
-    public Result<ProfileVO> updateAvatar(@Valid @RequestBody AvatarUpdateRequest request) {
-        return Result.success(profileSettingsService.updateAvatar(request));
+    @PutMapping(path = "/profile/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<ProfileVO> updateAvatar(@RequestParam("file") MultipartFile file) {
+        return Result.success(profileSettingsService.updateAvatar(file));
+    }
+
+    @GetMapping("/profile/avatar/content")
+    public ResponseEntity<Resource> avatarContent() {
+        FileContentVO content = profileSettingsService.avatarContent();
+        ContentDisposition disposition =
+                ContentDisposition.inline()
+                        .filename(content.getFileName(), StandardCharsets.UTF_8)
+                        .build();
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.parseMediaType(
+                                content.getContentType() == null
+                                        ? MediaType.APPLICATION_OCTET_STREAM_VALUE
+                                        : content.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(content.getResource());
     }
 
     @DeleteMapping("/profile/avatar")

@@ -16,6 +16,7 @@ export type CurrentUser = {
   userId: number;
   username: string;
   realName?: string;
+  avatarUrl?: string;
   organizationId?: number;
   departmentId?: number;
   roleCodes: string[];

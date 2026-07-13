@@ -47,6 +47,6 @@ export const authAdminRoutes: RouteMeta[] = [
     path: "/dashboard/audit",
     title: "操作审计",
     owner: "auth",
-    permission: "audit:log:view",
+    permission: "audit:center:view",
   },
 ];
