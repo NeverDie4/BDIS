@@ -1,6 +1,7 @@
 package com.bdis.modules.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.audit.service.LoginLogService;
 import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.exception.DuplicateResourceException;
 import com.bdis.common.exception.ForbiddenException;
@@ -13,8 +14,6 @@ import com.bdis.common.security.JwtProperties;
 import com.bdis.common.security.JwtUtils;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.common.security.TokenBlacklistService;
-import com.bdis.modules.audit.entity.LoginLogEntity;
-import com.bdis.modules.audit.mapper.LoginLogMapper;
 import com.bdis.modules.auth.dto.BootstrapAdminDTO;
 import com.bdis.modules.auth.dto.LoginDTO;
 import com.bdis.modules.auth.service.AuthService;
@@ -46,7 +45,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRoleMapper userRoleMapper;
 
-    private final LoginLogMapper loginLogMapper;
+    private final LoginLogService loginLogService;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -68,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
             UserMapper userMapper,
             RoleMapper roleMapper,
             UserRoleMapper userRoleMapper,
-            LoginLogMapper loginLogMapper,
+            LoginLogService loginLogService,
             PasswordEncoder passwordEncoder,
             JwtUtils jwtUtils,
             JwtProperties jwtProperties,
@@ -80,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
-        this.loginLogMapper = loginLogMapper;
+        this.loginLogService = loginLogService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.jwtProperties = jwtProperties;
@@ -117,7 +116,7 @@ public class AuthServiceImpl implements AuthService {
         userRole.setUserId(user.getId());
         userRole.setRoleId(adminRole.getId());
         userRoleMapper.insert(userRole);
-        recordLogin(user.getId(), user.getUsername(), "SUCCESS", "bootstrap-admin", request);
+        recordLogin(user.getId(), user.getUsername(), "SUCCESS", "bootstrap-admin");
         return toCurrentUserVO(currentUserService.load(user.getId()));
     }
 
@@ -129,11 +128,11 @@ public class AuthServiceImpl implements AuthService {
                         new LambdaQueryWrapper<UserEntity>()
                                 .eq(UserEntity::getUsername, dto.getUsername()));
         if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPasswordHash())) {
-            recordLogin(null, dto.getUsername(), "FAILED", "账号或密码错误", request);
+            recordLogin(null, dto.getUsername(), "FAILED", "账号或密码错误");
             throw new UnauthorizedException("账号或密码错误");
         }
         if (user.getStatus() == null || user.getStatus() != 1) {
-            recordLogin(user.getId(), user.getUsername(), "FAILED", "账号已停用", request);
+            recordLogin(user.getId(), user.getUsername(), "FAILED", "账号已停用");
             throw new UnauthorizedException("账号已停用");
         }
         user.setLastLoginAt(LocalDateTime.now());
@@ -147,7 +146,7 @@ public class AuthServiceImpl implements AuthService {
         vo.setUser(toCurrentUserVO(currentUser));
         vo.setPreferredLandingPath(userPreferenceService.preferredLandingPath(currentUser));
         vo.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
-        recordLogin(user.getId(), user.getUsername(), "SUCCESS", null, request);
+        recordLogin(user.getId(), user.getUsername(), "SUCCESS", null);
         return vo;
     }
 
@@ -208,29 +207,8 @@ public class AuthServiceImpl implements AuthService {
         return vo;
     }
 
-    private void recordLogin(
-            Long userId,
-            String username,
-            String result,
-            String failReason,
-            HttpServletRequest request) {
-        LoginLogEntity log = new LoginLogEntity();
-        log.setUserId(userId);
-        log.setUsername(username);
-        log.setLoginResult(result);
-        log.setFailReason(failReason);
-        log.setIpAddress(clientIp(request));
-        log.setUserAgent(request.getHeader("User-Agent"));
-        log.setLoggedInAt(LocalDateTime.now());
-        loginLogMapper.insert(log);
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwardedFor)) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+    private void recordLogin(Long userId, String username, String result, String failReason) {
+        loginLogService.record(userId, username, result, failReason);
     }
 
     private String generateNo(String prefix) {

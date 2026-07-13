@@ -4,17 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.file.dto.FileBusinessBindDTO;
+import com.bdis.file.policy.FileBusinessPolicyRegistry;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.impl.FileBusinessServiceImpl;
-import com.bdis.file.support.BusinessReferenceValidator;
 import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
@@ -38,9 +38,7 @@ class FileBusinessServiceImplTest {
 
     @Mock private FileResourceMapper fileResourceMapper;
 
-    @Mock private BusinessReferenceValidator businessReferenceValidator;
-
-    @Mock private AuditLogService auditLogService;
+    @Mock private FileBusinessPolicyRegistry policyRegistry;
 
     private FileBusinessService fileBusinessService;
 
@@ -58,15 +56,10 @@ class FileBusinessServiceImplTest {
                         Set.of("file:resource:update"));
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(teacher, null));
-        FileAccessGuard fileAccessGuard =
-                new FileAccessGuard(fileBusinessMapper, businessReferenceValidator);
+        FileAccessGuard fileAccessGuard = new FileAccessGuard(fileBusinessMapper, policyRegistry);
         fileBusinessService =
                 new FileBusinessServiceImpl(
-                        fileBusinessMapper,
-                        fileResourceMapper,
-                        businessReferenceValidator,
-                        fileAccessGuard,
-                        auditLogService);
+                        fileBusinessMapper, fileResourceMapper, policyRegistry, fileAccessGuard);
     }
 
     @AfterEach
@@ -80,6 +73,7 @@ class FileBusinessServiceImplTest {
         privateFile.setId(77L);
         privateFile.setAccessLevel("private");
         privateFile.setUploaderId(99L);
+        privateFile.setStatus(1);
         when(fileResourceMapper.selectById(77L)).thenReturn(privateFile);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
 
@@ -103,6 +97,7 @@ class FileBusinessServiceImplTest {
         privateFile.setId(78L);
         privateFile.setAccessLevel("private");
         privateFile.setUploaderId(10L);
+        privateFile.setStatus(1);
         when(fileResourceMapper.selectById(78L)).thenReturn(privateFile);
 
         FileBusinessBindDTO request = new FileBusinessBindDTO();
@@ -113,5 +108,51 @@ class FileBusinessServiceImplTest {
         fileBusinessService.bind(request);
 
         verify(fileBusinessMapper).insert(any(FileBusinessEntity.class));
+    }
+
+    @Test
+    void bindRejectsDisabledFile() {
+        FileResourceEntity disabledFile = new FileResourceEntity();
+        disabledFile.setId(79L);
+        disabledFile.setAccessLevel("private");
+        disabledFile.setUploaderId(10L);
+        disabledFile.setStatus(0);
+        when(fileResourceMapper.selectById(79L)).thenReturn(disabledFile);
+
+        FileBusinessBindDTO request = new FileBusinessBindDTO();
+        request.setFileId(79L);
+        request.setBizType("herb_species");
+        request.setBizId(1L);
+
+        assertThatThrownBy(() -> fileBusinessService.bind(request))
+                .isInstanceOf(com.bdis.common.exception.ResourceNotFoundException.class)
+                .hasMessage("文件已停用");
+        verify(fileBusinessMapper, never()).insert(any(FileBusinessEntity.class));
+    }
+
+    @Test
+    void publishedFileDeleteRequiresDetachAndPublishForEveryRelation() {
+        FileBusinessEntity first = new FileBusinessEntity();
+        first.setFileId(80L);
+        first.setBizType("herb_image");
+        first.setBizId(11L);
+        FileBusinessEntity second = new FileBusinessEntity();
+        second.setFileId(80L);
+        second.setBizType("herb_growth_record");
+        second.setBizId(12L);
+        when(fileBusinessMapper.selectList(any())).thenReturn(List.of(first, second));
+
+        fileBusinessService.authorizeDeleteByFileId(80L, true);
+
+        verify(policyRegistry)
+                .require("herb_image", 11L, com.bdis.file.policy.FileBusinessAction.DETACH);
+        verify(policyRegistry)
+                .require("herb_image", 11L, com.bdis.file.policy.FileBusinessAction.PUBLISH);
+        verify(policyRegistry)
+                .require("herb_growth_record", 12L, com.bdis.file.policy.FileBusinessAction.DETACH);
+        verify(policyRegistry)
+                .require(
+                        "herb_growth_record", 12L, com.bdis.file.policy.FileBusinessAction.PUBLISH);
+        verify(policyRegistry, times(4)).require(any(), any(), any());
     }
 }

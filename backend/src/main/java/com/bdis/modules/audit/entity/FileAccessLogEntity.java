@@ -21,6 +21,8 @@ public class FileAccessLogEntity extends LogEntity {
 
     private String resultStatus;
 
+    private String failureReason;
+
     private String ipAddress;
 
     private String userAgent;

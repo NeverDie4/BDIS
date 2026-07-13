@@ -2,11 +2,12 @@
 
 > 版本：V1.1
 > 日期：2026-07-10
+> 更新日期：2026-07-13
 > 负责人：全组  
 > 适用阶段：详细设计、后端开发、代码生成、测试设计  
 > 技术栈：Java、Spring Boot、MyBatis Plus、MySQL 8.0、Redis、Nginx  
 > 关联文档：需求分析说明书、模块设计说明书、接口设计规范与接口清单、数据库详细设计说明书、Java 类命名规范
-> 本次更新：同步启动类、配置包、模块包迁移状态及识别采集新增表的 Java 映射。
+> 本次更新：同步 M05 文件 Policy、受控发布和授权删除设计，以及 M06 事件快照、独立事务与 Trace ID 审计链路。
 
 ---
 
@@ -429,8 +430,8 @@ void delete(Long id);
 | --- | --- | --- |
 | `AuthService` | `login`、`logout`、`currentUser` | 登录、退出、当前用户。 |
 | `AuthorizationService` | `decide`、`checkPermission`、`resolveDataScope` | 权限判定和数据范围解析。 |
-| `FileResourceService` | `upload`、`preview`、`download`、`remove` | 文件上传、预览、下载、删除。 |
-| `FileBusinessService` | `bind`、`unbind`、`listByBusiness` | 文件和业务对象关联。 |
+| `FileResourceService` | `upload`、`content`、`publicContent`、`publishForBusiness`、`makePrivateForBusiness`、`delete` | 私有上传、受控内容读取、业务发布或撤回及授权删除。 |
+| `FileBusinessService` | `bind`、`unbind`、`pageByBusiness`、`authorizeDeleteByFileId` | 文件和业务对象关联、分页查询及删除前的逐关联授权。 |
 | `GrowthRecordService` | `createFromApp`、`createFromPc`、`createFromSoap`、`submit` | 生长数据来源统一入口。 |
 | `GrowthAuditService` | `approve`、`reject`、`archive`、`history` | 采集记录状态流转。 |
 | `TraceService` | `buildTraceChain` | 溯源链路查询。 |
@@ -556,18 +557,25 @@ Converter 用于避免 Controller 或 Service 中堆积对象转换代码。简�
 | `FileBusinessService` | Service | 维护 `bizType + bizId + fileId` 关系。 |
 | `FileStorageService` | Service | 抽象本地存储或对象存储。 |
 | `LocalFileStorageServiceImpl` | ServiceImpl | 本地文件存储实现。 |
+| `FileBusinessAccessPolicy` | Policy | 由业务模块判断业务对象是否存在以及当前用户能否查看、绑定、解绑或发布文件。 |
+| `FileBusinessPolicyRegistry` | Registry | 按 `bizType` 注册 Policy；重复注册启动失败，未注册类型默认拒绝。 |
+| `FileAccessGuard` | Component | 组合上传者、管理员和已注册业务 Policy，完成私有文件访问判定。 |
 
 ### 14.6 M06 操作审计模块
 
 | 类名 | 类型 | 职责 |
 | --- | --- | --- |
-| `AuditLogController` | Controller | 操作日志和数据变更日志查询。 |
+| `AuditLogController` | Controller | 操作日志分页和详情查询。 |
 | `LoginLogController` | Controller | 登录日志查询。 |
 | `FileAccessLogController` | Controller | 文件访问日志查询。 |
 | `DataSyncLogController` | Controller | 同步日志查询。 |
 | `AuditLogService` | Service | 写入和查询操作审计。 |
 | `AuditAspect` | Component | 通过注解记录关键业务操作。 |
 | `AuditLogAnnotation` | Annotation | 标记需要审计的方法。 |
+| `OperationAuditPublisher`、`LoginAuditPublisher`、`FileAccessAuditPublisher`、`DataSyncAuditPublisher` | Publisher | 在业务线程中创建不可变事件快照，并按事务完成状态调度持久化。 |
+| `OperationAuditWriter`、`LoginAuditWriter`、`FileAccessAuditWriter`、`DataSyncAuditWriter` | Writer | 使用 `REQUIRES_NEW` 独立事务写入四类审计日志。 |
+| `AuditPersistenceScheduler` | Component | 成功事件在主事务提交后写入，失败事件在事务完成后写入，并隔离审计持久化异常。 |
+| `TraceIdFilter` | Filter | 生成或透传 `X-Trace-Id`，写入请求属性和 MDC，并通过响应头返回。 |
 
 ### 14.7 M07 药材档案模块
 
@@ -737,17 +745,23 @@ Converter 用于避免 Controller 或 Service 中堆积对象转换代码。简�
 
 ### 15.3 多态关联约束
 
-`bizType + bizId`、`sourceType + sourceId` 不创建物理外键，由 Service 层统一校验。建议提供 `BusinessReferenceValidator` 组件，集中校验业务类型是否合法、业务 ID 是否存在、当前用户是否有访问权限。
+`bizType + bizId`、`sourceType + sourceId` 不创建物理外键，由 Service 层统一校验。文件关联不再使用集中硬编码业务表的 `BusinessReferenceValidator`；每一种 `bizType` 必须由所属业务模块提供 `FileBusinessAccessPolicy`，Policy 只负责业务对象存在性和授权决策，不读取或修改 `sys_file_resource`，也不返回物理存储路径。未注册 `bizType` 默认拒绝，禁止通用权限回退。
 
-### 15.4 评价结果快照约束
+文件上传接口只接受私有文件。公开文件必须遵循“私有上传 → 绑定业务对象 → 业务审核或发布 → `publishForBusiness`”流程。删除已绑定文件时，对每个关联对象校验 `DETACH`；文件已公开时还必须校验 `PUBLISH`，避免上传者绕过业务模块删除已发布内容。
+
+### 15.4 审计事件与事务约束
+
+操作、登录、文件访问和数据同步日志先在业务线程内生成事件快照，快照包含操作者、请求方法、请求地址、客户端 IP、User-Agent、结果与 `Trace ID`。成功事件在主事务提交后写入，失败登录等事件在主事务完成后写入；Writer 使用 `REQUIRES_NEW` 独立事务，审计写入异常不得导致原业务事务失败。请求参数中的密码、Token、Secret 和 Authorization 信息必须脱敏。
+
+### 15.5 评价结果快照约束
 
 `EvaluationScoreRecordEntity` 是评分明细，`EvaluationResultEntity` 是确认后的评价结果快照。结果确认后应尽量保持稳定，申报档案读取确认结果，避免历史申报材料因评分规则变化而发生变化。
 
-### 15.5 SOAP 导入约束
+### 15.6 SOAP 导入约束
 
 SOAP 模块不直接绕过业务 Service 写核心表。XML 解析后先转换为 `GrowthImportDTO`、`HerbCreateDTO` 等标准对象，再调用对应业务 Service 完成校验、入库和日志记录。
 
-### 15.6 培训素材约束
+### 15.7 培训素材约束
 
 培训素材通过文件资源模块统一管理。初版使用 `FileBusinessEntity` 将文件绑定到 `TrainingPlanEntity`，避免为培训单独新增重复文件表。
 

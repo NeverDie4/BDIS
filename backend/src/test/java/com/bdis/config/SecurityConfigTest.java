@@ -1,5 +1,6 @@
 package com.bdis.config;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,7 +65,9 @@ class SecurityConfigTest {
 
     @Test
     void privateStoragePathIsNotExposed() throws Exception {
-        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/files/uploads/missing.png").with(user("teacher")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

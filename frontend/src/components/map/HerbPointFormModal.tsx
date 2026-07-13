@@ -156,7 +156,6 @@ export function HerbPointFormModal({
           <FileUploadField
             accept="image/*"
             maxSizeMB={10}
-            bizType="map_point"
             fileUsage="cover"
             buttonText="上传本地照片"
           />

@@ -3,16 +3,16 @@ package com.bdis.audit.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.dto.AuditRecordDTO;
+import com.bdis.audit.event.OperationAuditPublisher;
 import com.bdis.audit.query.AuditLogQuery;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.vo.AuditLogVO;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.ResourceNotFoundException;
-import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.modules.audit.entity.OperationLogEntity;
 import com.bdis.modules.audit.mapper.OperationLogMapper;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -20,32 +20,23 @@ import org.springframework.stereotype.Service;
 public class AuditLogServiceImpl implements AuditLogService {
 
     private final OperationLogMapper operationLogMapper;
+    private final OperationAuditPublisher operationAuditPublisher;
 
-    public AuditLogServiceImpl(OperationLogMapper operationLogMapper) {
+    public AuditLogServiceImpl(
+            OperationLogMapper operationLogMapper,
+            OperationAuditPublisher operationAuditPublisher) {
         this.operationLogMapper = operationLogMapper;
+        this.operationAuditPublisher = operationAuditPublisher;
     }
 
     @Override
     public void record(AuditRecordDTO dto) {
-        OperationLogEntity entity = new OperationLogEntity();
-        entity.setOperatorId(CurrentUserUtils.currentUserId());
-        entity.setOperatorName(CurrentUserUtils.currentUsername());
-        entity.setOperationModule(dto.getOperationModule());
-        entity.setOperationType(dto.getOperationType());
-        entity.setBizType(dto.getBizType());
-        entity.setBizId(dto.getBizId());
-        entity.setResultStatus(dto.getOperationResult());
-        entity.setErrorMessage(dto.getErrorMessage());
-        entity.setRequestMethod(CurrentUserUtils.currentRequestMethod());
-        entity.setRequestUrl(CurrentUserUtils.currentRequestUri());
-        entity.setIpAddress(CurrentUserUtils.currentIp());
-        entity.setUserAgent(CurrentUserUtils.currentUserAgent());
-        entity.setOperationTime(LocalDateTime.now());
-        operationLogMapper.insert(entity);
+        operationAuditPublisher.publish(dto);
     }
 
     @Override
     public PageResult<AuditLogVO> page(AuditLogQuery query) {
+        String operationResult = normalize(query.getOperationResult());
         Page<OperationLogEntity> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<OperationLogEntity> wrapper =
                 new LambdaQueryWrapper<OperationLogEntity>()
@@ -66,17 +57,29 @@ public class AuditLogServiceImpl implements AuditLogService {
                                 OperationLogEntity::getOperationType,
                                 query.getOperationType())
                         .eq(
-                                query.getOperationResult() != null,
+                                operationResult != null,
                                 OperationLogEntity::getResultStatus,
-                                query.getOperationResult())
+                                operationResult)
                         .eq(
                                 query.getBizType() != null,
                                 OperationLogEntity::getBizType,
                                 query.getBizType())
+                        .ge(
+                                query.getStartTime() != null,
+                                OperationLogEntity::getOperationTime,
+                                query.getStartTime())
+                        .le(
+                                query.getEndTime() != null,
+                                OperationLogEntity::getOperationTime,
+                                query.getEndTime())
                         .orderByDesc(OperationLogEntity::getOperationTime);
         Page<OperationLogEntity> result = operationLogMapper.selectPage(page, wrapper);
         List<AuditLogVO> records = result.getRecords().stream().map(this::toVO).toList();
         return PageResult.of(records, result);
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.toUpperCase(Locale.ROOT);
     }
 
     @Override

@@ -14,9 +14,7 @@ public interface FileResourceService {
 
     FileResourceVO uploadOwnedPrivateImage(MultipartFile file, String remark);
 
-    FileResourceVO importPublic(Path sourceFile, String originalFilename, String remark);
-
-    FileResourceVO registerPublic(String existingFileUrl, String originalFilename, String remark);
+    FileResourceVO importPrivate(Path sourceFile, String originalFilename, String remark);
 
     PageResult<FileResourceVO> page(FileResourceQuery query);
 
@@ -30,7 +28,9 @@ public interface FileResourceService {
 
     Long resolveFileId(String fileUrl);
 
-    void delete(Long fileId);
+    void publishForBusiness(Long fileId, String bizType, Long bizId);
 
-    void deleteSystem(Long fileId);
+    void makePrivateForBusiness(Long fileId, String bizType, Long bizId);
+
+    void delete(Long fileId);
 }

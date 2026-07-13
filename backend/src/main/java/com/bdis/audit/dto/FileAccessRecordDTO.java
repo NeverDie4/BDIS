@@ -8,4 +8,5 @@ public class FileAccessRecordDTO {
     private Long fileId;
     private String accessType;
     private String accessResult = "SUCCESS";
+    private String failureReason;
 }

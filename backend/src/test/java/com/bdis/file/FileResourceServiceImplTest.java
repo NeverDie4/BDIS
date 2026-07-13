@@ -14,9 +14,13 @@ import com.bdis.audit.dto.FileAccessRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.audit.service.FileAccessLogService;
 import com.bdis.common.core.PageResult;
+import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.file.dto.FileUploadDTO;
+import com.bdis.file.policy.FileBusinessAction;
+import com.bdis.file.policy.FileBusinessPolicyRegistry;
 import com.bdis.file.query.FileResourceQuery;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
@@ -56,6 +60,8 @@ class FileResourceServiceImplTest {
 
     @Mock private FileAccessGuard fileAccessGuard;
 
+    @Mock private FileBusinessPolicyRegistry policyRegistry;
+
     private FileResourceService fileResourceService;
 
     @BeforeEach
@@ -67,7 +73,8 @@ class FileResourceServiceImplTest {
                         fileAccessLogService,
                         auditLogService,
                         fileBusinessService,
-                        fileAccessGuard);
+                        fileAccessGuard,
+                        policyRegistry);
         CurrentUser user =
                 new CurrentUser(
                         8L,
@@ -89,8 +96,8 @@ class FileResourceServiceImplTest {
 
     @Test
     void pageByBusinessReturnsOnlyRequestedSlice() {
-        when(fileBusinessService.listByBusiness("herb_image", 9L))
-                .thenReturn(List.of(file(1L), file(2L), file(3L), file(4L), file(5L)));
+        when(fileBusinessService.pageByBusiness("herb_image", 9L, 2L, 2L))
+                .thenReturn(new PageResult<>(List.of(file(3L), file(4L)), 2L, 2L, 5L));
         FileResourceQuery query = new FileResourceQuery();
         query.setBizType("herb_image");
         query.setBizId(9L);
@@ -137,6 +144,60 @@ class FileResourceServiceImplTest {
     }
 
     @Test
+    void uploadRejectsDirectPublicVisibility() {
+        MockMultipartFile multipart =
+                new MockMultipartFile("file", "public.png", "image/png", new byte[] {1, 2});
+        FileUploadDTO dto = new FileUploadDTO();
+        dto.setFile(multipart);
+        dto.setAccessLevel("public");
+
+        assertThatThrownBy(() -> fileResourceService.upload(dto))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception ->
+                                assertThat(exception.getResultCode())
+                                        .isEqualTo(ResultCodeEnum.VALIDATION_ERROR));
+
+        verify(fileStorageService, never())
+                .save(any(org.springframework.web.multipart.MultipartFile.class));
+    }
+
+    @Test
+    void uploadRejectsPartialBusinessReferenceBeforeWritingStorage() {
+        MockMultipartFile multipart =
+                new MockMultipartFile("file", "cover.png", "image/png", new byte[] {1, 2});
+        FileUploadDTO dto = new FileUploadDTO();
+        dto.setFile(multipart);
+        dto.setBizType("map_point");
+
+        assertThatThrownBy(() -> fileResourceService.upload(dto))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception ->
+                                assertThat(exception.getResultCode())
+                                        .isEqualTo(ResultCodeEnum.VALIDATION_ERROR));
+
+        verify(fileStorageService, never())
+                .save(any(org.springframework.web.multipart.MultipartFile.class));
+    }
+
+    @Test
+    void publishRequiresPolicyAndExistingBusinessBinding() {
+        FileResourceEntity entity = resource(43L, "private", "uploads/day/reviewed.png");
+        when(fileResourceMapper.selectById(43L)).thenReturn(entity);
+        when(fileBusinessService.isBound(43L, "herb_image", 9L)).thenReturn(true);
+
+        fileResourceService.publishForBusiness(43L, "herb_image", 9L);
+
+        verify(policyRegistry).require("herb_image", 9L, FileBusinessAction.PUBLISH);
+        ArgumentCaptor<FileResourceEntity> captor =
+                ArgumentCaptor.forClass(FileResourceEntity.class);
+        verify(fileResourceMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getAccessLevel()).isEqualTo("public");
+        assertThat(captor.getValue().getFileUrl()).isEqualTo("/api/public-files/43/content");
+    }
+
+    @Test
     void authorizedPreviewUsesStoragePathAndRecordsAccess() {
         FileResourceEntity entity = resource(21L, "private", "uploads/day/a.pdf");
         FileContentVO expected = new FileContentVO();
@@ -156,7 +217,7 @@ class FileResourceServiceImplTest {
     }
 
     @Test
-    void unauthorizedPrivateContentNeverReadsOrLogsFile() {
+    void unauthorizedPrivateContentNeverReadsAndRecordsFailedAccess() {
         FileResourceEntity entity = resource(22L, "private", "uploads/day/secret.pdf");
         when(fileResourceMapper.selectById(22L)).thenReturn(entity);
         doThrow(new ForbiddenException("无权访问该文件"))
@@ -167,7 +228,10 @@ class FileResourceServiceImplTest {
                 .isInstanceOf(ForbiddenException.class);
 
         verify(fileStorageService, never()).load(any(), any(), any(), any());
-        verify(fileAccessLogService, never()).record(any());
+        ArgumentCaptor<FileAccessRecordDTO> recordCaptor =
+                ArgumentCaptor.forClass(FileAccessRecordDTO.class);
+        verify(fileAccessLogService).record(recordCaptor.capture());
+        assertThat(recordCaptor.getValue().getAccessResult()).isEqualTo("FAILED");
     }
 
     @Test
@@ -208,6 +272,30 @@ class FileResourceServiceImplTest {
         verify(fileStorageService, never()).resolve(eq("/api/files/25/content"));
     }
 
+    @Test
+    void resolveLegacyPhysicalUrlIsRejected() {
+        assertThatThrownBy(
+                        () ->
+                                fileResourceService.resolveLocalPath(
+                                        "/api/files/uploads/day/model.bin"))
+                .isInstanceOf(com.bdis.common.exception.ResourceNotFoundException.class)
+                .hasMessage("文件地址不是受控内容地址");
+
+        verify(fileStorageService, never()).resolve(any(String.class));
+    }
+
+    @Test
+    void deletingPublishedBusinessFileRequiresDetachAndPublishAuthorization() {
+        FileResourceEntity entity = resource(26L, "public", "uploads/day/public.pdf");
+        when(fileResourceMapper.selectById(26L)).thenReturn(entity);
+
+        fileResourceService.delete(26L);
+
+        verify(fileBusinessService).authorizeDeleteByFileId(26L, true);
+        verify(fileBusinessService).deleteByFileId(26L);
+        verify(fileResourceMapper).deleteById(26L);
+    }
+
     private FileResourceVO file(Long id) {
         FileResourceVO file = new FileResourceVO();
         file.setId(id);
@@ -223,6 +311,7 @@ class FileResourceServiceImplTest {
         entity.setContentType("application/pdf");
         entity.setFileSize(20L);
         entity.setUploaderId(8L);
+        entity.setStatus(1);
         return entity;
     }
 }

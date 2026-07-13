@@ -203,6 +203,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         dto.setBusinessType(
                 importResult == null ? "herb_growth_record" : importResult.getBusinessType());
         dto.setBusinessId(importResult == null ? null : importResult.getBusinessId());
+        dto.setTargetId(importResult == null ? null : importResult.getBusinessId());
         dto.setExternalNo(importResult == null ? null : importResult.getExternalNo());
         dto.setSyncStatus(importResult == null ? status : importResult.getStatus());
         dto.setSuccessCount(

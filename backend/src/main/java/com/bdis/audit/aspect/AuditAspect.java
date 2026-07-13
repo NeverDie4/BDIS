@@ -10,12 +10,15 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Aspect
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 100)
 public class AuditAspect {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuditAspect.class);
@@ -35,6 +38,7 @@ public class AuditAspect {
         AuditRecordDTO dto = new AuditRecordDTO();
         dto.setOperationModule(auditLogAnnotation.module());
         dto.setOperationType(auditLogAnnotation.operationType());
+        dto.setOperationDesc(auditLogAnnotation.description());
         dto.setBizType(auditLogAnnotation.bizType());
         try {
             Object result = joinPoint.proceed();
@@ -148,9 +152,7 @@ public class AuditAspect {
     }
 
     private boolean isSelfAudited(String uri) {
-        return uri.contains("/files")
-                || uri.contains("/file-relations")
-                || uri.contains("/soap-exchange-jobs")
+        return uri.contains("/soap-exchange-jobs")
                 || uri.endsWith("/auth/sessions")
                 || uri.endsWith("/auth/bootstrap-admin");
     }

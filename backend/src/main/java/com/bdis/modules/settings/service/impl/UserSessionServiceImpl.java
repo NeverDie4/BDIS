@@ -9,6 +9,7 @@ import com.bdis.common.security.JwtClaims;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.common.security.SessionAuthenticationDetails;
 import com.bdis.common.security.TokenBlacklistService;
+import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.modules.settings.entity.UserSessionEntity;
 import com.bdis.modules.settings.mapper.UserSessionMapper;
 import com.bdis.modules.settings.service.UserSessionService;
@@ -246,11 +247,7 @@ public class UserSessionServiceImpl implements UserSessionService {
     }
 
     private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwardedFor)) {
-            return truncate(forwardedFor.split(",")[0].trim(), 64);
-        }
-        return truncate(request.getRemoteAddr(), 64);
+        return truncate(CurrentUserUtils.clientIp(request), 64);
     }
 
     private String resolveClientType(String userAgent) {
