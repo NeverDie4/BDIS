@@ -21,6 +21,10 @@ public class ResearchAchievementEntity extends BaseEntity {
 
     private String achievementType;
 
+    private String achievementStage;
+
+    private String achievementStatus;
+
     private LocalDateTime publishedAt;
 
     private Long fileId;

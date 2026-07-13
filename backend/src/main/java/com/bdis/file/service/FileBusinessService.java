@@ -11,7 +11,13 @@ public interface FileBusinessService {
 
     void unbind(Long relationId);
 
+    void unbind(String bizType, Long bizId, Long fileId);
+
     void deleteByFileId(Long fileId);
 
     List<FileResourceVO> listByBusiness(String bizType, Long bizId);
+
+    List<FileResourceVO> listByBusiness(String bizType, Long bizId, String fileUsage);
+
+    boolean existsByBusiness(String bizType, Long bizId);
 }

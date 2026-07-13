@@ -25,6 +25,10 @@ public class CourseEntity extends BaseEntity {
 
     private String publishStatus;
 
+    private LocalDateTime publishedAt;
+
+    private Long publishedBy;
+
     private LocalDateTime startedAt;
 
     private LocalDateTime endedAt;

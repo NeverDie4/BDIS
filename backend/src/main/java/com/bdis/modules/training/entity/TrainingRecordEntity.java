@@ -22,9 +22,15 @@ public class TrainingRecordEntity extends BasicEntity {
 
     private String trainingStatus;
 
+    private String attendanceStatus;
+
     private BigDecimal score;
 
     private LocalDateTime startedAt;
 
+    private LocalDateTime checkedInAt;
+
     private LocalDateTime completedAt;
+
+    private String resultComment;
 }

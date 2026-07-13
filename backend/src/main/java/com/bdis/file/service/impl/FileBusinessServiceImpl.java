@@ -3,6 +3,8 @@ package com.bdis.file.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
@@ -15,17 +17,17 @@ import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.file.vo.FileResourceVO;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Map;
+import java.util.Objects;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FileBusinessServiceImpl implements FileBusinessService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FileBusinessServiceImpl.class);
 
     private final FileBusinessMapper fileBusinessMapper;
     private final FileResourceMapper fileResourceMapper;
@@ -44,11 +46,15 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public FileBusinessVO bind(FileBusinessBindDTO dto) {
         businessReferenceValidator.validate(dto.getBizType(), dto.getBizId());
-        if (fileResourceMapper.selectById(dto.getFileId()) == null) {
+        FileResourceEntity file = fileResourceMapper.selectById(dto.getFileId());
+        if (file == null) {
             throw new ResourceNotFoundException("文件不存在");
+        }
+        if (!Objects.equals(file.getStatus(), 1)) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "文件已禁用");
         }
         LambdaQueryWrapper<FileBusinessEntity> wrapper =
                 new LambdaQueryWrapper<FileBusinessEntity>()
@@ -64,6 +70,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         entity.setBizType(dto.getBizType());
         entity.setBizId(dto.getBizId());
         entity.setFileUsage(dto.getFileUsage());
+        entity.setSortOrder(dto.getSortOrder() == null ? 0 : dto.getSortOrder());
         entity.setRemark(dto.getRemark());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setCreatedBy(CurrentUserUtils.currentUserId());
@@ -73,7 +80,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void unbind(Long relationId) {
         FileBusinessEntity entity = fileBusinessMapper.selectById(relationId);
         if (entity == null) {
@@ -81,6 +88,23 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         }
         fileBusinessMapper.deleteById(relationId);
         recordAudit("UNBIND", entity.getBizType(), entity.getBizId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unbind(String bizType, Long bizId, Long fileId) {
+        businessReferenceValidator.validate(bizType, bizId);
+        FileBusinessEntity entity =
+                fileBusinessMapper.selectOne(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .eq(FileBusinessEntity::getFileId, fileId));
+        if (entity == null) {
+            throw new ResourceNotFoundException("文件关联不存在");
+        }
+        fileBusinessMapper.deleteById(entity.getId());
+        recordAudit("UNBIND", bizType, bizId);
     }
 
     @Override
@@ -92,18 +116,60 @@ public class FileBusinessServiceImpl implements FileBusinessService {
 
     @Override
     public List<FileResourceVO> listByBusiness(String bizType, Long bizId) {
+        return listByBusiness(bizType, bizId, null);
+    }
+
+    @Override
+    public List<FileResourceVO> listByBusiness(
+            String bizType, Long bizId, String fileUsage) {
         businessReferenceValidator.validate(bizType, bizId);
+        LambdaQueryWrapper<FileBusinessEntity> wrapper =
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getBizType, bizType)
+                        .eq(FileBusinessEntity::getBizId, bizId)
+                        .eq(
+                                fileUsage != null && !fileUsage.isBlank(),
+                                FileBusinessEntity::getFileUsage,
+                                fileUsage);
         List<FileBusinessEntity> relations =
-                fileBusinessMapper.selectList(
-                        new LambdaQueryWrapper<FileBusinessEntity>()
-                                .eq(FileBusinessEntity::getBizType, bizType)
-                                .eq(FileBusinessEntity::getBizId, bizId));
+                fileBusinessMapper.selectList(wrapper);
+        if (relations.isEmpty()) {
+            return List.of();
+        }
+        List<Long> fileIds =
+                relations.stream()
+                        .map(FileBusinessEntity::getFileId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        if (fileIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, FileResourceEntity> files = new LinkedHashMap<>();
+        for (FileResourceEntity file : fileResourceMapper.selectByIds(fileIds)) {
+            files.put(file.getId(), file);
+        }
         return relations.stream()
+                .sorted(
+                        Comparator.comparing(
+                                        FileBusinessEntity::getSortOrder,
+                                        Comparator.nullsFirst(Integer::compareTo))
+                                .thenComparing(FileBusinessEntity::getId))
                 .map(FileBusinessEntity::getFileId)
-                .map(fileResourceMapper::selectById)
-                .filter(entity -> entity != null)
+                .map(files::get)
+                .filter(Objects::nonNull)
                 .map(this::toFileVO)
                 .toList();
+    }
+
+    @Override
+    public boolean existsByBusiness(String bizType, Long bizId) {
+        businessReferenceValidator.validate(bizType, bizId);
+        return fileBusinessMapper.selectCount(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId))
+                > 0;
     }
 
     private FileBusinessVO toVO(FileBusinessEntity entity) {
@@ -124,10 +190,6 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         audit.setOperationType(operationType);
         audit.setBizType(bizType);
         audit.setBizId(bizId);
-        try {
-            auditLogService.record(audit);
-        } catch (RuntimeException exception) {
-            LOGGER.warn("Failed to persist file business audit log", exception);
-        }
+        auditLogService.record(audit);
     }
 }
