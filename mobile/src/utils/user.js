@@ -1,4 +1,5 @@
 import { getStorage, removeStorage, setStorage } from './storage'
+import { getAuthUser } from './auth'
 
 const COLLECTOR_ID_KEY = 'collectorId'
 const COLLECTOR_NAME_KEY = 'collectorName'
@@ -10,6 +11,14 @@ const DEFAULT_COLLECTOR = {
 }
 
 export function getCurrentCollector() {
+  const authUser = getAuthUser()
+  if (authUser?.userId) {
+    return {
+      collectorId: Number(authUser.userId),
+      collectorName: authUser.realName || authUser.username || DEFAULT_COLLECTOR.collectorName
+    }
+  }
+
   const legacyCollector = getStorage(LEGACY_COLLECTOR_KEY)
   const collectorId = getStorage(COLLECTOR_ID_KEY, legacyCollector?.collectorId || DEFAULT_COLLECTOR.collectorId)
   const collectorName = getStorage(COLLECTOR_NAME_KEY, legacyCollector?.collectorName || DEFAULT_COLLECTOR.collectorName)

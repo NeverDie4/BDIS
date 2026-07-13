@@ -67,6 +67,7 @@
       <button class="secondary-btn action-btn" @click="handleCancel">取消</button>
       <button class="primary-btn action-btn" :loading="submitting" @click="handleSubmit">创建批次</button>
     </view>
+    <AssistantFloat />
   </view>
 </template>
 
@@ -76,10 +77,8 @@ import { onLoad } from '@dcloudio/uni-app'
 import { createBatchUnderTask, getTaskDetail } from '../../api/mobileTaskApi'
 import { TASK_STATUS_MAP } from '../../utils/constants'
 import { formatStatus, getNowDateTime } from '../../utils/format'
-import { getCurrentCollector } from '../../utils/user'
 
 const taskId = ref('')
-const collector = ref(getCurrentCollector())
 const taskInfo = ref({})
 const taskError = ref('')
 const submitting = ref(false)
@@ -109,13 +108,10 @@ onLoad((options) => {
 })
 
 async function loadTaskInfo() {
-  collector.value = getCurrentCollector()
   taskError.value = ''
 
   try {
-    const data = await getTaskDetail(taskId.value, {
-      collectorId: collector.value.collectorId
-    })
+    const data = await getTaskDetail(taskId.value)
     const task = normalizeTaskDetail(data)
     taskInfo.value = task
     applyTaskDefaults(task)
@@ -175,7 +171,6 @@ async function handleSubmit() {
   }
 
   submitting.value = true
-  collector.value = getCurrentCollector()
 
   try {
     const payload = {
@@ -184,9 +179,7 @@ async function handleSubmit() {
       baseName: form.baseName,
       originPlace: form.originPlace,
       collectStartTime: form.collectStartTime,
-      remark: form.remark,
-      collectorId: collector.value.collectorId,
-      collectorName: collector.value.collectorName
+      remark: form.remark
     }
     const result = await createBatchUnderTask(taskId.value, payload)
     const batchId = result && (result.batchId || result.id)
@@ -239,7 +232,7 @@ function showToast(title) {
 }
 
 .section-title {
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -248,8 +241,8 @@ function showToast(title) {
   flex-shrink: 0;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
   font-size: 23rpx;
   line-height: 1;
 }
@@ -265,12 +258,12 @@ function showToast(title) {
 }
 
 .status-completed {
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
 }
 
 .status-cancelled {
-  background: #f1f5f9;
+  background: #f4eadf;
   color: #64748b;
 }
 
@@ -300,7 +293,7 @@ function showToast(title) {
 .value {
   min-width: 0;
   flex: 1;
-  color: #111827;
+  color: #1f2933;
   text-align: right;
   word-break: break-all;
 }
@@ -327,8 +320,8 @@ function showToast(title) {
   margin-top: 12rpx;
   padding: 20rpx 22rpx;
   border-radius: 12rpx;
-  background: #f8fafc;
-  color: #111827;
+  background: #fffaf2;
+  color: #1f2933;
   font-size: 28rpx;
 }
 
@@ -349,5 +342,46 @@ function showToast(title) {
 
 .action-btn {
   flex: 1;
+}
+
+.section-title {
+  color: #0f3d2e;
+}
+
+.status-tag,
+.status-published,
+.status-in_progress,
+.status-completed {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.label,
+.form-label {
+  color: #7c6f5c;
+}
+
+.value {
+  color: #1f2933;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.form-input,
+.form-textarea {
+  border: 1rpx solid #eadfcd;
+  background: #fffaf2;
+  color: #1f2933;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  border-color: #0f5132;
+}
+
+.task-error {
+  border: 1rpx solid #fecdd3;
+  background: #fee2e2;
+  color: #dc2626;
 }
 </style>

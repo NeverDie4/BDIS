@@ -35,8 +35,8 @@
         <result column="quality_status" property="qualityStatus"/>
         <result column="knowledge_entity_id" property="knowledgeEntityId"/>
         <result column="status" property="status"/>
-        <result column="created_at" property="createTime"/>
-        <result column="updated_at" property="updateTime"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
         <result column="is_deleted" property="isDeleted"/>
     </resultMap>
 

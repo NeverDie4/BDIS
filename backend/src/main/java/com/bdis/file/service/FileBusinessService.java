@@ -4,6 +4,7 @@ import com.bdis.common.core.PageResult;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.vo.FileBusinessVO;
 import com.bdis.modules.file.vo.FileResourceVO;
+import java.util.List;
 
 public interface FileBusinessService {
 
@@ -22,4 +23,8 @@ public interface FileBusinessService {
     boolean isBound(Long fileId, String bizType, Long bizId);
 
     PageResult<FileResourceVO> pageByBusiness(String bizType, Long bizId, long page, long size);
+
+    List<FileResourceVO> listByBusiness(String bizType, Long bizId);
+
+    List<FileBusinessVO> listBindingsByBusiness(String bizType, Long bizId);
 }

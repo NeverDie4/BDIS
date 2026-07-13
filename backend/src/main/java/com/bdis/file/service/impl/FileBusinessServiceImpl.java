@@ -150,6 +150,39 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         return new PageResult<>(records, page, size, total);
     }
 
+    @Override
+    public List<FileResourceVO> listByBusiness(String bizType, Long bizId) {
+        policyRegistry.require(bizType, bizId, FileBusinessAction.VIEW);
+        return fileBusinessMapper
+                .selectList(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByDesc(FileBusinessEntity::getId))
+                .stream()
+                .map(FileBusinessEntity::getFileId)
+                .map(fileResourceMapper::selectById)
+                .filter(entity -> entity != null && Integer.valueOf(1).equals(entity.getStatus()))
+                .map(this::toFileVO)
+                .toList();
+    }
+
+    @Override
+    public List<FileBusinessVO> listBindingsByBusiness(String bizType, Long bizId) {
+        policyRegistry.require(bizType, bizId, FileBusinessAction.VIEW);
+        return fileBusinessMapper
+                .selectList(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByAsc(FileBusinessEntity::getId))
+                .stream()
+                .map(this::toVO)
+                .toList();
+    }
+
     private FileBusinessVO toVO(FileBusinessEntity entity) {
         FileBusinessVO vo = new FileBusinessVO();
         BeanUtils.copyProperties(entity, vo);

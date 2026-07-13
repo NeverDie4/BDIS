@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page detail-page">
     <view v-if="errorText" class="card error">
       <text class="empty-title">{{ errorText }}</text>
       <text class="empty-tip">{{ errorTip }}</text>
@@ -7,7 +7,7 @@
     </view>
 
     <template v-else>
-      <view class="card task-card">
+      <view class="herb-card task-card task-overview-card">
         <view class="task-header">
           <text class="task-title">{{ displayText(detail.taskName) }}</text>
           <text class="status-tag" :class="`status-${detail.taskStatus || 'unknown'}`">
@@ -15,33 +15,39 @@
           </text>
         </view>
 
-        <view class="info-row">
-          <text class="label">任务编码</text>
-          <text class="value">{{ displayText(detail.taskCode) }}</text>
+        <view class="info-block">
+          <text class="info-block-label">任务编码</text>
+          <text class="info-block-value code-text">{{ displayText(detail.taskCode) }}</text>
         </view>
         <view class="info-row">
           <text class="label">药材名称</text>
           <text class="value">{{ displayText(detail.speciesName) }}</text>
         </view>
         <view class="info-row">
-          <text class="label">基地名称</text>
-          <text class="value">{{ displayText(detail.baseName) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="label">采集地点</text>
-          <text class="value">{{ displayText(detail.collectPlace) }}</text>
-        </view>
-        <view class="info-row">
-          <text class="label">计划时间</text>
-          <text class="value">{{ formatTaskTime(detail) }}</text>
-        </view>
-        <view class="info-row">
           <text class="label">采集员</text>
           <text class="value">{{ formatCollector(detail) }}</text>
         </view>
+      </view>
 
-        <view class="text-block">
-          <text class="label block-label">任务说明</text>
+      <view class="herb-card collection-info-card">
+        <text class="section-title">采集信息</text>
+        <view class="info-block">
+          <text class="info-block-label">基地名称</text>
+          <text class="info-block-value">{{ displayText(detail.baseName) }}</text>
+        </view>
+        <view class="info-block">
+          <text class="info-block-label">采集地点</text>
+          <text class="info-block-value">{{ displayText(detail.collectPlace) }}</text>
+        </view>
+        <view class="info-block">
+          <text class="info-block-label">计划时间</text>
+          <text class="info-block-value">{{ formatTaskTime(detail) }}</text>
+        </view>
+      </view>
+
+      <view class="herb-card description-card">
+        <text class="section-title">任务说明</text>
+        <view class="text-block description-block">
           <text class="block-value">{{ displayText(detail.description) }}</text>
         </view>
         <view class="text-block">
@@ -50,7 +56,7 @@
         </view>
       </view>
 
-      <view class="card">
+      <view class="herb-card task-batch-card">
         <view class="section-header">
           <text class="section-title">任务下批次</text>
           <text class="section-count">{{ batches.length }} 个</text>
@@ -62,7 +68,7 @@
       </view>
 
       <view v-if="batches.length > 0" class="batch-list">
-        <view v-for="item in batches" :key="item.batchId || item.id" class="batch-card" @click="goBatchDetail(item)">
+        <view v-for="item in batches" :key="item.batchId || item.id" class="herb-card batch-card" @click="goBatchDetail(item)">
           <view class="task-header">
             <text class="batch-title">{{ displayText(item.batchName) }}</text>
             <text class="status-tag" :class="`batch-status-${item.batchStatus || 'unknown'}`">
@@ -70,9 +76,9 @@
             </text>
           </view>
 
-          <view class="info-row">
-            <text class="label">批次编码</text>
-            <text class="value">{{ displayText(item.batchCode) }}</text>
+          <view class="info-block compact-block">
+            <text class="info-block-label">批次编码</text>
+            <text class="info-block-value code-text">{{ displayText(item.batchCode) }}</text>
           </view>
           <view class="info-row">
             <text class="label">药材</text>
@@ -107,14 +113,16 @@
             <text class="label">创建时间</text>
             <text class="value">{{ formatDateTime(item.createTime) }}</text>
           </view>
+          <view class="detail-link">查看详情 <text>›</text></view>
         </view>
       </view>
 
-      <view v-else class="card empty">
+      <view v-else class="herb-card empty">
         <text class="empty-title">暂无批次</text>
         <text class="empty-tip">点击“新建批次”开始本次采集</text>
       </view>
     </template>
+    <AssistantFloat />
   </view>
 </template>
 
@@ -124,10 +132,8 @@ import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { getTaskBatches, getTaskDetail } from '../../api/mobileTaskApi'
 import { BATCH_STATUS_MAP, QUALITY_LEVEL_MAP, TASK_STATUS_MAP } from '../../utils/constants'
 import { formatDateTime, formatScore, formatStatus } from '../../utils/format'
-import { getCurrentCollector } from '../../utils/user'
 
 const taskId = ref('')
-const collector = ref(getCurrentCollector())
 const detail = ref({})
 const batches = ref([])
 const loading = ref(false)
@@ -171,12 +177,9 @@ async function loadDetail() {
   loading.value = true
   errorText.value = ''
   errorTip.value = '请检查网络或后端服务是否启动'
-  collector.value = getCurrentCollector()
 
   try {
-    const data = await getTaskDetail(taskId.value, {
-      collectorId: collector.value.collectorId
-    })
+    const data = await getTaskDetail(taskId.value)
     detail.value = normalizeTaskDetail(data)
     batches.value = await resolveBatchList(data)
   } catch (error) {
@@ -213,9 +216,7 @@ async function resolveBatchList(data) {
   }
 
   try {
-    const data = await getTaskBatches(taskId.value, {
-      collectorId: collector.value.collectorId
-    })
+    const data = await getTaskBatches(taskId.value)
     return normalizeBatchList(data)
   } catch (error) {
     console.error('任务批次加载失败', error)
@@ -253,8 +254,8 @@ function formatTaskTime(item) {
 }
 
 function formatCollector(item) {
-  const name = item.collectorName || collector.value.collectorName
-  const id = item.collectorId || collector.value.collectorId
+  const name = item.collectorName
+  const id = item.collectorId
 
   if (!name && !id) {
     return '-'
@@ -295,6 +296,10 @@ function goBatchDetail(item) {
 </script>
 
 <style scoped>
+.detail-page {
+  padding-top: 32rpx;
+}
+
 .task-card,
 .batch-card {
   margin-bottom: 24rpx;
@@ -312,7 +317,7 @@ function goBatchDetail(item) {
 .task-title,
 .batch-title {
   min-width: 0;
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
   line-height: 1.4;
@@ -323,8 +328,8 @@ function goBatchDetail(item) {
   flex-shrink: 0;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
   font-size: 23rpx;
   line-height: 1;
 }
@@ -346,13 +351,13 @@ function goBatchDetail(item) {
 .batch-status-submitted,
 .batch-status-confirmed,
 .batch-status-archived {
-  background: #eef5ff;
-  color: #1677ff;
+  background: #eaf5ee;
+  color: #166534;
 }
 
 .status-cancelled,
 .batch-status-cancelled {
-  background: #f1f5f9;
+  background: #f4eadf;
   color: #64748b;
 }
 
@@ -373,7 +378,7 @@ function goBatchDetail(item) {
 .value {
   min-width: 0;
   flex: 1;
-  color: #111827;
+  color: #1f2933;
   text-align: right;
   word-break: break-all;
 }
@@ -391,12 +396,12 @@ function goBatchDetail(item) {
 
 .block-value {
   margin-top: 10rpx;
-  color: #475569;
+  color: #5f5548;
   line-height: 1.55;
 }
 
 .section-title {
-  color: #111827;
+  color: #1f2933;
   font-size: 32rpx;
   font-weight: 700;
 }
@@ -432,14 +437,14 @@ function goBatchDetail(item) {
   flex-wrap: wrap;
   gap: 12rpx;
   margin: 14rpx 0;
-  color: #475569;
+  color: #5f5548;
   font-size: 25rpx;
 }
 
 .stats-row text {
   padding: 8rpx 12rpx;
   border-radius: 10rpx;
-  background: #f8fafc;
+  background: #fffaf2;
 }
 
 .empty,
@@ -449,7 +454,7 @@ function goBatchDetail(item) {
 
 .empty-title {
   display: block;
-  color: #111827;
+  color: #1f2933;
   font-size: 30rpx;
   font-weight: 700;
 }
@@ -460,5 +465,239 @@ function goBatchDetail(item) {
   color: #64748b;
   font-size: 26rpx;
   line-height: 1.5;
+}
+
+.task-card,
+.batch-card {
+  border: 1rpx solid #eadfcd;
+  background: #ffffff;
+  box-shadow: 0 10rpx 28rpx rgba(63, 45, 24, 0.06);
+}
+
+.task-title,
+.batch-title,
+.section-title,
+.empty-title {
+  color: #0f3d2e;
+}
+
+.status-tag {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.batch-status-identifying,
+.batch-status-reviewing,
+.batch-status-submitted {
+  background: #fff4df;
+  color: #d97706;
+}
+
+.batch-status-confirmed {
+  background: #e8f7ed;
+  color: #15803d;
+}
+
+.batch-status-archived {
+  background: #f4ead8;
+  color: #8a5a2b;
+}
+
+.label {
+  color: #7c6f5c;
+}
+
+.value {
+  color: #1f2933;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.info-block {
+  margin-bottom: 22rpx;
+}
+
+.info-block-label,
+.info-block-value {
+  display: block;
+  text-align: left;
+}
+
+.info-block-label {
+  margin-bottom: 8rpx;
+  color: #7c6f5c;
+  font-size: 26rpx;
+}
+
+.info-block-value {
+  color: #1f2933;
+  font-size: 28rpx;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.code-text {
+  color: #1f2933;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 25rpx;
+  line-height: 1.45;
+  overflow-wrap: normal;
+  word-break: break-all;
+}
+
+.compact-block {
+  margin-bottom: 12rpx;
+}
+
+.text-block {
+  border-top-color: #eadfcd;
+}
+
+.block-value,
+.stats-row {
+  color: #5f5548;
+}
+
+.stats-row text {
+  border: 1rpx solid #eadfcd;
+  background: #fffaf2;
+}
+
+.section-count,
+.empty-tip {
+  color: #8b7e6b;
+}
+
+.description-block {
+  margin-top: 18rpx;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.task-card .info-row {
+  justify-content: flex-start;
+  gap: 18rpx;
+  padding: 12rpx 0;
+}
+
+.task-card .label {
+  width: 124rpx;
+}
+
+.task-card .value {
+  text-align: left;
+  line-height: 1.55;
+}
+
+.description-card .block-value {
+  color: #3f3a32;
+  line-height: 1.7;
+}
+
+.action-bar button.primary-btn {
+  background: linear-gradient(135deg, #166534 0%, #0f5132 100%) !important;
+  color: #ffffff !important;
+}
+
+.action-bar button.secondary-btn {
+  border-color: #b7d7c2 !important;
+  background: #eaf5ee !important;
+  color: #0f5132 !important;
+}
+
+.detail-link {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #eadfcd;
+  color: #166534;
+  font-size: 26rpx;
+  font-weight: 600;
+  text-align: right;
+}
+
+.detail-page {
+  padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
+}
+
+.herb-card {
+  box-sizing: border-box;
+  margin-bottom: 24rpx;
+  padding: 28rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 24rpx;
+  background: #fffaf2;
+  background: rgba(255, 250, 242, 0.96);
+  box-shadow: 0 10rpx 28rpx rgba(63, 45, 24, 0.06);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 22rpx;
+  color: #0f3d2e;
+}
+
+.section-title::before {
+  width: 8rpx;
+  height: 32rpx;
+  margin-right: 14rpx;
+  border-radius: 999rpx;
+  background: #166534;
+  content: '';
+}
+
+.task-overview-card .info-row,
+.collection-info-card .info-row {
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+  padding: 0;
+}
+
+.task-overview-card .label {
+  width: auto;
+  color: #7c6f5c;
+  font-size: 26rpx;
+}
+
+.task-overview-card .value {
+  color: #1f2933;
+  font-size: 28rpx;
+  font-weight: 500;
+  text-align: right;
+}
+
+.collection-info-card .info-block:last-child {
+  margin-bottom: 0;
+}
+
+.description-card .description-block {
+  margin-top: 0;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 14rpx;
+  background: #f7f1e6;
+}
+
+.description-card .text-block:not(.description-block) {
+  margin-top: 18rpx;
+}
+
+.action-btn {
+  height: 78rpx;
+  border-radius: 18rpx;
+  font-size: 28rpx;
+  line-height: 78rpx;
+}
+
+.task-batch-card .section-header {
+  margin-bottom: 18rpx;
+}
+
+.batch-card {
+  padding: 24rpx;
+  border-radius: 20rpx;
+  box-shadow: none;
 }
 </style>
