@@ -43,10 +43,10 @@ public class GlobalExceptionHandler {
         HttpStatus status =
                 switch (exception.getResultCode()) {
                     case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
-                    case FORBIDDEN -> HttpStatus.FORBIDDEN;
+                    case FORBIDDEN, PASSWORD_CHANGE_REQUIRED -> HttpStatus.FORBIDDEN;
                     case NOT_FOUND -> HttpStatus.NOT_FOUND;
-                    case CONFLICT -> HttpStatus.CONFLICT;
-                    case VALIDATION_ERROR -> HttpStatus.BAD_REQUEST;
+                    case CONFLICT, RESOURCE_CONFLICT -> HttpStatus.CONFLICT;
+                    case VALIDATION_ERROR, PASSWORD_VERIFICATION_FAILED -> HttpStatus.BAD_REQUEST;
                     default -> HttpStatus.BAD_REQUEST;
                 };
         return ResponseEntity.status(status)

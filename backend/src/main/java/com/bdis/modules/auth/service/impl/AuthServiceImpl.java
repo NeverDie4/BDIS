@@ -1,25 +1,27 @@
 package com.bdis.modules.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.audit.service.LoginLogService;
 import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.exception.DuplicateResourceException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.UnauthorizedException;
 import com.bdis.common.security.BootstrapProperties;
 import com.bdis.common.security.CurrentUser;
+import com.bdis.common.security.IssuedToken;
 import com.bdis.common.security.JwtClaims;
 import com.bdis.common.security.JwtProperties;
 import com.bdis.common.security.JwtUtils;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.common.security.TokenBlacklistService;
-import com.bdis.modules.audit.entity.LoginLogEntity;
-import com.bdis.modules.audit.mapper.LoginLogMapper;
 import com.bdis.modules.auth.dto.BootstrapAdminDTO;
 import com.bdis.modules.auth.dto.LoginDTO;
 import com.bdis.modules.auth.service.AuthService;
 import com.bdis.modules.auth.service.CurrentUserService;
 import com.bdis.modules.auth.vo.CurrentUserVO;
 import com.bdis.modules.auth.vo.LoginVO;
+import com.bdis.modules.settings.service.UserPreferenceService;
+import com.bdis.modules.settings.service.UserSessionService;
 import com.bdis.modules.user.entity.RoleEntity;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.entity.UserRoleEntity;
@@ -43,7 +45,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRoleMapper userRoleMapper;
 
-    private final LoginLogMapper loginLogMapper;
+    private final LoginLogService loginLogService;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -57,27 +59,35 @@ public class AuthServiceImpl implements AuthService {
 
     private final CurrentUserService currentUserService;
 
+    private final UserSessionService userSessionService;
+
+    private final UserPreferenceService userPreferenceService;
+
     public AuthServiceImpl(
             UserMapper userMapper,
             RoleMapper roleMapper,
             UserRoleMapper userRoleMapper,
-            LoginLogMapper loginLogMapper,
+            LoginLogService loginLogService,
             PasswordEncoder passwordEncoder,
             JwtUtils jwtUtils,
             JwtProperties jwtProperties,
             BootstrapProperties bootstrapProperties,
             TokenBlacklistService tokenBlacklistService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            UserSessionService userSessionService,
+            UserPreferenceService userPreferenceService) {
         this.userMapper = userMapper;
         this.roleMapper = roleMapper;
         this.userRoleMapper = userRoleMapper;
-        this.loginLogMapper = loginLogMapper;
+        this.loginLogService = loginLogService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.jwtProperties = jwtProperties;
         this.bootstrapProperties = bootstrapProperties;
         this.tokenBlacklistService = tokenBlacklistService;
         this.currentUserService = currentUserService;
+        this.userSessionService = userSessionService;
+        this.userPreferenceService = userPreferenceService;
     }
 
     @Override
@@ -106,33 +116,37 @@ public class AuthServiceImpl implements AuthService {
         userRole.setUserId(user.getId());
         userRole.setRoleId(adminRole.getId());
         userRoleMapper.insert(userRole);
-        recordLogin(user.getId(), user.getUsername(), "success", "bootstrap-admin", request);
+        recordLogin(user.getId(), user.getUsername(), "SUCCESS", "bootstrap-admin");
         return toCurrentUserVO(currentUserService.load(user.getId()));
     }
 
     @Override
+    @Transactional
     public LoginVO login(LoginDTO dto, HttpServletRequest request) {
         UserEntity user =
                 userMapper.selectOne(
                         new LambdaQueryWrapper<UserEntity>()
                                 .eq(UserEntity::getUsername, dto.getUsername()));
         if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPasswordHash())) {
-            recordLogin(null, dto.getUsername(), "failed", "账号或密码错误", request);
+            recordLogin(null, dto.getUsername(), "FAILED", "账号或密码错误");
             throw new UnauthorizedException("账号或密码错误");
         }
         if (user.getStatus() == null || user.getStatus() != 1) {
-            recordLogin(user.getId(), user.getUsername(), "failed", "账号已停用", request);
+            recordLogin(user.getId(), user.getUsername(), "FAILED", "账号已停用");
             throw new UnauthorizedException("账号已停用");
         }
         user.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(user);
         CurrentUser currentUser = currentUserService.load(user.getId());
-        String accessToken = jwtUtils.generate(currentUser);
+        IssuedToken issuedToken = jwtUtils.generate(currentUser);
+        userSessionService.create(user.getId(), issuedToken, request);
         LoginVO vo = new LoginVO();
-        vo.setAccessToken(accessToken);
+        vo.setAccessToken(issuedToken.accessToken());
         vo.setExpiresIn(jwtProperties.getAccessTokenTtlMinutes() * 60);
         vo.setUser(toCurrentUserVO(currentUser));
-        recordLogin(user.getId(), user.getUsername(), "success", null, request);
+        vo.setPreferredLandingPath(userPreferenceService.preferredLandingPath(currentUser));
+        vo.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
+        recordLogin(user.getId(), user.getUsername(), "SUCCESS", null);
         return vo;
     }
 
@@ -144,6 +158,7 @@ public class AuthServiceImpl implements AuthService {
         }
         String token = authorizationHeader.substring(SecurityConstants.BEARER_PREFIX.length());
         JwtClaims claims = jwtUtils.parse(token);
+        userSessionService.revokeByJti(claims.jti(), "logout");
         tokenBlacklistService.blacklist(claims);
     }
 
@@ -182,32 +197,18 @@ public class AuthServiceImpl implements AuthService {
         vo.setRoleCodes(user.getRoleCodes());
         vo.setRoleIds(user.getRoleIds());
         vo.setPermissions(user.getPermissions());
+        UserEntity userEntity = userMapper.selectById(user.getUserId());
+        vo.setAvatarUrl(
+                userEntity != null && StringUtils.hasText(userEntity.getAvatarUrl())
+                        ? "/api/me/profile/avatar/content"
+                        : null);
+        vo.setMustChangePassword(
+                userEntity != null && Boolean.TRUE.equals(userEntity.getMustChangePassword()));
         return vo;
     }
 
-    private void recordLogin(
-            Long userId,
-            String username,
-            String result,
-            String failReason,
-            HttpServletRequest request) {
-        LoginLogEntity log = new LoginLogEntity();
-        log.setUserId(userId);
-        log.setUsername(username);
-        log.setLoginResult(result);
-        log.setFailReason(failReason);
-        log.setIpAddress(clientIp(request));
-        log.setUserAgent(request.getHeader("User-Agent"));
-        log.setLoggedInAt(LocalDateTime.now());
-        loginLogMapper.insert(log);
-    }
-
-    private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(forwardedFor)) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+    private void recordLogin(Long userId, String username, String result, String failReason) {
+        loginLogService.record(userId, username, result, failReason);
     }
 
     private String generateNo(String prefix) {

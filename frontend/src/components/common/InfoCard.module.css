@@ -8,11 +8,17 @@
 }
 
 .card :global(.ant-card-head) {
-  min-height: auto;
+  min-height: 52px;
+  padding-inline: 22px;
   border-bottom-color: rgba(var(--color-border-rgb), 0.8);
   color: var(--color-title);
   font-family: var(--font-ui);
   font-weight: 800;
+}
+
+.card :global(.ant-card-head-title) {
+  padding-block: 14px;
+  line-height: 1.4;
 }
 
 .card :global(.ant-card-body) {

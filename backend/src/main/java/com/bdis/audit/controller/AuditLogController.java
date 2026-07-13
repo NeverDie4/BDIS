@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/audit-logs")
-@RequirePermission("audit:log:view")
+@RequirePermission("audit:operation:view")
 public class AuditLogController {
 
     private final AuditLogService auditLogService;

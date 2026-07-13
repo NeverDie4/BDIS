@@ -16,5 +16,5 @@ public interface FileStorageService {
 
     void delete(String storagePath);
 
-    record StoredFile(String storedName, String storagePath, String fileUrl) {}
+    record StoredFile(String storedName, String storagePath) {}
 }

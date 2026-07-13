@@ -2,6 +2,9 @@ package com.bdis.modules.map.service.impl;
 
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
+import com.bdis.file.dto.FileBusinessBindDTO;
+import com.bdis.file.service.FileBusinessService;
+import com.bdis.file.service.FileResourceService;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.map.dto.MapPointUpsertRequest;
@@ -29,6 +32,10 @@ public class MapPointServiceImpl implements MapPointService {
 
     private final HerbMapper herbMapper;
 
+    private final FileBusinessService fileBusinessService;
+
+    private final FileResourceService fileResourceService;
+
     @Override
     public List<MapPointVO> listMapPoints(MapPointQuery query) {
         return mapPointMapper.selectMapPoints(
@@ -43,6 +50,7 @@ public class MapPointServiceImpl implements MapPointService {
         fillMapPoint(entity, request, speciesId);
         entity.setCreatedBy(SecurityUtils.currentUser().getUserId());
         mapPointMapper.insert(entity);
+        attachAndPublishCover(entity);
         return findCreatedOrUpdated(entity.getId());
     }
 
@@ -53,10 +61,12 @@ public class MapPointServiceImpl implements MapPointService {
         if (entity == null) {
             throw new ResourceNotFoundException("地图点位不存在");
         }
+        String previousCoverImageUrl = entity.getCoverImageUrl();
         Long speciesId = resolveSpeciesId(request);
         fillMapPoint(entity, request, speciesId);
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
         mapPointMapper.updateById(entity);
+        replaceCoverIfChanged(entity, previousCoverImageUrl);
         return findCreatedOrUpdated(pointId);
     }
 
@@ -67,6 +77,7 @@ public class MapPointServiceImpl implements MapPointService {
         if (entity == null) {
             throw new ResourceNotFoundException("地图点位不存在");
         }
+        detachAndMakeCoverPrivate(entity);
         Long operatorId = SecurityUtils.currentUser().getUserId();
         entity.setDeletedBy(operatorId);
         entity.setUpdatedBy(operatorId);
@@ -193,6 +204,48 @@ public class MapPointServiceImpl implements MapPointService {
                 .filter(point -> pointId.equals(point.getId()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("地图点位不存在"));
+    }
+
+    private void replaceCoverIfChanged(MapPointEntity entity, String previousCoverImageUrl) {
+        if (java.util.Objects.equals(previousCoverImageUrl, entity.getCoverImageUrl())) {
+            return;
+        }
+        detachAndMakeCoverPrivate(entity.getId(), previousCoverImageUrl);
+        attachAndPublishCover(entity);
+    }
+
+    private void attachAndPublishCover(MapPointEntity entity) {
+        if (!StringUtils.hasText(entity.getCoverImageUrl())) {
+            return;
+        }
+        Long fileId = fileResourceService.resolveFileId(entity.getCoverImageUrl());
+        if (fileId == null) {
+            throw new ResourceNotFoundException("地图封面必须使用受控文件地址");
+        }
+        FileBusinessBindDTO bind = new FileBusinessBindDTO();
+        bind.setFileId(fileId);
+        bind.setBizType("map_point");
+        bind.setBizId(entity.getId());
+        bind.setFileUsage("cover");
+        fileBusinessService.bind(bind);
+        fileResourceService.publishForBusiness(fileId, "map_point", entity.getId());
+        entity.setCoverImageUrl("/api/public-files/" + fileId + "/content");
+        mapPointMapper.updateById(entity);
+    }
+
+    private void detachAndMakeCoverPrivate(MapPointEntity entity) {
+        detachAndMakeCoverPrivate(entity.getId(), entity.getCoverImageUrl());
+    }
+
+    private void detachAndMakeCoverPrivate(Long pointId, String coverImageUrl) {
+        Long fileId = fileResourceService.resolveFileId(coverImageUrl);
+        if (fileId == null) {
+            return;
+        }
+        if (fileBusinessService.isBound(fileId, "map_point", pointId)) {
+            fileResourceService.makePrivateForBusiness(fileId, "map_point", pointId);
+            fileBusinessService.deleteByBusinessAndFile("map_point", pointId, fileId);
+        }
     }
 
     private String defaultText(String value, String defaultValue) {

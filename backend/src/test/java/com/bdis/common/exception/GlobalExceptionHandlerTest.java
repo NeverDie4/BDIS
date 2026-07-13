@@ -25,4 +25,26 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getCode()).isEqualTo(ResultCodeEnum.NOT_FOUND.getCode());
     }
+
+    @Test
+    void passwordVerificationShouldUseDedicatedCode() {
+        ResponseEntity<Result<Void>> response =
+                exceptionHandler.handleBusiness(new PasswordVerificationException());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode())
+                .isEqualTo(ResultCodeEnum.PASSWORD_VERIFICATION_FAILED.getCode());
+    }
+
+    @Test
+    void preferenceConflictShouldUseDedicatedCode() {
+        ResponseEntity<Result<Void>> response =
+                exceptionHandler.handleBusiness(new ResourceConflictException("conflict"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode())
+                .isEqualTo(ResultCodeEnum.RESOURCE_CONFLICT.getCode());
+    }
 }

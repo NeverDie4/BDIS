@@ -1,5 +1,6 @@
 package com.bdis.config;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,6 +11,8 @@ import com.bdis.common.security.TokenBlacklistService;
 import com.bdis.modules.auth.service.CurrentUserService;
 import com.bdis.modules.herb.controller.HerbSpeciesController;
 import com.bdis.modules.herb.service.HerbSpeciesService;
+import com.bdis.modules.settings.service.UserSessionService;
+import com.bdis.modules.user.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -36,6 +39,10 @@ class SecurityConfigTest {
 
     @MockBean private CurrentUserService currentUserService;
 
+    @MockBean private UserSessionService userSessionService;
+
+    @MockBean private UserMapper userMapper;
+
     @Test
     void herbApiRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/herb/species/list")).andExpect(status().isUnauthorized());
@@ -57,8 +64,10 @@ class SecurityConfigTest {
     }
 
     @Test
-    void privateStoragePathRequiresAuthentication() throws Exception {
+    void privateStoragePathIsNotExposed() throws Exception {
         mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/files/uploads/missing.png").with(user("teacher")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

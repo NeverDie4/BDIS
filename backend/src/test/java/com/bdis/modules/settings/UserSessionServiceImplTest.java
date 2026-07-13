@@ -1,0 +1,85 @@
+package com.bdis.modules.settings;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.bdis.common.security.IssuedToken;
+import com.bdis.common.security.TokenBlacklistService;
+import com.bdis.modules.settings.entity.UserSessionEntity;
+import com.bdis.modules.settings.mapper.UserSessionMapper;
+import com.bdis.modules.settings.service.impl.UserSessionServiceImpl;
+import com.bdis.modules.user.mapper.UserMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class UserSessionServiceImplTest {
+
+    @Mock private UserSessionMapper sessionMapper;
+
+    @Mock private UserMapper userMapper;
+
+    @Mock private TokenBlacklistService tokenBlacklistService;
+
+    @Mock private HttpServletRequest request;
+
+    @Test
+    void samePersistentDeviceReplacesPreviousActiveSession() {
+        initializeTableMetadata();
+        UserSessionServiceImpl service =
+                new UserSessionServiceImpl(sessionMapper, userMapper, tokenBlacklistService);
+        UserSessionEntity previous = new UserSessionEntity();
+        previous.setId(1L);
+        previous.setUserId(7L);
+        previous.setTokenJti("old-jti");
+        previous.setSessionStatus("active");
+        previous.setIssuedAt(LocalDateTime.now().minusHours(1));
+        previous.setExpiresAt(LocalDateTime.now().plusHours(1));
+        when(request.getHeader("X-Device-Id")).thenReturn("bdis_0123456789abcdef0123456789abcdef");
+        when(request.getHeader("User-Agent")).thenReturn("Mozilla Chrome Linux");
+        when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(sessionMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(previous));
+        Instant issuedAt = Instant.now();
+        IssuedToken token =
+                new IssuedToken("token", "new-jti", issuedAt, issuedAt.plusSeconds(3600));
+
+        service.create(7L, token, request);
+
+        assertThat(previous.getSessionStatus()).isEqualTo("revoked");
+        assertThat(previous.getRevokeReason()).isEqualTo("replaced_by_new_login");
+        verify(sessionMapper).updateById(previous);
+        verify(tokenBlacklistService).blacklist(any());
+        ArgumentCaptor<UserSessionEntity> inserted =
+                ArgumentCaptor.forClass(UserSessionEntity.class);
+        verify(sessionMapper).insert(inserted.capture());
+        assertThat(inserted.getValue().getDeviceId())
+                .isEqualTo("bdis_0123456789abcdef0123456789abcdef");
+        assertThat(inserted.getValue().getTokenJti()).isEqualTo("new-jti");
+        verify(sessionMapper).update(eq(null), any(LambdaUpdateWrapper.class));
+    }
+
+    private void initializeTableMetadata() {
+        MybatisConfiguration configuration = new MybatisConfiguration();
+        configuration.setMapUnderscoreToCamelCase(true);
+        MapperBuilderAssistant assistant =
+                new MapperBuilderAssistant(configuration, UserSessionEntity.class.getName());
+        assistant.setCurrentNamespace(UserSessionEntity.class.getName());
+        TableInfoHelper.initTableInfo(assistant, UserSessionEntity.class);
+    }
+}

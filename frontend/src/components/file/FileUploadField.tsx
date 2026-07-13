@@ -3,6 +3,7 @@
 import { App, Button, Image, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { ImageUp, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { getFileRequestErrorMessage, uploadFile, type FileResource } from "@/lib/files";
 import styles from "./FileUploadField.module.css";
 
@@ -30,6 +31,14 @@ export function FileUploadField({
   onUploaded,
 }: FileUploadFieldProps) {
   const { message } = App.useApp();
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>();
+
+  useEffect(
+    () => () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    },
+    [localPreviewUrl],
+  );
 
   function beforeUpload(file: File) {
     if (accept === "image/*" && !file.type.startsWith("image/")) {
@@ -47,6 +56,7 @@ export function FileUploadField({
     try {
       const file = options.file as File;
       const uploaded = await uploadFile(file, { bizType, bizId, fileUsage });
+      setLocalPreviewUrl(URL.createObjectURL(file));
       onChange?.(uploaded.fileUrl);
       onUploaded?.(uploaded);
       options.onSuccess?.(uploaded);
@@ -67,10 +77,18 @@ export function FileUploadField({
             className={styles.remove}
             aria-label="移除已上传文件"
             icon={<X size={13} />}
-            onClick={() => onChange?.(undefined)}
+            onClick={() => {
+              setLocalPreviewUrl(undefined);
+              onChange?.(undefined);
+            }}
           />
           {accept === "image/*" ? (
-            <Image className={styles.image} src={value} alt="已上传图片" preview={false} />
+            <Image
+              className={styles.image}
+              src={localPreviewUrl ?? value}
+              alt="已上传图片"
+              preview={false}
+            />
           ) : (
             <div className={styles.fileName}>{value}</div>
           )}

@@ -79,6 +79,8 @@ public class SecurityConfig {
                         requests ->
                                 requests.requestMatchers(HttpMethod.GET, "/public-files/**")
                                         .permitAll()
+                                        .requestMatchers("/files/uploads/**")
+                                        .denyAll()
                                         .requestMatchers(
                                                 "/auth/sessions",
                                                 "/auth/bootstrap-admin",
@@ -112,7 +114,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setExposedHeaders(List.of("Authorization", "X-Trace-Id"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
