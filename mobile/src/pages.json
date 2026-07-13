@@ -53,6 +53,12 @@
       }
     },
     {
+      "path": "pages/growth/form",
+      "style": {
+        "navigationBarTitleText": "生长记录"
+      }
+    },
+    {
       "path": "pages/image/upload",
       "style": {
         "navigationBarTitleText": "图片上传"

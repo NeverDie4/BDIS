@@ -114,11 +114,13 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
             throw exception;
         }
         MobileBatchImageUploadResultVO result = toUploadResult(binding);
-        result.setAutoIdentifySuccess(false);
-        result.setMessage("uploaded and bound");
         if (Boolean.TRUE.equals(safeRequest.getAutoIdentify())) {
+            result.setAutoIdentifySuccess(null);
             identifyBoundImageAfterCommit(batchId, image.getId(), new MobileBatchIdentifyRequest());
-            result.setMessage("uploaded and bound, identification queued");
+            result.setMessage("图片上传并绑定成功，自动识别已提交，请稍后查看识别结果");
+        } else {
+            result.setAutoIdentifySuccess(false);
+            result.setMessage("图片上传并绑定成功，未开启自动识别");
         }
         return result;
     }

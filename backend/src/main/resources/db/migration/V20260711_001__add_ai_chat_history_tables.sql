@@ -9,9 +9,9 @@ CREATE TABLE `herb_ai_chat_session` (
   `status` VARCHAR(20) NOT NULL DEFAULT 'normal',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `deleted` TINYINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_ai_chat_session_user_id` (`user_id`, `session_id`),
+  UNIQUE KEY `uk_ai_chat_session_id` (`session_id`),
   KEY `idx_ai_chat_session_user_time` (`user_id`, `last_message_time`),
   KEY `idx_ai_chat_session_source` (`source`),
   CONSTRAINT `chk_ai_chat_session_status` CHECK (`status` IN ('normal', 'deleted'))
@@ -20,7 +20,6 @@ CREATE TABLE `herb_ai_chat_session` (
 CREATE TABLE `herb_ai_chat_message` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `session_id` VARCHAR(64) NOT NULL,
-  `user_id` BIGINT NULL,
   `role` VARCHAR(20) NOT NULL,
   `content` LONGTEXT NOT NULL,
   `model_name` VARCHAR(100) NULL,
@@ -29,11 +28,11 @@ CREATE TABLE `herb_ai_chat_message` (
   `error_message` VARCHAR(500) NULL,
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT NOT NULL DEFAULT 0,
+  `deleted` TINYINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `idx_ai_chat_message_session_time` (`user_id`, `session_id`, `create_time`, `id`),
+  KEY `idx_ai_chat_message_session_time` (`session_id`, `create_time`, `id`),
   CONSTRAINT `fk_ai_chat_message_session`
-    FOREIGN KEY (`user_id`, `session_id`) REFERENCES `herb_ai_chat_session` (`user_id`, `session_id`),
+    FOREIGN KEY (`session_id`) REFERENCES `herb_ai_chat_session` (`session_id`),
   CONSTRAINT `chk_ai_chat_message_role`
     CHECK (`role` IN ('user', 'assistant', 'system'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 消息表';

@@ -79,6 +79,8 @@ public class SecurityConfig {
                         requests ->
                                 requests.requestMatchers(HttpMethod.GET, "/public-files/**")
                                         .permitAll()
+                                        .requestMatchers(HttpMethod.GET, "/trace/growth/**")
+                                        .permitAll()
                                         .requestMatchers(
                                                 "/auth/sessions",
                                                 "/auth/bootstrap-admin",

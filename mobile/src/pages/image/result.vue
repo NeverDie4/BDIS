@@ -91,13 +91,13 @@
       </view>
 
       <view class="herb-card doubao-card">
-        <text class="section-title">豆包辅助识别</text>
+        <text class="section-title">大模型辅助识别</text>
         <view v-if="doubaoAssistMessage" class="assist-status">
           <text>{{ doubaoAssistMessage }}</text>
         </view>
         <template v-if="doubaoResult">
           <view class="info-row">
-            <text class="label">豆包预测</text>
+            <text class="label">大模型预测</text>
             <text class="value">{{ displayText(doubaoResult.speciesName) }}</text>
           </view>
           <view class="info-row">
@@ -114,7 +114,7 @@
           </view>
         </template>
         <view v-else class="empty">
-          <text class="empty-title">暂无豆包辅助识别记录</text>
+          <text class="empty-title">暂无大模型辅助识别记录</text>
         </view>
       </view>
 
@@ -168,12 +168,12 @@ const finalConfidence = computed(() =>
 )
 const doubaoAssistMessage = computed(() => {
   if (result.value.matchResult !== 'low_confidence') {
-    return doubaoResult.value ? '本次识别已使用豆包辅助判断。' : ''
+    return doubaoResult.value ? '本次识别已使用大模型辅助判断。' : ''
   }
 
   return doubaoResult.value
-    ? '本地图谱置信度较低，已自动调用豆包辅助识别。'
-    : '本地图谱置信度较低，但暂未获得豆包辅助识别结果。'
+    ? '本地图谱置信度较低，已自动调用大模型辅助识别。'
+    : '本地图谱置信度较低，但暂未获得大模型辅助识别结果。'
 })
 
 onLoad((options) => {

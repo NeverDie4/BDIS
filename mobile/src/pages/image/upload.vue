@@ -89,7 +89,7 @@
         <switch :checked="form.autoIdentify" color="#166534" @change="onAutoIdentifyChange" />
       </view>
       <text class="form-tip">
-        建议先上传并绑定批次，再到批次详情中点击“识别”或“识别未完成图片”。开启自动识别时，上传会等待完整识别流程，耗时可能较长。
+        默认开启。图片上传并绑定成功后，系统会自动执行特征提取和识别；低置信度结果会调用大模型辅助识别并进入人工复核。上传响应仅表示识别已提交，最终结果请在识别结果页查看。
       </text>
 
       <view class="form-item">
@@ -144,7 +144,7 @@
         图片已上传并绑定批次，但自动识别失败，可稍后在批次详情中手动触发识别。
       </text>
 
-      <view class="button-row">
+      <view class="button-row result-action-row">
         <button class="secondary-btn picker-btn" @click="continueUpload">继续上传</button>
         <button class="secondary-btn picker-btn" @click="goBatchDetail">返回批次详情</button>
         <button v-if="uploadResult.imageId" class="primary-btn picker-btn" @click="goResult">查看识别结果</button>
@@ -188,7 +188,7 @@ const form = reactive({
   collectPlace: '',
   collectTime: getNowDateTime(),
   isPrimary: false,
-  autoIdentify: false,
+  autoIdentify: true,
   remark: ''
 })
 
@@ -362,7 +362,11 @@ async function handleUpload() {
       icon: 'success'
     })
 
-    if (uploadResult.value.autoIdentifySuccess === false && uploadResult.value.message) {
+    if (
+      form.autoIdentify &&
+      uploadResult.value.autoIdentifySuccess === false &&
+      uploadResult.value.message
+    ) {
       setTimeout(() => {
         showToast(uploadResult.value.message)
       }, 600)
@@ -434,7 +438,7 @@ function formatAutoIdentifyResult(result) {
     return '失败'
   }
 
-  return '处理中'
+  return '已提交，等待结果'
 }
 
 function findOptionLabel(options, value) {
@@ -577,6 +581,22 @@ function showToast(title) {
 .picker-btn {
   flex: 1;
   margin-top: 0;
+}
+
+.result-action-row {
+  align-items: stretch;
+}
+
+.result-action-row .picker-btn {
+  min-height: 96rpx;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 12rpx 8rpx;
+  line-height: 1.3;
+  white-space: normal;
 }
 
 .form-item {

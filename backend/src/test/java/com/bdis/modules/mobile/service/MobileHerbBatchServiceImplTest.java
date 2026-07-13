@@ -43,10 +43,10 @@ class MobileHerbBatchServiceImplTest {
     @InjectMocks private MobileHerbBatchServiceImpl service;
 
     @Test
-    void uploadRequestDoesNotEnableAutoIdentifyByDefault() {
+    void uploadRequestEnablesAutoIdentifyByDefault() {
         MobileBatchImageUploadRequest request = new MobileBatchImageUploadRequest();
 
-        assertThat(request.getAutoIdentify()).isFalse();
+        assertThat(request.getAutoIdentify()).isTrue();
     }
 
     @Test

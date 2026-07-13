@@ -48,10 +48,13 @@
         <result column="growth_record_id" property="growthRecordId"/>
         <result column="upload_source" property="uploadSource"/>
         <result column="uploader_id" property="collectorId"/>
+        <result column="uploader_name" property="uploaderName"/>
         <result column="distribution_id" property="baseId"/>
         <result column="collected_location" property="collectPlace"/>
         <result column="collected_at" property="collectTime"/>
+        <result column="upload_time" property="uploadTime"/>
         <result column="image_type" property="imageType"/>
+        <result column="image_role" property="imageRole"/>
         <result column="growth_stage" property="growthStage"/>
         <result column="health_status" property="healthStatus"/>
         <result column="process_status" property="processStatus"/>
@@ -106,10 +109,13 @@
         s.herb_name AS species_name,
         i.upload_source,
         i.uploader_id,
+        COALESCE(u.real_name, u.username) AS uploader_name,
         i.distribution_id,
         i.collected_location,
         i.collected_at,
+        i.created_at AS upload_time,
         i.image_type,
+        NULL AS image_role,
         i.growth_stage,
         i.health_status,
         i.process_status
@@ -207,6 +213,7 @@
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
         LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN sys_user u ON u.id = i.uploader_id AND u.is_deleted = 0
         WHERE i.id = #{id}
           AND i.is_deleted = 0
     </select>
@@ -217,9 +224,46 @@
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
         LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN sys_user u ON u.id = i.uploader_id AND u.is_deleted = 0
         WHERE i.growth_record_id = #{growthRecordId}
           AND i.is_deleted = 0
         ORDER BY i.created_at DESC
+    </select>
+
+    <select id="selectByBatchId" resultMap="ImageVOResultMap">
+        SELECT
+        i.id,
+        i.image_no,
+        CASE
+            WHEN fr.id IS NULL THEN i.image_url
+            WHEN fr.access_level = 'public' THEN CONCAT('/api/public-files/', fr.id, '/content')
+            ELSE CONCAT('/api/files/', fr.id, '/content')
+        END AS image_url,
+        i.original_filename,
+        i.species_id,
+        i.growth_record_id,
+        s.herb_name AS species_name,
+        i.upload_source,
+        i.uploader_id,
+        COALESCE(u.real_name, u.username) AS uploader_name,
+        i.distribution_id,
+        i.collected_location,
+        i.collected_at,
+        i.created_at AS upload_time,
+        i.image_type,
+        bi.image_role,
+        i.growth_stage,
+        i.health_status,
+        i.process_status
+        FROM herb_batch_image bi
+        INNER JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN sys_user u ON u.id = i.uploader_id AND u.is_deleted = 0
+        WHERE bi.batch_id = #{batchId}
+          AND bi.is_deleted = 0
+          AND bi.bind_status = 'bound'
+        ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
     </select>
 
     <select id="countPage" resultType="java.lang.Long">
@@ -286,6 +330,7 @@
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
         LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN sys_user u ON u.id = i.uploader_id AND u.is_deleted = 0
         LEFT JOIN herb_growth_record gr
           ON gr.id = i.growth_record_id AND gr.is_deleted = 0
         <where>
@@ -355,6 +400,7 @@
         FROM herb_image i
         LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
         LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN sys_user u ON u.id = i.uploader_id AND u.is_deleted = 0
         WHERE i.uploader_id = #{collectorId}
           AND i.is_deleted = 0
         ORDER BY i.created_at DESC

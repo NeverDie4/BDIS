@@ -3,10 +3,12 @@
     <view
       v-if="!panelOpen"
       class="assistant-float"
+      :class="{ 'assistant-float-dragging': dragging }"
       :style="floatStyle"
       @touchstart="handleTouchStart"
       @touchmove.stop.prevent="handleTouchMove"
       @touchend="handleTouchEnd"
+      @touchcancel="handleTouchEnd"
       @tap="handleFloatTap"
     >
       <image
@@ -107,12 +109,13 @@ import {
 import { isLoggedIn } from '../utils/auth'
 import { getStorage, setStorage } from '../utils/storage'
 
-const FLOAT_SIZE = 42
+const FLOAT_SIZE = 48
 const EDGE_GAP = 16
 const TOP_GAP = 64
 const TAB_BAR_BOTTOM_GAP = 80
 const DEFAULT_BOTTOM_GAP = 85
 const SESSION_KEY = 'assistantSessionId'
+const FLOAT_POSITION_KEY = 'assistantFloatPosition'
 const FLOAT_LEFT_KEY = 'assistantFloatLeft'
 const FLOAT_TOP_KEY = 'assistantFloatTop'
 const POSITION_SYNC_EVENT = 'assistant-float-position-change'
@@ -130,6 +133,7 @@ const sessionId = ref('')
 const scrollTop = ref(0)
 const floatLeft = ref(0)
 const floatTop = ref(0)
+const dragging = ref(false)
 const screenWidth = ref(375)
 const screenHeight = ref(667)
 const dragState = {
@@ -192,20 +196,26 @@ function initFloatPosition() {
   const systemInfo = uni.getSystemInfoSync()
   screenWidth.value = Number(systemInfo.windowWidth || screenWidth.value)
   screenHeight.value = Number(systemInfo.windowHeight || screenHeight.value)
-  const defaultLeft = screenWidth.value - FLOAT_SIZE - EDGE_GAP
   const defaultTop = screenHeight.value - FLOAT_SIZE - currentBottomGap()
-  const cachedLeft = Number(getStorage(FLOAT_LEFT_KEY, defaultLeft))
-  const cachedTop = Number(getStorage(FLOAT_TOP_KEY, defaultTop))
-  if (isSafeCachedPosition(cachedLeft, cachedTop)) {
-    floatLeft.value = cachedLeft
-    floatTop.value = cachedTop
+  const cachedPosition = getStorage(FLOAT_POSITION_KEY, null)
+  if (isSafeCachedAnchor(cachedPosition)) {
+    applyFloatAnchor(cachedPosition)
     return
   }
 
-  floatLeft.value = defaultLeft
-  floatTop.value = defaultTop
-  setStorage(FLOAT_LEFT_KEY, defaultLeft)
-  setStorage(FLOAT_TOP_KEY, defaultTop)
+  const defaultLeft = screenWidth.value - FLOAT_SIZE - EDGE_GAP
+  const cachedLeft = Number(getStorage(FLOAT_LEFT_KEY, defaultLeft))
+  const cachedTop = Number(getStorage(FLOAT_TOP_KEY, defaultTop))
+  if (isSafeCachedPosition(cachedLeft, cachedTop)) {
+    const migratedPosition = snapToSide(cachedLeft, cachedTop)
+    applyFloatAnchor(migratedPosition)
+    persistFloatPosition(migratedPosition.side, migratedPosition.top)
+    return
+  }
+
+  const defaultPosition = { side: 'right', top: clamp(defaultTop, TOP_GAP, maxTop()) }
+  applyFloatAnchor(defaultPosition)
+  persistFloatPosition(defaultPosition.side, defaultPosition.top)
 }
 
 function isSafeCachedPosition(left, top) {
@@ -216,6 +226,14 @@ function isSafeCachedPosition(left, top) {
     left <= maxLeft() &&
     top >= TOP_GAP &&
     top <= maxTop()
+  )
+}
+
+function isSafeCachedAnchor(position) {
+  return (
+    position &&
+    (position.side === 'left' || position.side === 'right') &&
+    Number.isFinite(Number(position.top))
   )
 }
 
@@ -230,6 +248,7 @@ function handleTouchStart(event) {
   dragState.originLeft = floatLeft.value
   dragState.originTop = floatTop.value
   dragState.moved = false
+  dragging.value = false
 }
 
 function handleTouchMove(event) {
@@ -240,48 +259,63 @@ function handleTouchMove(event) {
 
   const offsetX = touch.clientX - dragState.startX
   const offsetY = touch.clientY - dragState.startY
-  if (Math.abs(offsetX) > 5 || Math.abs(offsetY) > 5) {
-    dragState.moved = true
+  if (!dragState.moved && Math.hypot(offsetX, offsetY) <= 5) {
+    return
   }
+  dragState.moved = true
+  dragging.value = true
   floatLeft.value = clamp(dragState.originLeft + offsetX, EDGE_GAP, maxLeft())
   floatTop.value = clamp(dragState.originTop + offsetY, TOP_GAP, maxTop())
 }
 
 function handleTouchEnd() {
   if (!dragState.moved) {
+    dragging.value = false
     return
   }
 
   suppressTap = true
-  persistFloatPosition(floatLeft.value, floatTop.value)
-  uni.$emit(POSITION_SYNC_EVENT, {
-    left: floatLeft.value,
-    top: floatTop.value
-  })
+  const snappedPosition = snapToSide(floatLeft.value, floatTop.value)
+  applyFloatAnchor(snappedPosition)
+  dragging.value = false
+  persistFloatPosition(snappedPosition.side, snappedPosition.top)
+  uni.$emit(POSITION_SYNC_EVENT, snappedPosition)
 }
 
 function syncFloatPosition(position = {}) {
-  const left = Number(position.left)
-  const top = Number(position.top)
-  if (!isSafeCachedPosition(left, top)) {
+  if (!isSafeCachedAnchor(position)) {
     initFloatPosition()
     return
   }
 
-  floatLeft.value = left
-  floatTop.value = top
+  applyFloatAnchor(position)
 }
 
-function persistFloatPosition(left, top) {
-  setStorage(FLOAT_LEFT_KEY, left)
-  setStorage(FLOAT_TOP_KEY, top)
+function persistFloatPosition(side, top) {
+  setStorage(FLOAT_POSITION_KEY, { side, top })
 }
 
 function ensureSafePosition() {
-  if (isSafeCachedPosition(floatLeft.value, floatTop.value)) {
+  const cachedPosition = getStorage(FLOAT_POSITION_KEY, null)
+  if (isSafeCachedAnchor(cachedPosition)) {
+    applyFloatAnchor(cachedPosition)
     return
   }
   initFloatPosition()
+}
+
+function snapToSide(left, top) {
+  const side = left + FLOAT_SIZE / 2 < screenWidth.value / 2 ? 'left' : 'right'
+  return {
+    side,
+    top: clamp(Number(top), TOP_GAP, maxTop())
+  }
+}
+
+function applyFloatAnchor(position) {
+  const side = position.side === 'left' ? 'left' : 'right'
+  floatLeft.value = side === 'left' ? EDGE_GAP : maxLeft()
+  floatTop.value = clamp(Number(position.top), TOP_GAP, maxTop())
 }
 
 function handleFloatTap() {
@@ -450,7 +484,10 @@ function resolveAnswer(response) {
 }
 
 function formatAssistantMarkdown(text) {
-  const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n')
+  const lines = String(text ?? '')
+    .replace(/\u8c46\u5305/g, '大模型')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
   const html = []
   let listType = ''
   let inCodeBlock = false
@@ -645,28 +682,39 @@ defineExpose({
   position: fixed;
   z-index: 7900;
   display: flex;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
   background: transparent;
-  box-shadow: 0 4px 12px rgba(15, 81, 50, 0.26);
+  box-shadow: 0 5px 14px rgba(15, 81, 50, 0.28);
   touch-action: none;
+  transition:
+    left 0.22s ease,
+    top 0.18s ease,
+    transform 0.18s ease;
+  user-select: none;
+}
+
+.assistant-float-dragging {
+  box-shadow: 0 8px 20px rgba(15, 81, 50, 0.34);
+  transform: scale(1.04);
+  transition: none;
 }
 
 .assistant-float-fallback {
   display: block;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
 }
 
 .assistant-float-icon {
   display: block;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   max-width: none;
   flex-shrink: 0;
   object-fit: contain;
@@ -677,9 +725,9 @@ defineExpose({
   align-items: center;
   justify-content: center;
   background: #166534;
-  box-shadow: 0 4px 12px rgba(15, 81, 50, 0.26);
+  box-shadow: 0 5px 14px rgba(15, 81, 50, 0.28);
   color: #fffaf2;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
 }
 
