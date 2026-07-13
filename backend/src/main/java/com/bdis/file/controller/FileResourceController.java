@@ -79,4 +79,11 @@ public class FileResourceController {
         fileResourceService.delete(fileId);
         return Result.success();
     }
+
+    @DeleteMapping("/{fileId}/unbound-upload")
+    @RequirePermission("file:resource:upload")
+    public Result<Void> deleteOwnUnboundUpload(@PathVariable Long fileId) {
+        fileResourceService.deleteOwnUnboundUpload(fileId);
+        return Result.success();
+    }
 }

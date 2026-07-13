@@ -19,6 +19,8 @@ public interface FileBusinessService {
 
     void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId);
 
+    long countByFileId(Long fileId);
+
     List<FileResourceVO> listByBusiness(String bizType, Long bizId);
 
     List<FileBusinessVO> listBindingsByBusiness(String bizType, Long bizId);

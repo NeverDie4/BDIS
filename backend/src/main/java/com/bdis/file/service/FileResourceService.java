@@ -29,5 +29,7 @@ public interface FileResourceService {
 
     void delete(Long fileId);
 
+    void deleteOwnUnboundUpload(Long fileId);
+
     void deleteSystem(Long fileId);
 }

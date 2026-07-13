@@ -11,6 +11,7 @@ import com.bdis.common.security.CurrentUser;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
+import com.bdis.file.support.ImageContentValidator;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
@@ -26,6 +27,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class MapCoverFileServiceImplTest {
@@ -34,6 +37,7 @@ class MapCoverFileServiceImplTest {
     @Mock private FileBusinessService fileBusinessService;
     @Mock private FileResourceMapper fileResourceMapper;
     @Mock private FileBusinessMapper fileBusinessMapper;
+    @Mock private ImageContentValidator imageContentValidator;
 
     private MapCoverFileService service;
 
@@ -56,11 +60,15 @@ class MapCoverFileServiceImplTest {
                         fileResourceService,
                         fileBusinessService,
                         fileResourceMapper,
-                        fileBusinessMapper);
+                        fileBusinessMapper,
+                        imageContentValidator);
     }
 
     @AfterEach
     void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
         SecurityContextHolder.clearContext();
     }
 
@@ -69,6 +77,7 @@ class MapCoverFileServiceImplTest {
         FileResourceEntity file = privateImage(7L, 10L);
         when(fileResourceService.resolveFileId("/api/files/7/content")).thenReturn(7L);
         when(fileResourceMapper.selectById(7L)).thenReturn(file);
+        when(fileResourceMapper.updateById(file)).thenReturn(1);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
 
         String result = service.replaceCover(21L, null, "/api/files/7/content");
@@ -76,6 +85,7 @@ class MapCoverFileServiceImplTest {
         assertThat(result).isEqualTo("/api/public-files/7/content");
         assertThat(file.getAccessLevel()).isEqualTo("public");
         verify(fileResourceMapper).updateById(file);
+        verify(imageContentValidator).requireAllowedImage(any(), any());
         ArgumentCaptor<FileBusinessBindDTO> bindCaptor =
                 ArgumentCaptor.forClass(FileBusinessBindDTO.class);
         verify(fileBusinessService).bind(bindCaptor.capture());
@@ -101,12 +111,33 @@ class MapCoverFileServiceImplTest {
         when(fileResourceService.resolveFileId("/api/public-files/7/content")).thenReturn(7L);
         when(fileResourceService.resolveFileId("/api/files/9/content")).thenReturn(9L);
         when(fileResourceMapper.selectById(9L)).thenReturn(nextFile);
+        when(fileResourceMapper.updateById(nextFile)).thenReturn(1);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
         when(fileBusinessMapper.selectCount(any())).thenReturn(1L, 0L);
 
         service.replaceCover(21L, "/api/public-files/7/content", "/api/files/9/content");
 
         verify(fileBusinessService).deleteByBusinessAndFile("map_point", 21L, 7L);
+        verify(fileResourceService).deleteSystem(7L);
+    }
+
+    @Test
+    void releasedCoverIsDeletedOnlyAfterTransactionCommit() {
+        FileResourceEntity nextFile = privateImage(9L, 10L);
+        when(fileResourceService.resolveFileId("/api/public-files/7/content")).thenReturn(7L);
+        when(fileResourceService.resolveFileId("/api/files/9/content")).thenReturn(9L);
+        when(fileResourceMapper.selectById(9L)).thenReturn(nextFile);
+        when(fileResourceMapper.updateById(nextFile)).thenReturn(1);
+        when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
+        when(fileBusinessMapper.selectCount(any())).thenReturn(1L, 0L);
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.replaceCover(21L, "/api/public-files/7/content", "/api/files/9/content");
+
+        verify(fileResourceService, org.mockito.Mockito.never()).deleteSystem(7L);
+        List<TransactionSynchronization> synchronizations =
+                TransactionSynchronizationManager.getSynchronizations();
+        synchronizations.forEach(TransactionSynchronization::afterCommit);
         verify(fileResourceService).deleteSystem(7L);
     }
 

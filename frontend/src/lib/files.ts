@@ -54,6 +54,10 @@ export async function deleteFileResource(fileId: number) {
   await request.delete(`/files/${fileId}`);
 }
 
+export async function deleteOwnUnboundUpload(fileId: number) {
+  await request.delete(`/files/${fileId}/unbound-upload`);
+}
+
 function withBrowserFileUrl(file: FileResource): FileResource {
   return {
     ...file,

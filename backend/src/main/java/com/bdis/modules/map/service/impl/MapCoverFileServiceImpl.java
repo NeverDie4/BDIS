@@ -9,6 +9,7 @@ import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.service.FileResourceService;
+import com.bdis.file.support.ImageContentValidator;
 import com.bdis.modules.file.entity.FileBusinessEntity;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileBusinessMapper;
@@ -18,14 +19,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 public class MapCoverFileServiceImpl implements MapCoverFileService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MapCoverFileServiceImpl.class);
     private static final String BIZ_TYPE = "map_point";
     private static final String FILE_USAGE = "cover";
 
@@ -33,6 +39,7 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
     private final FileBusinessService fileBusinessService;
     private final FileResourceMapper fileResourceMapper;
     private final FileBusinessMapper fileBusinessMapper;
+    private final ImageContentValidator imageContentValidator;
 
     @Override
     @Transactional
@@ -74,11 +81,6 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
         if (file == null) {
             throw new ResourceNotFoundException("地图封面文件不存在");
         }
-        if (!"image".equalsIgnoreCase(file.getFileType())
-                && (file.getContentType() == null || !file.getContentType().startsWith("image/"))) {
-            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "地图封面只能使用图片文件");
-        }
-
         List<FileBusinessEntity> bindings = bindings(fileId);
         boolean alreadyBound =
                 bindings.stream()
@@ -87,18 +89,24 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
                                         BIZ_TYPE.equals(binding.getBizType())
                                                 && pointId.equals(binding.getBizId())
                                                 && FILE_USAGE.equals(binding.getFileUsage()));
+        if (!alreadyBound) {
+            if (!bindings.isEmpty()) {
+                throw new BusinessException(ResultCodeEnum.CONFLICT, "该文件已绑定到其他业务对象");
+            }
+            if (!Objects.equals(CurrentUserUtils.currentUserId(), file.getUploaderId())) {
+                throw new ForbiddenException("只能使用本人上传的地图封面");
+            }
+            if (!"private".equalsIgnoreCase(file.getAccessLevel())) {
+                throw new BusinessException(ResultCodeEnum.CONFLICT, "未绑定的地图封面必须保持私有状态");
+            }
+        }
+
+        imageContentValidator.requireAllowedImage(
+                fileResourceService.resolveLocalPath(file.getFileUrl()),
+                file.getOriginalFilename());
         if (alreadyBound) {
             ensurePublic(file);
             return publicUrl(fileId);
-        }
-        if (!bindings.isEmpty()) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "该文件已绑定到其他业务对象");
-        }
-        if (!Objects.equals(CurrentUserUtils.currentUserId(), file.getUploaderId())) {
-            throw new ForbiddenException("只能使用本人上传的地图封面");
-        }
-        if (!"private".equalsIgnoreCase(file.getAccessLevel())) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "未绑定的地图封面必须保持私有状态");
         }
 
         FileBusinessBindDTO bind = new FileBusinessBindDTO();
@@ -132,7 +140,7 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
                         new LambdaQueryWrapper<FileBusinessEntity>()
                                 .eq(FileBusinessEntity::getFileId, fileId));
         if (remainingBindings == 0) {
-            fileResourceService.deleteSystem(fileId);
+            deleteAfterCommit(fileId);
         }
     }
 
@@ -149,7 +157,34 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
         file.setAccessLevel("public");
         file.setUpdatedAt(LocalDateTime.now());
         file.setUpdatedBy(CurrentUserUtils.currentUserId());
-        fileResourceMapper.updateById(file);
+        if (fileResourceMapper.updateById(file) != 1) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "地图封面状态已变化，请重试");
+        }
+    }
+
+    private void deleteAfterCommit(Long fileId) {
+        Runnable cleanup =
+                () -> {
+                    try {
+                        fileResourceService.deleteSystem(fileId);
+                    } catch (RuntimeException exception) {
+                        LOGGER.warn(
+                                "Failed to delete released map cover after commit: {}",
+                                fileId,
+                                exception);
+                    }
+                };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            cleanup.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        cleanup.run();
+                    }
+                });
     }
 
     private String publicUrl(Long fileId) {

@@ -129,6 +129,13 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
+    public long countByFileId(Long fileId) {
+        return fileBusinessMapper.selectCount(
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getFileId, fileId));
+    }
+
+    @Override
     public List<FileResourceVO> listByBusiness(String bizType, Long bizId) {
         businessReferenceValidator.validate(bizType, bizId);
         List<FileBusinessEntity> relations =

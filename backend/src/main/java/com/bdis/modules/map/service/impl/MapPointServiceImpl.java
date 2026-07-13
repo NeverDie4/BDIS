@@ -1,5 +1,7 @@
 package com.bdis.modules.map.service.impl;
 
+import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.SecurityUtils;
 import com.bdis.modules.herb.entity.HerbEntity;
@@ -11,6 +13,7 @@ import com.bdis.modules.map.query.MapPointQuery;
 import com.bdis.modules.map.service.MapCoverFileService;
 import com.bdis.modules.map.service.MapPointService;
 import com.bdis.modules.map.vo.MapPointVO;
+import com.bdis.modules.permission.service.AuthorizationService;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
@@ -32,8 +35,13 @@ public class MapPointServiceImpl implements MapPointService {
 
     private final MapCoverFileService mapCoverFileService;
 
+    private final AuthorizationService authorizationService;
+
     @Override
     public List<MapPointVO> listMapPoints(MapPointQuery query) {
+        if (Boolean.TRUE.equals(query.getIncludeDisabled())) {
+            authorizationService.requirePermission("map:point:update");
+        }
         return mapPointMapper.selectMapPoints(
                 query.getKeyword(),
                 query.getDistrict(),
@@ -50,10 +58,10 @@ public class MapPointServiceImpl implements MapPointService {
         fillMapPoint(entity, request, speciesId);
         entity.setCoverImageUrl(null);
         entity.setCreatedBy(SecurityUtils.currentUser().getUserId());
-        mapPointMapper.insert(entity);
+        requireWritten(mapPointMapper.insert(entity), "地图点位创建失败，请重试");
         entity.setCoverImageUrl(
                 mapCoverFileService.replaceCover(entity.getId(), null, request.getCoverImageUrl()));
-        mapPointMapper.updateById(entity);
+        requireWritten(mapPointMapper.updateById(entity), "地图点位已被其他用户修改，请重试");
         return findCreatedOrUpdated(entity.getId());
     }
 
@@ -71,7 +79,7 @@ public class MapPointServiceImpl implements MapPointService {
                 mapCoverFileService.replaceCover(
                         pointId, previousCoverUrl, request.getCoverImageUrl()));
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
-        mapPointMapper.updateById(entity);
+        requireWritten(mapPointMapper.updateById(entity), "地图点位已被其他用户修改，请重试");
         return findCreatedOrUpdated(pointId);
     }
 
@@ -84,7 +92,7 @@ public class MapPointServiceImpl implements MapPointService {
         }
         entity.setStatus(status);
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
-        mapPointMapper.updateById(entity);
+        requireWritten(mapPointMapper.updateById(entity), "地图点位状态已被其他用户修改，请重试");
         return findCreatedOrUpdated(pointId);
     }
 
@@ -99,7 +107,7 @@ public class MapPointServiceImpl implements MapPointService {
         mapCoverFileService.deleteCover(pointId, entity.getCoverImageUrl());
         entity.setDeletedBy(operatorId);
         entity.setUpdatedBy(operatorId);
-        mapPointMapper.updateById(entity);
+        requireWritten(mapPointMapper.updateById(entity), "地图点位已被其他用户修改，请重试");
         if (mapPointMapper.deleteById(pointId) == 0) {
             throw new ResourceNotFoundException("地图点位不存在");
         }
@@ -129,7 +137,7 @@ public class MapPointServiceImpl implements MapPointService {
         herb.setGrowthCycle(request.getGrowthCycle());
         herb.setDescription(request.getHerbDescription());
         herb.setCreatedBy(SecurityUtils.currentUser().getUserId());
-        herbMapper.insert(herb);
+        requireWritten(herbMapper.insert(herb), "药材档案创建失败，请重试");
         return herb.getId();
     }
 
@@ -180,7 +188,7 @@ public class MapPointServiceImpl implements MapPointService {
                         || changed;
         if (changed) {
             herb.setUpdatedBy(SecurityUtils.currentUser().getUserId());
-            herbMapper.updateById(herb);
+            requireWritten(herbMapper.updateById(herb), "药材档案已被其他用户修改，请重试");
         }
     }
 
@@ -230,5 +238,11 @@ public class MapPointServiceImpl implements MapPointService {
     private String generateHerbNo() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 6);
         return "HERB-" + java.time.LocalDateTime.now().format(HERB_NO_TIME_FORMAT) + "-" + suffix;
+    }
+
+    private void requireWritten(int affectedRows, String message) {
+        if (affectedRows != 1) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, message);
+        }
     }
 }

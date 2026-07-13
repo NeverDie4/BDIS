@@ -4,7 +4,12 @@ import { App, Button, Image, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { ImageUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { getFileRequestErrorMessage, uploadFile, type FileResource } from "@/lib/files";
+import {
+  deleteOwnUnboundUpload,
+  getFileRequestErrorMessage,
+  uploadFile,
+  type FileResource,
+} from "@/lib/files";
 import styles from "./FileUploadField.module.css";
 
 interface FileUploadFieldProps {
@@ -35,6 +40,7 @@ export function FileUploadField({
   const { message } = App.useApp();
   const [previewUrl, setPreviewUrl] = useState(value);
   const localPreviewUrlRef = useRef<string | undefined>(undefined);
+  const pendingFileIdRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!localPreviewUrlRef.current) {
@@ -46,6 +52,9 @@ export function FileUploadField({
     () => () => {
       if (localPreviewUrlRef.current) {
         URL.revokeObjectURL(localPreviewUrlRef.current);
+      }
+      if (pendingFileIdRef.current) {
+        void deleteOwnUnboundUpload(pendingFileIdRef.current).catch(() => undefined);
       }
     },
     [],
@@ -76,6 +85,11 @@ export function FileUploadField({
     const nextPreviewUrl = accept === "image/*" ? URL.createObjectURL(file) : undefined;
     try {
       const uploaded = await uploadFile(file, { bizType, bizId, fileUsage, accessLevel });
+      const previousPendingFileId = pendingFileIdRef.current;
+      pendingFileIdRef.current = bizId ? undefined : uploaded.id;
+      if (previousPendingFileId && previousPendingFileId !== uploaded.id) {
+        void deleteOwnUnboundUpload(previousPendingFileId).catch(() => undefined);
+      }
       replaceLocalPreview(nextPreviewUrl);
       onChange?.(uploaded.fileUrl);
       onUploaded?.(uploaded);
@@ -101,6 +115,11 @@ export function FileUploadField({
             aria-label="移除已上传文件"
             icon={<X size={13} />}
             onClick={() => {
+              const pendingFileId = pendingFileIdRef.current;
+              pendingFileIdRef.current = undefined;
+              if (pendingFileId) {
+                void deleteOwnUnboundUpload(pendingFileId).catch(() => undefined);
+              }
               replaceLocalPreview(undefined);
               setPreviewUrl(undefined);
               onChange?.(undefined);

@@ -269,6 +269,8 @@ function buildPopupContent(
 export function HerbDistributionMap() {
   const { message, modal } = App.useApp();
   const currentUser = useAuthStore((state) => state.user);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canManagePoints = hasPermission("map:point:update");
   const [growthCreateForm] = Form.useForm<GrowthCreateFormValues>();
   const [points, setPoints] = useState<MapPoint[]>([]);
   const [keyword, setKeyword] = useState("");
@@ -466,7 +468,7 @@ export function HerbDistributionMap() {
       const normalizedKeyword = searchKeyword.trim();
       const data = await fetchMapPoints({
         keyword: normalizedKeyword || undefined,
-        includeDisabled: true,
+        includeDisabled: canManagePoints || undefined,
       });
       setPoints(data);
       setSelectedPointId((current) => current ?? data[0]?.id);
@@ -476,7 +478,7 @@ export function HerbDistributionMap() {
     } finally {
       setLoading(false);
     }
-  }, [message]);
+  }, [canManagePoints, message]);
 
   const resetMap = useCallback(() => {
     setKeyword("");
