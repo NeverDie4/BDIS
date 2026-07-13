@@ -1,0 +1,375 @@
+.floatButton {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 850;
+  display: flex;
+  width: 68px;
+  height: 68px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(237, 248, 239, 0.94);
+  box-shadow: 0 10px 24px rgba(15, 61, 46, 0.18);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition:
+    left 0.22s ease,
+    top 0.18s ease,
+    transform 0.18s ease;
+}
+
+.floatButtonDragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.floatButtonDragging:hover {
+  transform: none;
+}
+
+.floatButton:hover {
+  box-shadow: 0 14px 30px rgba(15, 61, 46, 0.22);
+  transform: translateY(-2px) scale(1.03);
+}
+
+.floatButton:focus-visible,
+.closeButton:focus-visible,
+.quickButton:focus-visible,
+.sendButton:focus-visible {
+  outline: 3px solid rgba(15, 95, 59, 0.22);
+  outline-offset: 3px;
+}
+
+.floatIcon,
+.headerIcon {
+  display: block;
+  object-fit: contain;
+}
+
+.floatIcon {
+  width: 68px;
+  height: 68px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 880;
+  background: rgba(15, 61, 46, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease-out;
+}
+
+.backdropOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 900;
+  display: flex;
+  width: 460px;
+  max-width: 100vw;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid #eadfcd;
+  background: #f7f1e6;
+  box-shadow: -18px 0 42px rgba(63, 45, 24, 0.18);
+  transform: translateX(100%);
+  transition: transform 250ms ease-out;
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+}
+
+.header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid #eadfcd;
+  background: linear-gradient(135deg, #eef7ef 0%, #fffaf2 58%, #f3ead9 100%);
+}
+
+.headerLeft {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerIcon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  box-shadow: 0 6px 16px rgba(15, 61, 46, 0.16);
+}
+
+.titleGroup {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  color: #0f3d2e;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  color: #6f7f72;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.closeButton {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(188, 213, 195, 0.9);
+  border-radius: 50%;
+  background: rgba(255, 250, 242, 0.78);
+  color: #355144;
+  cursor: pointer;
+}
+
+.contextBox {
+  margin: 14px 16px 0;
+  flex: 0 0 auto;
+  border: 1px solid #d7e5d8;
+  border-radius: 16px;
+  background: #eef7ef;
+  padding: 12px 14px;
+}
+
+.contextTitle {
+  margin: 0;
+  color: #0f5132;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.contextText {
+  margin: 4px 0 0;
+  color: #536458;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.quickArea {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 10px;
+}
+
+.quickButton {
+  min-height: 30px;
+  border: 1px solid #b7d7c2;
+  border-radius: 999px;
+  background: #eef7ef;
+  color: #0f5132;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.quickButton:hover {
+  border-color: #89be9a;
+  background: #e1f1e5;
+}
+
+.messages {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  background:
+    linear-gradient(rgba(255, 250, 242, 0.72), rgba(255, 250, 242, 0.72)),
+    #f7f1e6;
+  padding: 14px 16px 12px;
+}
+
+.messageRow {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.assistantRow {
+  justify-content: flex-start;
+}
+
+.userRow {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 82%;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.62;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.assistantBubble {
+  border: 1px solid #eadfcd;
+  background: #fffaf2;
+  color: #1f2933;
+}
+
+.userBubble {
+  background: #0f5132;
+  color: #ffffff;
+}
+
+.loadingBubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6f7f72;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+.paragraph,
+.heading,
+.list {
+  margin: 0;
+}
+
+.paragraph + .paragraph,
+.list + .paragraph,
+.heading + .paragraph {
+  margin-top: 7px;
+}
+
+.heading {
+  color: #0f3d2e;
+  font-weight: 800;
+}
+
+.list {
+  padding-left: 18px;
+}
+
+.list li {
+  margin: 3px 0;
+}
+
+.inlineCode {
+  border-radius: 5px;
+  background: #f0e5d4;
+  color: #0f5132;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.92em;
+  padding: 1px 5px;
+}
+
+.inputArea {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+  align-items: flex-end;
+  border-top: 1px solid #eadfcd;
+  background: #fffaf2;
+  padding: 14px 16px 16px;
+}
+
+.input {
+  min-width: 0;
+  max-height: 120px;
+  flex: 1;
+  resize: none;
+  border: 1px solid #d9cdbd;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1f2933;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+
+.input:focus {
+  border-color: #7db891;
+  box-shadow: 0 0 0 3px rgba(15, 95, 59, 0.1);
+  outline: none;
+}
+
+.sendButton {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 14px;
+  background: #0f5132;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.sendButton:hover:not(:disabled) {
+  background: #0b3f27;
+}
+
+.sendButton:disabled,
+.quickButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .floatButton {
+    right: 16px;
+    bottom: 18px;
+    width: 62px;
+    height: 62px;
+  }
+
+  .floatIcon {
+    width: 62px;
+    height: 62px;
+  }
+
+  .sidebar {
+    width: min(100vw, calc(100vw - 24px));
+  }
+}

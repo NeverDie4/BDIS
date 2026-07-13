@@ -10,6 +10,8 @@ import com.bdis.modules.collection.dto.HerbCollectionTaskUpdateRequest;
 import com.bdis.modules.collection.service.HerbCollectionTaskService;
 import com.bdis.modules.collection.vo.HerbCollectionTaskListVO;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
+import com.bdis.modules.growth.service.GrowthRecordService;
+import com.bdis.modules.growth.vo.GrowthChartPointVO;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,9 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class HerbCollectionTaskController {
 
     private final HerbCollectionTaskService herbCollectionTaskService;
+    private final GrowthRecordService growthRecordService;
 
-    public HerbCollectionTaskController(HerbCollectionTaskService herbCollectionTaskService) {
+    public HerbCollectionTaskController(
+            HerbCollectionTaskService herbCollectionTaskService,
+            GrowthRecordService growthRecordService) {
         this.herbCollectionTaskService = herbCollectionTaskService;
+        this.growthRecordService = growthRecordService;
     }
 
     @PostMapping
@@ -99,5 +106,11 @@ public class HerbCollectionTaskController {
     @RequirePermission("growth:record:update")
     public Result<HerbCollectionTaskVO> cancel(@PathVariable Long id) {
         return Result.success(herbCollectionTaskService.cancel(id));
+    }
+
+    @GetMapping("/{taskId}/growth-records/chart")
+    public Result<List<GrowthChartPointVO>> growthChart(
+            @PathVariable Long taskId, @RequestParam(defaultValue = "plantHeight") String metric) {
+        return Result.success(growthRecordService.getChartByTaskId(taskId, metric));
     }
 }

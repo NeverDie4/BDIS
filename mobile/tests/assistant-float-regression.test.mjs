@@ -61,6 +61,24 @@ test('悬浮球在不同页面使用同一 session 并恢复后端历史消息',
   assert.match(source, /messages\.value = history/)
 })
 
+test('手机端悬浮球松手后左右吸边并跨页面保存边侧与高度', async () => {
+  const source = await readSource('components/AssistantFloat.vue')
+
+  assert.match(source, /const FLOAT_POSITION_KEY = 'assistantFloatPosition'/)
+  assert.match(source, /function snapToSide\(left, top\)/)
+  assert.match(source, /left \+ FLOAT_SIZE \/ 2 < screenWidth\.value \/ 2/)
+  assert.match(source, /setStorage\(FLOAT_POSITION_KEY, \{ side, top \}\)/)
+  assert.match(source, /:class="\{ 'assistant-float-dragging': dragging \}"/)
+  assert.match(
+    source,
+    /\.assistant-float\s*\{[^}]*transition:[^}]*left 0\.22s ease,[^}]*top 0\.18s ease,[^}]*transform 0\.18s ease;/s
+  )
+  assert.match(
+    source,
+    /\.assistant-float-dragging\s*\{[^}]*transition:\s*none;/s
+  )
+})
+
 test('登录后主要页面均接入悬浮球且登录页不接入', async () => {
   const pages = [
     'pages/index/index.vue',
@@ -152,7 +170,7 @@ test('关键页面使用高优先级绿色按钮和稳定的移动端排版', as
   }
   assert.match(mine, /<AssistantFloat\s+ref="assistantRef"/)
   assert.match(mine, /assistantRef\.value\?\.open\(\)/)
-  assert.match(assistant, /const FLOAT_SIZE = 42/)
+  assert.match(assistant, /const FLOAT_SIZE = 48/)
   assert.match(assistant, /const TAB_BAR_BOTTOM_GAP = 80/)
   assert.match(assistant, /const DEFAULT_BOTTOM_GAP = 85/)
   assert.match(assistant, /isSafeCachedPosition/)

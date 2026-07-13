@@ -3,14 +3,24 @@ package com.bdis.modules.growth.controller;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.common.security.RequirePermission;
+import com.bdis.file.vo.FileContentVO;
+import com.bdis.modules.growth.dto.GrowthAuditCommentRequest;
 import com.bdis.modules.growth.dto.GrowthAuditRequest;
 import com.bdis.modules.growth.dto.GrowthRecordUpsertRequest;
 import com.bdis.modules.growth.query.GrowthRecordQuery;
 import com.bdis.modules.growth.service.GrowthRecordService;
+import com.bdis.modules.growth.vo.GrowthAuditHistoryVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
+import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +44,12 @@ public class GrowthRecordController {
     @GetMapping
     public Result<PageResult<GrowthRecordVO>> page(@Valid GrowthRecordQuery query) {
         return Result.success(growthRecordService.page(query));
+    }
+
+    @GetMapping("/review/page")
+    @RequirePermission("growth:record:audit")
+    public Result<PageResult<GrowthRecordVO>> reviewPage(@Valid GrowthRecordQuery query) {
+        return Result.success(growthRecordService.reviewPage(query));
     }
 
     @GetMapping("/{id}")
@@ -67,6 +83,26 @@ public class GrowthRecordController {
         return Result.success(growthRecordService.submit(id));
     }
 
+    @PutMapping("/{id}/submit")
+    @RequirePermission("growth:record:submit")
+    public Result<GrowthRecordVO> submitForReview(@PathVariable Long id) {
+        return Result.success(growthRecordService.submit(id));
+    }
+
+    @PutMapping("/{id}/approve")
+    @RequirePermission("growth:record:audit")
+    public Result<GrowthRecordVO> approve(
+            @PathVariable Long id, @Valid @RequestBody GrowthAuditCommentRequest request) {
+        return Result.success(growthRecordService.approve(id, request));
+    }
+
+    @PutMapping("/{id}/reject")
+    @RequirePermission("growth:record:audit")
+    public Result<GrowthRecordVO> reject(
+            @PathVariable Long id, @Valid @RequestBody GrowthAuditCommentRequest request) {
+        return Result.success(growthRecordService.reject(id, request));
+    }
+
     @PostMapping("/{id}/audit-records")
     @RequirePermission("growth:record:audit")
     public Result<GrowthRecordVO> audit(
@@ -80,8 +116,61 @@ public class GrowthRecordController {
         return Result.success(growthRecordService.archive(id));
     }
 
+    @PutMapping("/{id}/archive")
+    @RequirePermission("growth:record:audit")
+    public Result<GrowthRecordVO> archive(
+            @PathVariable Long id, @Valid @RequestBody GrowthAuditCommentRequest request) {
+        return Result.success(growthRecordService.archive(id, request));
+    }
+
+    @GetMapping("/{id}/audit-history")
+    public Result<List<GrowthAuditHistoryVO>> auditHistory(@PathVariable Long id) {
+        return Result.success(growthRecordService.auditHistory(id));
+    }
+
     @GetMapping("/{id}/trace-events")
     public Result<List<GrowthTraceEventVO>> trace(@PathVariable Long id) {
         return Result.success(growthRecordService.trace(id));
+    }
+
+    @PostMapping("/{id}/trace-code/generate")
+    public Result<GrowthTraceQrCodeVO> generateTraceCode(@PathVariable Long id) {
+        return Result.success(growthRecordService.generateTraceCode(id));
+    }
+
+    @PostMapping("/{id}/trace-qrcode/generate")
+    public Result<GrowthTraceQrCodeVO> generateTraceQrCode(@PathVariable Long id) {
+        return Result.success(growthRecordService.generateTraceQrCode(id));
+    }
+
+    @GetMapping("/{id}/trace-qrcode")
+    public Result<GrowthTraceQrCodeVO> getTraceQrCode(@PathVariable Long id) {
+        return Result.success(growthRecordService.getTraceQrCode(id));
+    }
+
+    @GetMapping("/{id}/trace-qrcode/content")
+    public ResponseEntity<Resource> traceQrCodeContent(@PathVariable Long id) {
+        return fileResponse(growthRecordService.traceQrCodeContent(id));
+    }
+
+    @PutMapping("/{id}/trace/public-enable")
+    public Result<GrowthTraceQrCodeVO> enablePublicTrace(@PathVariable Long id) {
+        return Result.success(growthRecordService.enablePublicTrace(id));
+    }
+
+    @PutMapping("/{id}/trace/public-disable")
+    public Result<GrowthTraceQrCodeVO> disablePublicTrace(@PathVariable Long id) {
+        return Result.success(growthRecordService.disablePublicTrace(id));
+    }
+
+    private ResponseEntity<Resource> fileResponse(FileContentVO content) {
+        ContentDisposition disposition =
+                ContentDisposition.inline()
+                        .filename(content.getFileName(), StandardCharsets.UTF_8)
+                        .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(content.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(content.getResource());
     }
 }

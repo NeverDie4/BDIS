@@ -18,7 +18,7 @@ class RecognizePromptTest(unittest.TestCase):
         "[识别开始]",
         "[识别完成]",
         "[识别失败]",
-        "豆包耗时",
+        "大模型耗时",
         "总耗时",
         "识别结果",
         "置信度",

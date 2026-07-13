@@ -24,13 +24,19 @@ public class HerbImageVO {
 
     private Long collectorId;
 
+    private String uploaderName;
+
     private Long baseId;
 
     private String collectPlace;
 
     private LocalDateTime collectTime;
 
+    private LocalDateTime uploadTime;
+
     private String imageType;
+
+    private String imageRole;
 
     private String growthStage;
 

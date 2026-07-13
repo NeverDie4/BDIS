@@ -290,7 +290,7 @@ class HerbAssistantServiceImplTest {
         assertThat(response.getAnswer())
                 .contains("最终识别结果为 黄连")
                 .contains("置信度为 91.23%")
-                .contains("建议管理员结合 TopK 图谱候选和豆包辅助结果进行确认");
+                .contains("建议管理员结合 TopK 图谱候选和大模型辅助结果进行确认");
         verify(chatClientProvider, never()).getObject();
     }
 
@@ -333,7 +333,7 @@ class HerbAssistantServiceImplTest {
                                             prompt ->
                                                     prompt.contains("图片编号：IMG-012")
                                                             && prompt.contains("最终药材：黄连")
-                                                            && prompt.contains("豆包辅助")
+                                                            && prompt.contains("大模型辅助")
                                                             && !prompt.contains("featureVector"))));
             assertThat(response.getAnswer()).isEqualTo("这张图片最终识别为黄连，建议人工复核。");
         }

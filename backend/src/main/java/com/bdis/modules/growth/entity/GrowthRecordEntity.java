@@ -12,7 +12,17 @@ import lombok.Setter;
 @TableName("herb_growth_record")
 public class GrowthRecordEntity extends BaseEntity {
 
+    private Long batchId;
+
+    private Long taskId;
+
     private Long speciesId;
+
+    private String speciesName;
+
+    private Long baseId;
+
+    private String baseName;
 
     private Long distributionId;
 
@@ -28,6 +38,8 @@ public class GrowthRecordEntity extends BaseEntity {
 
     private String growthStage;
 
+    private BigDecimal plantHeight;
+
     private String soilType;
 
     private BigDecimal soilPh;
@@ -35,6 +47,18 @@ public class GrowthRecordEntity extends BaseEntity {
     private BigDecimal temperature;
 
     private BigDecimal humidity;
+
+    private BigDecimal soilMoisture;
+
+    private BigDecimal light;
+
+    private BigDecimal stemDiameter;
+
+    private String leafColor;
+
+    private String floweringStatus;
+
+    private String growthEvaluation;
 
     private String weather;
 
@@ -57,4 +81,18 @@ public class GrowthRecordEntity extends BaseEntity {
     private LocalDateTime archivedAt;
 
     private LocalDateTime collectedAt;
+
+    private String traceCode;
+
+    private String traceQrcodeUrl;
+
+    private String tracePublicUrl;
+
+    private Integer publicVisible;
+
+    private LocalDateTime traceGeneratedTime;
+
+    private Long traceGeneratedBy;
+
+    private String traceGeneratedByName;
 }

@@ -138,7 +138,7 @@ class HerbIdentificationServiceTest {
         assertThat(captor.getValue().getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(captor.getValue().getFinalConfidence()).isEqualByComparingTo("0.5100");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
-        assertThat(captor.getValue().getSuggestion()).isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
+        assertThat(captor.getValue().getSuggestion()).isEqualTo("大模型辅助识别与本地图谱候选不一致，建议人工复核");
         assertThat(result.getFinalSpeciesName()).isEqualTo("Dangshen");
         assertThat(result.getDoubaoRecognition().getPredictedName()).isEqualTo("Wuzhimaotao");
     }
@@ -170,7 +170,7 @@ class HerbIdentificationServiceTest {
         verify(identificationResultMapper).insertResult(captor.capture());
         assertThat(captor.getValue().getResultSource()).isEqualTo("local_match");
         assertThat(captor.getValue().getNeedReview()).isEqualTo(1);
-        assertThat(captor.getValue().getSuggestion()).contains("豆包辅助识别失败").contains("timeout");
+        assertThat(captor.getValue().getSuggestion()).contains("大模型辅助识别失败").contains("timeout");
         assertThat(captor.getValue().getRawSummary()).contains("timeout");
     }
 
@@ -183,7 +183,7 @@ class HerbIdentificationServiceTest {
                         "Doubao auxiliary recognition differs from local atlas candidates; manual"
                                 + " review is required");
 
-        assertThat(suggestion).isEqualTo("豆包辅助识别与本地图谱候选不一致，建议人工复核");
+        assertThat(suggestion).isEqualTo("大模型辅助识别与本地图谱候选不一致，建议人工复核");
     }
 
     @Test

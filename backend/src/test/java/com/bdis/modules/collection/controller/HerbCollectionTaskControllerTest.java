@@ -10,6 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.bdis.modules.collection.service.HerbCollectionTaskService;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
+import com.bdis.modules.growth.service.GrowthRecordService;
+import com.bdis.modules.growth.vo.GrowthChartPointVO;
+import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,11 +29,14 @@ class HerbCollectionTaskControllerTest {
 
     @Mock private HerbCollectionTaskService herbCollectionTaskService;
 
+    @Mock private GrowthRecordService growthRecordService;
+
     @BeforeEach
     void setUp() {
         mockMvc =
                 MockMvcBuilders.standaloneSetup(
-                                new HerbCollectionTaskController(herbCollectionTaskService))
+                                new HerbCollectionTaskController(
+                                        herbCollectionTaskService, growthRecordService))
                         .build();
     }
 
@@ -70,6 +77,22 @@ class HerbCollectionTaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.taskStatus").value("published"));
+    }
+
+    @Test
+    void getGrowthChartReturnsTaskPoints() throws Exception {
+        GrowthChartPointVO point = new GrowthChartPointVO();
+        point.setRecordId(11L);
+        point.setBatchId(2L);
+        point.setValue(new BigDecimal("18.50"));
+        when(growthRecordService.getChartByTaskId(1L, "plantHeight")).thenReturn(List.of(point));
+
+        mockMvc.perform(
+                        get("/herb/collection-task/1/growth-records/chart")
+                                .param("metric", "plantHeight"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].recordId").value(11))
+                .andExpect(jsonPath("$.data[0].value").value(18.5));
     }
 
     private HerbCollectionTaskVO activeVO() {

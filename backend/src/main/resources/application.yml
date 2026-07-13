@@ -55,6 +55,8 @@ bdis:
     token: ${BDIS_BOOTSTRAP_TOKEN:}
   file:
     storage-path: ${BDIS_FILE_STORAGE_PATH:./storage}
+  trace:
+    public-web-base-url: ${BDIS_PUBLIC_WEB_BASE_URL:http://localhost:3000}
 
 file:
   atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}

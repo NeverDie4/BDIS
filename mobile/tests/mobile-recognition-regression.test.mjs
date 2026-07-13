@@ -1,14 +1,21 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
+import { join } from 'node:path'
 import test from 'node:test'
 
 const resultPagePath = new URL('../src/pages/image/result.vue', import.meta.url)
 const batchDetailPath = new URL('../src/pages/batch/detail.vue', import.meta.url)
 const uploadPagePath = new URL('../src/pages/image/upload.vue', import.meta.url)
+const assistantFloatPath = new URL('../src/components/AssistantFloat.vue', import.meta.url)
 const uploadRequestPath = new URL(
   '../../backend/src/main/java/com/bdis/modules/mobile/dto/MobileBatchImageUploadRequest.java',
   import.meta.url
 )
+const mobileBatchServicePath = new URL(
+  '../../backend/src/main/java/com/bdis/modules/mobile/service/impl/MobileHerbBatchServiceImpl.java',
+  import.meta.url
+)
+const mobileSourceRoot = new URL('../src/', import.meta.url)
 
 function extractFunction(source, name) {
   const start = source.indexOf(`function ${name}(`)
@@ -31,7 +38,7 @@ function extractFunction(source, name) {
   throw new Error(`函数 ${name} 未正常结束`)
 }
 
-test('豆包包装响应中的理由和建议可以被解析', async () => {
+test('大模型包装响应中的理由和建议可以被解析', async () => {
   const source = await readFile(resultPagePath, 'utf8')
   const factory = new Function(`
     ${extractFunction(source, 'normalizeResult')}
@@ -67,7 +74,7 @@ test('豆包包装响应中的理由和建议可以被解析', async () => {
   assert.equal(result.suggestion, '建议结合根茎和植株被毛复核')
 })
 
-test('本地图谱记录不会被误显示为豆包辅助结果', async () => {
+test('本地图谱记录不会被误显示为大模型辅助结果', async () => {
   const source = await readFile(resultPagePath, 'utf8')
   const factory = new Function(`
     ${extractFunction(source, 'normalizeResult')}
@@ -107,14 +114,35 @@ test('批次详情不会把私有文件 URL 直接交给 image 标签', async ()
   )
 })
 
-test('手机上传和后端请求都默认关闭自动识别', async () => {
-  const [uploadPage, uploadRequest] = await Promise.all([
+test('手机上传和后端请求都默认开启自动识别', async () => {
+  const [uploadPage, uploadRequest, mobileBatchService] = await Promise.all([
     readFile(uploadPagePath, 'utf8'),
-    readFile(uploadRequestPath, 'utf8')
+    readFile(uploadRequestPath, 'utf8'),
+    readFile(mobileBatchServicePath, 'utf8')
   ])
 
-  assert.match(uploadPage, /autoIdentify:\s*false/)
-  assert.match(uploadRequest, /Boolean autoIdentify\s*=\s*false/)
+  assert.match(uploadPage, /autoIdentify:\s*true/)
+  assert.match(uploadRequest, /Boolean autoIdentify\s*=\s*true/)
+  assert.match(mobileBatchService, /setAutoIdentifySuccess\(null\)/)
+  assert.match(mobileBatchService, /自动识别已提交/)
+})
+
+test('手机端面向用户的文案统一使用大模型识别', async () => {
+  const forbiddenLabel = '\u8c46\u5305'
+  const sourceFiles = await readdir(mobileSourceRoot, { recursive: true, withFileTypes: true })
+
+  for (const entry of sourceFiles) {
+    if (!entry.isFile() || !/\.(vue|js|json)$/.test(entry.name)) continue
+    const filePath = join(entry.parentPath, entry.name)
+    const source = await readFile(filePath, 'utf8')
+    assert.equal(source.includes(forbiddenLabel), false, `${filePath} 仍包含供应商名称`)
+  }
+})
+
+test('手机端 AI 助手会转换历史消息中的旧供应商名称', async () => {
+  const source = await readFile(assistantFloatPath, 'utf8')
+
+  assert.match(source, /replace\(\/\\u8c46\\u5305\/g,\s*'大模型'\)/)
 })
 
 test('批次图片的复核状态和来源使用中文映射', async () => {
@@ -127,5 +155,15 @@ test('批次图片的复核状态和来源使用中文映射', async () => {
   assert.match(
     source,
     /来源：\{\{\s*formatStatus\(item\.resultSource\s*\|\|\s*'unknown',\s*RESULT_SOURCE_MAP\)\s*\}\}/
+  )
+})
+
+test('上传成功操作按钮在窄屏下支持两行文字且不裁切', async () => {
+  const source = await readFile(uploadPagePath, 'utf8')
+
+  assert.match(source, /<view class="button-row result-action-row">/)
+  assert.match(
+    source,
+    /\.result-action-row \.picker-btn\s*\{[^}]*min-height:\s*96rpx;[^}]*height:\s*auto;[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*line-height:\s*1\.3;[^}]*white-space:\s*normal;/s
   )
 })

@@ -24,6 +24,8 @@ public interface HerbImageMapper extends BaseMapper<HerbImageEntity> {
 
     List<HerbImageVO> selectByGrowthRecordId(@Param("growthRecordId") Long growthRecordId);
 
+    List<HerbImageVO> selectByBatchId(@Param("batchId") Long batchId);
+
     Long countPage(
             @Param("query") HerbImageQueryRequest query,
             @Param("scope") CollectionAccessScope scope);
