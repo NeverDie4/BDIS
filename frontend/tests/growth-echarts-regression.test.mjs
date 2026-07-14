@@ -20,6 +20,14 @@ const publicRoutesSource = readFileSync(
   new URL("../src/config/routes/public.ts", import.meta.url),
   "utf8",
 );
+const publicTraceArchiveVoSource = readFileSync(
+  new URL(
+    "../../backend/src/main/java/com/bdis/modules/growth/vo/GrowthPublicTraceArchiveVO.java",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const digitalLifeRouteUrl = new URL("../src/app/trace/digital-life", import.meta.url);
 const reviewerScopeMigrationUrl = new URL(
   "../../backend/src/main/resources/db/migration/V20260714_006__grant_growth_reviewer_data_scope.sql",
   import.meta.url,
@@ -362,12 +370,11 @@ test("公开生长溯源页统一空值、中文状态和可信档案条件", ()
   assert.match(publicTracePageSource, /showTrustedStamp \?/);
 });
 
-test("公开生长溯源页仅在任务具备连续阶段时显示数字生命档案入口", () => {
-  assert.match(dataSource, /taskTraceCode\?: string/);
-  assert.match(dataSource, /validGrowthStageCount\?: number/);
-  assert.match(publicTracePageSource, /archive\.validGrowthStageCount >= 2/);
-  assert.match(publicTracePageSource, /\/trace\/digital-life\/\$\{archive\.taskTraceCode\}/);
-  assert.match(publicTracePageSource, /查看完整生长历程/);
+test("公开生长溯源页不暴露后端契约和目标路由均不存在的完整历程入口", () => {
+  assert.doesNotMatch(dataSource, /taskTraceCode|validGrowthStageCount/);
+  assert.doesNotMatch(publicTraceArchiveVoSource, /taskTraceCode|validGrowthStageCount/);
+  assert.doesNotMatch(publicTracePageSource, /taskTraceCode|validGrowthStageCount|digital-life/);
+  assert.equal(existsSync(digitalLifeRouteUrl), false);
 });
 
 test("公开生长溯源页现场图片区按实际内容自适应", () => {

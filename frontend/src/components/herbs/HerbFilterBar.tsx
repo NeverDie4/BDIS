@@ -1,4 +1,5 @@
 import { Button, Form, Input, Select } from "antd";
+import { useEffect } from "react";
 import styles from "./herbs.module.css";
 
 export type HerbFilterValues = {
@@ -9,6 +10,7 @@ export type HerbFilterValues = {
 
 type HerbFilterBarProps = {
   categoryOptions?: Array<{ label: string; value: string }>;
+  initialKeyword?: string;
   onSearch?: (values: HerbFilterValues) => void;
 };
 
@@ -28,8 +30,12 @@ const partOptions = [
   { label: "树皮", value: "树皮" },
 ];
 
-export function HerbFilterBar({ categoryOptions = fallbackCategoryOptions, onSearch = () => undefined }: HerbFilterBarProps) {
+export function HerbFilterBar({ categoryOptions = fallbackCategoryOptions, initialKeyword, onSearch = () => undefined }: HerbFilterBarProps) {
   const [form] = Form.useForm<HerbFilterValues>();
+
+  useEffect(() => {
+    form.setFieldValue("keyword", initialKeyword);
+  }, [form, initialKeyword]);
 
   function handleReset() {
     form.resetFields();

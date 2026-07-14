@@ -59,6 +59,8 @@ export type HerbSpeciesPayload = {
   description?: string;
 };
 
+export type HerbSpeciesUpdatePayload = Omit<HerbSpeciesPayload, "herbCode">;
+
 export type DictItemPayload = {
   itemCode: string;
   itemName: string;
@@ -100,7 +102,7 @@ export function createHerbSpecies(payload: HerbSpeciesPayload) {
   return apiPost<HerbSpeciesApi>("/herb/species", payload);
 }
 
-export function updateHerbSpecies(id: number, payload: HerbSpeciesPayload) {
+export function updateHerbSpecies(id: number, payload: HerbSpeciesUpdatePayload) {
   return apiPut<HerbSpeciesApi>(`/herb/species/${id}`, payload);
 }
 

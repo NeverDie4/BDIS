@@ -151,6 +151,7 @@ class HerbSpeciesServiceTest {
         assertThat(vo.getDistributionRegionText()).isEqualTo("重庆南川、重庆石柱、重庆石柱");
         assertThat(vo.getDistributionRegions()).containsExactly("重庆南川", "重庆石柱");
     }
+
     @Test
     void pageSpeciesNormalizesInvalidPageParameters() {
         HerbSpeciesQueryRequest request = new HerbSpeciesQueryRequest();

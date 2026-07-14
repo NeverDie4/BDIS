@@ -5,6 +5,7 @@ import type { TableColumnsType } from "antd";
 import type { Key } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
+import { escapeCsvCell } from "@/lib/csv";
 import {
   createHerbBase,
   createHerbCategory,
@@ -22,7 +23,7 @@ import {
   type DictItemPayload,
   type HerbBaseApi,
   type HerbBasePayload,
-  type HerbSpeciesPayload,
+  type HerbSpeciesUpdatePayload,
 } from "@/lib/herbs";
 import { getApiErrorMessage } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
@@ -36,6 +37,9 @@ import styles from "./herbs.module.css";
 
 type ModalMode = "create" | "edit";
 type EditableRecord = HerbTableRecord | DictItemApi | HerbBaseApi;
+type HerbResourceClientProps = {
+  initialKeyword?: string;
+};
 
 const T = {
   create: "\u65b0\u589e",
@@ -113,13 +117,16 @@ function compactObject<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
-function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
+function downloadCsv(
+  filename: string,
+  rows: Array<Record<string, string | number | undefined>>,
+) {
   if (typeof window === "undefined") return;
   const headers = Object.keys(rows[0] ?? {});
   const csvRows = [
-    headers.join(","),
+    headers.map((header) => escapeCsvCell(header)).join(","),
     ...rows.map((row) =>
-      headers.map((header) => `"${String(row[header] ?? "").replaceAll('"', '""')}"`).join(","),
+      headers.map((header) => escapeCsvCell(row[header])).join(","),
     ),
   ];
   const blob = new Blob([`\uFEFF${csvRows.join("\n")}`], { type: "text/csv;charset=utf-8" });
@@ -131,7 +138,7 @@ function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
   URL.revokeObjectURL(url);
 }
 
-export function HerbResourceClient() {
+export function HerbResourceClient({ initialKeyword }: HerbResourceClientProps) {
   const { message, modal } = App.useApp();
   const hasPermission = useAuthStore((state) => state.hasPermission);
   const [form] = Form.useForm();
@@ -145,7 +152,9 @@ export function HerbResourceClient() {
   const [editingRecord, setEditingRecord] = useState<EditableRecord | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>("create");
   const [formOpen, setFormOpen] = useState(false);
-  const [filters, setFilters] = useState<HerbFilterValues>({});
+  const [filters, setFilters] = useState<HerbFilterValues>(() =>
+    initialKeyword?.trim() ? { keyword: initialKeyword.trim() } : {},
+  );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
@@ -257,6 +266,14 @@ export function HerbResourceClient() {
   }, [loadCategoryChoices]);
 
   useEffect(() => {
+    const keyword = initialKeyword?.trim() || undefined;
+    setFilters((current) =>
+      current.keyword === keyword ? current : { ...current, keyword },
+    );
+    setPage(1);
+  }, [initialKeyword]);
+
+  useEffect(() => {
     setSelectedRowKeys([]);
     setSelectedHerb(null);
     setPage(1);
@@ -342,8 +359,7 @@ export function HerbResourceClient() {
       const values = await form.validateFields();
       setSubmitting(true);
       if (activeTab === "species") {
-        const payload = compactObject<HerbSpeciesPayload>({
-          herbCode: values.herbCode,
+        const payload = compactObject<HerbSpeciesUpdatePayload>({
           herbName: values.herbName,
           latinName: values.latinName,
           aliasName: values.aliasName,
@@ -353,7 +369,7 @@ export function HerbResourceClient() {
           description: values.description,
         });
         if (modalMode === "edit" && editingRecord) await updateHerbSpecies(editingRecord.id, payload);
-        else await createHerbSpecies(payload);
+        else await createHerbSpecies({ ...payload, herbCode: values.herbCode });
       } else if (activeTab === "categories") {
         const payload = compactObject<DictItemPayload>({
           itemCode: values.itemCode,
@@ -477,7 +493,7 @@ export function HerbResourceClient() {
   function renderFormFields() {
     if (activeTab === "species") {
       return <>
-        <Form.Item name="herbCode" label={T.herbCode} rules={[{ required: true, message: T.requiredHerbCode }]}><Input maxLength={64} /></Form.Item>
+        <Form.Item name="herbCode" label={T.herbCode} rules={[{ required: true, message: T.requiredHerbCode }]}><Input disabled={modalMode === "edit"} maxLength={64} /></Form.Item>
         <Form.Item name="herbName" label={T.herbName} rules={[{ required: true, message: T.requiredHerbName }]}><Input maxLength={100} /></Form.Item>
         <Form.Item name="latinName" label={T.latinName}><Input maxLength={150} /></Form.Item>
         <Form.Item name="aliasName" label={T.aliasName}><Input maxLength={150} /></Form.Item>
@@ -521,7 +537,7 @@ export function HerbResourceClient() {
           <ModuleHeroBanner description={T.desc} eyebrow="HERBAL RESOURCE CENTER" sealText={T.seal} title={T.title} />
           <section className={styles.managementPanel}>
             <HerbResourceTabs activeTab={activeTab} onTabChange={setActiveTab} />
-            {activeTab === "species" ? <HerbFilterBar categoryOptions={categoryOptions} onSearch={handleSearch} /> : null}
+            {activeTab === "species" ? <HerbFilterBar categoryOptions={categoryOptions} initialKeyword={initialKeyword} onSearch={handleSearch} /> : null}
             <HerbActionToolbar canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} selectedCount={selectedRowKeys.length} createLabel={`${T.create}${tabName}`} onCreate={openCreateModal} onEdit={() => openEditModal()} onDelete={handleDelete} onExport={handleExport} onRefresh={() => void reloadCurrentTab()} />
           </section>
           <section className={styles.tableArea}>{renderTable()}</section>

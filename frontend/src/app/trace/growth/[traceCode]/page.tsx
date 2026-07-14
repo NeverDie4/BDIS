@@ -2,8 +2,8 @@
 
 import axios from "axios";
 import { App, Button, Image } from "antd";
-import { BookOpen, Copy, Download, FileSearch, Printer, QrCode } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { Copy, Download, FileSearch, Printer, QrCode } from "lucide-react";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   getPublicGrowthTrace,
@@ -106,7 +106,6 @@ function Metric({ label, value, unit }: { label: string; value?: number | string
 
 export default function PublicGrowthTracePage() {
   const params = useParams<{ traceCode: string }>();
-  const router = useRouter();
   const traceCode = Array.isArray(params.traceCode) ? params.traceCode[0] : params.traceCode;
   const { message } = App.useApp();
   const [archive, setArchive] = useState<GrowthPublicTraceArchiveApi>();
@@ -204,10 +203,6 @@ export default function PublicGrowthTracePage() {
   const images = archive.images || [];
   const timeline = archive.traceTimeline || [];
   const showTrustedStamp = archive.auditStatus === "approved" && isArchiveComplete(archive);
-  const showDigitalLifeEntry =
-    Boolean(archive.taskTraceCode) &&
-    typeof archive.validGrowthStageCount === "number" &&
-    archive.validGrowthStageCount >= 2;
 
   return (
     <main className={styles.page}>
@@ -256,14 +251,6 @@ export default function PublicGrowthTracePage() {
         </section>
 
         <div className={`${styles.actions} ${styles.noPrint}`}>
-          {showDigitalLifeEntry ? (
-            <Button
-              icon={<BookOpen size={16} />}
-              onClick={() => router.push(`/trace/digital-life/${archive.taskTraceCode}`)}
-            >
-              查看完整生长历程
-            </Button>
-          ) : null}
           <Button icon={<Copy size={16} />} onClick={() => void copyLink()}>
             复制溯源链接
           </Button>

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,6 +141,11 @@ public class DictionaryServiceImpl implements DictionaryService {
         DictItemEntity entity = requireItem(type.getId(), itemId);
         ensureItemCodeAvailable(type.getId(), request.getItemCode(), itemId);
         validateItemParent(type.getId(), request.getParentId(), itemId);
+        if ("herb_category".equals(type.getTypeCode())
+                && !Objects.equals(entity.getItemCode(), request.getItemCode())
+                && herbMapper.countByCategoryReference(itemId, entity.getItemCode()) > 0) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "该分类仍被药材引用，不能修改分类编码");
+        }
         applyItem(entity, request);
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
         dictItemMapper.updateById(entity);

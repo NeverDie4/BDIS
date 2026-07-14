@@ -151,6 +151,7 @@ class MobileHerbBatchServiceImplTest {
                 .hasMessage("请先填写本次生长记录后再提交审核");
         verify(herbBatchStatusService, never()).submit(batchId);
     }
+
     private Object fieldValue(Object target, String fieldName) throws Exception {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);

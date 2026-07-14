@@ -117,3 +117,35 @@ test("药材、分类和基地管理按钮按真实权限显示", async () => {
   assert.match(toolbarSource, /canDelete/);
   assert.match(tableSource, /canEdit/);
 });
+
+test("药材资源导出防止公式注入且编辑时不伪修改药材编号", async () => {
+  const clientSource = await readSource("components/herbs/HerbResourceClient.tsx");
+  const apiSource = await readSource("lib/herbs.ts");
+  const downloadSource = section(clientSource, "function downloadCsv", "export function HerbResourceClient");
+  const updatePayload = section(
+    apiSource,
+    "export type HerbSpeciesUpdatePayload",
+    "export type DictItemPayload",
+  );
+
+  assert.match(clientSource, /import \{ escapeCsvCell \} from "@\/lib\/csv"/);
+  assert.match(downloadSource, /escapeCsvCell\(row\[header\]\)/);
+  assert.doesNotMatch(downloadSource, /replaceAll\('\"'/);
+  assert.doesNotMatch(updatePayload, /herbCode\s*:/);
+  assert.match(apiSource, /updateHerbSpecies\(id: number, payload: HerbSpeciesUpdatePayload\)/);
+  assert.match(clientSource, /name="herbCode"[\s\S]*?<Input disabled=\{modalMode === "edit"\}/);
+});
+
+test("药材资源页接收首页链接携带的 keyword 查询参数", async () => {
+  const pageSource = await readSource("app/herbs/page.tsx");
+  const clientSource = await readSource("components/herbs/HerbResourceClient.tsx");
+  const filterSource = await readSource("components/herbs/HerbFilterBar.tsx");
+
+  assert.match(pageSource, /searchParams:\s*Promise<HerbsSearchParams>/);
+  assert.match(pageSource, /const params = await searchParams/);
+  assert.match(pageSource, /<HerbResourceClient initialKeyword=\{keyword\}/);
+  assert.match(clientSource, /initialKeyword\?: string/);
+  assert.match(clientSource, /useState<HerbFilterValues>\(\(\) =>\s*initialKeyword/);
+  assert.match(clientSource, /<HerbFilterBar[\s\S]*?initialKeyword=\{initialKeyword\}/);
+  assert.match(filterSource, /form\.setFieldValue\("keyword", initialKeyword/);
+});

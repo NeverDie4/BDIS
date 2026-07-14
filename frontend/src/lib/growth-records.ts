@@ -206,8 +206,6 @@ export type GrowthPublicTraceArchiveApi = {
   herbName?: string;
   taskId?: number;
   taskName?: string;
-  taskTraceCode?: string;
-  validGrowthStageCount?: number;
   batchId?: number;
   batchName?: string;
   baseName?: string;
