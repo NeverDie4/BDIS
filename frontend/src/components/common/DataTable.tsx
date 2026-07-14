@@ -14,6 +14,8 @@ type DataTableProps<RecordType extends object> = {
   className?: string;
   scroll?: TableProps<RecordType>["scroll"];
   onChange?: TableProps<RecordType>["onChange"];
+  size?: TableProps<RecordType>["size"];
+  tableLayout?: TableProps<RecordType>["tableLayout"];
 };
 
 export function DataTable<RecordType extends object>({
@@ -26,6 +28,8 @@ export function DataTable<RecordType extends object>({
   className,
   scroll,
   onChange,
+  size,
+  tableLayout,
 }: DataTableProps<RecordType>) {
   return (
     <div className={`${styles.tableShell} ${className ?? ""}`}>
@@ -38,6 +42,8 @@ export function DataTable<RecordType extends object>({
         rowSelection={rowSelection}
         scroll={scroll}
         onChange={onChange}
+        size={size}
+        tableLayout={tableLayout}
       />
     </div>
   );

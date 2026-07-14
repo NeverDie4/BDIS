@@ -30,4 +30,12 @@ public class ExperimentRecordEntity extends BaseEntity {
     private String archiveStatus;
 
     private LocalDateTime archivedAt;
+
+    private LocalDateTime submittedAt;
+
+    private Long submittedBy;
+
+    private Long archivedBy;
+
+    private String archiveComment;
 }

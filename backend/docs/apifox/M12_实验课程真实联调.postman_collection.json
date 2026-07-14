@@ -1,0 +1,2096 @@
+{
+  "info": {
+    "_postman_id": "bdis-m12-real-integration-20260711",
+    "name": "BDIS M12 \u5b9e\u9a8c\u8bfe\u7a0b\u771f\u5b9e\u8054\u8c03",
+    "description": "\u57fa\u4e8e\u5f53\u524d\u771f\u5b9e Controller\u3001Request\u3001VO\u3001Result \u548c\u5f02\u5e38\u6620\u5c04\u751f\u6210\uff1b\u4e0d\u5305\u542b\u771f\u5b9e\u8d26\u53f7\u3001\u5bc6\u7801\u3001Token \u6216\u6570\u636e\u5e93\u8fde\u63a5\u4fe1\u606f\u3002",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{{baseUrl}}"
+    },
+    {
+      "key": "token",
+      "value": "{{token}}"
+    },
+    {
+      "key": "courseId",
+      "value": "{{courseId}}"
+    },
+    {
+      "key": "stepId",
+      "value": "{{stepId}}"
+    },
+    {
+      "key": "resourceId",
+      "value": "{{resourceId}}"
+    },
+    {
+      "key": "teacherId",
+      "value": "{{teacherId}}"
+    },
+    {
+      "key": "fileId",
+      "value": "{{fileId}}"
+    },
+    {
+      "key": "courseNo",
+      "value": "{{courseNo}}"
+    },
+    {
+      "key": "username",
+      "value": "{{username}}"
+    },
+    {
+      "key": "password",
+      "value": "{{password}}"
+    },
+    {
+      "key": "limitedToken",
+      "value": "{{limitedToken}}"
+    }
+  ],
+  "item": [
+    {
+      "name": "01_\u73af\u5883\u68c0\u67e5",
+      "item": [
+        {
+          "name": "\u8bfe\u7a0b\u5206\u9875\u53ef\u8bbf\u95ee\u6027\u68c0\u67e5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/courses?pageNo=1&pageSize=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"\u670d\u52a1\u53ef\u8bbf\u95ee\", function () { pm.expect([200,401,403]).to.include(pm.response.code); });",
+                  "if (pm.response.code !== 401) { const json = pm.response.json(); pm.test(\"\u53ef\u8bbf\u95ee\u54cd\u5e94\u4e3a JSON\", function () { pm.expect(json).to.be.an(\"object\"); }); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02_\u8eab\u4efd\u8ba4\u8bc1",
+      "item": [
+        {
+          "name": "\u7528\u6237\u767b\u5f55",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/auth/sessions"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"username\",\"password\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u5728\u73af\u5883\u53d8\u91cf\u4e2d\u586b\u5199 username \u548c password\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u767b\u5f55\u54cd\u5e94\u5305\u542b accessToken\", function () { pm.expect(json.data.accessToken).to.be.a(\"string\"); pm.expect(json.data.accessToken.length).to.be.greaterThan(0); });",
+                  "pm.environment.set(\"token\",json.data.accessToken);",
+                  "pm.test(\"\u767b\u5f55\u7528\u6237\u4fe1\u606f\u5b58\u5728\", function () { pm.expect(json.data.user).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u83b7\u53d6\u5f53\u524d\u7528\u6237\u4fe1\u606f",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u6267\u884c\u7528\u6237\u767b\u5f55\u5e76\u63d0\u53d6 token\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u7528\u6237\u5b57\u6bb5\u5b58\u5728\", function () { pm.expect(json.data.userId).to.exist; pm.expect(json.data.username).to.be.a(\"string\"); });",
+                  "pm.test(\"permissions \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data.permissions).to.be.an(\"array\"); });",
+                  "pm.test(\"roleCodes \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data.roleCodes).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03_\u8bfe\u7a0b\u57fa\u7840",
+      "item": [
+        {
+          "name": "\u8bfe\u7a0b\u5206\u9875\u67e5\u8be2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses?pageNo=1&pageSize=10"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u5b8c\u6210\u767b\u5f55\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data.records \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data.records).to.be.an(\"array\"); });",
+                  "pm.test(\"\u5206\u9875\u5b57\u6bb5\u5b58\u5728\", function () { pm.expect(json.data.page).to.exist; pm.expect(json.data.size).to.exist; pm.expect(json.data.total).to.exist; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u521b\u5efa\u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"{{courseNo}}\",\n  \"courseName\": \"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"Apifox M12 \u771f\u5b9e\u8054\u8c03\u8bfe\u7a0b\",\n  \"videoUrl\": \"https://example.invalid/m12-demo\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T11:00:00\",\n  \"remark\": \"\u4ec5\u7528\u4e8e\u672c\u5730\u8054\u8c03\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"teacherId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u586b\u5199 token \u548c\u6709\u6548 teacherId\uff1a\" + missing.join(\", \")); }",
+                  "pm.environment.set(\"courseNo\",\"IT_M12_\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u8bfe\u7a0b ID \u5b58\u5728\", function () { pm.expect(json.data.id).to.exist; });",
+                  "pm.environment.set(\"courseId\",String(json.data.id));",
+                  "pm.test(\"\u521d\u59cb\u72b6\u6001\u4e3a draft\", function () { pm.expect(json.data.publishStatus).to.eql(\"draft\"); });",
+                  "pm.test(\"steps \u548c resources \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data.steps).to.be.an(\"array\"); pm.expect(json.data.resources).to.be.an(\"array\"); });",
+                  "pm.test(\"courseNo \u4e00\u81f4\", function () { pm.expect(json.data.courseNo).to.eql(pm.environment.get(\"courseNo\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u67e5\u8be2\u8bfe\u7a0b\u8be6\u60c5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u8be6\u60c5\u72b6\u6001\u4e3a draft\", function () { pm.expect(json.data.publishStatus).to.eql(\"draft\"); });",
+                  "pm.test(\"\u8be6\u60c5\u5305\u542b\u6b65\u9aa4\u548c\u8d44\u6e90\u6570\u7ec4\", function () { pm.expect(json.data.steps).to.be.an(\"array\"); pm.expect(json.data.resources).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u4fee\u6539\u8bfe\u7a0b",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"{{courseNo}}\",\n  \"courseName\": \"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b-\u5df2\u66f4\u65b0\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"\u8bfe\u7a0b\u57fa\u7840 CRUD \u66f4\u65b0\u9a8c\u8bc1\",\n  \"videoUrl\": \"https://example.invalid/m12-updated\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T11:30:00\",\n  \"remark\": \"\u66f4\u65b0\u540e\u7684\u8054\u8c03\u5907\u6ce8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"teacherId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\u5e76\u586b\u5199 teacherId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u8bfe\u7a0b\u540d\u79f0\u5df2\u66f4\u65b0\", function () { pm.expect(json.data.courseName).to.eql(\"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b-\u5df2\u66f4\u65b0\"); });",
+                  "pm.test(\"\u666e\u901a\u66f4\u65b0\u4e0d\u6539\u53d8\u53d1\u5e03\u72b6\u6001\", function () { pm.expect(json.data.publishStatus).to.eql(\"draft\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u518d\u6b21\u67e5\u8be2\u8bfe\u7a0b\u8be6\u60c5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u8be6\u60c5\u540d\u79f0\u4e3a\u66f4\u65b0\u540e\u7684\u540d\u79f0\", function () { pm.expect(json.data.courseName).to.eql(\"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b-\u5df2\u66f4\u65b0\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u91cd\u590d\u8bfe\u7a0b\u7f16\u53f7\u6d4b\u8bd5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"{{courseNo}}\",\n  \"courseName\": \"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"Apifox M12 \u771f\u5b9e\u8054\u8c03\u8bfe\u7a0b\",\n  \"videoUrl\": \"https://example.invalid/m12-demo\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T11:00:00\",\n  \"remark\": \"\u4ec5\u7528\u4e8e\u672c\u5730\u8054\u8c03\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"teacherId\",\"courseNo\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u5b8c\u6210\u8bfe\u7a0b\u521b\u5efa\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a VALIDATION_ERROR\", function () { pm.expect(json.code).to.eql(\"VALIDATION_ERROR\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04_\u5b9e\u9a8c\u6b65\u9aa4",
+      "item": [
+        {
+          "name": "\u67e5\u8be2\u7a7a\u6b65\u9aa4\u5217\u8868",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data).to.be.an(\"array\"); });",
+                  "pm.test(\"\u65b0\u8bfe\u7a0b\u6b65\u9aa4\u5217\u8868\u4e3a\u7a7a\", function () { pm.expect(json.data.length).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u65b0\u589e\u5b9e\u9a8c\u6b65\u9aa4",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-STEP-001\",\n  \"stepTitle\": \"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599\",\n  \"stepContent\": \"\u6838\u5bf9\u5b9e\u9a8c\u5668\u6750\u548c\u5b89\u5168\u6761\u4ef6\",\n  \"expectedResult\": \"\u6750\u6599\u9f50\u5168\u4e14\u72b6\u6001\u6b63\u5e38\",\n  \"sortOrder\": 10,\n  \"remark\": \"\u7b2c\u4e00\u6b65\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u6b65\u9aa4 ID \u5b58\u5728\", function () { pm.expect(json.data.id).to.exist; });",
+                  "pm.environment.set(\"stepId\",String(json.data.id));",
+                  "if (json.data.version !== undefined && json.data.version !== null) { pm.environment.set(\"stepVersion\",String(json.data.version)); }",
+                  "pm.test(\"stepNo \u6b63\u786e\", function () { pm.expect(json.data.stepNo).to.eql(\"M12-STEP-001\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u67e5\u8be2\u6b65\u9aa4\u5217\u8868",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"stepId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u65b0\u589e\u6b65\u9aa4\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data).to.be.an(\"array\"); });",
+                  "const step = json.data.find(function (item) { return String(item.id) === pm.environment.get(\"stepId\"); });",
+                  "pm.test(\"\u5217\u8868\u5305\u542b\u521a\u521b\u5efa\u7684\u6b65\u9aa4\", function () { pm.expect(step).to.be.an(\"object\"); });",
+                  "pm.test(\"\u6b65\u9aa4\u7f16\u53f7\u6b63\u786e\", function () { pm.expect(step.stepNo).to.eql(\"M12-STEP-001\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u4fee\u6539\u5b9e\u9a8c\u6b65\u9aa4",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-STEP-001\",\n  \"stepTitle\": \"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599-\u5df2\u66f4\u65b0\",\n  \"stepContent\": \"\u6838\u5bf9\u5b9e\u9a8c\u5668\u6750\u3001\u8bd5\u5242\u548c\u5b89\u5168\u6761\u4ef6\",\n  \"expectedResult\": \"\u6750\u6599\u9f50\u5168\u4e14\u72b6\u6001\u6b63\u5e38\",\n  \"sortOrder\": 20,\n  \"version\": {{stepVersion}},\n  \"remark\": \"\u6b65\u9aa4\u66f4\u65b0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps/{{stepId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"stepId\",\"stepVersion\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u65b0\u589e\u6b65\u9aa4\u5e76\u63d0\u53d6 version\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "if (json.data.version !== undefined && json.data.version !== null) { pm.environment.set(\"stepVersion\",String(json.data.version)); }",
+                  "pm.test(\"\u6b65\u9aa4\u6807\u9898\u5df2\u66f4\u65b0\", function () { pm.expect(json.data.stepTitle).to.eql(\"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599-\u5df2\u66f4\u65b0\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u91cd\u590d\u6b65\u9aa4\u7f16\u53f7\u6d4b\u8bd5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-STEP-001\",\n  \"stepTitle\": \"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599\",\n  \"stepContent\": \"\u6838\u5bf9\u5b9e\u9a8c\u5668\u6750\u548c\u5b89\u5168\u6761\u4ef6\",\n  \"expectedResult\": \"\u6750\u6599\u9f50\u5168\u4e14\u72b6\u6001\u6b63\u5e38\",\n  \"sortOrder\": 10,\n  \"remark\": \"\u7b2c\u4e00\u6b65\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a CONFLICT\", function () { pm.expect(json.code).to.eql(\"CONFLICT\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05_\u8bfe\u7a0b\u8d44\u6e90",
+      "item": [
+        {
+          "name": "\u67e5\u8be2\u7a7a\u8d44\u6e90\u5217\u8868",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/resources"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data).to.be.an(\"array\"); });",
+                  "pm.test(\"\u65b0\u8bfe\u7a0b\u8d44\u6e90\u5217\u8868\u4e3a\u7a7a\", function () { pm.expect(json.data.length).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u7ed1\u5b9a\u8bfe\u7a0b\u8d44\u6e90",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileId\": {{fileId}},\n  \"resourceName\": \"M12 \u8054\u8c03\u8bfe\u4ef6\",\n  \"resourceType\": \"courseware\",\n  \"sortOrder\": 10,\n  \"remark\": \"\u4f7f\u7528\u771f\u5b9e\u6709\u6548\u6587\u4ef6\u8d44\u6e90\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/resources"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"fileId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u586b\u5199\u771f\u5b9e\u6709\u6548\u7684 fileId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u8d44\u6e90 ID \u5b58\u5728\", function () { pm.expect(json.data.id).to.exist; });",
+                  "pm.environment.set(\"resourceId\",String(json.data.id));",
+                  "pm.test(\"fileId \u4e00\u81f4\", function () { pm.expect(String(json.data.fileId)).to.eql(String(pm.environment.get(\"fileId\"))); });",
+                  "pm.test(\"\u6587\u4ef6\u5143\u6570\u636e\u5b57\u6bb5\u5b58\u5728\", function () { pm.expect(json.data).to.have.property(\"fileName\"); pm.expect(json.data).to.have.property(\"fileFormat\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u67e5\u8be2\u8d44\u6e90\u5217\u8868",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/resources"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"resourceId\",\"fileId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u7ed1\u5b9a\u8d44\u6e90\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u6570\u7ec4\", function () { pm.expect(json.data).to.be.an(\"array\"); });",
+                  "const resourceItem = json.data.find(function (item) { return String(item.id) === pm.environment.get(\"resourceId\"); });",
+                  "pm.test(\"\u5217\u8868\u5305\u542b\u521a\u7ed1\u5b9a\u8d44\u6e90\", function () { pm.expect(resourceItem).to.be.an(\"object\"); });",
+                  "pm.test(\"\u8d44\u6e90 fileId \u4e00\u81f4\", function () { pm.expect(String(resourceItem.fileId)).to.eql(String(pm.environment.get(\"fileId\"))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u91cd\u590d\u7ed1\u5b9a\u8bfe\u7a0b\u8d44\u6e90\u6d4b\u8bd5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileId\": {{fileId}},\n  \"resourceName\": \"M12 \u8054\u8c03\u8bfe\u4ef6\",\n  \"resourceType\": \"courseware\",\n  \"sortOrder\": 10,\n  \"remark\": \"\u4f7f\u7528\u771f\u5b9e\u6709\u6548\u6587\u4ef6\u8d44\u6e90\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/resources"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"fileId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u586b\u5199\u771f\u5b9e\u6709\u6548\u7684 fileId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a CONFLICT\", function () { pm.expect(json.code).to.eql(\"CONFLICT\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06_\u53d1\u5e03\u72b6\u6001\u673a",
+      "item": [
+        {
+          "name": "\u53d1\u5e03 draft \u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/publish"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u67e5\u8be2\u5df2\u53d1\u5e03\u8bfe\u7a0b\u8be6\u60c5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u53d1\u5e03\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"publishStatus \u4e3a published\", function () { pm.expect(json.data.publishStatus).to.eql(\"published\"); });",
+                  "pm.test(\"publishedAt \u975e\u7a7a\", function () { pm.expect(json.data.publishedAt).to.not.be.null; });",
+                  "pm.test(\"publishedBy \u975e\u7a7a\", function () { pm.expect(json.data.publishedBy).to.not.be.null; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u5df2\u53d1\u5e03\u8bfe\u7a0b\u666e\u901a\u4fee\u6539\u5e94\u5931\u8d25",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"{{courseNo}}\",\n  \"courseName\": \"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b-\u5df2\u66f4\u65b0\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"\u8bfe\u7a0b\u57fa\u7840 CRUD \u66f4\u65b0\u9a8c\u8bc1\",\n  \"videoUrl\": \"https://example.invalid/m12-updated\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T11:30:00\",\n  \"remark\": \"\u66f4\u65b0\u540e\u7684\u8054\u8c03\u5907\u6ce8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"teacherId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u53d1\u5e03\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a CONFLICT\", function () { pm.expect(json.code).to.eql(\"CONFLICT\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u5df2\u53d1\u5e03\u8bfe\u7a0b\u65b0\u589e\u6b65\u9aa4\u5e94\u5931\u8d25",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-STEP-002\",\n  \"stepTitle\": \"\u53d1\u5e03\u540e\u65b0\u589e\u6b65\u9aa4\",\n  \"stepContent\": \"\u8be5\u8bf7\u6c42\u5e94\u88ab\u5df2\u53d1\u5e03\u72b6\u6001\u62e6\u622a\",\n  \"expectedResult\": \"\u4e0d\u5e94\u521b\u5efa\",\n  \"sortOrder\": 30,\n  \"remark\": \"\u72b6\u6001\u673a\u5f02\u5e38\u6d4b\u8bd5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u53d1\u5e03\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a CONFLICT\", function () { pm.expect(json.code).to.eql(\"CONFLICT\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u5df2\u53d1\u5e03\u8bfe\u7a0b\u7ed1\u5b9a\u8d44\u6e90\u5e94\u5931\u8d25",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileId\": {{fileId}},\n  \"resourceName\": \"M12 \u8054\u8c03\u8bfe\u4ef6\",\n  \"resourceType\": \"courseware\",\n  \"sortOrder\": 10,\n  \"remark\": \"\u4f7f\u7528\u771f\u5b9e\u6709\u6548\u6587\u4ef6\u8d44\u6e90\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/resources"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"fileId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u586b\u5199\u6709\u6548 fileId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a CONFLICT\", function () { pm.expect(json.code).to.eql(\"CONFLICT\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u91cd\u590d\u53d1\u5e03\u5e94\u5931\u8d25",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/publish"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u53d1\u5e03\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a CONFLICT\", function () { pm.expect(json.code).to.eql(\"CONFLICT\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u4e0b\u7ebf\u5df2\u53d1\u5e03\u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/offline"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u53d1\u5e03\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u67e5\u8be2 offline \u8bfe\u7a0b\u8be6\u60c5",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u4e0b\u7ebf\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"publishStatus \u4e3a offline\", function () { pm.expect(json.data.publishStatus).to.eql(\"offline\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u4e0b\u7ebf\u540e\u4fee\u6539\u8bfe\u7a0b",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"{{courseNo}}\",\n  \"courseName\": \"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b-\u5df2\u66f4\u65b0\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"\u8bfe\u7a0b\u57fa\u7840 CRUD \u66f4\u65b0\u9a8c\u8bc1\",\n  \"videoUrl\": \"https://example.invalid/m12-updated\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T11:30:00\",\n  \"remark\": \"\u66f4\u65b0\u540e\u7684\u8054\u8c03\u5907\u6ce8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"teacherId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u4e0b\u7ebf\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u4e0b\u7ebf\u8bfe\u7a0b\u5141\u8bb8\u666e\u901a\u4fee\u6539\", function () { pm.expect(json.data.courseName).to.eql(\"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b-\u5df2\u66f4\u65b0\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u4e0b\u7ebf\u540e\u4fee\u6539\u5b9e\u9a8c\u6b65\u9aa4",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-STEP-001\",\n  \"stepTitle\": \"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599-\u5df2\u66f4\u65b0\",\n  \"stepContent\": \"\u6838\u5bf9\u5b9e\u9a8c\u5668\u6750\u3001\u8bd5\u5242\u548c\u5b89\u5168\u6761\u4ef6\",\n  \"expectedResult\": \"\u6750\u6599\u9f50\u5168\u4e14\u72b6\u6001\u6b63\u5e38\",\n  \"sortOrder\": 20,\n  \"version\": {{stepVersion}},\n  \"remark\": \"\u6b65\u9aa4\u66f4\u65b0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps/{{stepId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"stepId\",\"stepVersion\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u521b\u5efa\u5e76\u66f4\u65b0\u6b65\u9aa4\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "if (json.data.version !== undefined && json.data.version !== null) { pm.environment.set(\"stepVersion\",String(json.data.version)); }",
+                  "pm.test(\"\u4e0b\u7ebf\u8bfe\u7a0b\u5141\u8bb8\u6b65\u9aa4\u4fee\u6539\", function () { pm.expect(json.data.stepTitle).to.eql(\"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599-\u5df2\u66f4\u65b0\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u91cd\u65b0\u53d1\u5e03 offline \u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/publish"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u4e0b\u7ebf\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u67e5\u8be2\u6700\u7ec8 published \u72b6\u6001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u91cd\u65b0\u53d1\u5e03\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a SUCCESS\", function () { pm.expect(json.code).to.eql(\"SUCCESS\"); });",
+                  "pm.test(\"\u54cd\u5e94 message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });",
+                  "pm.test(\"data \u4e3a\u5bf9\u8c61\", function () { pm.expect(json.data).to.be.an(\"object\"); });",
+                  "pm.test(\"\u6700\u7ec8 publishStatus \u4e3a published\", function () { pm.expect(json.data.publishStatus).to.eql(\"published\"); });",
+                  "pm.test(\"\u91cd\u65b0\u53d1\u5e03\u540e publishedAt \u975e\u7a7a\", function () { pm.expect(json.data.publishedAt).to.not.be.null; });",
+                  "pm.test(\"\u91cd\u65b0\u53d1\u5e03\u540e publishedBy \u975e\u7a7a\", function () { pm.expect(json.data.publishedBy).to.not.be.null; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07_\u6743\u9650\u5f02\u5e38",
+      "item": [
+        {
+          "name": "\u65e0 Token \u67e5\u8be2\u8bfe\u7a0b",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/courses?pageNo=1&pageSize=1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a UNAUTHORIZED\", function () { pm.expect(json.code).to.eql(\"UNAUTHORIZED\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u65e0 Token \u521b\u5efa\u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"{{courseNo}}\",\n  \"courseName\": \"M12 \u8054\u8c03\u5b9e\u9a8c\u8bfe\u7a0b\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"Apifox M12 \u771f\u5b9e\u8054\u8c03\u8bfe\u7a0b\",\n  \"videoUrl\": \"https://example.invalid/m12-demo\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T11:00:00\",\n  \"remark\": \"\u4ec5\u7528\u4e8e\u672c\u5730\u8054\u8c03\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a UNAUTHORIZED\", function () { pm.expect(json.code).to.eql(\"UNAUTHORIZED\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u65e0 Token \u4fee\u6539\u6b65\u9aa4",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-STEP-001\",\n  \"stepTitle\": \"\u51c6\u5907\u5b9e\u9a8c\u6750\u6599-\u5df2\u66f4\u65b0\",\n  \"stepContent\": \"\u6838\u5bf9\u5b9e\u9a8c\u5668\u6750\u3001\u8bd5\u5242\u548c\u5b89\u5168\u6761\u4ef6\",\n  \"expectedResult\": \"\u6750\u6599\u9f50\u5168\u4e14\u72b6\u6001\u6b63\u5e38\",\n  \"sortOrder\": 20,\n  \"version\": {{stepVersion}},\n  \"remark\": \"\u6b65\u9aa4\u66f4\u65b0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps/{{stepId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"courseId\",\"stepId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u6267\u884c\u6b63\u5e38\u6d41\u7a0b\u751f\u6210 courseId \u548c stepId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a UNAUTHORIZED\", function () { pm.expect(json.code).to.eql(\"UNAUTHORIZED\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u65e0 Token \u4e0b\u7ebf\u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/offline"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u6267\u884c\u6b63\u5e38\u6d41\u7a0b\u751f\u6210 courseId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a UNAUTHORIZED\", function () { pm.expect(json.code).to.eql(\"UNAUTHORIZED\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u666e\u901a\u8d26\u53f7\u521b\u5efa\u8bfe\u7a0b\u5e94\u8fd4\u56de 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{limitedToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseNo\": \"M12_LIMITED_PERMISSION_TEST\",\n  \"courseName\": \"\u6743\u9650\u6d4b\u8bd5\u8bfe\u7a0b\",\n  \"courseType\": \"experiment\",\n  \"teacherId\": {{teacherId}},\n  \"description\": \"\u666e\u901a\u8d26\u53f7\u6743\u9650\u6d4b\u8bd5\",\n  \"startedAt\": \"2026-07-11T09:00:00\",\n  \"endedAt\": \"2026-07-11T10:00:00\",\n  \"remark\": \"\u6743\u9650\u6d4b\u8bd5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"limitedToken\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u586b\u5199\u6ca1\u6709 edu:course:add \u6743\u9650\u7684\u6709\u6548 limitedToken\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a FORBIDDEN\", function () { pm.expect(json.code).to.eql(\"FORBIDDEN\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u666e\u901a\u8d26\u53f7\u4fee\u6539\u6b65\u9aa4\u5e94\u8fd4\u56de 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{limitedToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stepNo\": \"M12-LIMITED-STEP\",\n  \"stepTitle\": \"\u666e\u901a\u8d26\u53f7\u6b65\u9aa4\u4fee\u6539\",\n  \"stepContent\": \"\u6743\u9650\u6d4b\u8bd5\",\n  \"expectedResult\": \"\u5e94\u8fd4\u56de 403\",\n  \"sortOrder\": 40,\n  \"version\": 0,\n  \"remark\": \"\u6743\u9650\u6d4b\u8bd5\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps/{{stepId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"limitedToken\",\"courseId\",\"stepId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u586b\u5199 limitedToken \u5e76\u5148\u5b8c\u6210\u6b63\u5e38\u6d41\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a FORBIDDEN\", function () { pm.expect(json.code).to.eql(\"FORBIDDEN\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u666e\u901a\u8d26\u53f7\u4e0b\u7ebf\u8bfe\u7a0b\u5e94\u8fd4\u56de 403",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{limitedToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/offline"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"limitedToken\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u586b\u5199 limitedToken \u5e76\u5148\u5b8c\u6210\u6b63\u5e38\u6d41\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a FORBIDDEN\", function () { pm.expect(json.code).to.eql(\"FORBIDDEN\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08_\u6570\u636e\u6e05\u7406",
+      "item": [
+        {
+          "name": "\u6e05\u7406\u524d\u5148\u4e0b\u7ebf\u8bfe\u7a0b",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/offline"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u586b\u5199 token \u548c courseId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"\u6e05\u7406\u72b6\u6001\u53ef\u63a5\u53d7\", function () { pm.expect([200,404,409]).to.include(pm.response.code); });",
+                  "pm.test(\"\u54cd\u5e94 JSON \u53ef\u89e3\u6790\", function () { pm.expect(json).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u89e3\u7ed1\u8bfe\u7a0b\u8d44\u6e90",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/resources/{{resourceId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"resourceId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"resourceId \u4e3a\u7a7a\uff1b\u672a\u7ed1\u5b9a\u8d44\u6e90\u8bf7\u8df3\u8fc7\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"\u6e05\u7406\u72b6\u6001\u53ef\u63a5\u53d7\", function () { pm.expect([200,404]).to.include(pm.response.code); });",
+                  "pm.test(\"\u54cd\u5e94 JSON \u53ef\u89e3\u6790\", function () { pm.expect(json).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u5220\u9664\u5b9e\u9a8c\u6b65\u9aa4",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}/steps/{{stepId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\",\"stepId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"stepId \u4e3a\u7a7a\uff1b\u8bf7\u786e\u8ba4\u662f\u5426\u9700\u8981\u6e05\u7406\u6b65\u9aa4\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"\u6e05\u7406\u72b6\u6001\u53ef\u63a5\u53d7\", function () { pm.expect([200,404]).to.include(pm.response.code); });",
+                  "pm.test(\"\u54cd\u5e94 JSON \u53ef\u89e3\u6790\", function () { pm.expect(json).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u5220\u9664\u8054\u8c03\u8bfe\u7a0b",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u586b\u5199 token \u548c courseId\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"\u6e05\u7406\u72b6\u6001\u53ef\u63a5\u53d7\", function () { pm.expect([200,404,409]).to.include(pm.response.code); });",
+                  "pm.test(\"\u54cd\u5e94 JSON \u53ef\u89e3\u6790\", function () { pm.expect(json).to.be.an(\"object\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "\u786e\u8ba4\u8bfe\u7a0b\u5df2\u5220\u9664",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/courses/{{courseId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"token\",\"courseId\"].filter(function (key) { return !pm.environment.get(key); });",
+                  "if (missing.length) { throw new Error(\"\u8bf7\u5148\u5b8c\u6210\u5220\u9664\u8bfe\u7a0b\uff1a\" + missing.join(\", \")); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"HTTP \u72b6\u6001\u4e3a 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"\u54cd\u5e94 code \u4e3a NOT_FOUND\", function () { pm.expect(json.code).to.eql(\"NOT_FOUND\"); });",
+                  "pm.test(\"\u9519\u8bef message \u975e\u7a7a\", function () { pm.expect(json.message).to.be.a(\"string\"); pm.expect(json.message.length).to.be.greaterThan(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

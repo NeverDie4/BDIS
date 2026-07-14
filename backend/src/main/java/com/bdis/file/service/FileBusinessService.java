@@ -10,7 +10,11 @@ public interface FileBusinessService {
 
     FileBusinessVO bind(FileBusinessBindDTO dto);
 
+    FileBusinessVO bindSystem(FileBusinessBindDTO dto);
+
     void unbind(Long relationId);
+
+    void unbind(String bizType, Long bizId, Long fileId);
 
     void setPublicVisibility(Long fileId, String bizType, Long bizId, boolean publicVisible);
 
@@ -24,9 +28,13 @@ public interface FileBusinessService {
 
     boolean isBound(Long fileId, String bizType, Long bizId);
 
+    boolean existsByBusiness(String bizType, Long bizId);
+
     PageResult<FileResourceVO> pageByBusiness(String bizType, Long bizId, long page, long size);
 
     List<FileResourceVO> listByBusiness(String bizType, Long bizId);
+
+    List<FileResourceVO> listByBusiness(String bizType, Long bizId, String fileUsage);
 
     List<FileBusinessVO> listBindingsByBusiness(String bizType, Long bizId);
 }

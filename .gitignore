@@ -1,4 +1,4 @@
-# dependencies
+﻿# dependencies
 node_modules/
 .pnpm-store/
 
@@ -81,3 +81,6 @@ CLAUDE.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Local teaching dev logs
+frontend/.teaching-dev.*.log

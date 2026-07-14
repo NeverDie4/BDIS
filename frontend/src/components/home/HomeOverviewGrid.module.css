@@ -4,7 +4,7 @@
   align-items: stretch;
   gap: 16px;
   width: 100vw;
-  margin: 0 calc(50% - 50vw) var(--space-xl);
+  margin: 20px calc(50% - 50vw) 0;
   padding: 0 18px;
   box-sizing: border-box;
 }
@@ -13,25 +13,26 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 362px;
-  border: 1px solid rgba(177, 145, 97, 0.35);
-  border-radius: 20px;
-  background: #fbf8f0;
+  min-height: 338px;
+  border: 1px solid rgba(138, 90, 43, 0.32);
+  border-radius: 2px;
+  background: rgba(255, 250, 242, 0.82);
   box-shadow: none;
   overflow: hidden;
 }
 
 .overviewCard :global(.ant-card-head) {
-  min-height: 72px;
+  min-height: 54px;
   padding: 0 18px;
-  border-bottom: 1px solid rgba(177, 145, 97, 0.18);
+  border-bottom: 1px solid rgba(138, 90, 43, 0.22);
 }
 
 .overviewCard :global(.ant-card-head-title) {
-  color: var(--color-text);
+  color: var(--color-title);
   font-family: var(--font-brand);
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .overviewCard :global(.ant-card-body) {
@@ -39,33 +40,33 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 18px;
+  padding: 16px 18px;
 }
 
 .paperPanel {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(177, 145, 97, 0.35) !important;
-  border-radius: 20px !important;
-  background: #fbf8f0 !important;
+  border: 1px solid rgba(138, 90, 43, 0.32) !important;
+  border-radius: 2px !important;
+  background: rgba(255, 250, 242, 0.82) !important;
   box-shadow: none !important;
 }
 
 .paperPanel::before {
   position: absolute;
   z-index: 2;
-  inset: 3px;
-  border: 1px solid rgba(201, 176, 141, 0.28);
-  border-radius: 16px;
+  inset: 5px;
+  border: 1px solid rgba(138, 90, 43, 0.12);
+  border-radius: 0;
   pointer-events: none;
   content: "";
 }
 
 .paperPanel :global(.ant-card-head) {
-  min-height: 72px;
+  min-height: 54px;
   padding: 0 18px;
-  border-bottom: 1px solid rgba(177, 145, 97, 0.18) !important;
-  background: #fbf8f0;
+  border-bottom: 1px solid rgba(138, 90, 43, 0.22) !important;
+  background: rgba(255, 250, 242, 0.6);
 }
 
 .moreButton {
@@ -179,7 +180,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 9px;
 }
 
 .mapSummary :global(.ant-statistic-title) {
@@ -243,7 +244,19 @@
 }
 
 .newsList {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.newsList :global(.ant-spin-nested-loading),
+.newsList :global(.ant-spin-container),
+.newsList :global(.ant-list-items) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .newsList :global(.ant-list-item) {
@@ -252,23 +265,23 @@
 }
 
 .newsItem + .newsItem {
-  margin-top: 9px;
+  margin-top: 8px;
 }
 
 .newsLink {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-columns: 54px minmax(0, 1fr);
   gap: 10px;
   width: 100%;
   color: inherit;
 }
 
 .newsCover {
-  width: 58px;
-  height: 58px;
+  width: 54px;
+  height: 54px;
   overflow: hidden;
   border: 1px solid rgba(138, 90, 43, 0.12);
-  border-radius: 8px;
+  border-radius: 2px;
   background:
     radial-gradient(circle at 35% 35%, rgba(255, 253, 246, 0.7), transparent 42%),
     rgba(var(--color-primary-rgb), 0.08);
@@ -323,7 +336,7 @@
 .bottomLink {
   display: block;
   margin-top: auto;
-  padding-top: 14px;
+  padding-top: 10px;
   color: var(--color-primary);
   font-family: var(--font-ui);
   font-weight: 800;
@@ -331,6 +344,8 @@
 }
 
 .stationLine {
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(138, 90, 43, 0.16);
   color: var(--color-primary);
   font-family: var(--font-ui);
   font-weight: 800;
@@ -338,7 +353,7 @@
 
 .updatedAt {
   display: block;
-  margin-top: 5px;
+  margin-top: 7px;
   color: var(--color-muted);
   font-family: var(--font-data);
   font-size: 11px;
@@ -348,7 +363,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 12px;
-  margin-top: 12px;
+  margin-top: 11px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid rgba(138, 90, 43, 0.16);
 }
 
 .observationGrid :global(.ant-statistic-title) {
@@ -365,14 +382,14 @@
 }
 
 .softDivider {
-  margin: 14px 0 10px;
-  border-color: rgba(177, 145, 97, 0.18);
+  display: none;
 }
 
 .trendHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: 10px;
   color: var(--color-text);
   font-family: var(--font-ui);
   font-size: 12px;
@@ -389,8 +406,8 @@
 
 .trendChart {
   width: 100%;
-  height: 106px;
-  margin-top: 3px;
+  height: 96px;
+  margin-top: 2px;
 }
 
 .axisLine {
