@@ -19,7 +19,7 @@ import {
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { CheckCircle2, Eye, Plus, RefreshCw, Star } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   confirmEvaluationResult,
   createEvaluationTask,
@@ -77,25 +77,33 @@ export function EvaluationTaskWorkspace() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedIndicatorId, setSelectedIndicatorId] = useState<number>();
+  const taskRequestId = useRef(0);
 
-  const loadTasks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await fetchEvaluationTasks({
-        pageNum: page,
-        pageSize,
-        keyword: keyword || undefined,
-        status,
-        targetType,
-      });
-      setRecords(data.records);
-      setTotal(data.total);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, "评价任务加载失败"));
-    } finally {
-      setLoading(false);
-    }
-  }, [keyword, message, page, pageSize, status, targetType]);
+  const loadTasks = useCallback(
+    async (requestedPage = page) => {
+      const requestId = ++taskRequestId.current;
+      setLoading(true);
+      try {
+        const data = await fetchEvaluationTasks({
+          pageNum: requestedPage,
+          pageSize,
+          keyword: keyword || undefined,
+          status,
+          targetType,
+        });
+        if (requestId !== taskRequestId.current) return;
+        setRecords(data.records);
+        setTotal(data.total);
+      } catch (error) {
+        if (requestId === taskRequestId.current) {
+          message.error(getApiErrorMessage(error, "评价任务加载失败"));
+        }
+      } finally {
+        if (requestId === taskRequestId.current) setLoading(false);
+      }
+    },
+    [keyword, message, page, pageSize, status, targetType],
+  );
 
   const loadIndicators = useCallback(async () => {
     try {
@@ -231,7 +239,7 @@ export function EvaluationTaskWorkspace() {
             onChange={(event) => setKeyword(event.target.value)}
             onSearch={() => {
               setPage(1);
-              void loadTasks();
+              void loadTasks(1);
             }}
           />
           <Select

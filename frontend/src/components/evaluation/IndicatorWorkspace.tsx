@@ -14,7 +14,7 @@ import {
   type TableProps,
 } from "antd";
 import { Edit3, Plus, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createIndicator,
   fetchIndicators,
@@ -50,25 +50,33 @@ export function IndicatorWorkspace() {
   const [status, setStatus] = useState<number>();
   const [editing, setEditing] = useState<EvaluationIndicator>();
   const [modalOpen, setModalOpen] = useState(false);
+  const indicatorRequestId = useRef(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await fetchIndicators({
-        pageNum: page,
-        pageSize,
-        keyword: keyword || undefined,
-        indicatorType,
-        status,
-      });
-      setRecords(data.records);
-      setTotal(data.total);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, "评价指标加载失败"));
-    } finally {
-      setLoading(false);
-    }
-  }, [indicatorType, keyword, message, page, pageSize, status]);
+  const load = useCallback(
+    async (requestedPage = page) => {
+      const requestId = ++indicatorRequestId.current;
+      setLoading(true);
+      try {
+        const data = await fetchIndicators({
+          pageNum: requestedPage,
+          pageSize,
+          keyword: keyword || undefined,
+          indicatorType,
+          status,
+        });
+        if (requestId !== indicatorRequestId.current) return;
+        setRecords(data.records);
+        setTotal(data.total);
+      } catch (error) {
+        if (requestId === indicatorRequestId.current) {
+          message.error(getApiErrorMessage(error, "评价指标加载失败"));
+        }
+      } finally {
+        if (requestId === indicatorRequestId.current) setLoading(false);
+      }
+    },
+    [indicatorType, keyword, message, page, pageSize, status],
+  );
 
   useEffect(() => void load(), [load]);
 
@@ -171,7 +179,7 @@ export function IndicatorWorkspace() {
             onChange={(event) => setKeyword(event.target.value)}
             onSearch={() => {
               setPage(1);
-              void load();
+              void load(1);
             }}
           />
           <Select

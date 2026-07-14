@@ -21,6 +21,24 @@ import { IndicatorWorkspace } from "./IndicatorWorkspace";
 import type { EvaluationTabKey } from "./types";
 import styles from "./evaluation.module.css";
 
+type WorkbenchTotals = {
+  taskTotal: number;
+  indicatorTotal: number;
+  declarationTotal: number;
+  pendingTaskTotal: number;
+  confirmedTaskTotal: number;
+  pendingDeclarationTotal: number;
+};
+
+const emptyWorkbenchTotals: WorkbenchTotals = {
+  taskTotal: 0,
+  indicatorTotal: 0,
+  declarationTotal: 0,
+  pendingTaskTotal: 0,
+  confirmedTaskTotal: 0,
+  pendingDeclarationTotal: 0,
+};
+
 export function EvaluationPageClient() {
   const { message } = App.useApp();
   const hasPermission = useAuthStore((state) => state.hasPermission);
@@ -29,24 +47,59 @@ export function EvaluationPageClient() {
   const [tasks, setTasks] = useState<EvaluationTask[]>([]);
   const [indicators, setIndicators] = useState<EvaluationIndicator[]>([]);
   const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [totals, setTotals] = useState<WorkbenchTotals>(emptyWorkbenchTotals);
 
   const loadWorkbench = useCallback(async () => {
     setLoading(true);
     try {
-      const [taskPage, indicatorPage, declarationPage] = await Promise.all([
+      const [
+        taskPage,
+        draftTaskPage,
+        scoringTaskPage,
+        confirmedTaskPage,
+        indicatorPage,
+        declarationPage,
+        pendingDeclarationPage,
+      ] = await Promise.all([
         hasPermission("evaluation:task:view")
-          ? fetchEvaluationTasks({ pageNum: 1, pageSize: 200 })
-          : Promise.resolve({ records: [] as EvaluationTask[] }),
+          ? fetchEvaluationTasks({ pageNum: 1, pageSize: 1 })
+          : Promise.resolve({ records: [] as EvaluationTask[], total: 0 }),
+        hasPermission("evaluation:task:view")
+          ? fetchEvaluationTasks({ pageNum: 1, pageSize: 6, status: "draft" })
+          : Promise.resolve({ records: [] as EvaluationTask[], total: 0 }),
+        hasPermission("evaluation:task:view")
+          ? fetchEvaluationTasks({ pageNum: 1, pageSize: 6, status: "scoring" })
+          : Promise.resolve({ records: [] as EvaluationTask[], total: 0 }),
+        hasPermission("evaluation:task:view")
+          ? fetchEvaluationTasks({ pageNum: 1, pageSize: 1, status: "confirmed" })
+          : Promise.resolve({ records: [] as EvaluationTask[], total: 0 }),
         hasPermission("evaluation:standard:view")
           ? fetchIndicators({ pageNum: 1, pageSize: 200 })
-          : Promise.resolve({ records: [] as EvaluationIndicator[] }),
+          : Promise.resolve({ records: [] as EvaluationIndicator[], total: 0 }),
         hasPermission("declaration:application:view")
-          ? fetchDeclarations({ pageNum: 1, pageSize: 200 })
-          : Promise.resolve({ records: [] as Declaration[] }),
+          ? fetchDeclarations({ pageNum: 1, pageSize: 1 })
+          : Promise.resolve({ records: [] as Declaration[], total: 0 }),
+        hasPermission("declaration:application:view")
+          ? fetchDeclarations({ pageNum: 1, pageSize: 6, status: "submitted" })
+          : Promise.resolve({ records: [] as Declaration[], total: 0 }),
       ]);
-      setTasks(taskPage.records);
+      setTasks(
+        Array.from(
+          new Map(
+            [...draftTaskPage.records, ...scoringTaskPage.records].map((task) => [task.id, task]),
+          ).values(),
+        ),
+      );
       setIndicators(indicatorPage.records);
-      setDeclarations(declarationPage.records);
+      setDeclarations(pendingDeclarationPage.records);
+      setTotals({
+        taskTotal: taskPage.total ?? 0,
+        indicatorTotal: indicatorPage.total ?? 0,
+        declarationTotal: declarationPage.total ?? 0,
+        pendingTaskTotal: (draftTaskPage.total ?? 0) + (scoringTaskPage.total ?? 0),
+        confirmedTaskTotal: confirmedTaskPage.total ?? 0,
+        pendingDeclarationTotal: pendingDeclarationPage.total ?? 0,
+      });
     } catch (error) {
       message.error(getApiErrorMessage(error, "评价工作台加载失败"));
     } finally {
@@ -90,6 +143,7 @@ export function EvaluationPageClient() {
               tasks={tasks}
               indicators={indicators}
               declarations={declarations}
+              {...totals}
               onNavigate={navigate}
             />
           ) : null}

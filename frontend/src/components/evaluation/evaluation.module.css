@@ -237,7 +237,8 @@
 }
 
 .declarationFilterField :global(.ant-select),
-.declarationFilterField :global(.ant-picker) {
+.declarationFilterField :global(.ant-picker),
+.declarationFilterField :global(.ant-input-number) {
   width: 100%;
 }
 

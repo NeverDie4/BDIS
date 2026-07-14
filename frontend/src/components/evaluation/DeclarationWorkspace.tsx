@@ -9,6 +9,7 @@ import {
   Empty,
   Form,
   Input,
+  InputNumber,
   Modal,
   Popconfirm,
   Select,
@@ -33,7 +34,7 @@ import {
   Search,
   Send,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addDeclarationMaterial,
   createDeclaration,
@@ -47,7 +48,7 @@ import {
   type DeclarationDetail,
   type DeclarationSummary,
 } from "@/lib/evaluation";
-import { uploadFile } from "@/lib/files";
+import { deleteOwnUnboundUpload, uploadFile } from "@/lib/files";
 import { escapeCsvCell } from "@/lib/csv";
 import { getApiErrorMessage } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
@@ -114,11 +115,14 @@ export function DeclarationWorkspace() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const declarationRequestId = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++declarationRequestId.current;
     setLoading(true);
     try {
       const data = await fetchDeclarations(declarationQuery(appliedFilters, page, pageSize));
+      if (requestId !== declarationRequestId.current) return;
       setRecords(data.records);
       setTotal(data.total);
       const settled = await Promise.allSettled(
@@ -126,15 +130,18 @@ export function DeclarationWorkspace() {
           async (record) => [record.id, await fetchDeclarationSummary(record.id)] as const,
         ),
       );
+      if (requestId !== declarationRequestId.current) return;
       setSummaries(
         Object.fromEntries(
           settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : [])),
         ),
       );
     } catch (error) {
-      message.error(getApiErrorMessage(error, "申报档案加载失败"));
+      if (requestId === declarationRequestId.current) {
+        message.error(getApiErrorMessage(error, "申报档案加载失败"));
+      }
     } finally {
-      setLoading(false);
+      if (requestId === declarationRequestId.current) setLoading(false);
     }
   }, [appliedFilters, message, page, pageSize]);
 
@@ -161,32 +168,42 @@ export function DeclarationWorkspace() {
     try {
       await action();
       message.success(success);
-      await Promise.all([load(), refreshDetail()]);
+      try {
+        await Promise.all([load(), refreshDetail()]);
+      } catch (error) {
+        message.warning(getApiErrorMessage(error, "操作已完成，但页面数据刷新失败"));
+      }
+      return true;
     } catch (error) {
       message.error(getApiErrorMessage(error));
+      return false;
     } finally {
       setSubmitting(false);
     }
   };
 
   const submitCreate = async (values: CreateValues) => {
-    await perform(() => createDeclaration(values), "申报档案已创建");
-    setCreateOpen(false);
-    createForm.resetFields();
+    if (await perform(() => createDeclaration(values), "申报档案已创建")) {
+      setCreateOpen(false);
+      createForm.resetFields();
+    }
   };
 
   const submitReview = async (values: ReviewValues) => {
     if (!detail) return;
-    await perform(
-      () =>
-        reviewDeclaration(detail.declaration.id, {
-          ...values,
-          reviewStatus: values.reviewAction === "approve" ? "approved" : "rejected",
-        }),
-      values.reviewAction === "approve" ? "申报已审核通过" : "申报已退回",
-    );
-    setReviewOpen(false);
-    reviewForm.resetFields();
+    if (
+      await perform(
+        () =>
+          reviewDeclaration(detail.declaration.id, {
+            ...values,
+            reviewStatus: values.reviewAction === "approve" ? "approved" : "rejected",
+          }),
+        values.reviewAction === "approve" ? "申报已审核通过" : "申报已退回",
+      )
+    ) {
+      setReviewOpen(false);
+      reviewForm.resetFields();
+    }
   };
 
   const submitMaterial = async (values: MaterialValues) => {
@@ -195,19 +212,34 @@ export function DeclarationWorkspace() {
       message.warning("请选择需要上传的申报材料");
       return;
     }
+    let uploadedFileId: number | undefined;
+    let materialBound = false;
     setSubmitting(true);
     try {
       const uploaded = await uploadFile(rawFile, {
         fileUsage: "application_material",
         accessLevel: "private",
       });
+      uploadedFileId = uploaded.id;
       await addDeclarationMaterial(detail.declaration.id, uploaded.id, values.remark);
+      materialBound = true;
       message.success("申报材料已上传并关联");
       setMaterialOpen(false);
       setFileList([]);
       materialForm.resetFields();
-      await Promise.all([load(), refreshDetail()]);
+      try {
+        await Promise.all([load(), refreshDetail()]);
+      } catch (error) {
+        message.warning(getApiErrorMessage(error, "材料已关联，但页面数据刷新失败"));
+      }
     } catch (error) {
+      if (uploadedFileId && !materialBound) {
+        try {
+          await deleteOwnUnboundUpload(uploadedFileId);
+        } catch {
+          message.warning("材料关联失败，未绑定文件清理失败，请联系管理员处理");
+        }
+      }
       message.error(getApiErrorMessage(error, "申报材料上传失败"));
     } finally {
       setSubmitting(false);
@@ -228,7 +260,16 @@ export function DeclarationWorkspace() {
   const exportDeclarations = async () => {
     setExporting(true);
     try {
-      const data = await fetchDeclarations(declarationQuery(appliedFilters, 1, 1000));
+      const firstPage = await fetchDeclarations(declarationQuery(appliedFilters, 1, 200));
+      const pages = Math.max(1, firstPage.pages);
+      const records = [...firstPage.records];
+      for (let current = 2; current <= pages; current += 1) {
+        const nextPage = await fetchDeclarations(declarationQuery(appliedFilters, current, 200));
+        records.push(...nextPage.records);
+      }
+      if (records.length !== firstPage.total) {
+        throw new Error("导出数据不完整，请重试");
+      }
       const statusLabels: Record<string, string> = {
         draft: "草稿",
         submitted: "待审核",
@@ -247,7 +288,7 @@ export function DeclarationWorkspace() {
           "审核人ID",
           "审核时间",
         ],
-        ...data.records.map((record) => [
+        ...records.map((record) => [
           record.applicationNo,
           record.applicationTitle,
           applicationTypeLabel(record.applicationType),
@@ -267,17 +308,13 @@ export function DeclarationWorkspace() {
       anchor.download = `申报档案-${new Date().toISOString().slice(0, 10)}.csv`;
       anchor.click();
       URL.revokeObjectURL(url);
-      message.success(`已导出 ${data.records.length} 条申报档案`);
+      message.success(`已导出 ${records.length} 条申报档案`);
     } catch (error) {
       message.error(getApiErrorMessage(error, "申报档案导出失败"));
     } finally {
       setExporting(false);
     }
   };
-
-  const applicantOptions = Array.from(new Set(records.map((record) => record.applicantId))).map(
-    (id) => ({ value: id, label: `用户 #${id}` }),
-  );
 
   const columns: TableProps<Declaration>["columns"] = [
     {
@@ -412,14 +449,14 @@ export function DeclarationWorkspace() {
         </label>
         <label className={styles.declarationFilterField}>
           <span>申报人</span>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            placeholder="全部申报人"
+          <InputNumber
+            min={1}
+            precision={0}
+            placeholder="输入申报人 ID"
             value={draftFilters.applicantId}
-            onChange={(value) => setDraftFilters((current) => ({ ...current, applicantId: value }))}
-            options={applicantOptions}
+            onChange={(value) =>
+              setDraftFilters((current) => ({ ...current, applicantId: value ?? undefined }))
+            }
           />
         </label>
         <label className={styles.declarationFilterField}>

@@ -10,6 +10,12 @@ type Props = {
   tasks: EvaluationTask[];
   indicators: EvaluationIndicator[];
   declarations: Declaration[];
+  taskTotal: number;
+  indicatorTotal: number;
+  declarationTotal: number;
+  pendingTaskTotal: number;
+  confirmedTaskTotal: number;
+  pendingDeclarationTotal: number;
   onNavigate: (tab: EvaluationTabKey) => void;
 };
 
@@ -18,11 +24,17 @@ export function EvaluationWorkbench({
   tasks,
   indicators,
   declarations,
+  taskTotal,
+  indicatorTotal,
+  declarationTotal,
+  pendingTaskTotal,
+  confirmedTaskTotal,
+  pendingDeclarationTotal,
   onNavigate,
 }: Props) {
   if (loading) return <Skeleton active paragraph={{ rows: 8 }} />;
-  const pendingTasks = tasks.filter((item) => item.taskStatus !== "confirmed");
-  const pendingDeclarations = declarations.filter((item) => item.reviewStatus === "submitted");
+  const pendingTasks = tasks;
+  const pendingDeclarations = declarations;
   const weightTotal = indicators.reduce((sum, item) => sum + Number(item.weight || 0), 0);
   const taskColumns: TableProps<EvaluationTask>["columns"] = [
     { title: "任务", dataIndex: "taskName", ellipsis: true },
@@ -51,25 +63,25 @@ export function EvaluationWorkbench({
         <button type="button" onClick={() => onNavigate("tasks")}>
           <ListChecks size={20} />
           <span>评价任务</span>
-          <strong>{tasks.length}</strong>
-          <small>{pendingTasks.length} 项待完成</small>
+          <strong>{taskTotal}</strong>
+          <small>{pendingTaskTotal} 项待完成</small>
         </button>
         <button type="button" onClick={() => onNavigate("indicators")}>
           <Scale size={20} />
           <span>指标体系</span>
-          <strong>{indicators.length}</strong>
+          <strong>{indicatorTotal}</strong>
           <small>当前权重 {weightTotal}%</small>
         </button>
         <button type="button" onClick={() => onNavigate("archives")}>
           <FileClock size={20} />
           <span>待审核申报</span>
-          <strong>{pendingDeclarations.length}</strong>
-          <small>共 {declarations.length} 份档案</small>
+          <strong>{pendingDeclarationTotal}</strong>
+          <small>共 {declarationTotal} 份档案</small>
         </button>
         <button type="button" onClick={() => onNavigate("tasks")}>
           <ClipboardCheck size={20} />
           <span>已确认结果</span>
-          <strong>{tasks.filter((item) => item.taskStatus === "confirmed").length}</strong>
+          <strong>{confirmedTaskTotal}</strong>
           <small>查看评价结果</small>
         </button>
       </div>
