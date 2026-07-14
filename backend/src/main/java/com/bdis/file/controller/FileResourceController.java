@@ -1,5 +1,6 @@
 package com.bdis.file.controller;
 
+import com.bdis.audit.annotation.AuditLogAnnotation;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.common.security.RequirePermission;
@@ -39,6 +40,11 @@ public class FileResourceController {
             path = {"", "/upload"},
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RequirePermission("file:resource:upload")
+    @AuditLogAnnotation(
+            module = "M05_FILE",
+            operationType = "UPLOAD",
+            description = "上传私有文件",
+            bizType = "file_resource")
     public Result<FileResourceVO> upload(@Valid @ModelAttribute FileUploadDTO dto) {
         return Result.success(fileResourceService.upload(dto));
     }
@@ -75,6 +81,11 @@ public class FileResourceController {
 
     @DeleteMapping("/{fileId}")
     @RequirePermission("file:resource:delete")
+    @AuditLogAnnotation(
+            module = "M05_FILE",
+            operationType = "DELETE",
+            description = "删除文件资源",
+            bizType = "file_resource")
     public Result<Void> delete(@PathVariable Long fileId) {
         fileResourceService.delete(fileId);
         return Result.success();

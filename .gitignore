@@ -1,4 +1,4 @@
-# dependencies
+﻿# dependencies
 node_modules/
 .pnpm-store/
 
@@ -83,3 +83,6 @@ CLAUDE.md
 Thumbs.db
 # Local database snapshots may contain credentials and business data.
 /biomed_dev_before_migrate_*.sql
+
+# Local teaching dev logs
+frontend/.teaching-dev.*.log

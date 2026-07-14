@@ -88,7 +88,7 @@ pnpm validate
 不同成员的数据库用户名、密码、端口等本地配置不应写死进代码，也不要提交 `.env`。
 
 - Docker Compose 会自动读取项目根目录的 `.env`。
-- 文件默认以 `private` 访问级别上传，通过 `/api/files/{id}/content` 携带 Bearer Token 获取；只有显式标记为 `public` 的文件可通过 `/api/public-files/{id}/content` 匿名访问。底层存储目录不直接暴露。
+- 文件上传接口只接受 `private`，通过 `/api/files/{id}/content` 携带 Bearer Token 获取；文件必须先绑定业务对象，再由对应业务模块通过 Policy 校验后发布，才能使用 `/api/public-files/{id}/content` 匿名访问。`/api/files/uploads/**` 旧物理路径由安全配置显式拒绝，底层存储目录不直接暴露。
 - 直接运行后端时，Spring Boot 会尝试读取当前目录或上一级目录的 `.env`，也可以读取系统环境变量，例如 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`。
 - Windows 可在 IntelliJ IDEA / VS Code 运行配置中填写环境变量，或使用 PowerShell 设置临时变量。
 - Linux 可在 shell 中使用 `export MYSQL_USER=...`，或通过 IDE 运行配置注入。

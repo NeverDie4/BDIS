@@ -56,7 +56,7 @@ export const HEALTH_STATUS_OPTIONS = [
 
 export const RESULT_SOURCE_MAP = {
   local_match: '本地图谱匹配',
-  doubao_review: '豆包辅助识别',
+  doubao_review: '大模型辅助识别',
   manual_review: '人工复核',
   unknown: '未知'
 }

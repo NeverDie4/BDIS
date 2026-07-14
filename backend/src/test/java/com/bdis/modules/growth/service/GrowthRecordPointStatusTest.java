@@ -4,10 +4,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.BusinessException;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.modules.collection.mapper.HerbBatchMapper;
+import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.dictionary.support.DictionaryReferenceValidator;
 import com.bdis.modules.growth.dto.GrowthRecordCreateRequest;
 import com.bdis.modules.growth.mapper.GrowthAuditRecordMapper;
 import com.bdis.modules.growth.mapper.GrowthRecordMapper;
+import com.bdis.modules.growth.mapper.GrowthTraceEventMapper;
 import com.bdis.modules.growth.service.impl.GrowthRecordServiceImpl;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbMapper;
@@ -26,12 +31,17 @@ class GrowthRecordPointStatusTest {
 
     @Mock private GrowthRecordMapper growthRecordMapper;
     @Mock private GrowthAuditRecordMapper growthAuditRecordMapper;
+    @Mock private GrowthTraceEventMapper growthTraceEventMapper;
+    @Mock private HerbBatchMapper herbBatchMapper;
+    @Mock private HerbCollectionTaskMapper herbCollectionTaskMapper;
     @Mock private MapPointMapper mapPointMapper;
     @Mock private HerbMapper herbMapper;
     @Mock private HerbImageMapper herbImageMapper;
     @Mock private UserMapper userMapper;
     @Mock private DataScopeService dataScopeService;
     @Mock private DictionaryReferenceValidator dictionaryReferenceValidator;
+    @Mock private CollectionAccessService collectionAccessService;
+    @Mock private FileResourceService fileResourceService;
 
     private GrowthRecordService service;
 
@@ -41,12 +51,17 @@ class GrowthRecordPointStatusTest {
                 new GrowthRecordServiceImpl(
                         growthRecordMapper,
                         growthAuditRecordMapper,
+                        growthTraceEventMapper,
+                        herbBatchMapper,
+                        herbCollectionTaskMapper,
                         mapPointMapper,
                         herbMapper,
                         herbImageMapper,
                         userMapper,
                         dataScopeService,
-                        dictionaryReferenceValidator);
+                        dictionaryReferenceValidator,
+                        collectionAccessService,
+                        fileResourceService);
     }
 
     @Test

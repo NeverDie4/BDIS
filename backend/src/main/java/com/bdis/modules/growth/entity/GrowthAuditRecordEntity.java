@@ -15,6 +15,10 @@ public class GrowthAuditRecordEntity extends CreateAuditEntity {
 
     private Long reviewerId;
 
+    private String reviewerName;
+
+    private String reviewerRole;
+
     private String reviewAction;
 
     private String beforeStatus;

@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.BusinessAccessService;
-import com.bdis.file.support.BusinessReferenceValidator;
+import com.bdis.common.security.BusinessReferenceAccessService;
 import com.bdis.modules.evaluation.dto.EvaluationTaskRequest;
 import com.bdis.modules.evaluation.entity.EvaluationTaskEntity;
 import com.bdis.modules.evaluation.mapper.EvaluationResultMapper;
@@ -26,7 +26,7 @@ class EvaluationTaskServiceTest {
     @Mock private EvaluationScoreRecordMapper scoreRecordMapper;
     @Mock private EvaluationResultMapper resultMapper;
     @Mock private BusinessAccessService accessService;
-    @Mock private BusinessReferenceValidator referenceValidator;
+    @Mock private BusinessReferenceAccessService referenceAccessService;
     @InjectMocks private EvaluationTaskServiceImpl service;
 
     @Test
@@ -48,6 +48,6 @@ class EvaluationTaskServiceTest {
 
         service.createTask(request);
 
-        verify(referenceValidator).validate("herb_species", 5L);
+        verify(referenceAccessService).validate("herb_species", 5L);
     }
 }

@@ -24,19 +24,19 @@ import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class HerbAtlasImportServiceTest {
-
-    @TempDir private Path workspace;
 
     @Mock private HerbAtlasMapper herbAtlasMapper;
 
@@ -51,15 +51,19 @@ class HerbAtlasImportServiceTest {
     private HerbAtlasImportService herbAtlasImportService;
 
     private Path importRoot;
+    private Path testRoot;
 
     @BeforeEach
     void setUp() throws Exception {
-        importRoot = workspace.resolve("import").resolve("herb_atlas");
+        testRoot =
+                Files.createTempDirectory(Path.of("target").toAbsolutePath(), "herb-atlas-import-");
+        importRoot = testRoot.resolve("import").resolve("herb_atlas");
+        Files.createDirectories(importRoot);
         FileResourceVO file = new FileResourceVO();
         file.setId(11L);
-        file.setFileUrl("/api/public-files/11/content");
+        file.setFileUrl("/api/files/11/content");
         lenient()
-                .when(fileResourceService.importPublic(any(Path.class), any(), any()))
+                .when(fileResourceService.importPrivate(any(Path.class), any(), any()))
                 .thenReturn(file);
         lenient()
                 .doAnswer(
@@ -77,14 +81,30 @@ class HerbAtlasImportServiceTest {
                         herbSpeciesMapper,
                         fileResourceService,
                         fileBusinessService,
-                        importRoot.toString(),
-                        false);
+                        importRoot.toString());
+    }
+
+    @AfterEach
+    void tearDown() throws IOException {
+        if (testRoot != null && Files.exists(testRoot)) {
+            try (Stream<Path> paths = Files.walk(testRoot)) {
+                paths.sorted(Comparator.reverseOrder()).forEach(path -> delete(path));
+            }
+        }
+    }
+
+    private void delete(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to clean test directory", exception);
+        }
     }
 
     @Test
     void importAtlasRejectsAbsolutePath() throws Exception {
         Files.createDirectories(importRoot);
-        Path outside = workspace.resolve("outside");
+        Path outside = testRoot.resolve("outside");
         Files.createDirectories(outside);
         HerbAtlasImportRequest request = new HerbAtlasImportRequest();
         request.setImportPath(outside.toString());
@@ -119,7 +139,7 @@ class HerbAtlasImportServiceTest {
     @Test
     void importAtlasRejectsSymbolicLinkOutsideConfiguredRoot() throws Exception {
         Files.createDirectories(importRoot);
-        Path outside = workspace.resolve("outside");
+        Path outside = testRoot.resolve("outside");
         Files.createDirectories(outside);
         Path link = importRoot.resolve("outside-link");
         try {
@@ -176,32 +196,11 @@ class HerbAtlasImportServiceTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<SpectrumTagEntity>> tagsCaptor = ArgumentCaptor.forClass(List.class);
         verify(herbAtlasTagMapper).insertTags(tagsCaptor.capture());
-        verify(fileBusinessService).bindSystem(any());
+        verify(fileBusinessService).bind(any());
+        verify(fileResourceService).publishForBusiness(11L, "herb_atlas", 101L);
         assertThat(tagsCaptor.getValue())
                 .extracting(SpectrumTagEntity::getTagName)
                 .containsExactly("standard", "batch_import", "huanglian");
-    }
-
-    @Test
-    void reconcileLegacyAtlasRegistersAndBindsExistingFile() {
-        SpectrumEntity atlas = new SpectrumEntity();
-        atlas.setId(101L);
-        atlas.setAtlasTitle("legacy.jpg");
-        atlas.setImageUrl("/api/files/uploads/2026-07-11/legacy.jpg");
-        FileResourceVO file = new FileResourceVO();
-        file.setId(22L);
-        file.setFileUrl("/api/public-files/22/content");
-        when(herbAtlasMapper.selectLegacyFileCandidates()).thenReturn(List.of(atlas));
-        when(fileResourceService.registerPublic(
-                        "/api/files/uploads/2026-07-11/legacy.jpg", "legacy.jpg", "历史图谱文件资源迁移"))
-                .thenReturn(file);
-        when(herbAtlasMapper.updateImageUrl(101L, "/api/public-files/22/content")).thenReturn(1);
-
-        int migrated = herbAtlasImportService.reconcileFileResources();
-
-        assertThat(migrated).isEqualTo(1);
-        verify(fileBusinessService).bindSystem(any());
-        verify(herbAtlasMapper).updateImageUrl(101L, "/api/public-files/22/content");
     }
 
     @Test

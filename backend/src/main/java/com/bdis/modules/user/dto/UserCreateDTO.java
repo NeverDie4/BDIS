@@ -31,6 +31,8 @@ public class UserCreateDTO {
 
     private Long departmentId;
 
+    private Boolean mustChangePassword = true;
+
     @NotEmpty(message = "角色列表不能为空")
     private List<Long> roleIds;
 }

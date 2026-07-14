@@ -14,7 +14,7 @@ class MapCoverMigrationTest {
         Path migration =
                 Path.of(
                         "src/main/resources/db/migration/"
-                                + "V20260714_001__repair_and_publish_map_cover_images.sql");
+                                + "V20260714_009__repair_and_publish_map_cover_images.sql");
         String sql = Files.readString(migration);
 
         assertThat(sql).contains("sys_file_business");

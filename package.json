@@ -26,6 +26,8 @@
     "format:web": "pnpm --dir frontend format",
     "test": "node scripts/run-maven.mjs -f backend/pom.xml test",
     "test:api": "node scripts/run-maven.mjs -f backend/pom.xml test",
+    "test:growth:audit": "node scripts/test-growth-audit-chain.mjs",
+    "test:growth:trace": "node scripts/test-growth-trace-qrcode.mjs",
     "compose:config": "docker compose config --quiet",
     "compose:up": "docker compose up --build",
     "compose:down": "docker compose down"

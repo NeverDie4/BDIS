@@ -10,6 +10,7 @@ import com.bdis.modules.user.query.RoleQuery;
 import com.bdis.modules.user.service.RoleService;
 import com.bdis.modules.user.vo.RoleVO;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -70,5 +71,11 @@ public class RoleController {
         authorizationService.requirePermission("auth:role:assign-permission");
         roleService.assignPermissions(roleId, dto);
         return Result.success();
+    }
+
+    @GetMapping("/{roleId}/permission-ids")
+    public Result<List<Long>> permissionIds(@PathVariable Long roleId) {
+        authorizationService.requirePermission("auth:role:assign-permission");
+        return Result.success(roleService.permissionIds(roleId));
     }
 }

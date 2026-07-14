@@ -104,7 +104,7 @@ def log_recognition_result(original_filename, result_json, t0, t1, t2):
   print(
     f"[识别完成] 时间={datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
     f"文件={original_filename} 保存耗时={t1 - t0:.3f}秒 "
-    f"豆包耗时={t2 - t1:.3f}秒 总耗时={t2 - t0:.3f}秒 "
+    f"大模型耗时={t2 - t1:.3f}秒 总耗时={t2 - t0:.3f}秒 "
     f"识别结果={species_name} 置信度={confidence if confidence is not None else '无'} "
     f"需要复核={need_review} 理由={reason} 建议={suggestion}",
     flush=True

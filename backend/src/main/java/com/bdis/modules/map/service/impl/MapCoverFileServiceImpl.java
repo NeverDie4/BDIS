@@ -102,7 +102,7 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
         }
 
         imageContentValidator.requireAllowedImage(
-                fileResourceService.resolveLocalPath(file.getFileUrl()),
+                fileResourceService.resolveLocalPath("/api/files/" + file.getId() + "/content"),
                 file.getOriginalFilename());
         if (alreadyBound) {
             ensurePublic(file);

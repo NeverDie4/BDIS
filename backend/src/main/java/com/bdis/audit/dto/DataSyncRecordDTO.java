@@ -8,6 +8,7 @@ public class DataSyncRecordDTO {
     private String syncType;
     private String sourceType;
     private String targetType;
+    private Long targetId;
     private Long taskId;
     private Long exchangeId;
     private String businessType;

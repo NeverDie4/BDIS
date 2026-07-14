@@ -150,10 +150,6 @@ function openAssistant() {
   border: 0;
 }
 
-.action-item:last-child {
-  grid-column: 1 / -1;
-}
-
 .action-primary {
   background: #166534;
   color: #ffffff;

@@ -49,6 +49,49 @@
         </view>
       </view>
 
+      <view class="herb-card growth-record-card">
+        <view class="section-header">
+          <text class="section-title">本次生长记录</text>
+          <text v-if="growthRecord" class="growth-status" :class="`growth-status-${growthRecord.reviewStatus || 'draft'}`">
+            {{ formatGrowthStatus(growthRecord.reviewStatus) }}
+          </text>
+        </view>
+
+        <view v-if="growthLoading" class="growth-empty">
+          <text>正在加载生长记录...</text>
+        </view>
+        <template v-else-if="growthRecord">
+          <view class="growth-summary-grid">
+            <view><text>生长阶段</text><strong>{{ displayText(growthRecord.growthStage) }}</strong></view>
+            <view><text>株高</text><strong>{{ formatGrowthValue(growthRecord.plantHeight, 'cm') }}</strong></view>
+            <view><text>温度</text><strong>{{ formatGrowthValue(growthRecord.temperature, '℃') }}</strong></view>
+            <view><text>湿度</text><strong>{{ formatGrowthValue(growthRecord.humidity, '%') }}</strong></view>
+            <view><text>土壤湿度</text><strong>{{ formatGrowthValue(growthRecord.soilMoisture, '%') }}</strong></view>
+            <view><text>土壤 pH</text><strong>{{ formatGrowthValue(growthRecord.soilPh, '') }}</strong></view>
+            <view><text>光照</text><strong>{{ formatGrowthValue(growthRecord.light, 'lx') }}</strong></view>
+            <view class="growth-time"><text>采集时间</text><strong>{{ formatDateTime(growthRecord.collectedAt) }}</strong></view>
+          </view>
+          <view class="growth-actions">
+            <button class="secondary-btn growth-btn" @click="viewGrowthRecord">查看详情</button>
+            <button v-if="canEditGrowth" class="secondary-btn growth-btn" @click="editGrowthRecord">编辑</button>
+            <button
+              v-if="canEditGrowth"
+              class="primary-btn growth-btn"
+              :loading="growthSubmitting"
+              :disabled="growthSubmitting"
+              @click="handleSubmitGrowthRecord"
+            >
+              提交审核
+            </button>
+          </view>
+        </template>
+        <view v-else class="growth-empty">
+          <text class="empty-title">暂无本次采集的生长数据</text>
+          <text class="empty-tip">生长记录与现场图片相互独立，每个批次最多填写一条。</text>
+          <button class="primary-btn growth-create-btn" @click="createGrowthRecord">填写生长记录</button>
+        </view>
+      </view>
+
       <view class="herb-card stat-card">
         <text class="section-title">识别统计</text>
         <view class="stat-grid">
@@ -179,6 +222,7 @@ import {
   refreshBatchSummary,
   submitBatch
 } from '../../api/mobileBatchApi'
+import { getBatchGrowthRecord, submitGrowthRecord } from '../../api/mobileGrowthRecordApi'
 import {
   BATCH_STATUS_MAP,
   IMAGE_ROLE_MAP,
@@ -191,12 +235,15 @@ import { getAuthHeader } from '../../utils/auth'
 
 const batchId = ref('')
 const detail = ref({})
+const growthRecord = ref(null)
 const images = ref([])
 const imagePreviewUrls = ref({})
 const failedThumbKeys = ref({})
 const loading = ref(false)
 const refreshing = ref(false)
 const submitting = ref(false)
+const growthLoading = ref(false)
+const growthSubmitting = ref(false)
 const identifyingImageId = ref(null)
 const identifyingMissing = ref(false)
 const assistantRef = ref(null)
@@ -209,6 +256,9 @@ const showUploadDisabled = computed(() =>
 )
 const canRefreshSummary = computed(() => !['archived', 'cancelled'].includes(detail.value.batchStatus))
 const canSubmit = computed(() => ['draft', 'collecting'].includes(detail.value.batchStatus))
+const canEditGrowth = computed(() =>
+  ['draft', 'rejected'].includes(growthRecord.value?.reviewStatus)
+)
 const hasMissingImages = computed(() => {
   const imageCount = Number(detail.value.imageCount || images.value.length || 0)
   const identifiedCount = Number(detail.value.identifiedCount || 0)
@@ -263,6 +313,7 @@ async function loadDetail() {
     images.value = normalizeImages(data)
     failedThumbKeys.value = {}
     await prepareImagePreviewUrls(images.value)
+    await loadGrowthRecord()
   } catch (error) {
     console.error('批次加载失败', error)
     errorText.value = '批次加载失败'
@@ -274,6 +325,79 @@ async function loadDetail() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadGrowthRecord() {
+  growthLoading.value = true
+  try {
+    growthRecord.value = await getBatchGrowthRecord(batchId.value)
+  } catch (error) {
+    if (error?.code === 404 || error?.code === 'NOT_FOUND') {
+      growthRecord.value = null
+    } else {
+      console.error('生长记录加载失败', error)
+      growthRecord.value = null
+    }
+  } finally {
+    growthLoading.value = false
+  }
+}
+
+function createGrowthRecord() {
+  uni.navigateTo({ url: `/pages/growth/form?batchId=${batchId.value}` })
+}
+
+function viewGrowthRecord() {
+  uni.navigateTo({
+    url: `/pages/growth/form?batchId=${batchId.value}&recordId=${growthRecord.value.id}&readOnly=1`
+  })
+}
+
+function editGrowthRecord() {
+  if (!canEditGrowth.value) {
+    showToast('当前状态不允许编辑')
+    return
+  }
+  uni.navigateTo({
+    url: `/pages/growth/form?batchId=${batchId.value}&recordId=${growthRecord.value.id}`
+  })
+}
+
+function handleSubmitGrowthRecord() {
+  if (!canEditGrowth.value || growthSubmitting.value) return
+  uni.showModal({
+    title: '提交生长记录',
+    content: '提交后将进入审核，审核完成前不能继续编辑，确定提交吗？',
+    success: async (result) => {
+      if (!result.confirm) return
+      growthSubmitting.value = true
+      try {
+        await submitGrowthRecord(growthRecord.value.id)
+        showToast('生长记录已提交', 'success')
+        await loadGrowthRecord()
+      } catch (error) {
+        console.error('生长记录提交失败', error)
+        showToast(error?.message || error?.msg || '提交失败，请稍后重试')
+      } finally {
+        growthSubmitting.value = false
+      }
+    }
+  })
+}
+
+function formatGrowthStatus(status) {
+  return {
+    draft: '草稿',
+    submitted: '待审核',
+    approved: '已通过',
+    rejected: '已驳回',
+    archived: '已归档'
+  }[status] || '草稿'
+}
+
+function formatGrowthValue(value, unit) {
+  if (value === undefined || value === null || value === '') return '-'
+  return `${value}${unit ? ` ${unit}` : ''}`
 }
 
 function normalizeBatchDetail(data) {
@@ -684,6 +808,107 @@ function showToast(title) {
 <style scoped>
 .detail-page {
   padding-top: 32rpx;
+}
+
+.growth-record-card .section-header {
+  align-items: center;
+}
+
+.growth-status {
+  flex-shrink: 0;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #ececeb;
+  color: #6d726e;
+  font-size: 23rpx;
+}
+
+.growth-status-submitted {
+  background: #fff1dc;
+  color: #b86405;
+}
+
+.growth-status-approved {
+  background: #e8f7ed;
+  color: #166534;
+}
+
+.growth-status-rejected {
+  background: #fbe9e7;
+  color: #a63f3d;
+}
+
+.growth-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.growth-summary-grid > view {
+  min-width: 0;
+  padding: 16rpx;
+  border: 1rpx solid #eadfcd;
+  border-radius: 14rpx;
+  background: #fffef9;
+}
+
+.growth-summary-grid text,
+.growth-summary-grid strong {
+  display: block;
+}
+
+.growth-summary-grid text {
+  color: #7c6f5c;
+  font-size: 23rpx;
+}
+
+.growth-summary-grid strong {
+  margin-top: 7rpx;
+  color: #173e2a;
+  font-size: 27rpx;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.growth-time {
+  grid-column: span 2;
+}
+
+.growth-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.growth-btn,
+.growth-create-btn {
+  height: 74rpx;
+  margin: 0;
+  border-radius: 14rpx;
+  font-size: 25rpx;
+  line-height: 74rpx;
+}
+
+.growth-empty {
+  padding: 10rpx 0 4rpx;
+  color: #7c6f5c;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.growth-empty .empty-title,
+.growth-empty .empty-tip {
+  display: block;
+}
+
+.growth-empty .empty-tip {
+  margin-top: 10rpx;
+}
+
+.growth-create-btn {
+  width: 100%;
+  margin-top: 22rpx;
 }
 
 .batch-header,

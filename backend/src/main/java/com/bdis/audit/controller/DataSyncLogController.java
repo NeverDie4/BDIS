@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/data-sync-logs")
-@RequirePermission("audit:log:view")
+@RequirePermission("audit:data-sync:view")
 public class DataSyncLogController {
 
     private final DataSyncLogService dataSyncLogService;

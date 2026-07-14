@@ -2,10 +2,10 @@
   position: relative;
   width: 100vw;
   margin-top: 0;
-  margin-bottom: 2;
+  margin-bottom: 0;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  height: clamp(220px, 10vw, 210px);
+  height: clamp(158px, 10vw, 188px);
   overflow: hidden;
   border-top: 1px solid rgba(138, 90, 43, 0.34);
   border-bottom: 1px solid rgba(138, 90, 43, 0.34);
@@ -78,10 +78,10 @@
   position: relative;
   flex: 0 0 220px;
   display: grid;
-  grid-template-rows: 104px auto auto auto;
+  grid-template-rows: 82px auto auto auto;
   align-items: center;
   justify-items: center;
-  padding: 20px 26px 16px;
+  padding: 13px 24px 12px;
   border-left: none;
   background:
     linear-gradient(
@@ -112,14 +112,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 164px;
-  height: 104px;
+  width: 150px;
+  height: 82px;
 }
 
 .image {
   display: block;
-  max-width: 158px;
-  max-height: 102px;
+  max-width: 144px;
+  max-height: 80px;
   object-fit: contain;
   filter: drop-shadow(0 8px 10px rgba(60, 45, 25, 0.14));
 }
@@ -129,8 +129,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 138px;
-  height: 92px;
+  width: 122px;
+  height: 76px;
   color: rgba(var(--color-primary-rgb), 0.34);
   font-family: var(--font-brand);
   font-size: 52px;
@@ -205,14 +205,14 @@
 
 @media (max-width: 860px) {
   .item {
-    grid-template-rows: 96px auto auto auto;
+    grid-template-rows: 78px auto auto auto;
     width: 198px;
     padding-inline: 18px;
   }
 
   .imageFrame {
     width: 146px;
-    height: 96px;
+    height: 78px;
   }
 
   .imagePlaceholder {
@@ -229,7 +229,7 @@
   }
 
   .item {
-    grid-template-rows: 88px auto auto auto;
+    grid-template-rows: 72px auto auto auto;
     width: 178px;
     padding: 10px 15px 11px;
   }
