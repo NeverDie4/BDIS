@@ -11,6 +11,16 @@ public interface HerbMapper extends BaseMapper<HerbEntity> {
 
     @Select(
             """
+            SELECT COUNT(1)
+            FROM herb_species
+            WHERE is_deleted = 0
+              AND (category_id = #{categoryId} OR category_code = #{categoryCode})
+            """)
+    long countByCategoryReference(
+            @Param("categoryId") Long categoryId, @Param("categoryCode") String categoryCode);
+
+    @Select(
+            """
             SELECT *
             FROM herb_species
             WHERE is_deleted = 0

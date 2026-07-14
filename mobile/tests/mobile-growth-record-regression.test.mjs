@@ -48,16 +48,18 @@ test('生长记录表单按 batchId 创建并按 recordId 编辑', async () => {
   assert.doesNotMatch(source, /#1677ff|#2563eb|#1d4ed8/i)
 })
 
-test('批次详情展示唯一生长记录并支持刷新、编辑和提交', async () => {
+test('批次详情只保留统一提交审核入口', async () => {
   const source = await readSource('pages/batch/detail.vue')
 
   assert.match(source, /本次生长记录/)
   assert.match(source, /暂无本次采集的生长数据/)
   assert.match(source, /getBatchGrowthRecord/)
-  assert.match(source, /submitGrowthRecord/)
   assert.match(source, /pages\/growth\/form\?batchId=/)
-  assert.match(source, /\['draft',\s*'rejected'\]\.includes/)
-  assert.match(source, /archived:\s*'已归档'/)
+  assert.match(source, /class="secondary-btn action-btn" @click="goUpload">上传图片/)
+  assert.match(source, /class="primary-btn action-btn"[^>]*@click="handleSubmitBatch">提交审核/)
+  assert.match(source, /submitBatch/)
+  assert.doesNotMatch(source, /handleSubmitGrowthRecord|submitGrowthRecord/)
+  assert.doesNotMatch(source, /识别未完成图片|identifyMissingImages/)
 })
 
 test('生长记录表单已注册且 Web 继续读取任务趋势接口', async () => {
