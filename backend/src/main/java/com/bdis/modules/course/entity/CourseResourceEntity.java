@@ -30,4 +30,6 @@ public class CourseResourceEntity extends BaseEntity {
     private LocalDateTime uploadedAt;
 
     private Integer downloadCount;
+
+    private Integer sortOrder;
 }

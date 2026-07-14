@@ -24,19 +24,19 @@ import com.bdis.modules.spectrum.vo.HerbAtlasImportResultVO;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class HerbAtlasImportServiceTest {
-
-    @TempDir private Path workspace;
 
     @Mock private HerbAtlasMapper herbAtlasMapper;
 
@@ -51,10 +51,14 @@ class HerbAtlasImportServiceTest {
     private HerbAtlasImportService herbAtlasImportService;
 
     private Path importRoot;
+    private Path testRoot;
 
     @BeforeEach
     void setUp() throws Exception {
-        importRoot = workspace.resolve("import").resolve("herb_atlas");
+        testRoot =
+                Files.createTempDirectory(Path.of("target").toAbsolutePath(), "herb-atlas-import-");
+        importRoot = testRoot.resolve("import").resolve("herb_atlas");
+        Files.createDirectories(importRoot);
         FileResourceVO file = new FileResourceVO();
         file.setId(11L);
         file.setFileUrl("/api/files/11/content");
@@ -80,10 +84,27 @@ class HerbAtlasImportServiceTest {
                         importRoot.toString());
     }
 
+    @AfterEach
+    void tearDown() throws IOException {
+        if (testRoot != null && Files.exists(testRoot)) {
+            try (Stream<Path> paths = Files.walk(testRoot)) {
+                paths.sorted(Comparator.reverseOrder()).forEach(path -> delete(path));
+            }
+        }
+    }
+
+    private void delete(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to clean test directory", exception);
+        }
+    }
+
     @Test
     void importAtlasRejectsAbsolutePath() throws Exception {
         Files.createDirectories(importRoot);
-        Path outside = workspace.resolve("outside");
+        Path outside = testRoot.resolve("outside");
         Files.createDirectories(outside);
         HerbAtlasImportRequest request = new HerbAtlasImportRequest();
         request.setImportPath(outside.toString());
@@ -118,7 +139,7 @@ class HerbAtlasImportServiceTest {
     @Test
     void importAtlasRejectsSymbolicLinkOutsideConfiguredRoot() throws Exception {
         Files.createDirectories(importRoot);
-        Path outside = workspace.resolve("outside");
+        Path outside = testRoot.resolve("outside");
         Files.createDirectories(outside);
         Path link = importRoot.resolve("outside-link");
         try {

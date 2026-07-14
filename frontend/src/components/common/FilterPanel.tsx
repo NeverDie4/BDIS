@@ -18,6 +18,7 @@ type FilterPanelProps = {
   loading?: boolean;
   onQuery?: () => void;
   onReset?: () => void;
+  variant?: "default" | "compact";
 };
 
 export function FilterPanel({
@@ -33,12 +34,13 @@ export function FilterPanel({
   loading = false,
   onQuery,
   onReset,
+  variant = "default",
 }: FilterPanelProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const shouldShowFilters = !expandable || expanded;
 
   return (
-    <Card className={`${styles.panel} ${className ?? ""}`} variant="borderless">
+    <Card className={`${styles.panel} ${styles[variant]} ${className ?? ""}`} variant="borderless">
       <div className={styles.header}>
         <div>
           <Typography.Title level={2}>{title}</Typography.Title>

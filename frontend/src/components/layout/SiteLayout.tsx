@@ -1,11 +1,16 @@
 import { HeaderNav } from "./HeaderNav";
 import styles from "./SiteLayout.module.css";
 
-export function SiteLayout({ children }: { children: React.ReactNode }) {
+type SiteLayoutProps = {
+  children: React.ReactNode;
+  contentMode?: "contained" | "fluid";
+};
+
+export function SiteLayout({ children, contentMode = "contained" }: SiteLayoutProps) {
   return (
     <div className={styles.siteShell}>
       <HeaderNav />
-      <main className={styles.main}>{children}</main>
+      <main className={`${styles.main} ${contentMode === "fluid" ? styles.fluid : ""}`}>{children}</main>
     </div>
   );
 }

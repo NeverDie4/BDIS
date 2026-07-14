@@ -1,9 +1,8 @@
 .siteShell {
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.08) 0 1px, transparent 1px 56px),
-    linear-gradient(45deg, rgba(var(--color-success-rgb), 0.06) 0 1px, transparent 1px 64px),
-    var(--color-bg);
+    linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.018) 0 1px, transparent 1px 56px),
+    linear-gradient(45deg, rgba(var(--color-success-rgb), 0.014) 0 1px, transparent 1px 64px);
   color: var(--color-text);
 }
 
@@ -17,6 +16,7 @@
   background-position: center bottom;
   background-repeat: no-repeat;
   background-size: 100% auto;
+  opacity: 0.18;
 }
 
 .main {
@@ -24,12 +24,23 @@
   z-index: 1;
   width: min(var(--layout-max-width), calc(100% - 40px));
   margin: 0 auto;
-  padding: 36px 0 56px;
+  padding: 36px 0 0;
+}
+
+.fluid {
+  width: 100%;
+  margin-inline: 0;
+  padding-top: 0;
 }
 
 @media (max-width: 640px) {
   .main {
     width: min(100% - 24px, var(--layout-max-width));
     padding-top: 24px;
+  }
+
+  .main.fluid {
+    width: 100%;
+    margin-inline: 0;
   }
 }

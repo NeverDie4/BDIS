@@ -19,11 +19,21 @@ public class TrainingPlanEntity extends BaseEntity {
 
     private Long ownerId;
 
+    private Long courseId;
+
+    private Long trainerId;
+
     private String description;
+
+    private String location;
 
     private LocalDateTime startedAt;
 
     private LocalDateTime endedAt;
 
     private String publishStatus;
+
+    private LocalDateTime publishedAt;
+
+    private Long publishedBy;
 }

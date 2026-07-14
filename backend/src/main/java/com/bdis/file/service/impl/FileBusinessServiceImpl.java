@@ -68,11 +68,18 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         entity.setBizId(dto.getBizId());
         entity.setFileUsage(dto.getFileUsage());
         entity.setPublicVisible(false);
+        entity.setSortOrder(dto.getSortOrder() == null ? 0 : dto.getSortOrder());
         entity.setRemark(dto.getRemark());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setCreatedBy(CurrentUserUtils.currentUserId());
         fileBusinessMapper.insert(entity);
         return toVO(entity);
+    }
+
+    @Override
+    @Transactional
+    public FileBusinessVO bindSystem(FileBusinessBindDTO dto) {
+        return bind(dto);
     }
 
     @Override
@@ -115,6 +122,21 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         authorizeDetach(entity);
         fileBusinessMapper.deleteById(relationId);
         synchronizeResourceVisibility(entity.getFileId());
+    }
+
+    @Override
+    @Transactional
+    public void unbind(String bizType, Long bizId, Long fileId) {
+        FileBusinessEntity entity =
+                fileBusinessMapper.selectOne(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .eq(FileBusinessEntity::getFileId, fileId));
+        if (entity == null) {
+            throw new ResourceNotFoundException("文件关联不存在");
+        }
+        unbind(entity.getId());
     }
 
     @Override
@@ -174,6 +196,15 @@ public class FileBusinessServiceImpl implements FileBusinessService {
     }
 
     @Override
+    public boolean existsByBusiness(String bizType, Long bizId) {
+        return fileBusinessMapper.selectCount(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId))
+                > 0;
+    }
+
+    @Override
     public PageResult<FileResourceVO> pageByBusiness(
             String bizType, Long bizId, long requestedPage, long requestedSize) {
         policyRegistry.require(bizType, bizId, FileBusinessAction.VIEW);
@@ -198,7 +229,31 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
-                                .orderByDesc(FileBusinessEntity::getId))
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
+                                .orderByAsc(FileBusinessEntity::getId))
+                .stream()
+                .map(FileBusinessEntity::getFileId)
+                .map(fileResourceMapper::selectById)
+                .filter(entity -> entity != null && Integer.valueOf(1).equals(entity.getStatus()))
+                .map(this::toFileVO)
+                .toList();
+    }
+
+    @Override
+    public List<FileResourceVO> listByBusiness(String bizType, Long bizId, String fileUsage) {
+        policyRegistry.require(bizType, bizId, FileBusinessAction.VIEW);
+        return fileBusinessMapper
+                .selectList(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getBizType, bizType)
+                                .eq(FileBusinessEntity::getBizId, bizId)
+                                .eq(
+                                        fileUsage != null && !fileUsage.isBlank(),
+                                        FileBusinessEntity::getFileUsage,
+                                        fileUsage)
+                                .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
+                                .orderByAsc(FileBusinessEntity::getId))
                 .stream()
                 .map(FileBusinessEntity::getFileId)
                 .map(fileResourceMapper::selectById)
@@ -216,6 +271,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
                                 .orderByAsc(FileBusinessEntity::getId))
                 .stream()
                 .map(this::toVO)
