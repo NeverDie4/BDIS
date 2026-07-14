@@ -2955,3 +2955,83 @@
     grid-column: 1 / -1;
   }
 }
+
+.taskCreateModal :global(.ant-modal-content) {
+  border: 1px solid #eadfcd;
+  border-radius: 18px;
+  background: #fffaf2;
+  box-shadow: 0 18px 48px rgba(43, 65, 49, 0.16);
+}
+
+.taskCreateModal :global(.ant-modal-header) {
+  margin-bottom: 20px;
+  background: transparent;
+}
+
+.taskCreateModal :global(.ant-modal-title) {
+  color: #0f3d2e;
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Microsoft YaHei", "PingFang SC", serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.taskCreateModal :global(.ant-btn-primary) {
+  border-color: #0f5132;
+  background: #0f5132;
+  box-shadow: none;
+}
+
+.taskCreateModal :global(.ant-btn-primary:hover) {
+  border-color: #174f38 !important;
+  background: #174f38 !important;
+}
+
+.taskCreateForm :global(.ant-form-item) {
+  margin-bottom: 2px;
+}
+
+.taskCreateForm :global(.ant-form-item-label > label) {
+  color: #0f5132;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.taskCreateForm :global(.ant-input),
+.taskCreateForm :global(.ant-select-selector) {
+  border-color: #eadfcd !important;
+  border-radius: 12px !important;
+  background: #fffdf7 !important;
+  box-shadow: none !important;
+}
+
+.taskCreateForm :global(.ant-input:not(textarea)),
+.taskCreateForm :global(.ant-select-selector) {
+  min-height: 42px;
+}
+
+.taskCreateForm :global(.ant-input:focus),
+.taskCreateForm :global(.ant-input-focused),
+.taskCreateForm :global(.ant-select-focused .ant-select-selector) {
+  border-color: #0f5132 !important;
+  box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.08) !important;
+}
+
+.taskFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.taskFormWide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .taskFormGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .taskFormWide {
+    grid-column: auto;
+  }
+}

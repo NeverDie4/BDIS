@@ -2,6 +2,7 @@ package com.bdis.modules.collection.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -28,6 +29,7 @@ public class HerbCollectionTaskCreateRequest {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime plannedEndTime;
 
+    @NotNull(message = "请选择采集员")
     private Long collectorId;
 
     private String collectorName;

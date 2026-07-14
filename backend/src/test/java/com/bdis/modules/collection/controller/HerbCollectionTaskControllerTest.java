@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.bdis.modules.collection.service.HerbCollectionTaskService;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
 import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthChartPointVO;
@@ -31,12 +32,16 @@ class HerbCollectionTaskControllerTest {
 
     @Mock private GrowthRecordService growthRecordService;
 
+    @Mock private CollectionAccessService collectionAccessService;
+
     @BeforeEach
     void setUp() {
         mockMvc =
                 MockMvcBuilders.standaloneSetup(
                                 new HerbCollectionTaskController(
-                                        herbCollectionTaskService, growthRecordService))
+                                        herbCollectionTaskService,
+                                        growthRecordService,
+                                        collectionAccessService))
                         .build();
     }
 
@@ -50,7 +55,8 @@ class HerbCollectionTaskControllerTest {
                                 .contentType("application/json")
                                 .content(
                                         "{\"taskCode\":\"TASK_20260710_001\","
-                                                + "\"taskName\":\"Huanglian collection task\"}"))
+                                                + "\"taskName\":\"Huanglian collection task\","
+                                                + "\"collectorId\":8}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.taskCode").value("TASK_20260710_001"));

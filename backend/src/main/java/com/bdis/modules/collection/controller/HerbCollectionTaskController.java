@@ -8,6 +8,7 @@ import com.bdis.modules.collection.dto.HerbCollectionTaskMyQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskQueryRequest;
 import com.bdis.modules.collection.dto.HerbCollectionTaskUpdateRequest;
 import com.bdis.modules.collection.service.HerbCollectionTaskService;
+import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbCollectionTaskListVO;
 import com.bdis.modules.collection.vo.HerbCollectionTaskVO;
 import com.bdis.modules.growth.service.GrowthRecordService;
@@ -32,12 +33,15 @@ public class HerbCollectionTaskController {
 
     private final HerbCollectionTaskService herbCollectionTaskService;
     private final GrowthRecordService growthRecordService;
+    private final CollectionAccessService collectionAccessService;
 
     public HerbCollectionTaskController(
             HerbCollectionTaskService herbCollectionTaskService,
-            GrowthRecordService growthRecordService) {
+            GrowthRecordService growthRecordService,
+            CollectionAccessService collectionAccessService) {
         this.herbCollectionTaskService = herbCollectionTaskService;
         this.growthRecordService = growthRecordService;
+        this.collectionAccessService = collectionAccessService;
     }
 
     @PostMapping
@@ -45,6 +49,12 @@ public class HerbCollectionTaskController {
     public Result<HerbCollectionTaskVO> create(
             @Valid @RequestBody HerbCollectionTaskCreateRequest request) {
         return Result.success(herbCollectionTaskService.create(request));
+    }
+
+    @GetMapping("/assignable-collectors")
+    @RequirePermission("growth:record:create")
+    public Result<List<CollectionAccessService.AssignableCollector>> assignableCollectors() {
+        return Result.success(collectionAccessService.listAssignableCollectors());
     }
 
     @PutMapping("/{id}")
