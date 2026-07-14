@@ -28,8 +28,11 @@ class TrainingFeedbackControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new TrainingFeedbackController(service, authorization))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        mvc =
+                MockMvcBuilders.standaloneSetup(
+                                new TrainingFeedbackController(service, authorization))
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
     }
 
     @Test
@@ -40,15 +43,18 @@ class TrainingFeedbackControllerTest {
         when(service.create(any())).thenReturn(1L);
         when(service.getDetail(1L)).thenReturn(detail);
 
-        mvc.perform(get("/training-feedbacks?planId=1&rating=5"))
-                .andExpect(status().isOk());
+        mvc.perform(get("/training-feedbacks?planId=1&rating=5")).andExpect(status().isOk());
         verify(authorization).requirePermission("edu:training-feedback:list");
-        mvc.perform(post("/training-feedbacks").contentType("application/json")
-                        .content("{\"trainingRecordId\":1,\"rating\":5}"))
+        mvc.perform(
+                        post("/training-feedbacks")
+                                .contentType("application/json")
+                                .content("{\"trainingRecordId\":1,\"rating\":5}"))
                 .andExpect(status().isOk());
         verify(authorization).requirePermission("edu:training-feedback:add");
-        mvc.perform(put("/training-feedbacks/1").contentType("application/json")
-                        .content("{\"rating\":4}"))
+        mvc.perform(
+                        put("/training-feedbacks/1")
+                                .contentType("application/json")
+                                .content("{\"rating\":4}"))
                 .andExpect(status().isOk());
         verify(authorization).requirePermission("edu:training-feedback:update");
     }
@@ -60,24 +66,32 @@ class TrainingFeedbackControllerTest {
             "edu:training-feedback:add",
             "edu:training-feedback:update"
         };
-        var requests = List.of(
-                get("/training-feedbacks"),
-                post("/training-feedbacks").contentType("application/json")
-                        .content("{\"trainingRecordId\":1,\"rating\":5}"),
-                put("/training-feedbacks/1").contentType("application/json")
-                        .content("{\"rating\":4}"));
+        var requests =
+                List.of(
+                        get("/training-feedbacks"),
+                        post("/training-feedbacks")
+                                .contentType("application/json")
+                                .content("{\"trainingRecordId\":1,\"rating\":5}"),
+                        put("/training-feedbacks/1")
+                                .contentType("application/json")
+                                .content("{\"rating\":4}"));
         for (int i = 0; i < permissions.length; i++) {
             reset(authorization);
             doThrow(new ForbiddenException("denied"))
-                    .when(authorization).requirePermission(permissions[i]);
+                    .when(authorization)
+                    .requirePermission(permissions[i]);
             mvc.perform(requests.get(i)).andExpect(status().isForbidden());
         }
         reset(authorization);
-        mvc.perform(post("/training-feedbacks").contentType("application/json")
-                        .content("{\"trainingRecordId\":1,\"rating\":6}"))
+        mvc.perform(
+                        post("/training-feedbacks")
+                                .contentType("application/json")
+                                .content("{\"trainingRecordId\":1,\"rating\":6}"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(put("/training-feedbacks/0").contentType("application/json")
-                        .content("{\"rating\":4}"))
+        mvc.perform(
+                        put("/training-feedbacks/0")
+                                .contentType("application/json")
+                                .content("{\"rating\":4}"))
                 .andExpect(status().isBadRequest());
     }
 }

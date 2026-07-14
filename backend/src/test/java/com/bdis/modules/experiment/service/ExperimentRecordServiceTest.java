@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -159,21 +158,31 @@ class ExperimentRecordServiceTest {
     @Test
     void recordListPassesCurrentUserScopeToMapperQuery() {
         setUser(8L, "TEACHER");
-        when(recordMapper.selectPageVO(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(recordMapper.selectPageVO(any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         service.page(new ExperimentRecordQuery());
 
-        ArgumentCaptor<ExperimentRecordQuery> captor = ArgumentCaptor.forClass(ExperimentRecordQuery.class);
+        ArgumentCaptor<ExperimentRecordQuery> captor =
+                ArgumentCaptor.forClass(ExperimentRecordQuery.class);
         verify(recordMapper).selectPageVO(any(), captor.capture());
         assertEquals(8L, captor.getValue().getScopeUserId());
         assertEquals(Boolean.FALSE, captor.getValue().getScopeAll());
     }
 
     private void setUser(Long id, String role) {
-        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
-                Set.of(role), Set.of(), Set.of("edu:experiment-record:detail"));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, "n/a"));
+        CurrentUser user =
+                new CurrentUser(
+                        id,
+                        "user-" + id,
+                        "User",
+                        null,
+                        null,
+                        Set.of(role),
+                        Set.of(),
+                        Set.of("edu:experiment-record:detail"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test
@@ -183,11 +192,13 @@ class ExperimentRecordServiceTest {
         CourseEntity course = activeCourse(2L);
         when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(course);
         when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
-        when(recordMapper.insert(any(ExperimentRecordEntity.class))).thenAnswer(invocation -> {
-            ExperimentRecordEntity entity = invocation.getArgument(0);
-            entity.setId(11L);
-            return 1;
-        });
+        when(recordMapper.insert(any(ExperimentRecordEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            ExperimentRecordEntity entity = invocation.getArgument(0);
+                            entity.setId(11L);
+                            return 1;
+                        });
 
         Long id = service.create(request);
 
@@ -214,10 +225,12 @@ class ExperimentRecordServiceTest {
         when(recordMapper.selectProjectByIdIncludingDeleted(3L))
                 .thenReturn(activeProject(3L, "ongoing"));
         when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
-        when(recordMapper.insert(any(ExperimentRecordEntity.class))).thenAnswer(invocation -> {
-            ((ExperimentRecordEntity) invocation.getArgument(0)).setId(12L);
-            return 1;
-        });
+        when(recordMapper.insert(any(ExperimentRecordEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            ((ExperimentRecordEntity) invocation.getArgument(0)).setId(12L);
+                            return 1;
+                        });
 
         assertEquals(12L, service.create(request));
     }
@@ -400,8 +413,7 @@ class ExperimentRecordServiceTest {
     void deleteDraftUsesLogicalDeleteAndAuditsWithoutDeletingFiles() {
         ExperimentRecordEntity entity = draftRecord();
         when(recordMapper.selectById(1L)).thenReturn(entity);
-        when(fileBusinessService.existsByBusiness("edu_experiment_record", 1L))
-                .thenReturn(false);
+        when(fileBusinessService.existsByBusiness("edu_experiment_record", 1L)).thenReturn(false);
         when(recordMapper.logicalDeleteByIdAndVersion(
                         anyLong(), any(Integer.class), anyLong(), any(LocalDateTime.class)))
                 .thenReturn(1);
@@ -409,8 +421,7 @@ class ExperimentRecordServiceTest {
         service.delete(1L);
 
         verify(recordMapper)
-                .logicalDeleteByIdAndVersion(
-                        eq(1L), eq(0), eq(7L), any(LocalDateTime.class));
+                .logicalDeleteByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class));
         verify(fileBusinessService, never()).deleteByFileId(anyLong());
         verify(auditLogService).record(any(AuditRecordDTO.class));
     }
@@ -419,21 +430,18 @@ class ExperimentRecordServiceTest {
     void deleteRejectsMissingNonDraftOrAttachments() {
         assertEquals(
                 ResultCodeEnum.NOT_FOUND,
-                assertThrows(BusinessException.class, () -> service.delete(99L))
-                        .getResultCode());
+                assertThrows(BusinessException.class, () -> service.delete(99L)).getResultCode());
 
         ExperimentRecordEntity submitted = draftRecord();
         submitted.setArchiveStatus("submitted");
         when(recordMapper.selectById(1L)).thenReturn(submitted);
         assertEquals(
                 ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.delete(1L))
-                        .getResultCode());
+                assertThrows(BusinessException.class, () -> service.delete(1L)).getResultCode());
 
         ExperimentRecordEntity draft = draftRecord();
         when(recordMapper.selectById(1L)).thenReturn(draft);
-        when(fileBusinessService.existsByBusiness("edu_experiment_record", 1L))
-                .thenReturn(true);
+        when(fileBusinessService.existsByBusiness("edu_experiment_record", 1L)).thenReturn(true);
         BusinessException exception =
                 assertThrows(BusinessException.class, () -> service.delete(1L));
         assertEquals(ResultCodeEnum.CONFLICT, exception.getResultCode());
@@ -458,14 +466,12 @@ class ExperimentRecordServiceTest {
         when(recordMapper.selectById(1L)).thenReturn(entity);
         when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(activeCourse(2L));
         when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
-        when(recordMapper.submitByIdAndVersion(
-                        eq(1L), eq(0), eq(7L), any(LocalDateTime.class)))
+        when(recordMapper.submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class)))
                 .thenReturn(1);
 
         service.submit(1L, submitRequest(0));
 
-        verify(recordMapper)
-                .submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class));
+        verify(recordMapper).submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class));
         ArgumentCaptor<AuditRecordDTO> audit = ArgumentCaptor.forClass(AuditRecordDTO.class);
         verify(auditLogService).record(audit.capture());
         assertEquals("SUBMIT", audit.getValue().getOperationType());
@@ -512,8 +518,7 @@ class ExperimentRecordServiceTest {
         when(recordMapper.selectById(1L)).thenReturn(entity);
         when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(activeCourse(2L));
         when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
-        when(recordMapper.submitByIdAndVersion(
-                        eq(1L), eq(0), eq(7L), any(LocalDateTime.class)))
+        when(recordMapper.submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class)))
                 .thenReturn(0);
         assertEquals(
                 ResultCodeEnum.CONFLICT,
@@ -594,8 +599,7 @@ class ExperimentRecordServiceTest {
         when(recordMapper.selectById(1L)).thenReturn(entity);
         when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(activeCourse(2L));
         when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
-        when(recordMapper.submitByIdAndVersion(anyLong(), any(), anyLong(), any()))
-                .thenReturn(1);
+        when(recordMapper.submitByIdAndVersion(anyLong(), any(), anyLong(), any())).thenReturn(1);
         doThrow(new IllegalStateException("audit failed"))
                 .when(auditLogService)
                 .record(any(AuditRecordDTO.class));

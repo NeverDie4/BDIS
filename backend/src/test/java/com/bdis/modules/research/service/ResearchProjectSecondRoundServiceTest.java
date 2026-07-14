@@ -39,8 +39,15 @@ class ResearchProjectSecondRoundServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ResearchProjectServiceImpl(projectMapper, memberMapper, userMapper, herbSpeciesMapper,
-                memberService, materialService, auditLogService);
+        service =
+                new ResearchProjectServiceImpl(
+                        projectMapper,
+                        memberMapper,
+                        userMapper,
+                        herbSpeciesMapper,
+                        memberService,
+                        materialService,
+                        auditLogService);
     }
 
     @Test
@@ -97,7 +104,8 @@ class ResearchProjectSecondRoundServiceTest {
         ResearchProjectEntity project = project("planning");
         when(projectMapper.selectById(10L)).thenReturn(project);
         when(userMapper.selectById(7L)).thenReturn(leader(7L));
-        when(memberMapper.selectByProjectIdAndUserId(10L, 7L)).thenReturn(member(1L, 7L, "leader", "active"));
+        when(memberMapper.selectByProjectIdAndUserId(10L, 7L))
+                .thenReturn(member(1L, 7L, "leader", "active"));
         when(memberMapper.selectCount(any())).thenReturn(1L);
         when(projectMapper.updateById(project)).thenReturn(1);
 
@@ -154,20 +162,33 @@ class ResearchProjectSecondRoundServiceTest {
 
     private ResearchProjectEntity project(String status) {
         ResearchProjectEntity project = new ResearchProjectEntity();
-        project.setId(10L); project.setProjectNo("P-001"); project.setProjectName("Research");
-        project.setProjectStatus(status); project.setLeaderId(7L); project.setStatus(1); project.setIsDeleted(0); project.setVersion(0);
+        project.setId(10L);
+        project.setProjectNo("P-001");
+        project.setProjectName("Research");
+        project.setProjectStatus(status);
+        project.setLeaderId(7L);
+        project.setStatus(1);
+        project.setIsDeleted(0);
+        project.setVersion(0);
         return project;
     }
 
     private ProjectMemberEntity member(Long id, Long userId, String role, String status) {
         ProjectMemberEntity member = new ProjectMemberEntity();
-        member.setId(id); member.setProjectId(10L); member.setUserId(userId); member.setMemberRole(role); member.setMemberStatus(status);
+        member.setId(id);
+        member.setProjectId(10L);
+        member.setUserId(userId);
+        member.setMemberRole(role);
+        member.setMemberStatus(status);
         return member;
     }
 
     private UserEntity leader(Long id) {
         UserEntity user = new UserEntity();
-        user.setId(id); user.setStatus(1); user.setIsDeleted(0); user.setUserType("teacher");
+        user.setId(id);
+        user.setStatus(1);
+        user.setIsDeleted(0);
+        user.setUserType("teacher");
         return user;
     }
 }

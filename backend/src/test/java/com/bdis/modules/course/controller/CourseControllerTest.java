@@ -37,7 +37,8 @@ class CourseControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc =
-                MockMvcBuilders.standaloneSetup(new CourseController(courseService, authorizationService))
+                MockMvcBuilders.standaloneSetup(
+                                new CourseController(courseService, authorizationService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }
@@ -60,7 +61,6 @@ class CourseControllerTest {
                 .andExpect(jsonPath("$.data.courseNo").value("C-001"));
 
         verify(authorizationService).requirePermission("edu:course:add");
-
     }
 
     @Test
@@ -77,7 +77,6 @@ class CourseControllerTest {
                 .andExpect(jsonPath("$.data.records[0].courseNo").value("C-001"));
 
         verify(authorizationService).requirePermission("edu:course:list");
-
     }
 
     @Test
@@ -108,5 +107,4 @@ class CourseControllerTest {
 
         mockMvc.perform(get("/courses")).andExpect(status().isForbidden());
     }
-
 }

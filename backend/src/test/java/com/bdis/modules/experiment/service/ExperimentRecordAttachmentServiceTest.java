@@ -61,8 +61,7 @@ class ExperimentRecordAttachmentServiceTest {
     void attachmentsCanBeListedForEveryWorkflowStateWithoutPerFileQueries() {
         FileResourceVO file = new FileResourceVO();
         file.setId(21L);
-        when(fileBusinessService.listByBusiness(
-                        "edu_experiment_record", 1L, "attachment"))
+        when(fileBusinessService.listByBusiness("edu_experiment_record", 1L, "attachment"))
                 .thenReturn(List.of(file));
 
         for (String status :
@@ -89,8 +88,7 @@ class ExperimentRecordAttachmentServiceTest {
                 ResultCodeEnum.NOT_FOUND,
                 assertThrows(BusinessException.class, () -> service.listAttachments(99L, null))
                         .getResultCode());
-        verify(fileBusinessService, never())
-                .listByBusiness("edu_experiment_record", 99L, null);
+        verify(fileBusinessService, never()).listByBusiness("edu_experiment_record", 99L, null);
     }
 
     @Test
@@ -183,17 +181,13 @@ class ExperimentRecordAttachmentServiceTest {
         when(recordMapper.selectById(1L)).thenReturn(record(ExperimentArchiveStatus.ARCHIVED));
         assertEquals(
                 ResultCodeEnum.CONFLICT,
-                assertThrows(
-                                BusinessException.class,
-                                () -> service.unbindAttachment(1L, 21L))
+                assertThrows(BusinessException.class, () -> service.unbindAttachment(1L, 21L))
                         .getResultCode());
 
         when(recordMapper.selectById(1L)).thenReturn(record(ExperimentArchiveStatus.DRAFT));
         assertEquals(
                 ResultCodeEnum.NOT_FOUND,
-                assertThrows(
-                                BusinessException.class,
-                                () -> service.unbindAttachment(1L, 21L))
+                assertThrows(BusinessException.class, () -> service.unbindAttachment(1L, 21L))
                         .getResultCode());
         verify(fileBusinessService, never()).unbind(eq("edu_experiment_record"), eq(1L), eq(21L));
     }
@@ -210,8 +204,7 @@ class ExperimentRecordAttachmentServiceTest {
     }
 
     private ExperimentRecordAttachmentBindRequest bindRequest() {
-        ExperimentRecordAttachmentBindRequest request =
-                new ExperimentRecordAttachmentBindRequest();
+        ExperimentRecordAttachmentBindRequest request = new ExperimentRecordAttachmentBindRequest();
         request.setFileId(21L);
         request.setFileUsage("image");
         request.setSortOrder(10);

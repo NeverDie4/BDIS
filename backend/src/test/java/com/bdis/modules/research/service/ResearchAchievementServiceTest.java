@@ -7,9 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.research.entity.ResearchAchievementEntity;
@@ -19,7 +19,6 @@ import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.request.ResearchAchievementCreateRequest;
 import com.bdis.modules.research.request.ResearchAchievementUpdateRequest;
 import com.bdis.modules.research.service.impl.ResearchAchievementServiceImpl;
-import com.bdis.file.support.FileAccessGuard;
 import com.bdis.modules.research.vo.ResearchAchievementDetailVO;
 import com.bdis.modules.research.vo.ResearchAchievementSummaryVO;
 import java.util.List;
@@ -42,19 +41,25 @@ class ResearchAchievementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ResearchAchievementServiceImpl(
-                achievementMapper, projectMapper, fileResourceMapper, fileAccessGuard,
-                auditLogService);
+        service =
+                new ResearchAchievementServiceImpl(
+                        achievementMapper,
+                        projectMapper,
+                        fileResourceMapper,
+                        fileAccessGuard,
+                        auditLogService);
     }
 
     @Test
     void createForcesDraftAndRecordsAudit() {
         when(achievementMapper.selectByAchievementNoIncludingDeleted("A-001")).thenReturn(null);
         when(projectMapper.selectById(10L)).thenReturn(project(10L, "ongoing"));
-        when(achievementMapper.insert(any(ResearchAchievementEntity.class))).thenAnswer(invocation -> {
-            invocation.getArgument(0, ResearchAchievementEntity.class).setId(20L);
-            return 1;
-        });
+        when(achievementMapper.insert(any(ResearchAchievementEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            invocation.getArgument(0, ResearchAchievementEntity.class).setId(20L);
+                            return 1;
+                        });
 
         Long id = service.create(createRequest("A-001", 10L));
 
@@ -141,8 +146,12 @@ class ResearchAchievementServiceTest {
         assertThat(detail.getAchievementNo()).isEqualTo("A-001");
         assertThat(detail.getAchievementStatus()).isEqualTo("confirmed");
 
-        when(achievementMapper.selectList(any())).thenReturn(List.of(
-                achievement(20L, "draft"), achievement(21L, "submitted"), achievement(22L, "confirmed")));
+        when(achievementMapper.selectList(any()))
+                .thenReturn(
+                        List.of(
+                                achievement(20L, "draft"),
+                                achievement(21L, "submitted"),
+                                achievement(22L, "confirmed")));
         ResearchAchievementSummaryVO summary = service.summarizeByProjectId(10L);
         assertThat(summary.getTotal()).isEqualTo(3);
         assertThat(summary.getDraftCount()).isEqualTo(1);

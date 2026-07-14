@@ -14,9 +14,9 @@ import com.bdis.modules.training.constant.TrainingPublishStatus;
 import com.bdis.modules.training.entity.TrainingPlanEntity;
 import com.bdis.modules.training.mapper.TrainingPlanMapper;
 import com.bdis.modules.training.query.TrainingPlanQuery;
+import com.bdis.modules.training.request.TrainingPlanCloseRequest;
 import com.bdis.modules.training.request.TrainingPlanCreateRequest;
 import com.bdis.modules.training.request.TrainingPlanPublishRequest;
-import com.bdis.modules.training.request.TrainingPlanCloseRequest;
 import com.bdis.modules.training.request.TrainingPlanUpdateRequest;
 import com.bdis.modules.training.service.impl.TrainingPlanServiceImpl;
 import com.bdis.modules.training.vo.TrainingPlanMaterialVO;
@@ -42,25 +42,31 @@ class TrainingPlanServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TrainingPlanServiceImpl(
-                planMapper, userMapper, courseMapper, planMaterialService, auditLogService);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("7", "n/a"));
+        service =
+                new TrainingPlanServiceImpl(
+                        planMapper, userMapper, courseMapper, planMaterialService, auditLogService);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("7", "n/a"));
     }
 
-    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void pageForwardsFiltersAndReturnsSummaryWithoutNPlusOne() {
         TrainingPlanEntity plan = plan(1L, TrainingPublishStatus.DRAFT);
         plan.setOwnerId(8L);
         plan.setCourseId(9L);
-        when(planMapper.selectPage(any(), any())).thenAnswer(invocation -> {
-            Page<TrainingPlanEntity> page = invocation.getArgument(0);
-            page.setRecords(List.of(plan));
-            page.setTotal(1);
-            return page;
-        });
+        when(planMapper.selectPage(any(), any()))
+                .thenAnswer(
+                        invocation -> {
+                            Page<TrainingPlanEntity> page = invocation.getArgument(0);
+                            page.setRecords(List.of(plan));
+                            page.setTotal(1);
+                            return page;
+                        });
         when(userMapper.selectBatchIds(any())).thenReturn(List.of(user(8L)));
         CourseEntity course = new CourseEntity();
         course.setId(9L);
@@ -98,7 +104,8 @@ class TrainingPlanServiceTest {
         assertEquals(3, detail.getParticipantCount());
 
         entity.setIsDeleted(1);
-        assertEquals(ResultCodeEnum.NOT_FOUND,
+        assertEquals(
+                ResultCodeEnum.NOT_FOUND,
                 assertThrows(BusinessException.class, () -> service.getDetail(1L)).getResultCode());
     }
 
@@ -125,14 +132,17 @@ class TrainingPlanServiceTest {
         when(userMapper.selectById(7L)).thenReturn(user(7L));
         when(userMapper.selectById(8L)).thenReturn(user(8L));
         when(courseMapper.selectById(9L)).thenReturn(course(9L));
-        when(planMapper.insert(any(TrainingPlanEntity.class))).thenAnswer(invocation -> {
-            TrainingPlanEntity entity = invocation.getArgument(0);
-            entity.setId(11L);
-            return 1;
-        });
+        when(planMapper.insert(any(TrainingPlanEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            TrainingPlanEntity entity = invocation.getArgument(0);
+                            entity.setId(11L);
+                            return 1;
+                        });
 
         assertEquals(11L, service.create(request));
-        ArgumentCaptor<TrainingPlanEntity> captor = ArgumentCaptor.forClass(TrainingPlanEntity.class);
+        ArgumentCaptor<TrainingPlanEntity> captor =
+                ArgumentCaptor.forClass(TrainingPlanEntity.class);
         verify(planMapper).insert(captor.capture());
         assertEquals("draft", captor.getValue().getPublishStatus());
         assertEquals(7L, captor.getValue().getCreatedBy());
@@ -146,8 +156,10 @@ class TrainingPlanServiceTest {
         TrainingPlanCreateRequest request = createRequest();
         when(userMapper.selectById(7L)).thenReturn(user(7L));
         when(planMapper.selectByPlanNoIncludingDeleted("IT-PLAN")).thenReturn(plan(99L, "draft"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.create(request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.create(request))
+                        .getResultCode());
 
         request.setPlanNo("OTHER");
         request.setPlanType("bad");
@@ -192,13 +204,17 @@ class TrainingPlanServiceTest {
     void updateRejectsPublishedAndVersionConflict() {
         TrainingPlanEntity entity = plan(1L, "published");
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(entity);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.update(1L, updateRequest())).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.update(1L, updateRequest()))
+                        .getResultCode());
         entity.setPublishStatus("draft");
         TrainingPlanUpdateRequest request = updateRequest();
         request.setVersion(2);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.update(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.update(1L, request))
+                        .getResultCode());
     }
 
     @Test
@@ -206,7 +222,8 @@ class TrainingPlanServiceTest {
         TrainingPlanEntity entity = plan(1L, "draft");
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(entity);
         when(planMapper.countRecords(1L)).thenReturn(1L);
-        assertEquals(ResultCodeEnum.CONFLICT,
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
                 assertThrows(BusinessException.class, () -> service.delete(1L)).getResultCode());
 
         when(planMapper.countRecords(1L)).thenReturn(0L);
@@ -236,8 +253,10 @@ class TrainingPlanServiceTest {
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(entity);
         TrainingPlanPublishRequest request = new TrainingPlanPublishRequest();
         request.setVersion(0);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.publish(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.publish(1L, request))
+                        .getResultCode());
 
         entity.setCourseId(9L);
         when(courseMapper.selectById(9L)).thenReturn(course(9L));
@@ -293,8 +312,10 @@ class TrainingPlanServiceTest {
         when(courseMapper.selectById(9L)).thenReturn(course(9L));
         when(userMapper.selectById(7L)).thenReturn(user(7L));
         when(planMapper.publish(anyLong(), anyInt(), any(), anyLong())).thenReturn(0);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.publish(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.publish(1L, request))
+                        .getResultCode());
     }
 
     @Test
@@ -324,11 +345,15 @@ class TrainingPlanServiceTest {
         request.setReason("done");
         request.setVersion(0);
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan(1L, "draft"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.close(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.close(1L, request))
+                        .getResultCode());
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan(1L, "closed"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.close(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.close(1L, request))
+                        .getResultCode());
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan(1L, "published"));
         request.setReason(" ");
         assertThrows(BusinessException.class, () -> service.close(1L, request));
@@ -338,8 +363,10 @@ class TrainingPlanServiceTest {
         request.setVersion(0);
         when(userMapper.selectById(7L)).thenReturn(user(7L));
         when(planMapper.close(eq(1L), eq(0), any(), eq(7L))).thenReturn(0);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.close(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.close(1L, request))
+                        .getResultCode());
     }
 
     private TrainingPlanCreateRequest createRequest() {
@@ -396,4 +423,3 @@ class TrainingPlanServiceTest {
         return course;
     }
 }
-

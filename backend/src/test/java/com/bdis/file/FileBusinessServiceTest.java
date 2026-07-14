@@ -59,11 +59,13 @@ class FileBusinessServiceTest {
     @Test
     void bindValidFilePersistsRelation() {
         when(resourceMapper.selectById(21L)).thenReturn(activeFile(21L));
-        when(businessMapper.insert(any(FileBusinessEntity.class))).thenAnswer(invocation -> {
-            FileBusinessEntity entity = invocation.getArgument(0);
-            entity.setId(31L);
-            return 1;
-        });
+        when(businessMapper.insert(any(FileBusinessEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            FileBusinessEntity entity = invocation.getArgument(0);
+                            entity.setId(31L);
+                            return 1;
+                        });
 
         var result = service.bind(bindDTO());
 
@@ -126,8 +128,7 @@ class FileBusinessServiceTest {
 
     @Test
     void exactUnbindDeletesOnlyMatchingRelation() {
-        when(businessMapper.selectOne(any()))
-                .thenReturn(relation(31L, 21L, "attachment"));
+        when(businessMapper.selectOne(any())).thenReturn(relation(31L, 21L, "attachment"));
         when(businessMapper.selectById(31L)).thenReturn(relation(31L, 21L, "attachment"));
 
         service.unbind("edu_experiment_record", 1L, 21L);
@@ -140,7 +141,6 @@ class FileBusinessServiceTest {
         assertThrows(
                 ResourceNotFoundException.class,
                 () -> service.unbind("edu_experiment_record", 1L, 21L));
-
     }
 
     private FileBusinessBindDTO bindDTO() {

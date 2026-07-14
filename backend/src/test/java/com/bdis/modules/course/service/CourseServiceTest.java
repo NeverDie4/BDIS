@@ -7,8 +7,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bdis.audit.dto.AuditRecordDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
@@ -21,8 +21,6 @@ import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
 import com.bdis.modules.course.service.impl.CourseServiceImpl;
-import com.bdis.modules.course.service.CourseResourceService;
-import com.bdis.modules.course.service.ExperimentStepService;
 import com.bdis.modules.course.vo.CourseDetailVO;
 import com.bdis.modules.course.vo.CourseListVO;
 import com.bdis.modules.course.vo.CourseResourceVO;
@@ -32,8 +30,8 @@ import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -68,7 +66,7 @@ class CourseServiceTest {
                         experimentStepService,
                         courseResourceService,
                         userMapper,
-                auditLogService);
+                        auditLogService);
     }
 
     @AfterEach
@@ -100,20 +98,30 @@ class CourseServiceTest {
     @Test
     void teacherListBuildsCreatorOrResponsibleTeacherScope() {
         setUser(8L, "TEACHER");
-        when(courseMapper.selectPage(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(courseMapper.selectPage(any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         courseService.page(new CourseQuery());
 
-        ArgumentCaptor<LambdaQueryWrapper<CourseEntity>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper<CourseEntity>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(courseMapper).selectPage(any(), captor.capture());
         assertThat(captor.getValue()).isNotNull();
     }
 
     private void setUser(Long id, String role) {
-        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
-                Set.of(role), Set.of(), Set.of("edu:course:detail"));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, "n/a"));
+        CurrentUser user =
+                new CurrentUser(
+                        id,
+                        "user-" + id,
+                        "User",
+                        null,
+                        null,
+                        Set.of(role),
+                        Set.of(),
+                        Set.of("edu:course:detail"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test
@@ -124,11 +132,13 @@ class CourseServiceTest {
         teacher.setStatus(1);
         when(courseMapper.selectByCourseNoIncludingDeleted(anyString())).thenReturn(null);
         when(userMapper.selectById(7L)).thenReturn(teacher);
-        when(courseMapper.insert(any(CourseEntity.class))).thenAnswer(invocation -> {
-            CourseEntity entity = invocation.getArgument(0);
-            entity.setId(11L);
-            return 1;
-        });
+        when(courseMapper.insert(any(CourseEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            CourseEntity entity = invocation.getArgument(0);
+                            entity.setId(11L);
+                            return 1;
+                        });
 
         CourseDetailVO result = courseService.create(request);
 
@@ -228,8 +238,7 @@ class CourseServiceTest {
     @Test
     void updateCourseAllowsKeepingItsOwnCourseNo() {
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());
-        when(courseMapper.selectByCourseNoIncludingDeleted("C-001"))
-                .thenReturn(activeCourse());
+        when(courseMapper.selectByCourseNoIncludingDeleted("C-001")).thenReturn(activeCourse());
         UserEntity teacher = new UserEntity();
         teacher.setId(7L);
         teacher.setStatus(1);
@@ -382,19 +391,22 @@ class CourseServiceTest {
         CourseQuery query = new CourseQuery();
         query.setPageNo(1);
         query.setPageSize(10);
-        when(courseMapper.selectPage(any(), any())).thenAnswer(invocation -> {
-            com.baomidou.mybatisplus.extension.plugins.pagination.Page<CourseEntity> page =
-                    invocation.getArgument(0);
-            page.setRecords(List.of(activeCourse()));
-            page.setTotal(1);
-            return page;
-        });
+        when(courseMapper.selectPage(any(), any()))
+                .thenAnswer(
+                        invocation -> {
+                            com.baomidou.mybatisplus.extension.plugins.pagination.Page<CourseEntity>
+                                    page = invocation.getArgument(0);
+                            page.setRecords(List.of(activeCourse()));
+                            page.setTotal(1);
+                            return page;
+                        });
 
         PageResult<CourseListVO> result = courseService.page(query);
 
         assertThat(result.getTotal()).isEqualTo(1);
-        assertThat(result.getRecords()).singleElement().satisfies(vo ->
-                assertThat(vo.getCourseNo()).isEqualTo("C-001"));
+        assertThat(result.getRecords())
+                .singleElement()
+                .satisfies(vo -> assertThat(vo.getCourseNo()).isEqualTo("C-001"));
     }
 
     @Test

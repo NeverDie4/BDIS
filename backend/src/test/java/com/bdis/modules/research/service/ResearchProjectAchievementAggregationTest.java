@@ -1,7 +1,6 @@
 package com.bdis.modules.research.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.bdis.audit.service.AuditLogService;
@@ -35,8 +34,16 @@ class ResearchProjectAchievementAggregationTest {
 
     @BeforeEach
     void setUp() {
-        service = new ResearchProjectServiceImpl(projectMapper, memberMapper, userMapper, herbSpeciesMapper,
-                memberService, materialService, achievementService, auditLogService);
+        service =
+                new ResearchProjectServiceImpl(
+                        projectMapper,
+                        memberMapper,
+                        userMapper,
+                        herbSpeciesMapper,
+                        memberService,
+                        materialService,
+                        achievementService,
+                        auditLogService);
     }
 
     @Test

@@ -46,8 +46,7 @@ class ExperimentStepControllerTest {
         mockMvc.perform(
                         post("/courses/11/steps")
                                 .contentType("application/json")
-                                .content(
-                                        "{\"stepNo\":\"S-01\",\"stepTitle\":\"Prepare sample\"}"))
+                                .content("{\"stepNo\":\"S-01\",\"stepTitle\":\"Prepare sample\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.courseId").value(11))

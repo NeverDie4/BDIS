@@ -3,18 +3,17 @@ package com.bdis.modules.research.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
-import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
@@ -23,9 +22,7 @@ import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.request.ResearchProjectCreateRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.service.impl.ResearchProjectServiceImpl;
-import com.bdis.modules.research.vo.ResearchProjectDetailVO;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
-import com.bdis.common.core.PageResult;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
@@ -35,8 +32,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -56,8 +53,15 @@ class ResearchProjectServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ResearchProjectServiceImpl(
-                projectMapper, memberMapper, userMapper, herbSpeciesMapper, memberService, materialService, auditLogService);
+        service =
+                new ResearchProjectServiceImpl(
+                        projectMapper,
+                        memberMapper,
+                        userMapper,
+                        herbSpeciesMapper,
+                        memberService,
+                        materialService,
+                        auditLogService);
     }
 
     @AfterEach
@@ -73,8 +77,7 @@ class ResearchProjectServiceTest {
         setUser(8L, "TEACHER");
         when(memberMapper.selectByProjectIdAndUserId(100L, 8L)).thenReturn(null);
 
-        assertThatThrownBy(() -> service.getDetail(100L))
-                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> service.getDetail(100L)).isInstanceOf(ForbiddenException.class);
 
         ProjectMemberEntity active = new ProjectMemberEntity();
         active.setProjectId(100L);
@@ -94,20 +97,30 @@ class ResearchProjectServiceTest {
     @Test
     void projectListBuildsLeaderOrActiveMemberScope() {
         setUser(8L, "TEACHER");
-        when(projectMapper.selectPage(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(projectMapper.selectPage(any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         service.page(new com.bdis.modules.research.query.ResearchProjectQuery());
 
-        ArgumentCaptor<LambdaQueryWrapper<ResearchProjectEntity>> captor = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        ArgumentCaptor<LambdaQueryWrapper<ResearchProjectEntity>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(projectMapper).selectPage(any(), captor.capture());
         assertThat(captor.getValue()).isNotNull();
     }
 
     private void setUser(Long id, String role) {
-        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
-                Set.of(role), Set.of(), Set.of("research:project:detail"));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, "n/a"));
+        CurrentUser user =
+                new CurrentUser(
+                        id,
+                        "user-" + id,
+                        "User",
+                        null,
+                        null,
+                        Set.of(role),
+                        Set.of(),
+                        Set.of("research:project:detail"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test
@@ -115,10 +128,12 @@ class ResearchProjectServiceTest {
         UserEntity leader = user(7L, "teacher");
         when(projectMapper.selectByProjectNoIncludingDeleted("P-001")).thenReturn(null);
         when(userMapper.selectById(7L)).thenReturn(leader);
-        when(projectMapper.insert(any(ResearchProjectEntity.class))).thenAnswer(invocation -> {
-            invocation.getArgument(0, ResearchProjectEntity.class).setId(100L);
-            return 1;
-        });
+        when(projectMapper.insert(any(ResearchProjectEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            invocation.getArgument(0, ResearchProjectEntity.class).setId(100L);
+                            return 1;
+                        });
         when(memberMapper.insert(any(ProjectMemberEntity.class))).thenReturn(1);
 
         Long id = service.create(createRequest("P-001", 7L));
@@ -191,10 +206,12 @@ class ResearchProjectServiceTest {
     void leaderMembershipFailureStopsCreate() {
         when(projectMapper.selectByProjectNoIncludingDeleted("P-001")).thenReturn(null);
         when(userMapper.selectById(7L)).thenReturn(user(7L, "teacher"));
-        when(projectMapper.insert(any(ResearchProjectEntity.class))).thenAnswer(invocation -> {
-            invocation.getArgument(0, ResearchProjectEntity.class).setId(100L);
-            return 1;
-        });
+        when(projectMapper.insert(any(ResearchProjectEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            invocation.getArgument(0, ResearchProjectEntity.class).setId(100L);
+                            return 1;
+                        });
         when(memberMapper.insert(any(ProjectMemberEntity.class))).thenReturn(0);
 
         assertThatThrownBy(() -> service.create(createRequest("P-001", 7L)))
@@ -213,7 +230,8 @@ class ResearchProjectServiceTest {
         when(projectMapper.selectPage(any(), any())).thenReturn(page);
         when(userMapper.selectBatchIds(List.of(7L))).thenReturn(List.of(user(7L, "teacher")));
 
-        PageResult<ResearchProjectListVO> result = service.page(new com.bdis.modules.research.query.ResearchProjectQuery());
+        PageResult<ResearchProjectListVO> result =
+                service.page(new com.bdis.modules.research.query.ResearchProjectQuery());
 
         assertThat(result.getRecords()).hasSize(1);
         assertThat(result.getRecords().get(0).getProjectNo()).isEqualTo("P-001");

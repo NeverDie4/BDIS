@@ -34,7 +34,9 @@ class ProjectMemberServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ProjectMemberServiceImpl(projectMapper, memberMapper, userMapper, auditLogService);
+        service =
+                new ProjectMemberServiceImpl(
+                        projectMapper, memberMapper, userMapper, auditLogService);
         ResearchProjectEntity project = new ResearchProjectEntity();
         project.setId(10L);
         project.setStatus(1);
@@ -70,10 +72,12 @@ class ProjectMemberServiceTest {
     void addingNewMemberCreatesActiveRelation() {
         when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
         when(memberMapper.selectByProjectIdAndUserId(10L, 7L)).thenReturn(null);
-        when(memberMapper.insert(any(ProjectMemberEntity.class))).thenAnswer(invocation -> {
-            invocation.getArgument(0, ProjectMemberEntity.class).setId(2L);
-            return 1;
-        });
+        when(memberMapper.insert(any(ProjectMemberEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            invocation.getArgument(0, ProjectMemberEntity.class).setId(2L);
+                            return 1;
+                        });
 
         service.add(10L, addRequest(7L, "student"));
 
@@ -164,7 +168,8 @@ class ProjectMemberServiceTest {
         return user;
     }
 
-    private ProjectMemberEntity member(Long id, Long projectId, Long userId, String status, String role) {
+    private ProjectMemberEntity member(
+            Long id, Long projectId, Long userId, String status, String role) {
         ProjectMemberEntity member = new ProjectMemberEntity();
         member.setId(id);
         member.setProjectId(projectId);

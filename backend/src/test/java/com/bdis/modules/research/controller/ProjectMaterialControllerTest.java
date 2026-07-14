@@ -32,18 +32,25 @@ class ProjectMaterialControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ProjectMaterialController(materialService, authorizationService))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        mockMvc =
+                MockMvcBuilders.standaloneSetup(
+                                new ProjectMaterialController(
+                                        materialService, authorizationService))
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
     }
 
     @Test
     void materialOperationsUseDedicatedPermissions() throws Exception {
         when(materialService.list(10L, null)).thenReturn(List.of(new ProjectMaterialVO()));
         when(materialService.bind(org.mockito.ArgumentMatchers.eq(10L), any())).thenReturn(30L);
-        mockMvc.perform(get("/research-projects/10/materials")).andExpect(status().isOk())
+        mockMvc.perform(get("/research-projects/10/materials"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"));
-        mockMvc.perform(post("/research-projects/10/materials").contentType("application/json").content(
-                        "{\"fileId\":20,\"fileUsage\":\"document\"}"))
+        mockMvc.perform(
+                        post("/research-projects/10/materials")
+                                .contentType("application/json")
+                                .content("{\"fileId\":20,\"fileUsage\":\"document\"}"))
                 .andExpect(status().isOk());
         mockMvc.perform(delete("/research-projects/10/materials/20")).andExpect(status().isOk());
         verify(authorizationService).requirePermission("research:project-material:list");
@@ -53,15 +60,18 @@ class ProjectMaterialControllerTest {
 
     @Test
     void materialListPermissionFailureReturns403() throws Exception {
-        doThrow(new ForbiddenException("no permission")).when(authorizationService)
+        doThrow(new ForbiddenException("no permission"))
+                .when(authorizationService)
                 .requirePermission("research:project-material:list");
         mockMvc.perform(get("/research-projects/10/materials")).andExpect(status().isForbidden());
     }
 
     @Test
     void invalidMaterialRequestFailsValidation() throws Exception {
-        mockMvc.perform(post("/research-projects/10/materials").contentType("application/json")
-                        .content("{\"fileId\":20,\"fileUsage\":\"\"}"))
+        mockMvc.perform(
+                        post("/research-projects/10/materials")
+                                .contentType("application/json")
+                                .content("{\"fileId\":20,\"fileUsage\":\"\"}"))
                 .andExpect(status().isBadRequest());
     }
 }

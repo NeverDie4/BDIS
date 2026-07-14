@@ -63,11 +63,13 @@ class CourseResourceServiceTest {
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());
         when(fileResourceMapper.selectById(31L)).thenReturn(activeFile());
         when(resourceMapper.selectOne(any())).thenReturn(null);
-        when(resourceMapper.insert(any(CourseResourceEntity.class))).thenAnswer(invocation -> {
-            CourseResourceEntity entity = invocation.getArgument(0);
-            entity.setId(41L);
-            return 1;
-        });
+        when(resourceMapper.insert(any(CourseResourceEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            CourseResourceEntity entity = invocation.getArgument(0);
+                            entity.setId(41L);
+                            return 1;
+                        });
 
         CourseResourceVO result = resourceService.bind(11L, bindRequest());
 
@@ -138,10 +140,13 @@ class CourseResourceServiceTest {
 
         List<CourseResourceVO> result = resourceService.listByCourseId(11L, null);
 
-        assertThat(result).singleElement().satisfies(vo -> {
-            assertThat(vo.getFileId()).isEqualTo(31L);
-            assertThat(vo.getFileName()).isEqualTo("handout.pdf");
-        });
+        assertThat(result)
+                .singleElement()
+                .satisfies(
+                        vo -> {
+                            assertThat(vo.getFileId()).isEqualTo(31L);
+                            assertThat(vo.getFileName()).isEqualTo("handout.pdf");
+                        });
     }
 
     private CourseResourceBindRequest bindRequest() {

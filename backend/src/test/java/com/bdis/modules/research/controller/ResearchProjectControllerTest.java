@@ -35,8 +35,11 @@ class ResearchProjectControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new ResearchProjectController(projectService, authorizationService))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        mockMvc =
+                MockMvcBuilders.standaloneSetup(
+                                new ResearchProjectController(projectService, authorizationService))
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
     }
 
     @Test
@@ -59,8 +62,11 @@ class ResearchProjectControllerTest {
         when(projectService.create(any())).thenReturn(10L);
         when(projectService.getDetail(10L)).thenReturn(vo);
 
-        mockMvc.perform(post("/research-projects").contentType("application/json").content(
-                        "{\"projectNo\":\"P-001\",\"projectName\":\"Research\",\"projectType\":\"research\",\"leaderId\":7}"))
+        mockMvc.perform(
+                        post("/research-projects")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"projectNo\":\"P-001\",\"projectName\":\"Research\",\"projectType\":\"research\",\"leaderId\":7}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.id").value(10));
@@ -76,7 +82,8 @@ class ResearchProjectControllerTest {
     @Test
     void forbiddenProjectListIsReturnedAs403() throws Exception {
         doThrow(new ForbiddenException("no permission"))
-                .when(authorizationService).requirePermission("research:project:list");
+                .when(authorizationService)
+                .requirePermission("research:project:list");
 
         mockMvc.perform(get("/research-projects")).andExpect(status().isForbidden());
     }
@@ -84,8 +91,11 @@ class ResearchProjectControllerTest {
     @Test
     void updateUsesProjectUpdatePermission() throws Exception {
         when(projectService.getDetail(10L)).thenReturn(new ResearchProjectDetailVO());
-        mockMvc.perform(put("/research-projects/10").contentType("application/json").content(
-                        "{\"projectName\":\"Updated\",\"projectType\":\"research\"}"))
+        mockMvc.perform(
+                        put("/research-projects/10")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"projectName\":\"Updated\",\"projectType\":\"research\"}"))
                 .andExpect(status().isOk());
         verify(authorizationService).requirePermission("research:project:update");
     }
@@ -93,11 +103,17 @@ class ResearchProjectControllerTest {
     @Test
     void leaderChangeAndStatusChangeUseDedicatedPermissions() throws Exception {
         when(projectService.getDetail(10L)).thenReturn(new ResearchProjectDetailVO());
-        mockMvc.perform(post("/research-projects/10/leader").contentType("application/json").content(
-                        "{\"newLeaderId\":8,\"reason\":\"handover\",\"version\":0}"))
+        mockMvc.perform(
+                        post("/research-projects/10/leader")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"newLeaderId\":8,\"reason\":\"handover\",\"version\":0}"))
                 .andExpect(status().isOk());
-        mockMvc.perform(post("/research-projects/10/status").contentType("application/json").content(
-                        "{\"targetStatus\":\"ongoing\",\"reason\":\"start\",\"version\":0}"))
+        mockMvc.perform(
+                        post("/research-projects/10/status")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"targetStatus\":\"ongoing\",\"reason\":\"start\",\"version\":0}"))
                 .andExpect(status().isOk());
         verify(authorizationService).requirePermission("research:project:update");
         verify(authorizationService).requirePermission("research:project:status");
@@ -105,10 +121,14 @@ class ResearchProjectControllerTest {
 
     @Test
     void leaderChangePermissionFailureReturns403() throws Exception {
-        doThrow(new ForbiddenException("no permission")).when(authorizationService)
+        doThrow(new ForbiddenException("no permission"))
+                .when(authorizationService)
                 .requirePermission("research:project:update");
-        mockMvc.perform(post("/research-projects/10/leader").contentType("application/json").content(
-                        "{\"newLeaderId\":8,\"reason\":\"handover\",\"version\":0}"))
+        mockMvc.perform(
+                        post("/research-projects/10/leader")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"newLeaderId\":8,\"reason\":\"handover\",\"version\":0}"))
                 .andExpect(status().isForbidden());
     }
 }

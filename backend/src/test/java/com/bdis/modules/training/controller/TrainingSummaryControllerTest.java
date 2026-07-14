@@ -25,8 +25,11 @@ class TrainingSummaryControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new TrainingSummaryController(service, authorization))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        mvc =
+                MockMvcBuilders.standaloneSetup(
+                                new TrainingSummaryController(service, authorization))
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
     }
 
     @Test
@@ -35,14 +38,16 @@ class TrainingSummaryControllerTest {
         vo.setPlanId(1L);
         when(service.getSummary(1L)).thenReturn(vo);
         mvc.perform(get("/training-plans/1/summary"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.planId").value(1));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.planId").value(1));
         verify(authorization).requirePermission("edu:training-summary:view");
     }
 
     @Test
     void denialIs403AndInvalidIdIs400() throws Exception {
         doThrow(new ForbiddenException("denied"))
-                .when(authorization).requirePermission("edu:training-summary:view");
+                .when(authorization)
+                .requirePermission("edu:training-summary:view");
         mvc.perform(get("/training-plans/1/summary")).andExpect(status().isForbidden());
         reset(authorization);
         mvc.perform(get("/training-plans/0/summary")).andExpect(status().isBadRequest());

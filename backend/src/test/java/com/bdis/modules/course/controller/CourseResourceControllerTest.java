@@ -46,8 +46,7 @@ class CourseResourceControllerTest {
         mockMvc.perform(
                         post("/courses/11/resources")
                                 .contentType("application/json")
-                                .content(
-                                        "{\"fileId\":31,\"resourceName\":\"Experiment handout\"}"))
+                                .content("{\"fileId\":31,\"resourceName\":\"Experiment handout\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.fileId").value(31));

@@ -9,13 +9,13 @@ import static org.mockito.Mockito.when;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.security.BusinessReferenceAccessService;
+import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.permission.service.DataScopeService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.bdis.modules.permission.service.AuthorizationService;
-import com.bdis.modules.permission.service.DataScopeService;
 
 @ExtendWith(MockitoExtension.class)
 class BusinessReferenceValidatorTest {

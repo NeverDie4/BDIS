@@ -37,7 +37,13 @@ class ProjectMaterialServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ProjectMaterialServiceImpl(projectMapper, businessMapper, resourceMapper, fileBusinessService, auditLogService);
+        service =
+                new ProjectMaterialServiceImpl(
+                        projectMapper,
+                        businessMapper,
+                        resourceMapper,
+                        fileBusinessService,
+                        auditLogService);
     }
 
     @Test
@@ -45,9 +51,14 @@ class ProjectMaterialServiceTest {
         when(projectMapper.selectById(10L)).thenReturn(project("ongoing"));
         when(resourceMapper.selectById(20L)).thenReturn(activeFile(20L));
         when(businessMapper.selectOne(any())).thenReturn(null);
-        when(fileBusinessService.bind(any())).thenAnswer(invocation -> {
-            com.bdis.file.vo.FileBusinessVO result = new com.bdis.file.vo.FileBusinessVO(); result.setId(30L); return result;
-        });
+        when(fileBusinessService.bind(any()))
+                .thenAnswer(
+                        invocation -> {
+                            com.bdis.file.vo.FileBusinessVO result =
+                                    new com.bdis.file.vo.FileBusinessVO();
+                            result.setId(30L);
+                            return result;
+                        });
 
         Long relationId = service.bind(10L, bindRequest(20L, "document"));
 
@@ -72,14 +83,19 @@ class ProjectMaterialServiceTest {
     void completedProjectCannotBindOrUnbindMaterial() {
         when(projectMapper.selectById(10L)).thenReturn(project("completed"));
 
-        assertThatThrownBy(() -> service.bind(10L, bindRequest(20L, "document"))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.bind(10L, bindRequest(20L, "document")))
+                .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> service.unbind(10L, 20L)).isInstanceOf(BusinessException.class);
     }
 
     @Test
     void listBatchesFileMetadataAndFiltersInactiveFiles() {
         when(projectMapper.selectById(10L)).thenReturn(project("ongoing"));
-        FileBusinessEntity relation = new FileBusinessEntity(); relation.setId(30L); relation.setBizId(10L); relation.setFileId(20L); relation.setFileUsage("document");
+        FileBusinessEntity relation = new FileBusinessEntity();
+        relation.setId(30L);
+        relation.setBizId(10L);
+        relation.setFileId(20L);
+        relation.setFileUsage("document");
         when(businessMapper.selectList(any())).thenReturn(List.of(relation));
         when(resourceMapper.selectBatchIds(List.of(20L))).thenReturn(List.of(activeFile(20L)));
 
@@ -93,7 +109,10 @@ class ProjectMaterialServiceTest {
     @Test
     void unbindOnlyRemovesBusinessRelation() {
         when(projectMapper.selectById(10L)).thenReturn(project("ongoing"));
-        FileBusinessEntity relation = new FileBusinessEntity(); relation.setId(30L); relation.setFileId(20L); relation.setBizId(10L);
+        FileBusinessEntity relation = new FileBusinessEntity();
+        relation.setId(30L);
+        relation.setFileId(20L);
+        relation.setBizId(10L);
         when(businessMapper.selectOne(any())).thenReturn(relation);
 
         service.unbind(10L, 20L);
@@ -104,14 +123,28 @@ class ProjectMaterialServiceTest {
     }
 
     private ProjectMaterialBindRequest bindRequest(Long fileId, String usage) {
-        ProjectMaterialBindRequest request = new ProjectMaterialBindRequest(); request.setFileId(fileId); request.setFileUsage(usage); return request;
+        ProjectMaterialBindRequest request = new ProjectMaterialBindRequest();
+        request.setFileId(fileId);
+        request.setFileUsage(usage);
+        return request;
     }
 
     private ResearchProjectEntity project(String status) {
-        ResearchProjectEntity project = new ResearchProjectEntity(); project.setId(10L); project.setProjectStatus(status); project.setStatus(1); project.setIsDeleted(0); return project;
+        ResearchProjectEntity project = new ResearchProjectEntity();
+        project.setId(10L);
+        project.setProjectStatus(status);
+        project.setStatus(1);
+        project.setIsDeleted(0);
+        return project;
     }
 
     private FileResourceEntity activeFile(Long id) {
-        FileResourceEntity file = new FileResourceEntity(); file.setId(id); file.setStatus(1); file.setIsDeleted(0); file.setFileName("test.pdf"); file.setFileNo("F-001"); return file;
+        FileResourceEntity file = new FileResourceEntity();
+        file.setId(id);
+        file.setStatus(1);
+        file.setIsDeleted(0);
+        file.setFileName("test.pdf");
+        file.setFileNo("F-001");
+        return file;
     }
 }

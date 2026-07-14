@@ -16,9 +16,9 @@ import com.bdis.modules.training.mapper.TrainingFeedbackMapper;
 import com.bdis.modules.training.mapper.TrainingPlanMapper;
 import com.bdis.modules.training.mapper.TrainingRecordMapper;
 import com.bdis.modules.training.query.TrainingRecordQuery;
+import com.bdis.modules.training.request.TrainingParticipantBatchRequest;
 import com.bdis.modules.training.request.TrainingRecordCreateRequest;
 import com.bdis.modules.training.request.TrainingRecordUpdateRequest;
-import com.bdis.modules.training.request.TrainingParticipantBatchRequest;
 import com.bdis.modules.training.service.impl.TrainingRecordServiceImpl;
 import com.bdis.modules.training.vo.TrainingFeedbackDetailVO;
 import com.bdis.modules.training.vo.TrainingParticipantBatchResultVO;
@@ -48,13 +48,17 @@ class TrainingRecordServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TrainingRecordServiceImpl(
-                recordMapper, feedbackMapper, planMapper, userMapper, auditLogService);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("7", "n/a"));
+        service =
+                new TrainingRecordServiceImpl(
+                        recordMapper, feedbackMapper, planMapper, userMapper, auditLogService);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("7", "n/a"));
     }
 
-    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void learnerCannotReadAnotherLearnersRecordButAdministratorCan() {
@@ -79,10 +83,18 @@ class TrainingRecordServiceTest {
     }
 
     private void setUser(Long id, String role) {
-        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
-                Set.of(role), Set.of(), Set.of("edu:training-record:detail"));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, "n/a"));
+        CurrentUser user =
+                new CurrentUser(
+                        id,
+                        "user-" + id,
+                        "User",
+                        null,
+                        null,
+                        Set.of(role),
+                        Set.of(),
+                        Set.of("edu:training-record:detail"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     @Test
@@ -91,12 +103,14 @@ class TrainingRecordServiceTest {
         vo.setId(1L);
         vo.setPlanName("Plan");
         vo.setRealName("Student");
-        when(recordMapper.selectPageVO(any(), any())).thenAnswer(invocation -> {
-            Page<TrainingRecordListVO> page = invocation.getArgument(0);
-            page.setRecords(List.of(vo));
-            page.setTotal(1);
-            return page;
-        });
+        when(recordMapper.selectPageVO(any(), any()))
+                .thenAnswer(
+                        invocation -> {
+                            Page<TrainingRecordListVO> page = invocation.getArgument(0);
+                            page.setRecords(List.of(vo));
+                            page.setTotal(1);
+                            return page;
+                        });
         TrainingRecordQuery query = new TrainingRecordQuery();
         query.setKeyword("Student");
         query.setTrainingStatus("learning");
@@ -124,7 +138,8 @@ class TrainingRecordServiceTest {
         TrainingRecordDetailVO result = service.getDetail(1L);
         assertEquals("Plan", result.getPlanName());
         assertEquals(3L, result.getFeedback().getId());
-        assertEquals(ResultCodeEnum.NOT_FOUND,
+        assertEquals(
+                ResultCodeEnum.NOT_FOUND,
                 assertThrows(BusinessException.class, () -> service.getDetail(2L)).getResultCode());
     }
 
@@ -150,11 +165,13 @@ class TrainingRecordServiceTest {
         TrainingRecordEntity existing = record();
         existing.setUserId(11L);
         when(recordMapper.selectByPlanAndUsers(eq(1L), anyList())).thenReturn(List.of(existing));
-        when(recordMapper.insert(any(TrainingRecordEntity.class))).thenAnswer(invocation -> {
-            TrainingRecordEntity entity = invocation.getArgument(0);
-            entity.setId(100L);
-            return 1;
-        });
+        when(recordMapper.insert(any(TrainingRecordEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            TrainingRecordEntity entity = invocation.getArgument(0);
+                            entity.setId(100L);
+                            return 1;
+                        });
         TrainingParticipantBatchRequest request = new TrainingParticipantBatchRequest();
         request.setUserIds(new ArrayList<>(List.of(8L, 8L, 9L, 10L, 11L, 12L)));
 
@@ -168,7 +185,8 @@ class TrainingRecordServiceTest {
         assertEquals(List.of(8L), result.getSuccessUserIds());
         verify(recordMapper, times(1)).selectUsersIncludingDeleted(anyList());
         verify(recordMapper, times(1)).selectByPlanAndUsers(eq(1L), anyList());
-        ArgumentCaptor<TrainingRecordEntity> captor = ArgumentCaptor.forClass(TrainingRecordEntity.class);
+        ArgumentCaptor<TrainingRecordEntity> captor =
+                ArgumentCaptor.forClass(TrainingRecordEntity.class);
         verify(recordMapper).insert(captor.capture());
         assertEquals("pending", captor.getValue().getAttendanceStatus());
         assertEquals("not_started", captor.getValue().getTrainingStatus());
@@ -191,9 +209,10 @@ class TrainingRecordServiceTest {
         assertEquals(1, result.getDuplicateCount());
 
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("closed"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class,
-                        () -> service.batchCreate(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.batchCreate(1L, request))
+                        .getResultCode());
     }
 
     @Test
@@ -218,19 +237,23 @@ class TrainingRecordServiceTest {
         when(recordMapper.selectById(1L)).thenReturn(record);
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
         record.setProgress(BigDecimal.ONE);
-        assertEquals(ResultCodeEnum.CONFLICT,
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
                 assertThrows(BusinessException.class, () -> service.remove(1L)).getResultCode());
         record.setProgress(BigDecimal.ZERO);
         when(feedbackMapper.countByRecordId(1L)).thenReturn(1L);
-        assertEquals(ResultCodeEnum.CONFLICT,
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
                 assertThrows(BusinessException.class, () -> service.remove(1L)).getResultCode());
         when(feedbackMapper.countByRecordId(1L)).thenReturn(0L);
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("closed"));
-        assertEquals(ResultCodeEnum.CONFLICT,
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
                 assertThrows(BusinessException.class, () -> service.remove(1L)).getResultCode());
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
         when(recordMapper.deletePristine(1L)).thenReturn(0);
-        assertEquals(ResultCodeEnum.CONFLICT,
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
                 assertThrows(BusinessException.class, () -> service.remove(1L)).getResultCode());
     }
 
@@ -242,14 +265,17 @@ class TrainingRecordServiceTest {
         TrainingPlanEntity plan = plan("draft");
         plan.setCourseId(9L);
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan);
-        when(recordMapper.insert(any(TrainingRecordEntity.class))).thenAnswer(invocation -> {
-            TrainingRecordEntity entity = invocation.getArgument(0);
-            entity.setId(11L);
-            return 1;
-        });
+        when(recordMapper.insert(any(TrainingRecordEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            TrainingRecordEntity entity = invocation.getArgument(0);
+                            entity.setId(11L);
+                            return 1;
+                        });
 
         assertEquals(11L, service.create(request));
-        ArgumentCaptor<TrainingRecordEntity> captor = ArgumentCaptor.forClass(TrainingRecordEntity.class);
+        ArgumentCaptor<TrainingRecordEntity> captor =
+                ArgumentCaptor.forClass(TrainingRecordEntity.class);
         verify(recordMapper).insert(captor.capture());
         assertEquals("not_started", captor.getValue().getTrainingStatus());
         assertEquals("pending", captor.getValue().getAttendanceStatus());
@@ -267,14 +293,18 @@ class TrainingRecordServiceTest {
 
         TrainingPlanEntity closed = plan("closed");
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(closed);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.create(request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.create(request))
+                        .getResultCode());
 
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
         when(userMapper.selectById(8L)).thenReturn(user(8L));
         when(recordMapper.selectByPlanAndUser(1L, 8L)).thenReturn(record());
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.create(request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.create(request))
+                        .getResultCode());
     }
 
     @Test
@@ -291,7 +321,8 @@ class TrainingRecordServiceTest {
 
         service.update(1L, request);
 
-        ArgumentCaptor<TrainingRecordEntity> captor = ArgumentCaptor.forClass(TrainingRecordEntity.class);
+        ArgumentCaptor<TrainingRecordEntity> captor =
+                ArgumentCaptor.forClass(TrainingRecordEntity.class);
         verify(recordMapper).updateById(captor.capture());
         assertNotNull(captor.getValue().getCompletedAt());
         assertNotNull(captor.getValue().getCheckedInAt());
@@ -313,13 +344,17 @@ class TrainingRecordServiceTest {
 
         request.setProgress(BigDecimal.TEN);
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("closed"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.update(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.update(1L, request))
+                        .getResultCode());
 
         record.setTrainingStatus("completed");
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.update(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.update(1L, request))
+                        .getResultCode());
     }
 
     @Test
@@ -345,8 +380,10 @@ class TrainingRecordServiceTest {
         TrainingRecordUpdateRequest request = new TrainingRecordUpdateRequest();
         request.setTrainingStatus("learning");
         when(recordMapper.updateById(any(TrainingRecordEntity.class))).thenReturn(0);
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class, () -> service.update(1L, request)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(BusinessException.class, () -> service.update(1L, request))
+                        .getResultCode());
 
         when(recordMapper.updateById(any(TrainingRecordEntity.class))).thenReturn(1);
         doThrow(new IllegalStateException("audit")).when(auditLogService).record(any());

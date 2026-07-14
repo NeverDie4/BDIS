@@ -26,15 +26,20 @@ class TrainingParticipantControllerTest {
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new TrainingParticipantController(service, authorization))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        mvc =
+                MockMvcBuilders.standaloneSetup(
+                                new TrainingParticipantController(service, authorization))
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
     }
 
     @Test
     void batchRouteUsesAddPermission() throws Exception {
         when(service.batchCreate(eq(1L), any())).thenReturn(new TrainingParticipantBatchResultVO());
-        mvc.perform(post("/training-plans/1/participants/batch")
-                        .contentType("application/json").content("{\"userIds\":[8,9]}"))
+        mvc.perform(
+                        post("/training-plans/1/participants/batch")
+                                .contentType("application/json")
+                                .content("{\"userIds\":[8,9]}"))
                 .andExpect(status().isOk());
         verify(authorization).requirePermission("edu:training-record:add");
     }
@@ -42,13 +47,18 @@ class TrainingParticipantControllerTest {
     @Test
     void denialAndInvalidArgumentsAreRejected() throws Exception {
         doThrow(new ForbiddenException("denied"))
-                .when(authorization).requirePermission("edu:training-record:add");
-        mvc.perform(post("/training-plans/1/participants/batch")
-                        .contentType("application/json").content("{\"userIds\":[8]}"))
+                .when(authorization)
+                .requirePermission("edu:training-record:add");
+        mvc.perform(
+                        post("/training-plans/1/participants/batch")
+                                .contentType("application/json")
+                                .content("{\"userIds\":[8]}"))
                 .andExpect(status().isForbidden());
         reset(authorization);
-        mvc.perform(post("/training-plans/0/participants/batch")
-                        .contentType("application/json").content("{\"userIds\":[]}"))
+        mvc.perform(
+                        post("/training-plans/0/participants/batch")
+                                .contentType("application/json")
+                                .content("{\"userIds\":[]}"))
                 .andExpect(status().isBadRequest());
     }
 }

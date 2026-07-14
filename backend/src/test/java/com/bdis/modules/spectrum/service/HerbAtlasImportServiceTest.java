@@ -55,7 +55,8 @@ class HerbAtlasImportServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        testRoot = Files.createTempDirectory(Path.of("target").toAbsolutePath(), "herb-atlas-import-");
+        testRoot =
+                Files.createTempDirectory(Path.of("target").toAbsolutePath(), "herb-atlas-import-");
         importRoot = testRoot.resolve("import").resolve("herb_atlas");
         Files.createDirectories(importRoot);
         FileResourceVO file = new FileResourceVO();

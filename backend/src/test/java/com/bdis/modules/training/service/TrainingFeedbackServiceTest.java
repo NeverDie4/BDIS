@@ -18,7 +18,6 @@ import com.bdis.modules.training.query.TrainingFeedbackQuery;
 import com.bdis.modules.training.request.TrainingFeedbackCreateRequest;
 import com.bdis.modules.training.request.TrainingFeedbackUpdateRequest;
 import com.bdis.modules.training.service.impl.TrainingFeedbackServiceImpl;
-import com.bdis.modules.training.vo.TrainingFeedbackDetailVO;
 import com.bdis.modules.training.vo.TrainingFeedbackListVO;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -44,9 +43,11 @@ class TrainingFeedbackServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TrainingFeedbackServiceImpl(feedbackMapper, recordMapper, planMapper, auditLogService);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("8", "n/a"));
+        service =
+                new TrainingFeedbackServiceImpl(
+                        feedbackMapper, recordMapper, planMapper, auditLogService);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("8", "n/a"));
     }
 
     @AfterEach
@@ -59,12 +60,14 @@ class TrainingFeedbackServiceTest {
         TrainingFeedbackListVO vo = new TrainingFeedbackListVO();
         vo.setId(1L);
         vo.setPlanName("Plan");
-        when(feedbackMapper.selectPageVO(any(), any())).thenAnswer(invocation -> {
-            Page<TrainingFeedbackListVO> page = invocation.getArgument(0);
-            page.setRecords(List.of(vo));
-            page.setTotal(1);
-            return page;
-        });
+        when(feedbackMapper.selectPageVO(any(), any()))
+                .thenAnswer(
+                        invocation -> {
+                            Page<TrainingFeedbackListVO> page = invocation.getArgument(0);
+                            page.setRecords(List.of(vo));
+                            page.setTotal(1);
+                            return page;
+                        });
         TrainingFeedbackQuery query = new TrainingFeedbackQuery();
         query.setPlanId(1L);
         query.setUserId(8L);
@@ -90,14 +93,17 @@ class TrainingFeedbackServiceTest {
     void createUsesCurrentParticipantAndAllowsPublishedOrClosed() {
         when(recordMapper.selectById(10L)).thenReturn(record(8L));
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
-        when(feedbackMapper.insert(any(TrainingFeedbackEntity.class))).thenAnswer(invocation -> {
-            TrainingFeedbackEntity entity = invocation.getArgument(0);
-            entity.setId(21L);
-            return 1;
-        });
+        when(feedbackMapper.insert(any(TrainingFeedbackEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            TrainingFeedbackEntity entity = invocation.getArgument(0);
+                            entity.setId(21L);
+                            return 1;
+                        });
 
         assertEquals(21L, service.create(createRequest(new BigDecimal("1"))));
-        ArgumentCaptor<TrainingFeedbackEntity> captor = ArgumentCaptor.forClass(TrainingFeedbackEntity.class);
+        ArgumentCaptor<TrainingFeedbackEntity> captor =
+                ArgumentCaptor.forClass(TrainingFeedbackEntity.class);
         verify(feedbackMapper).insert(captor.capture());
         assertEquals(8L, captor.getValue().getUserId());
         assertNotNull(captor.getValue().getSubmittedAt());
@@ -114,26 +120,34 @@ class TrainingFeedbackServiceTest {
     void createRejectsDraftWrongOwnerInvalidRatingAndDuplicate() {
         when(recordMapper.selectById(10L)).thenReturn(record(8L));
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("draft"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class,
-                        () -> service.create(createRequest(BigDecimal.ONE))).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(
+                                BusinessException.class,
+                                () -> service.create(createRequest(BigDecimal.ONE)))
+                        .getResultCode());
 
         when(recordMapper.selectById(10L)).thenReturn(record(9L));
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
-        assertEquals(ResultCodeEnum.FORBIDDEN,
-                assertThrows(BusinessException.class,
-                        () -> service.create(createRequest(BigDecimal.ONE))).getResultCode());
+        assertEquals(
+                ResultCodeEnum.FORBIDDEN,
+                assertThrows(
+                                BusinessException.class,
+                                () -> service.create(createRequest(BigDecimal.ONE)))
+                        .getResultCode());
 
-        assertThrows(BusinessException.class,
-                () -> service.create(createRequest(BigDecimal.ZERO)));
-        assertThrows(BusinessException.class,
-                () -> service.create(createRequest(new BigDecimal("6"))));
+        assertThrows(BusinessException.class, () -> service.create(createRequest(BigDecimal.ZERO)));
+        assertThrows(
+                BusinessException.class, () -> service.create(createRequest(new BigDecimal("6"))));
 
         when(recordMapper.selectById(10L)).thenReturn(record(8L));
         when(feedbackMapper.selectByRecordAndUser(10L, 8L)).thenReturn(feedback(8L));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class,
-                        () -> service.create(createRequest(BigDecimal.ONE))).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(
+                                BusinessException.class,
+                                () -> service.create(createRequest(BigDecimal.ONE)))
+                        .getResultCode());
     }
 
     @Test
@@ -142,9 +156,12 @@ class TrainingFeedbackServiceTest {
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
         when(feedbackMapper.insert(any(TrainingFeedbackEntity.class)))
                 .thenThrow(new DuplicateKeyException("duplicate"));
-        assertEquals(ResultCodeEnum.CONFLICT,
-                assertThrows(BusinessException.class,
-                        () -> service.create(createRequest(BigDecimal.ONE))).getResultCode());
+        assertEquals(
+                ResultCodeEnum.CONFLICT,
+                assertThrows(
+                                BusinessException.class,
+                                () -> service.create(createRequest(BigDecimal.ONE)))
+                        .getResultCode());
     }
 
     @Test
@@ -171,12 +188,14 @@ class TrainingFeedbackServiceTest {
     void updateRejectsOtherUsersAndMissingFeedbackWithoutFakeVersion() {
         TrainingFeedbackEntity entity = feedback(9L);
         when(feedbackMapper.selectById(3L)).thenReturn(entity);
-        assertEquals(ResultCodeEnum.FORBIDDEN,
-                assertThrows(BusinessException.class,
-                        () -> service.update(3L, updateRequest())).getResultCode());
-        assertEquals(ResultCodeEnum.NOT_FOUND,
-                assertThrows(BusinessException.class,
-                        () -> service.update(4L, updateRequest())).getResultCode());
+        assertEquals(
+                ResultCodeEnum.FORBIDDEN,
+                assertThrows(BusinessException.class, () -> service.update(3L, updateRequest()))
+                        .getResultCode());
+        assertEquals(
+                ResultCodeEnum.NOT_FOUND,
+                assertThrows(BusinessException.class, () -> service.update(4L, updateRequest()))
+                        .getResultCode());
         assertFalse(hasField(TrainingFeedbackUpdateRequest.class, "version"));
     }
 

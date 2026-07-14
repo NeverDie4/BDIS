@@ -3,7 +3,6 @@ package com.bdis.modules.course.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,13 +44,14 @@ class ExperimentStepServiceTest {
     @Test
     void createStepSetsDefaultSortOrderAndRecordsAudit() {
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());
-        when(stepMapper.selectByCourseIdAndStepNoIncludingDeleted(11L, "S-01"))
-                .thenReturn(null);
-        when(stepMapper.insert(any(ExperimentStepEntity.class))).thenAnswer(invocation -> {
-            ExperimentStepEntity entity = invocation.getArgument(0);
-            entity.setId(21L);
-            return 1;
-        });
+        when(stepMapper.selectByCourseIdAndStepNoIncludingDeleted(11L, "S-01")).thenReturn(null);
+        when(stepMapper.insert(any(ExperimentStepEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            ExperimentStepEntity entity = invocation.getArgument(0);
+                            entity.setId(21L);
+                            return 1;
+                        });
 
         ExperimentStepVO result = stepService.create(11L, createRequest());
 
@@ -83,8 +83,7 @@ class ExperimentStepServiceTest {
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());
         ExperimentStepEntity step = activeStep();
         when(stepMapper.selectById(21L)).thenReturn(step);
-        when(stepMapper.selectByCourseIdAndStepNoIncludingDeleted(11L, "S-01"))
-                .thenReturn(step);
+        when(stepMapper.selectByCourseIdAndStepNoIncludingDeleted(11L, "S-01")).thenReturn(step);
         when(stepMapper.updateById(any(ExperimentStepEntity.class))).thenReturn(1);
 
         ExperimentStepUpdateRequest request = new ExperimentStepUpdateRequest();
@@ -116,10 +115,13 @@ class ExperimentStepServiceTest {
 
         List<ExperimentStepVO> result = stepService.listByCourseId(11L);
 
-        assertThat(result).singleElement().satisfies(vo -> {
-            assertThat(vo.getCourseId()).isEqualTo(11L);
-            assertThat(vo.getStepNo()).isEqualTo("S-01");
-        });
+        assertThat(result)
+                .singleElement()
+                .satisfies(
+                        vo -> {
+                            assertThat(vo.getCourseId()).isEqualTo(11L);
+                            assertThat(vo.getStepNo()).isEqualTo("S-01");
+                        });
     }
 
     private ExperimentStepCreateRequest createRequest() {

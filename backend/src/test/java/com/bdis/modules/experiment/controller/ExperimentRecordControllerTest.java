@@ -95,8 +95,7 @@ class ExperimentRecordControllerTest {
         mockMvc.perform(
                         post("/experiment-records")
                                 .contentType("application/json")
-                                .content(
-                                        "{\"recordNo\":\"EXP-1\",\"experimentTitle\":\"Title\"}"))
+                                .content("{\"recordNo\":\"EXP-1\",\"experimentTitle\":\"Title\"}"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(
                         post("/experiment-records")
@@ -113,8 +112,7 @@ class ExperimentRecordControllerTest {
         mockMvc.perform(
                         put("/experiment-records/1")
                                 .contentType("application/json")
-                                .content(
-                                        "{\"experimentTitle\":\"Updated\",\"version\":0}"))
+                                .content("{\"experimentTitle\":\"Updated\",\"version\":0}"))
                 .andExpect(status().isOk());
         verify(authorizationService).requirePermission("edu:experiment-record:update");
 
@@ -165,8 +163,7 @@ class ExperimentRecordControllerTest {
         mockMvc.perform(
                         put("/experiment-records/1")
                                 .contentType("application/json")
-                                .content(
-                                        "{\"experimentTitle\":\"Updated\",\"version\":0}"))
+                                .content("{\"experimentTitle\":\"Updated\",\"version\":0}"))
                 .andExpect(status().isForbidden());
 
         doThrow(new ForbiddenException("no permission"))
@@ -299,8 +296,7 @@ class ExperimentRecordControllerTest {
 
     @Test
     void attachmentUnbindUsesDocumentedPathPermissionAndValidatesIds() throws Exception {
-        mockMvc.perform(delete("/experiment-records/1/attachments/21"))
-                .andExpect(status().isOk());
+        mockMvc.perform(delete("/experiment-records/1/attachments/21")).andExpect(status().isOk());
         verify(authorizationService).requirePermission("edu:experiment-attachment:delete");
         verify(recordService).unbindAttachment(1L, 21L);
 
@@ -315,8 +311,7 @@ class ExperimentRecordControllerTest {
         doThrow(new ForbiddenException("no list permission"))
                 .when(authorizationService)
                 .requirePermission("edu:experiment-attachment:list");
-        mockMvc.perform(get("/experiment-records/1/attachments"))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/experiment-records/1/attachments")).andExpect(status().isForbidden());
 
         org.mockito.Mockito.reset(authorizationService);
         doThrow(new BusinessException(ResultCodeEnum.CONFLICT, "record is read-only"))

@@ -69,13 +69,17 @@ class TrainingSummaryServiceTest {
 
     @Test
     void missingOrDeletedPlanIsNotFound() {
-        assertEquals(ResultCodeEnum.NOT_FOUND,
-                assertThrows(BusinessException.class, () -> service.getSummary(1L)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.NOT_FOUND,
+                assertThrows(BusinessException.class, () -> service.getSummary(1L))
+                        .getResultCode());
         TrainingPlanEntity deleted = plan();
         deleted.setIsDeleted(1);
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(deleted);
-        assertEquals(ResultCodeEnum.NOT_FOUND,
-                assertThrows(BusinessException.class, () -> service.getSummary(1L)).getResultCode());
+        assertEquals(
+                ResultCodeEnum.NOT_FOUND,
+                assertThrows(BusinessException.class, () -> service.getSummary(1L))
+                        .getResultCode());
     }
 
     private TrainingPlanEntity plan() {
