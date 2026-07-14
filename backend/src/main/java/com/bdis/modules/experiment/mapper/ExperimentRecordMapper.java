@@ -86,7 +86,11 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                    OR EXISTS (SELECT 1 FROM research_project scoped_project
                               WHERE scoped_project.id = er.project_id
                                 AND scoped_project.leader_id = #{query.scopeUserId}
-                                AND scoped_project.is_deleted = 0))
+                                AND scoped_project.is_deleted = 0)
+                   OR EXISTS (SELECT 1 FROM rel_project_member scoped_member
+                              WHERE scoped_member.project_id = er.project_id
+                                AND scoped_member.user_id = #{query.scopeUserId}
+                                AND scoped_member.member_status = 'active'))
             </if>
             ORDER BY er.recorded_at DESC, er.id DESC
             </script>

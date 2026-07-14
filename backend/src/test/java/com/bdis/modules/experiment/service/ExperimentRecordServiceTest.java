@@ -156,6 +156,22 @@ class ExperimentRecordServiceTest {
     }
 
     @Test
+    void activeProjectMemberCanReadAnotherMembersRecord() {
+        when(recordMapper.selectProjectByIdIncludingDeleted(3L))
+                .thenReturn(activeProject(3L, "ongoing"));
+        when(recordMapper.existsActiveProjectMember(3L, 8L)).thenReturn(true);
+
+        ExperimentRecordDetailVO detail = new ExperimentRecordDetailVO();
+        detail.setId(1L);
+        detail.setRecorderId(7L);
+        detail.setProjectId(3L);
+        when(recordMapper.selectDetailById(1L)).thenReturn(detail);
+        setUser(8L, "TEACHER");
+
+        assertNotNull(service.getDetail(1L));
+    }
+
+    @Test
     void recordListPassesCurrentUserScopeToMapperQuery() {
         setUser(8L, "TEACHER");
         when(recordMapper.selectPageVO(any(), any()))

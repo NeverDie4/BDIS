@@ -5,6 +5,7 @@ import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.modules.training.entity.TrainingPlanEntity;
 import com.bdis.modules.training.mapper.TrainingPlanMapper;
 import com.bdis.modules.training.mapper.TrainingRecordMapper;
+import com.bdis.modules.training.service.TrainingPlanService;
 import com.bdis.modules.training.service.TrainingSummaryService;
 import com.bdis.modules.training.vo.TrainingSummaryVO;
 import java.math.BigDecimal;
@@ -17,11 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class TrainingSummaryServiceImpl implements TrainingSummaryService {
     private final TrainingPlanMapper planMapper;
     private final TrainingRecordMapper recordMapper;
+    private final TrainingPlanService planService;
 
     public TrainingSummaryServiceImpl(
-            TrainingPlanMapper planMapper, TrainingRecordMapper recordMapper) {
+            TrainingPlanMapper planMapper,
+            TrainingRecordMapper recordMapper,
+            TrainingPlanService planService) {
         this.planMapper = planMapper;
         this.recordMapper = recordMapper;
+        this.planService = planService;
     }
 
     @Override
@@ -30,6 +35,7 @@ public class TrainingSummaryServiceImpl implements TrainingSummaryService {
         if (planId == null || planId <= 0) {
             throw new BusinessException("Training plan id must be positive");
         }
+        planService.requireViewAccess(planId);
         TrainingPlanEntity plan = planMapper.selectByIdIncludingDeleted(planId);
         if (plan == null || Objects.equals(plan.getIsDeleted(), 1)) {
             throw new ResourceNotFoundException("Training plan not found");

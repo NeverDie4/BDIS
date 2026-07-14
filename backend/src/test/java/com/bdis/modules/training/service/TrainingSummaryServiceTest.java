@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.modules.training.entity.TrainingPlanEntity;
 import com.bdis.modules.training.mapper.TrainingPlanMapper;
 import com.bdis.modules.training.mapper.TrainingRecordMapper;
@@ -21,11 +22,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TrainingSummaryServiceTest {
     @Mock TrainingPlanMapper planMapper;
     @Mock TrainingRecordMapper recordMapper;
+    @Mock TrainingPlanService planService;
     TrainingSummaryService service;
 
     @BeforeEach
     void setUp() {
-        service = new TrainingSummaryServiceImpl(planMapper, recordMapper);
+        service = new TrainingSummaryServiceImpl(planMapper, recordMapper, planService);
     }
 
     @Test
@@ -80,6 +82,16 @@ class TrainingSummaryServiceTest {
                 ResultCodeEnum.NOT_FOUND,
                 assertThrows(BusinessException.class, () -> service.getSummary(1L))
                         .getResultCode());
+    }
+
+    @Test
+    void rejectsSummaryOutsideTrainingPlanScope() {
+        doThrow(new ForbiddenException("Training plan is outside the current user's scope"))
+                .when(planService)
+                .requireViewAccess(1L);
+
+        assertThrows(ForbiddenException.class, () -> service.getSummary(1L));
+        verifyNoInteractions(recordMapper);
     }
 
     private TrainingPlanEntity plan() {

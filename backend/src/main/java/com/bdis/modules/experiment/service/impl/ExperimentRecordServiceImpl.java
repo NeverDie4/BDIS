@@ -547,6 +547,9 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
             if (project != null && Objects.equals(project.getLeaderId(), userId)) {
                 return;
             }
+            if (!manage && recordMapper.existsActiveProjectMember(projectId, userId)) {
+                return;
+            }
         }
         throw new ForbiddenException(
                 manage

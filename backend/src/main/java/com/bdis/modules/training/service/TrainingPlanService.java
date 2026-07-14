@@ -14,6 +14,8 @@ public interface TrainingPlanService {
 
     TrainingPlanDetailVO getDetail(Long id);
 
+    void requireViewAccess(Long id);
+
     Long create(TrainingPlanCreateRequest request);
 
     void update(Long id, TrainingPlanUpdateRequest request);

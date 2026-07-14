@@ -108,6 +108,13 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public void requireViewAccess(Long id) {
+        TrainingPlanEntity entity = requireActive(id);
+        requirePlanAccess(entity, false);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Long create(TrainingPlanCreateRequest request) {
         validateCreate(request);
@@ -408,7 +415,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
                                 .or()
                                 .apply(
                                         "EXISTS (SELECT 1 FROM edu_training_record r "
-                                                + "WHERE r.plan_id = id AND r.user_id = {0} AND r.is_deleted = 0)",
+                                                + "WHERE r.plan_id = edu_training_plan.id AND r.user_id = {0})",
                                         userId));
     }
 

@@ -41,12 +41,12 @@ public class CourseFileBusinessAccessPolicy implements FileBusinessAccessPolicy 
 
     @Override
     public boolean canAttach(Long bizId) {
-        return canManage(bizId, "edu:course:update");
+        return canManage(bizId, "edu:course-resource:add");
     }
 
     @Override
     public boolean canDetach(Long bizId) {
-        return canAttach(bizId);
+        return canManage(bizId, "edu:course-resource:delete");
     }
 
     @Override

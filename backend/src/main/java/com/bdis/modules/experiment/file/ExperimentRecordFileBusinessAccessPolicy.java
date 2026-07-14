@@ -43,12 +43,12 @@ public class ExperimentRecordFileBusinessAccessPolicy implements FileBusinessAcc
 
     @Override
     public boolean canAttach(Long bizId) {
-        return isAllowed(bizId, "edu:experiment-record:update", true);
+        return isAllowed(bizId, "edu:experiment-attachment:add", true);
     }
 
     @Override
     public boolean canDetach(Long bizId) {
-        return canAttach(bizId);
+        return isAllowed(bizId, "edu:experiment-attachment:delete", true);
     }
 
     @Override

@@ -38,12 +38,12 @@ public class ResearchProjectFileBusinessAccessPolicy implements FileBusinessAcce
 
     @Override
     public boolean canAttach(Long bizId) {
-        return isAllowed(bizId, "research:project:update", true);
+        return isAllowed(bizId, "research:project-material:add", true);
     }
 
     @Override
     public boolean canDetach(Long bizId) {
-        return canAttach(bizId);
+        return isAllowed(bizId, "research:project-material:delete", true);
     }
 
     @Override
