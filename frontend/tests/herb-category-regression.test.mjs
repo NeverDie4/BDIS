@@ -45,3 +45,33 @@ test("药材分类 API 不暴露状态查询或写入参数", async () => {
   assert.match(fetcher, /fetchHerbCategories\(\)/);
   assert.doesNotMatch(fetcher, /status|\{\s*status\s*\}/);
 });
+
+test("药材资源批量删除必须汇报部分成功并刷新当前页签", async () => {
+  const source = await readSource("components/herbs/HerbResourceClient.tsx");
+
+  assert.match(source, /Promise\.allSettled/);
+  assert.match(source, /const successCount = results\.filter/);
+  assert.match(source, /const failedCount = results\.length - successCount/);
+  assert.match(source, /await reloadCurrentTab\(\)/);
+  assert.doesNotMatch(source, /await Promise\.all\(/);
+});
+
+test("药材、分类和基地管理按钮按真实权限显示", async () => {
+  const clientSource = await readSource("components/herbs/HerbResourceClient.tsx");
+  const toolbarSource = await readSource("components/herbs/HerbActionToolbar.tsx");
+  const tableSource = await readSource("components/herbs/HerbTable.tsx");
+
+  for (const permission of [
+    "herb:species:create",
+    "herb:species:update",
+    "herb:species:delete",
+    "dictionary:manage",
+    "map:base:manage",
+  ]) {
+    assert.match(clientSource, new RegExp(permission));
+  }
+  assert.match(toolbarSource, /canCreate/);
+  assert.match(toolbarSource, /canEdit/);
+  assert.match(toolbarSource, /canDelete/);
+  assert.match(tableSource, /canEdit/);
+});

@@ -9,6 +9,9 @@ import { Button, Space } from "antd";
 import styles from "./herbs.module.css";
 
 type HerbActionToolbarProps = {
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   selectedCount?: number;
   createLabel?: string;
   onCreate: () => void;
@@ -19,6 +22,9 @@ type HerbActionToolbarProps = {
 };
 
 export function HerbActionToolbar({
+  canCreate = false,
+  canEdit = false,
+  canDelete = false,
   selectedCount = 0,
   createLabel = "新增",
   onCreate,
@@ -33,15 +39,21 @@ export function HerbActionToolbar({
   return (
     <div className={styles.toolbar}>
       <Space className={styles.toolbarLeft} size={8} wrap>
-        <Button icon={<PlusOutlined />} onClick={onCreate} type="primary">
-          {createLabel}
-        </Button>
-        <Button disabled={!hasSingleSelection} icon={<EditOutlined />} onClick={onEdit}>
-          编辑
-        </Button>
-        <Button danger disabled={!hasSelection} icon={<DeleteOutlined />} onClick={onDelete}>
-          删除
-        </Button>
+        {canCreate ? (
+          <Button icon={<PlusOutlined />} onClick={onCreate} type="primary">
+            {createLabel}
+          </Button>
+        ) : null}
+        {canEdit ? (
+          <Button disabled={!hasSingleSelection} icon={<EditOutlined />} onClick={onEdit}>
+            编辑
+          </Button>
+        ) : null}
+        {canDelete ? (
+          <Button danger disabled={!hasSelection} icon={<DeleteOutlined />} onClick={onDelete}>
+            删除
+          </Button>
+        ) : null}
         <Button icon={<DownloadOutlined />} onClick={onExport}>
           导出
         </Button>

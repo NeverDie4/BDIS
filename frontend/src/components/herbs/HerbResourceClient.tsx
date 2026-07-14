@@ -26,6 +26,7 @@ import {
   type HerbSpeciesPayload,
 } from "@/lib/herbs";
 import { getApiErrorMessage } from "@/lib/request";
+import { useAuthStore } from "@/stores/auth-store";
 import { HerbActionToolbar } from "./HerbActionToolbar";
 import { HerbDetailPanel } from "./HerbDetailPanel";
 import { HerbFilterBar, type HerbFilterValues } from "./HerbFilterBar";
@@ -149,6 +150,7 @@ function downloadCsv(filename: string, rows: Array<Record<string, unknown>>) {
 
 export function HerbResourceClient() {
   const { message, modal } = App.useApp();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState<HerbTabKey>("species");
   const [selectedHerb, setSelectedHerb] = useState<HerbTableRecord | null>(null);
@@ -166,6 +168,25 @@ export function HerbResourceClient() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+
+  const canCreate =
+    activeTab === "species"
+      ? hasPermission("herb:species:create")
+      : activeTab === "categories"
+        ? hasPermission("dictionary:manage")
+        : hasPermission("map:base:manage");
+  const canEdit =
+    activeTab === "species"
+      ? hasPermission("herb:species:update")
+      : activeTab === "categories"
+        ? hasPermission("dictionary:manage")
+        : hasPermission("map:base:manage");
+  const canDelete =
+    activeTab === "species"
+      ? hasPermission("herb:species:delete")
+      : activeTab === "categories"
+        ? hasPermission("dictionary:manage")
+        : hasPermission("map:base:manage");
 
   const queryParams = useMemo(
     () => ({
@@ -305,21 +326,32 @@ export function HerbResourceClient() {
       okButtonProps: { danger: true },
       cancelText: T.cancel,
       onOk: async () => {
-        try {
-          await Promise.all(
-            selectedRowKeys.map((key) => {
-              const id = Number(key);
-              if (activeTab === "species") return deleteHerbSpecies(id);
-              if (activeTab === "categories") return deleteHerbCategory(id);
-              return deleteHerbBase(id);
-            }),
-          );
+        const results = await Promise.allSettled(
+          selectedRowKeys.map((key) => {
+            const id = Number(key);
+            if (activeTab === "species") return deleteHerbSpecies(id);
+            if (activeTab === "categories") return deleteHerbCategory(id);
+            return deleteHerbBase(id);
+          }),
+        );
+        const successCount = results.filter((result) => result.status === "fulfilled").length;
+        const failedCount = results.length - successCount;
+
+        if (failedCount === 0) {
           message.success(T.deleteSuccess);
-          setSelectedRowKeys([]);
-          await reloadCurrentTab();
-        } catch (error) {
-          message.error(getApiErrorMessage(error, T.deleteFail));
+        } else if (successCount > 0) {
+          message.warning(`成功删除 ${successCount} 条，${failedCount} 条删除失败`);
+        } else {
+          const firstFailure = results.find((result) => result.status === "rejected");
+          message.error(
+            getApiErrorMessage(
+              firstFailure?.status === "rejected" ? firstFailure.reason : undefined,
+              T.deleteFail,
+            ),
+          );
         }
+        setSelectedRowKeys([]);
+        await reloadCurrentTab();
       },
     });
   }
@@ -440,7 +472,7 @@ export function HerbResourceClient() {
     { title: T.sortOrder, dataIndex: "sortOrder", key: "sortOrder", width: 90, render: (value?: number) => value ?? "-" },
 
     { title: T.remark, dataIndex: "remark", key: "remark", ellipsis: true, render: (value?: string) => value || "-" },
-    { title: T.action, key: "actions", fixed: "right", width: 90, render: (_value, record) => <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> },
+    { title: T.action, key: "actions", fixed: "right", width: 90, render: (_value, record) => canEdit ? <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> : "-" },
   ];
 
   const baseColumns: TableColumnsType<HerbBaseApi> = [
@@ -453,12 +485,12 @@ export function HerbResourceClient() {
     { title: T.contact, dataIndex: "contactName", key: "contactName", width: 120, render: (value?: string) => value || "-" },
     { title: T.phone, dataIndex: "contactPhone", key: "contactPhone", width: 140, render: (value?: string) => value || "-" },
     { title: T.status, dataIndex: "status", key: "status", width: 100, render: (value?: number) => <Tag color={statusColor(value)}>{formatStatus(value)}</Tag> },
-    { title: T.action, key: "actions", fixed: "right", width: 90, render: (_value, record) => <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> },
+    { title: T.action, key: "actions", fixed: "right", width: 90, render: (_value, record) => canEdit ? <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> : "-" },
   ];
 
   function renderTable() {
     if (activeTab === "species") {
-      return <HerbTable loading={loading} records={records} page={page} pageSize={pageSize} total={total} selectedRowKeys={selectedRowKeys} onSelectionChange={setSelectedRowKeys} onPageChange={handlePageChange} onView={setSelectedHerb} onEdit={openEditModal} />;
+      return <HerbTable canEdit={canEdit} loading={loading} records={records} page={page} pageSize={pageSize} total={total} selectedRowKeys={selectedRowKeys} onSelectionChange={setSelectedRowKeys} onPageChange={handlePageChange} onView={setSelectedHerb} onEdit={openEditModal} />;
     }
     if (activeTab === "categories") {
       return <Table<DictItemApi> bordered={false} className={styles.table} columns={categoryColumns} dataSource={categories} loading={loading} pagination={false} rowKey="id" rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }} scroll={{ x: "max-content" }} size="middle" sticky />;
@@ -512,11 +544,11 @@ export function HerbResourceClient() {
     <div className={styles.herbPage}>
       <div className={`${styles.workspace} ${selectedHerb ? styles.workspaceWithDetail : ""}`}>
         <section className={styles.leftWorkspace}>
-          <ModuleHeroBanner actions={<Button icon={<PlusOutlined />} onClick={openCreateModal} type="primary">{T.create}{tabName}</Button>} description={T.desc} eyebrow="HERBAL RESOURCE CENTER" sealText={T.seal} title={T.title} />
+          <ModuleHeroBanner actions={canCreate ? <Button icon={<PlusOutlined />} onClick={openCreateModal} type="primary">{T.create}{tabName}</Button> : undefined} description={T.desc} eyebrow="HERBAL RESOURCE CENTER" sealText={T.seal} title={T.title} />
           <section className={styles.managementPanel}>
             <HerbResourceTabs activeTab={activeTab} onTabChange={setActiveTab} />
             {activeTab === "species" ? <HerbFilterBar categoryOptions={categoryOptions} onSearch={handleSearch} /> : null}
-            <HerbActionToolbar selectedCount={selectedRowKeys.length} createLabel={`${T.create}${tabName}`} onCreate={openCreateModal} onEdit={() => openEditModal()} onDelete={handleDelete} onExport={handleExport} onRefresh={() => void reloadCurrentTab()} />
+            <HerbActionToolbar canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} selectedCount={selectedRowKeys.length} createLabel={`${T.create}${tabName}`} onCreate={openCreateModal} onEdit={() => openEditModal()} onDelete={handleDelete} onExport={handleExport} onRefresh={() => void reloadCurrentTab()} />
           </section>
           <section className={styles.tableArea}>{renderTable()}</section>
         </section>

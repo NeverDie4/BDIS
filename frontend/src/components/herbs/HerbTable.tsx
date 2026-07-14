@@ -7,6 +7,7 @@ import styles from "./herbs.module.css";
 export type { HerbTableRecord } from "./types";
 
 type HerbTableProps = {
+  canEdit?: boolean;
   loading?: boolean;
   records?: HerbTableRecord[];
   page?: number;
@@ -24,6 +25,7 @@ function statusColor(status?: number) {
 }
 
 export function HerbTable({
+  canEdit = false,
   loading = false,
   records = [],
   page = 1,
@@ -103,9 +105,11 @@ export function HerbTable({
           <Button type="link" onClick={() => onView(record)}>
             查看
           </Button>
-          <Button type="link" onClick={() => onEdit(record)}>
-            编辑
-          </Button>
+          {canEdit ? (
+            <Button type="link" onClick={() => onEdit(record)}>
+              编辑
+            </Button>
+          ) : null}
         </Space>
       ),
     },

@@ -111,8 +111,15 @@ test("药材分类字典类型由独立前向迁移初始化", async () => {
     "V20260714_017__seed_herb_category_dictionary.sql",
   );
 
-  assert.match(migration, /INSERT\s+IGNORE\s+INTO\s+`dict_type`/i);
+  assert.match(migration, /INSERT\s+(?:IGNORE\s+)?INTO\s+`dict_type`/i);
   assert.match(migration, /'herb_category'/);
   assert.match(migration, /中药材分类/);
+  assert.match(migration, /INSERT\s+(?:IGNORE\s+)?INTO\s+`dict_item`/i);
+  assert.match(migration, /HERB_CAT_QINGRE/);
+  assert.match(migration, /HERB_CAT_BUYI/);
+  assert.match(migration, /HERB_CAT_HUOXUE/);
+  assert.match(migration, /SELECT\s+DISTINCT\s+category_code[\s\S]*FROM\s+herb_species/i);
+  assert.match(migration, /UPDATE\s+herb_species[\s\S]*SET\s+s\.category_id\s*=\s*item\.id/i);
+  assert.match(migration, /ON\s+DUPLICATE\s+KEY\s+UPDATE[\s\S]*is_deleted\s*=\s*0/i);
   assert.doesNotMatch(migration, /ALTER\s+TABLE|DROP\s+COLUMN/i);
 });

@@ -353,6 +353,28 @@ test("公开生长溯源页提供档案、错误状态、盖章和打印能力",
   assert.match(publicTraceCssSource, /\.noPrint\s*\{\s*display:\s*none\s*!important/);
 });
 
+test("公开生长溯源页统一空值、中文状态和可信档案条件", () => {
+  assert.match(publicTracePageSource, /const EMPTY_VALUE = "—"/);
+  assert.match(publicTracePageSource, /statusLabel\(archive\.latestAuditResult\)/);
+  assert.doesNotMatch(publicTracePageSource, /archive\.latestAuditResult \|\| "-"/);
+  assert.match(publicTracePageSource, /const showTrustedStamp =/);
+  assert.match(publicTracePageSource, /archive\.auditStatus === "approved" && isArchiveComplete\(archive\)/);
+  assert.match(publicTracePageSource, /showTrustedStamp \?/);
+});
+
+test("公开生长溯源页仅在任务具备连续阶段时显示数字生命档案入口", () => {
+  assert.match(dataSource, /taskTraceCode\?: string/);
+  assert.match(dataSource, /validGrowthStageCount\?: number/);
+  assert.match(publicTracePageSource, /archive\.validGrowthStageCount >= 2/);
+  assert.match(publicTracePageSource, /\/trace\/digital-life\/\$\{archive\.taskTraceCode\}/);
+  assert.match(publicTracePageSource, /查看完整生长历程/);
+});
+
+test("公开生长溯源页现场图片区按实际内容自适应", () => {
+  assert.match(publicTracePageSource, /styles\.imageSection/);
+  assert.match(publicTraceCssSource, /\.imageSection\s*\{[^}]*height:\s*fit-content;[^}]*min-height:\s*0;/s);
+});
+
 test("公开生长溯源页面必须注册为免登录路由", () => {
   assert.match(publicRoutesSource, /path:\s*"\/trace\/growth\/\[traceCode\]"[\s\S]*public:\s*true/);
 });
