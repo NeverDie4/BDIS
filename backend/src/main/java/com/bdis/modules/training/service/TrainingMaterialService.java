@@ -9,8 +9,12 @@ import com.bdis.modules.training.vo.TrainingMaterialListVO;
 
 public interface TrainingMaterialService {
     PageResult<TrainingMaterialListVO> page(TrainingMaterialQuery query);
+
     TrainingMaterialDetailVO getDetail(Long id);
+
     Long create(TrainingMaterialCreateRequest request);
+
     void update(Long id, TrainingMaterialUpdateRequest request);
+
     void delete(Long id);
 }

@@ -7,9 +7,7 @@ import org.apache.ibatis.annotations.Select;
 
 public interface CourseMapper extends BaseMapper<CourseEntity> {
 
-    @Select(
-            "SELECT * FROM edu_course "
-                    + "WHERE course_no = #{courseNo} LIMIT 1")
+    @Select("SELECT * FROM edu_course " + "WHERE course_no = #{courseNo} LIMIT 1")
     CourseEntity selectByCourseNoIncludingDeleted(@Param("courseNo") String courseNo);
 
     @Select(

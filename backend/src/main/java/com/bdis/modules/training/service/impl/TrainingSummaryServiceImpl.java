@@ -63,7 +63,8 @@ public class TrainingSummaryServiceImpl implements TrainingSummaryService {
         if (summary.getAverageProgress() == null) {
             summary.setAverageProgress(BigDecimal.ZERO.setScale(2));
         } else {
-            summary.setAverageProgress(summary.getAverageProgress().setScale(2, RoundingMode.HALF_UP));
+            summary.setAverageProgress(
+                    summary.getAverageProgress().setScale(2, RoundingMode.HALF_UP));
         }
         if (summary.getAverageScore() != null) {
             summary.setAverageScore(summary.getAverageScore().setScale(2, RoundingMode.HALF_UP));

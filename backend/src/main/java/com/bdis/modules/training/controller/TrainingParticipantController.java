@@ -23,8 +23,7 @@ public class TrainingParticipantController {
     private final AuthorizationService authorizationService;
 
     public TrainingParticipantController(
-            TrainingRecordService recordService,
-            AuthorizationService authorizationService) {
+            TrainingRecordService recordService, AuthorizationService authorizationService) {
         this.recordService = recordService;
         this.authorizationService = authorizationService;
     }

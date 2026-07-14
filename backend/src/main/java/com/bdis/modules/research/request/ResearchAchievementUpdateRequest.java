@@ -8,13 +8,27 @@ import lombok.Data;
 
 @Data
 public class ResearchAchievementUpdateRequest {
-    @NotBlank @Size(max = 200) private String achievementName;
-    @NotBlank @Size(max = 50) private String achievementType;
-    @Size(max = 50) private String achievementStage;
-    @NotBlank @Size(max = 50) private String achievementStatus;
+    @NotBlank
+    @Size(max = 200)
+    private String achievementName;
+
+    @NotBlank
+    @Size(max = 50)
+    private String achievementType;
+
+    @Size(max = 50)
+    private String achievementStage;
+
+    @NotBlank
+    @Size(max = 50)
+    private String achievementStatus;
+
     private String description;
     private Long fileId;
     private LocalDateTime publishedAt;
-    @Size(max = 500) private String remark;
+
+    @Size(max = 500)
+    private String remark;
+
     @NotNull private Integer version;
 }

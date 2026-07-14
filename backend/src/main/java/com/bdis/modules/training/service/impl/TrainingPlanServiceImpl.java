@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.mapper.CourseMapper;
 import com.bdis.modules.training.constant.TrainingPlanType;
@@ -18,12 +18,12 @@ import com.bdis.modules.training.constant.TrainingPublishStatus;
 import com.bdis.modules.training.entity.TrainingPlanEntity;
 import com.bdis.modules.training.mapper.TrainingPlanMapper;
 import com.bdis.modules.training.query.TrainingPlanQuery;
-import com.bdis.modules.training.request.TrainingPlanCreateRequest;
 import com.bdis.modules.training.request.TrainingPlanCloseRequest;
+import com.bdis.modules.training.request.TrainingPlanCreateRequest;
 import com.bdis.modules.training.request.TrainingPlanPublishRequest;
 import com.bdis.modules.training.request.TrainingPlanUpdateRequest;
-import com.bdis.modules.training.service.TrainingPlanService;
 import com.bdis.modules.training.service.TrainingPlanMaterialService;
+import com.bdis.modules.training.service.TrainingPlanService;
 import com.bdis.modules.training.vo.TrainingPlanDetailVO;
 import com.bdis.modules.training.vo.TrainingPlanListVO;
 import com.bdis.modules.training.vo.TrainingPlanMaterialVO;
@@ -94,7 +94,9 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         vo.setPublishedByName(publisher == null ? null : publisher.getRealName());
         vo.setParticipantCount(defaultZero(planMapper.countRecords(id)));
         List<TrainingPlanMaterialVO> materials = planMaterialService.list(id);
-        if (materials == null) materials = List.of();
+        if (materials == null) {
+            materials = List.of();
+        }
         vo.setMaterials(materials);
         vo.setMaterialCount((long) materials.size());
         vo.setRequiredMaterialCount(
@@ -191,7 +193,8 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
             throw conflict("Training plan with material bindings cannot be deleted");
         }
         Long operatorId = requireCurrentOperator();
-        if (planMapper.logicalDelete(id, entity.getVersion(), LocalDateTime.now(), operatorId) == 0) {
+        if (planMapper.logicalDelete(id, entity.getVersion(), LocalDateTime.now(), operatorId)
+                == 0) {
             throw conflict("Training plan version conflict");
         }
         recordAudit("DELETE", id);
@@ -215,7 +218,8 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
             validCourse = course != null && Objects.equals(course.getStatus(), 1);
         }
         if (!validCourse && !planMaterialService.hasValidMaterial(id)) {
-            throw conflict("Training plan requires a course or at least one material before publishing");
+            throw conflict(
+                    "Training plan requires a course or at least one material before publishing");
         }
         Long operatorId = requireCurrentOperator();
         if (planMapper.publish(id, request.getVersion(), LocalDateTime.now(), operatorId) == 0) {
@@ -278,9 +282,15 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     }
 
     private void validateQuery(TrainingPlanQuery query) {
-        if (query.getPageNo() == null || query.getPageNo() < 1) query.setPageNo(1);
-        if (query.getPageSize() == null || query.getPageSize() < 1) query.setPageSize(10);
-        if (query.getPageSize() > 100) query.setPageSize(100);
+        if (query.getPageNo() == null || query.getPageNo() < 1) {
+            query.setPageNo(1);
+        }
+        if (query.getPageSize() == null || query.getPageSize() < 1) {
+            query.setPageSize(10);
+        }
+        if (query.getPageSize() > 100) {
+            query.setPageSize(100);
+        }
         if (StringUtils.hasText(query.getPlanType())
                 && !TrainingPlanType.VALUES.contains(query.getPlanType())) {
             throw new BusinessException("Unsupported training plan type");
@@ -295,7 +305,9 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
 
     private void validateReferences(Long ownerId, Long trainerId, Long courseId) {
         requireActiveUser(ownerId, "Training owner");
-        if (trainerId != null) requireActiveUser(trainerId, "Training trainer");
+        if (trainerId != null) {
+            requireActiveUser(trainerId, "Training trainer");
+        }
         if (courseId != null) {
             CourseEntity course = courseMapper.selectById(courseId);
             if (course == null || !Objects.equals(course.getStatus(), 1)) {
@@ -311,7 +323,9 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     }
 
     private UserEntity requireActiveUser(Long id, String label) {
-        if (id == null || id <= 0) throw new ResourceNotFoundException(label + " not found");
+        if (id == null || id <= 0) {
+            throw new ResourceNotFoundException(label + " not found");
+        }
         UserEntity user = userMapper.selectById(id);
         if (user == null || !Objects.equals(user.getStatus(), 1)) {
             throw new ResourceNotFoundException(label + " not found or inactive");
@@ -326,7 +340,9 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     }
 
     private TrainingPlanEntity requireActive(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training plan id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training plan id must be positive");
+        }
         TrainingPlanEntity entity = planMapper.selectByIdIncludingDeleted(id);
         if (entity == null || Objects.equals(entity.getIsDeleted(), 1)) {
             throw new ResourceNotFoundException("Training plan not found");
@@ -335,25 +351,47 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
     }
 
     private void requireDraft(TrainingPlanEntity entity, String message) {
-        if (!TrainingPublishStatus.DRAFT.equals(entity.getPublishStatus())) throw conflict(message);
+        if (!TrainingPublishStatus.DRAFT.equals(entity.getPublishStatus())) {
+            throw conflict(message);
+        }
     }
 
     private LambdaQueryWrapper<TrainingPlanEntity> buildWrapper(TrainingPlanQuery query) {
         LambdaQueryWrapper<TrainingPlanEntity> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(query.getKeyword())) {
-            wrapper.and(w -> w.like(TrainingPlanEntity::getPlanNo, query.getKeyword())
-                    .or().like(TrainingPlanEntity::getPlanName, query.getKeyword()));
+            wrapper.and(
+                    w ->
+                            w.like(TrainingPlanEntity::getPlanNo, query.getKeyword())
+                                    .or()
+                                    .like(TrainingPlanEntity::getPlanName, query.getKeyword()));
         }
-        wrapper.eq(StringUtils.hasText(query.getPlanType()), TrainingPlanEntity::getPlanType, query.getPlanType());
-        wrapper.eq(StringUtils.hasText(query.getPublishStatus()), TrainingPlanEntity::getPublishStatus, query.getPublishStatus());
+        wrapper.eq(
+                StringUtils.hasText(query.getPlanType()),
+                TrainingPlanEntity::getPlanType,
+                query.getPlanType());
+        wrapper.eq(
+                StringUtils.hasText(query.getPublishStatus()),
+                TrainingPlanEntity::getPublishStatus,
+                query.getPublishStatus());
         wrapper.eq(query.getOwnerId() != null, TrainingPlanEntity::getOwnerId, query.getOwnerId());
-        wrapper.eq(query.getTrainerId() != null, TrainingPlanEntity::getTrainerId, query.getTrainerId());
-        wrapper.ge(query.getStartedFrom() != null, TrainingPlanEntity::getStartedAt, query.getStartedFrom());
-        wrapper.le(query.getStartedTo() != null, TrainingPlanEntity::getStartedAt, query.getStartedTo());
-        wrapper.ge(query.getEndedFrom() != null, TrainingPlanEntity::getEndedAt, query.getEndedFrom());
+        wrapper.eq(
+                query.getTrainerId() != null,
+                TrainingPlanEntity::getTrainerId,
+                query.getTrainerId());
+        wrapper.ge(
+                query.getStartedFrom() != null,
+                TrainingPlanEntity::getStartedAt,
+                query.getStartedFrom());
+        wrapper.le(
+                query.getStartedTo() != null,
+                TrainingPlanEntity::getStartedAt,
+                query.getStartedTo());
+        wrapper.ge(
+                query.getEndedFrom() != null, TrainingPlanEntity::getEndedAt, query.getEndedFrom());
         wrapper.le(query.getEndedTo() != null, TrainingPlanEntity::getEndedAt, query.getEndedTo());
         applyUserScope(wrapper);
-        wrapper.orderByDesc(TrainingPlanEntity::getStartedAt).orderByDesc(TrainingPlanEntity::getId);
+        wrapper.orderByDesc(TrainingPlanEntity::getStartedAt)
+                .orderByDesc(TrainingPlanEntity::getId);
         return wrapper;
     }
 
@@ -362,10 +400,16 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
-        wrapper.and(scope -> scope.eq(TrainingPlanEntity::getOwnerId, userId)
-                .or().eq(TrainingPlanEntity::getTrainerId, userId)
-                .or().apply("EXISTS (SELECT 1 FROM edu_training_record r "
-                        + "WHERE r.plan_id = id AND r.user_id = {0} AND r.is_deleted = 0)", userId));
+        wrapper.and(
+                scope ->
+                        scope.eq(TrainingPlanEntity::getOwnerId, userId)
+                                .or()
+                                .eq(TrainingPlanEntity::getTrainerId, userId)
+                                .or()
+                                .apply(
+                                        "EXISTS (SELECT 1 FROM edu_training_record r "
+                                                + "WHERE r.plan_id = id AND r.user_id = {0} AND r.is_deleted = 0)",
+                                        userId));
     }
 
     private void requirePlanAccess(TrainingPlanEntity plan, boolean manage) {
@@ -373,14 +417,16 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
-        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+        if (Objects.equals(userId, plan.getOwnerId())
+                || Objects.equals(userId, plan.getTrainerId())) {
             return;
         }
         if (!manage && planMapper.countActiveRecordsForUser(plan.getId(), userId) > 0) {
             return;
         }
         throw new ForbiddenException(
-                manage ? "Only the training plan owner can manage this plan"
+                manage
+                        ? "Only the training plan owner can manage this plan"
                         : "Training plan is outside the current user's scope");
     }
 
@@ -397,15 +443,29 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         Set<Long> userIds = new LinkedHashSet<>();
         Set<Long> courseIds = new LinkedHashSet<>();
         for (TrainingPlanEntity entity : entities) {
-            if (entity.getOwnerId() != null) userIds.add(entity.getOwnerId());
-            if (entity.getTrainerId() != null) userIds.add(entity.getTrainerId());
-            if (entity.getPublishedBy() != null) userIds.add(entity.getPublishedBy());
-            if (entity.getCourseId() != null) courseIds.add(entity.getCourseId());
+            if (entity.getOwnerId() != null) {
+                userIds.add(entity.getOwnerId());
+            }
+            if (entity.getTrainerId() != null) {
+                userIds.add(entity.getTrainerId());
+            }
+            if (entity.getPublishedBy() != null) {
+                userIds.add(entity.getPublishedBy());
+            }
+            if (entity.getCourseId() != null) {
+                courseIds.add(entity.getCourseId());
+            }
         }
         Map<Long, UserEntity> users = new HashMap<>();
         Map<Long, CourseEntity> courses = new HashMap<>();
-        if (!userIds.isEmpty()) userMapper.selectBatchIds(userIds).forEach(value -> users.put(value.getId(), value));
-        if (!courseIds.isEmpty()) courseMapper.selectBatchIds(courseIds).forEach(value -> courses.put(value.getId(), value));
+        if (!userIds.isEmpty()) {
+            userMapper.selectBatchIds(userIds).forEach(value -> users.put(value.getId(), value));
+        }
+        if (!courseIds.isEmpty()) {
+            courseMapper
+                    .selectBatchIds(courseIds)
+                    .forEach(value -> courses.put(value.getId(), value));
+        }
         return new Lookup(users, courses);
     }
 

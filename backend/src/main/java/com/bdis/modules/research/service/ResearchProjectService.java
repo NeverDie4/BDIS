@@ -11,9 +11,14 @@ import com.bdis.modules.research.vo.ResearchProjectListVO;
 
 public interface ResearchProjectService {
     PageResult<ResearchProjectListVO> page(ResearchProjectQuery query);
+
     ResearchProjectDetailVO getDetail(Long id);
+
     Long create(ResearchProjectCreateRequest request);
+
     void update(Long id, ResearchProjectUpdateRequest request);
+
     void changeLeader(Long id, ResearchProjectLeaderChangeRequest request);
+
     void changeStatus(Long id, ResearchProjectStatusChangeRequest request);
 }

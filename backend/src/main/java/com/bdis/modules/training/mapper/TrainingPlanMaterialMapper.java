@@ -8,7 +8,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface TrainingPlanMaterialMapper extends BaseMapper<TrainingPlanMaterialEntity> {
-    @Select("""
+    @Select(
+            """
             SELECT * FROM rel_training_plan_material
             WHERE plan_id = #{planId} AND material_id = #{materialId}
             LIMIT 1
@@ -16,7 +17,8 @@ public interface TrainingPlanMaterialMapper extends BaseMapper<TrainingPlanMater
     TrainingPlanMaterialEntity selectByPlanAndMaterial(
             @Param("planId") Long planId, @Param("materialId") Long materialId);
 
-    @Select("""
+    @Select(
+            """
             SELECT r.id AS binding_id, r.plan_id, r.material_id,
                    m.material_no, m.material_name, m.material_type,
                    m.file_id, f.file_name, r.is_required, r.sort_order,
@@ -30,7 +32,8 @@ public interface TrainingPlanMaterialMapper extends BaseMapper<TrainingPlanMater
             """)
     List<TrainingPlanMaterialVO> selectListVO(@Param("planId") Long planId);
 
-    @Select("""
+    @Select(
+            """
             SELECT COUNT(1)
             FROM rel_training_plan_material r
             JOIN edu_training_plan p ON p.id = r.plan_id AND p.is_deleted = 0
@@ -38,7 +41,8 @@ public interface TrainingPlanMaterialMapper extends BaseMapper<TrainingPlanMater
             """)
     Long countActivePlanBindings(@Param("materialId") Long materialId);
 
-    @Select("""
+    @Select(
+            """
             SELECT COUNT(1)
             FROM rel_training_plan_material r
             JOIN edu_training_material m

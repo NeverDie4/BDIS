@@ -7,7 +7,8 @@ import org.apache.ibatis.annotations.Select;
 
 public interface ProjectMemberMapper extends BaseMapper<ProjectMemberEntity> {
 
-    @Select("SELECT * FROM rel_project_member WHERE project_id = #{projectId} AND user_id = #{userId} LIMIT 1")
+    @Select(
+            "SELECT * FROM rel_project_member WHERE project_id = #{projectId} AND user_id = #{userId} LIMIT 1")
     ProjectMemberEntity selectByProjectIdAndUserId(
             @Param("projectId") Long projectId, @Param("userId") Long userId);
 }

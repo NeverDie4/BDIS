@@ -6,5 +6,7 @@ import lombok.Data;
 
 @Data
 public class TrainingPlanPublishRequest {
-    @NotNull @Min(0) private Integer version;
+    @NotNull
+    @Min(0)
+    private Integer version;
 }

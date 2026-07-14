@@ -4,18 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
-import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.query.ResearchProjectQuery;
@@ -23,8 +23,8 @@ import com.bdis.modules.research.request.ResearchProjectCreateRequest;
 import com.bdis.modules.research.request.ResearchProjectLeaderChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
-import com.bdis.modules.research.service.ProjectMemberService;
 import com.bdis.modules.research.service.ProjectMaterialService;
+import com.bdis.modules.research.service.ProjectMemberService;
 import com.bdis.modules.research.service.ResearchAchievementService;
 import com.bdis.modules.research.service.ResearchProjectService;
 import com.bdis.modules.research.vo.ResearchProjectDetailVO;
@@ -66,7 +66,15 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             ProjectMemberService memberService,
             ProjectMaterialService materialService,
             AuditLogService auditLogService) {
-        this(projectMapper, memberMapper, userMapper, herbSpeciesMapper, memberService, materialService, null, auditLogService);
+        this(
+                projectMapper,
+                memberMapper,
+                userMapper,
+                herbSpeciesMapper,
+                memberService,
+                materialService,
+                null,
+                auditLogService);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -92,22 +100,47 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     @Override
     public PageResult<ResearchProjectListVO> page(ResearchProjectQuery query) {
         ResearchProjectQuery safe = query == null ? new ResearchProjectQuery() : query;
-        if (safe.getPageNo() == null || safe.getPageNo() < 1) safe.setPageNo(1);
-        if (safe.getPageSize() == null || safe.getPageSize() < 1) safe.setPageSize(10);
-        Page<ResearchProjectEntity> page = projectMapper.selectPage(
-                Page.of(safe.getPageNo(), safe.getPageSize()), buildWrapper(safe));
+        if (safe.getPageNo() == null || safe.getPageNo() < 1) {
+            safe.setPageNo(1);
+        }
+        if (safe.getPageSize() == null || safe.getPageSize() < 1) {
+            safe.setPageSize(10);
+        }
+        Page<ResearchProjectEntity> page =
+                projectMapper.selectPage(
+                        Page.of(safe.getPageNo(), safe.getPageSize()), buildWrapper(safe));
 
         Map<Long, UserEntity> users = new HashMap<>();
         Map<Long, HerbEntity> herbs = new HashMap<>();
-        List<Long> userIds = page.getRecords().stream().map(ResearchProjectEntity::getLeaderId)
-                .filter(Objects::nonNull).distinct().toList();
-        List<Long> herbIds = page.getRecords().stream().map(ResearchProjectEntity::getSpeciesId)
-                .filter(Objects::nonNull).distinct().toList();
-        if (!userIds.isEmpty()) userMapper.selectBatchIds(userIds).forEach(user -> users.put(user.getId(), user));
-        if (!herbIds.isEmpty()) herbSpeciesMapper.selectBatchIds(herbIds).forEach(herb -> herbs.put(herb.getId(), herb));
-        List<ResearchProjectListVO> records = page.getRecords().stream()
-                .map(entity -> toListVO(entity, users.get(entity.getLeaderId()), herbs.get(entity.getSpeciesId())))
-                .toList();
+        List<Long> userIds =
+                page.getRecords().stream()
+                        .map(ResearchProjectEntity::getLeaderId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        List<Long> herbIds =
+                page.getRecords().stream()
+                        .map(ResearchProjectEntity::getSpeciesId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        if (!userIds.isEmpty()) {
+            userMapper.selectBatchIds(userIds).forEach(user -> users.put(user.getId(), user));
+        }
+        if (!herbIds.isEmpty()) {
+            herbSpeciesMapper
+                    .selectBatchIds(herbIds)
+                    .forEach(herb -> herbs.put(herb.getId(), herb));
+        }
+        List<ResearchProjectListVO> records =
+                page.getRecords().stream()
+                        .map(
+                                entity ->
+                                        toListVO(
+                                                entity,
+                                                users.get(entity.getLeaderId()),
+                                                herbs.get(entity.getSpeciesId())))
+                        .toList();
         return PageResult.of(records, page);
     }
 
@@ -115,8 +148,12 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     public ResearchProjectDetailVO getDetail(Long id) {
         ResearchProjectEntity entity = requireActive(id);
         requireProjectAccess(entity, false);
-        UserEntity leader = entity.getLeaderId() == null ? null : userMapper.selectById(entity.getLeaderId());
-        HerbEntity species = entity.getSpeciesId() == null ? null : herbSpeciesMapper.selectById(entity.getSpeciesId());
+        UserEntity leader =
+                entity.getLeaderId() == null ? null : userMapper.selectById(entity.getLeaderId());
+        HerbEntity species =
+                entity.getSpeciesId() == null
+                        ? null
+                        : herbSpeciesMapper.selectById(entity.getSpeciesId());
         ResearchProjectDetailVO vo = new ResearchProjectDetailVO();
         copy(entity, vo, leader, species);
         vo.setMembers(memberService.list(id, null));
@@ -169,7 +206,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         relation.setCreatedBy(CurrentUserUtils.currentUserId());
         relation.setRemark("Project leader");
         if (memberMapper.insert(relation) == 0) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "Failed to create leader membership");
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Failed to create leader membership");
         }
         recordAudit("CREATE", entity.getId());
         return entity.getId();
@@ -181,12 +219,15 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         ResearchProjectEntity entity = requireActive(id);
         requireProjectAccess(entity, true);
         ResearchProjectStatus.assertMutable(entity);
-        if (request == null) throw new BusinessException("Project update request is required");
+        if (request == null) {
+            throw new BusinessException("Project update request is required");
+        }
         if (request.getVersion() == null
                 || !Objects.equals(request.getVersion(), entity.getVersion())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Project version conflict");
         }
-        if (!StringUtils.hasText(request.getProjectName()) || !StringUtils.hasText(request.getProjectType())) {
+        if (!StringUtils.hasText(request.getProjectName())
+                || !StringUtils.hasText(request.getProjectType())) {
             throw new BusinessException("Project name and type are required");
         }
         validateProjectType(request.getProjectType());
@@ -201,7 +242,9 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         entity.setRemark(request.getRemark());
         entity.setUpdatedAt(LocalDateTime.now());
         entity.setUpdatedBy(CurrentUserUtils.currentUserId());
-        if (projectMapper.updateById(entity) == 0) throw new BusinessException(ResultCodeEnum.CONFLICT, "Project update failed");
+        if (projectMapper.updateById(entity) == 0) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project update failed");
+        }
         recordAudit("UPDATE", id);
     }
 
@@ -214,13 +257,19 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         validateLeaderChangeRequest(request, project);
         UserEntity newLeader = requireLeader(request.getNewLeaderId());
         if (Objects.equals(project.getLeaderId(), newLeader.getId())) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "New leader must differ from current leader");
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "New leader must differ from current leader");
         }
-        ProjectMemberEntity oldLeader = memberMapper.selectByProjectIdAndUserId(id, project.getLeaderId());
-        if (oldLeader == null || !"leader".equals(oldLeader.getMemberRole()) || !"active".equals(oldLeader.getMemberStatus())) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "Current project leader membership is invalid");
+        ProjectMemberEntity oldLeader =
+                memberMapper.selectByProjectIdAndUserId(id, project.getLeaderId());
+        if (oldLeader == null
+                || !"leader".equals(oldLeader.getMemberRole())
+                || !"active".equals(oldLeader.getMemberStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Current project leader membership is invalid");
         }
-        ProjectMemberEntity newLeaderRelation = memberMapper.selectByProjectIdAndUserId(id, newLeader.getId());
+        ProjectMemberEntity newLeaderRelation =
+                memberMapper.selectByProjectIdAndUserId(id, newLeader.getId());
         LocalDateTime now = LocalDateTime.now();
         project.setLeaderId(newLeader.getId());
         project.setUpdatedAt(now);
@@ -243,7 +292,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             newLeaderRelation.setCreatedBy(CurrentUserUtils.currentUserId());
             newLeaderRelation.setRemark("Project leader");
             if (memberMapper.insert(newLeaderRelation) == 0) {
-                throw new BusinessException(ResultCodeEnum.CONFLICT, "New leader membership create failed");
+                throw new BusinessException(
+                        ResultCodeEnum.CONFLICT, "New leader membership create failed");
             }
         } else {
             newLeaderRelation.setMemberRole("leader");
@@ -251,7 +301,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             newLeaderRelation.setJoinedAt(now);
             newLeaderRelation.setLeftAt(null);
             if (memberMapper.updateById(newLeaderRelation) == 0) {
-                throw new BusinessException(ResultCodeEnum.CONFLICT, "New leader membership update failed");
+                throw new BusinessException(
+                        ResultCodeEnum.CONFLICT, "New leader membership update failed");
             }
         }
         recordAudit("CHANGE_LEADER", id);
@@ -262,7 +313,9 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     public void changeStatus(Long id, ResearchProjectStatusChangeRequest request) {
         ResearchProjectEntity project = requireActive(id);
         requireProjectAccess(project, true);
-        if (request == null || !StringUtils.hasText(request.getTargetStatus()) || request.getVersion() == null) {
+        if (request == null
+                || !StringUtils.hasText(request.getTargetStatus())
+                || request.getVersion() == null) {
             throw new BusinessException("Target status and version are required");
         }
         if (!Objects.equals(request.getVersion(), project.getVersion())) {
@@ -271,8 +324,10 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         String target = request.getTargetStatus().trim();
         ResearchProjectStatus.validateTransition(project.getProjectStatus(), target);
         if ((ResearchProjectStatus.SUSPENDED.equals(target)
-                || ResearchProjectStatus.COMPLETED.equals(target)
-                || ResearchProjectStatus.ONGOING.equals(target) && ResearchProjectStatus.SUSPENDED.equals(project.getProjectStatus()))
+                        || ResearchProjectStatus.COMPLETED.equals(target)
+                        || ResearchProjectStatus.ONGOING.equals(target)
+                                && ResearchProjectStatus.SUSPENDED.equals(
+                                        project.getProjectStatus()))
                 && !StringUtils.hasText(request.getReason())) {
             throw new BusinessException("Status change reason is required");
         }
@@ -292,8 +347,12 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         recordAudit("CHANGE_STATUS", id);
     }
 
-    private void validateLeaderChangeRequest(ResearchProjectLeaderChangeRequest request, ResearchProjectEntity project) {
-        if (request == null || request.getNewLeaderId() == null || !StringUtils.hasText(request.getReason()) || request.getVersion() == null) {
+    private void validateLeaderChangeRequest(
+            ResearchProjectLeaderChangeRequest request, ResearchProjectEntity project) {
+        if (request == null
+                || request.getNewLeaderId() == null
+                || !StringUtils.hasText(request.getReason())
+                || request.getVersion() == null) {
             throw new BusinessException("New leader, reason and version are required");
         }
         if (!Objects.equals(request.getVersion(), project.getVersion())) {
@@ -303,7 +362,9 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     }
 
     private String resolveOldLeaderRole(String role) {
-        if (!StringUtils.hasText(role)) return "researcher";
+        if (!StringUtils.hasText(role)) {
+            return "researcher";
+        }
         if (!Set.of("researcher", "assistant").contains(role)) {
             throw new BusinessException("Old leader role must be researcher or assistant");
         }
@@ -317,20 +378,28 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         validateTimeRange(project.getStartedAt(), project.getEndedAt());
         requireLeader(project.getLeaderId());
         validateLeaderRelation(project);
-        Long activeMemberCount = memberMapper.selectCount(new LambdaQueryWrapper<ProjectMemberEntity>()
-                .eq(ProjectMemberEntity::getProjectId, project.getId())
-                .eq(ProjectMemberEntity::getMemberStatus, "active"));
+        Long activeMemberCount =
+                memberMapper.selectCount(
+                        new LambdaQueryWrapper<ProjectMemberEntity>()
+                                .eq(ProjectMemberEntity::getProjectId, project.getId())
+                                .eq(ProjectMemberEntity::getMemberStatus, "active"));
         if (activeMemberCount == null || activeMemberCount == 0) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project requires at least one active member before start");
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT,
+                    "Project requires at least one active member before start");
         }
         validateSpecies(project.getSpeciesId());
     }
 
     private void validateLeaderRelation(ResearchProjectEntity project) {
         requireLeader(project.getLeaderId());
-        ProjectMemberEntity relation = memberMapper.selectByProjectIdAndUserId(project.getId(), project.getLeaderId());
-        if (relation == null || !"leader".equals(relation.getMemberRole()) || !"active".equals(relation.getMemberStatus())) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project active leader membership is required");
+        ProjectMemberEntity relation =
+                memberMapper.selectByProjectIdAndUserId(project.getId(), project.getLeaderId());
+        if (relation == null
+                || !"leader".equals(relation.getMemberRole())
+                || !"active".equals(relation.getMemberStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Project active leader membership is required");
         }
     }
 
@@ -340,14 +409,20 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
 
     private ResearchProjectEntity requireActive(Long id) {
         ResearchProjectEntity entity = projectMapper.selectById(id);
-        if (entity == null) throw new ResourceNotFoundException("Research project not found");
+        if (entity == null) {
+            throw new ResourceNotFoundException("Research project not found");
+        }
         return entity;
     }
 
     private void validateCreate(ResearchProjectCreateRequest request) {
-        if (request == null || !StringUtils.hasText(request.getProjectNo())
-                || !StringUtils.hasText(request.getProjectName()) || !StringUtils.hasText(request.getProjectType())
-                || request.getLeaderId() == null) throw new BusinessException("Project number, name, type and leader are required");
+        if (request == null
+                || !StringUtils.hasText(request.getProjectNo())
+                || !StringUtils.hasText(request.getProjectName())
+                || !StringUtils.hasText(request.getProjectType())
+                || request.getLeaderId() == null) {
+            throw new BusinessException("Project number, name, type and leader are required");
+        }
     }
 
     private void ensureProjectNoAvailable(String projectNo) {
@@ -358,39 +433,78 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
 
     private UserEntity requireLeader(Long leaderId) {
         UserEntity user = userMapper.selectById(leaderId);
-        if (user == null || !Objects.equals(user.getStatus(), 1) || !Set.of("teacher", "researcher").contains(user.getUserType())) {
-            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "Leader must be an enabled teacher or researcher");
+        if (user == null
+                || !Objects.equals(user.getStatus(), 1)
+                || !Set.of("teacher", "researcher").contains(user.getUserType())) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR,
+                    "Leader must be an enabled teacher or researcher");
         }
         return user;
     }
 
     private void validateSpecies(Long speciesId) {
-        if (speciesId == null) return;
+        if (speciesId == null) {
+            return;
+        }
         HerbEntity herb = herbSpeciesMapper.selectActiveById(speciesId);
-        if (herb == null || !Objects.equals(herb.getStatus(), 1) || !Objects.equals(herb.getIsDeleted(), 0)) {
+        if (herb == null
+                || !Objects.equals(herb.getStatus(), 1)
+                || !Objects.equals(herb.getIsDeleted(), 0)) {
             throw new ResourceNotFoundException("Herb species not found or inactive");
         }
     }
 
     private void validateProjectType(String type) {
-        if (!PROJECT_TYPES.contains(type.trim())) throw new BusinessException("Invalid project type");
+        if (!PROJECT_TYPES.contains(type.trim())) {
+            throw new BusinessException("Invalid project type");
+        }
     }
 
     private void validateTimeRange(LocalDateTime startedAt, LocalDateTime endedAt) {
-        if (startedAt != null && endedAt != null && startedAt.isAfter(endedAt)) throw new BusinessException("Start time must be before end time");
+        if (startedAt != null && endedAt != null && startedAt.isAfter(endedAt)) {
+            throw new BusinessException("Start time must be before end time");
+        }
     }
 
     private LambdaQueryWrapper<ResearchProjectEntity> buildWrapper(ResearchProjectQuery query) {
         LambdaQueryWrapper<ResearchProjectEntity> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(query.getKeyword())) wrapper.and(w -> w.like(ResearchProjectEntity::getProjectNo, query.getKeyword()).or().like(ResearchProjectEntity::getProjectName, query.getKeyword()));
-        wrapper.eq(StringUtils.hasText(query.getProjectType()), ResearchProjectEntity::getProjectType, query.getProjectType());
-        wrapper.eq(query.getLeaderId() != null, ResearchProjectEntity::getLeaderId, query.getLeaderId());
-        wrapper.eq(query.getSpeciesId() != null, ResearchProjectEntity::getSpeciesId, query.getSpeciesId());
-        wrapper.eq(StringUtils.hasText(query.getProjectStatus()), ResearchProjectEntity::getProjectStatus, query.getProjectStatus());
-        wrapper.ge(query.getStartedFrom() != null, ResearchProjectEntity::getStartedAt, query.getStartedFrom());
-        wrapper.le(query.getStartedTo() != null, ResearchProjectEntity::getStartedAt, query.getStartedTo());
+        if (StringUtils.hasText(query.getKeyword())) {
+            wrapper.and(
+                    w ->
+                            w.like(ResearchProjectEntity::getProjectNo, query.getKeyword())
+                                    .or()
+                                    .like(
+                                            ResearchProjectEntity::getProjectName,
+                                            query.getKeyword()));
+        }
+        wrapper.eq(
+                StringUtils.hasText(query.getProjectType()),
+                ResearchProjectEntity::getProjectType,
+                query.getProjectType());
+        wrapper.eq(
+                query.getLeaderId() != null,
+                ResearchProjectEntity::getLeaderId,
+                query.getLeaderId());
+        wrapper.eq(
+                query.getSpeciesId() != null,
+                ResearchProjectEntity::getSpeciesId,
+                query.getSpeciesId());
+        wrapper.eq(
+                StringUtils.hasText(query.getProjectStatus()),
+                ResearchProjectEntity::getProjectStatus,
+                query.getProjectStatus());
+        wrapper.ge(
+                query.getStartedFrom() != null,
+                ResearchProjectEntity::getStartedAt,
+                query.getStartedFrom());
+        wrapper.le(
+                query.getStartedTo() != null,
+                ResearchProjectEntity::getStartedAt,
+                query.getStartedTo());
         applyUserScope(wrapper);
-        return wrapper.orderByDesc(ResearchProjectEntity::getCreatedAt).orderByDesc(ResearchProjectEntity::getId);
+        return wrapper.orderByDesc(ResearchProjectEntity::getCreatedAt)
+                .orderByDesc(ResearchProjectEntity::getId);
     }
 
     private void applyUserScope(LambdaQueryWrapper<ResearchProjectEntity> wrapper) {
@@ -413,12 +527,14 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         if (Objects.equals(userId, project.getLeaderId())) {
             return;
         }
-        ProjectMemberEntity member = memberMapper.selectByProjectIdAndUserId(project.getId(), userId);
+        ProjectMemberEntity member =
+                memberMapper.selectByProjectIdAndUserId(project.getId(), userId);
         if (!manage && member != null && "active".equals(member.getMemberStatus())) {
             return;
         }
         throw new ForbiddenException(
-                manage ? "Only the project leader can manage this project"
+                manage
+                        ? "Only the project leader can manage this project"
                         : "User is not an active project member");
     }
 
@@ -431,27 +547,58 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
                 .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role));
     }
 
-    private ResearchProjectListVO toListVO(ResearchProjectEntity entity, UserEntity leader, HerbEntity species) {
+    private ResearchProjectListVO toListVO(
+            ResearchProjectEntity entity, UserEntity leader, HerbEntity species) {
         ResearchProjectListVO vo = new ResearchProjectListVO();
-        vo.setId(entity.getId()); vo.setProjectNo(entity.getProjectNo()); vo.setProjectName(entity.getProjectName());
-        vo.setProjectType(entity.getProjectType()); vo.setLeaderId(entity.getLeaderId());
-        vo.setLeaderName(leader == null ? null : leader.getRealName()); vo.setSpeciesId(entity.getSpeciesId());
-        vo.setSpeciesName(species == null ? null : species.getHerbName()); vo.setProjectStatus(entity.getProjectStatus());
-        vo.setStartedAt(entity.getStartedAt()); vo.setEndedAt(entity.getEndedAt()); vo.setStatus(entity.getStatus());
-        vo.setCreatedAt(entity.getCreatedAt()); vo.setUpdatedAt(entity.getUpdatedAt()); return vo;
+        vo.setId(entity.getId());
+        vo.setProjectNo(entity.getProjectNo());
+        vo.setProjectName(entity.getProjectName());
+        vo.setProjectType(entity.getProjectType());
+        vo.setLeaderId(entity.getLeaderId());
+        vo.setLeaderName(leader == null ? null : leader.getRealName());
+        vo.setSpeciesId(entity.getSpeciesId());
+        vo.setSpeciesName(species == null ? null : species.getHerbName());
+        vo.setProjectStatus(entity.getProjectStatus());
+        vo.setStartedAt(entity.getStartedAt());
+        vo.setEndedAt(entity.getEndedAt());
+        vo.setStatus(entity.getStatus());
+        vo.setCreatedAt(entity.getCreatedAt());
+        vo.setUpdatedAt(entity.getUpdatedAt());
+        return vo;
     }
 
-    private void copy(ResearchProjectEntity entity, ResearchProjectDetailVO vo, UserEntity leader, HerbEntity species) {
-        vo.setId(entity.getId()); vo.setProjectNo(entity.getProjectNo()); vo.setProjectName(entity.getProjectName());
-        vo.setProjectType(entity.getProjectType()); vo.setLeaderId(entity.getLeaderId()); vo.setLeaderName(leader == null ? null : leader.getRealName());
-        vo.setSpeciesId(entity.getSpeciesId()); vo.setSpeciesName(species == null ? null : species.getHerbName()); vo.setDescription(entity.getDescription());
-        vo.setProjectStatus(entity.getProjectStatus()); vo.setStartedAt(entity.getStartedAt()); vo.setEndedAt(entity.getEndedAt());
-        vo.setStatus(entity.getStatus()); vo.setRemark(entity.getRemark()); vo.setCreatedAt(entity.getCreatedAt()); vo.setUpdatedAt(entity.getUpdatedAt());
-        vo.setCreatedBy(entity.getCreatedBy()); vo.setUpdatedBy(entity.getUpdatedBy());
+    private void copy(
+            ResearchProjectEntity entity,
+            ResearchProjectDetailVO vo,
+            UserEntity leader,
+            HerbEntity species) {
+        vo.setId(entity.getId());
+        vo.setProjectNo(entity.getProjectNo());
+        vo.setProjectName(entity.getProjectName());
+        vo.setProjectType(entity.getProjectType());
+        vo.setLeaderId(entity.getLeaderId());
+        vo.setLeaderName(leader == null ? null : leader.getRealName());
+        vo.setSpeciesId(entity.getSpeciesId());
+        vo.setSpeciesName(species == null ? null : species.getHerbName());
+        vo.setDescription(entity.getDescription());
+        vo.setProjectStatus(entity.getProjectStatus());
+        vo.setStartedAt(entity.getStartedAt());
+        vo.setEndedAt(entity.getEndedAt());
+        vo.setStatus(entity.getStatus());
+        vo.setRemark(entity.getRemark());
+        vo.setCreatedAt(entity.getCreatedAt());
+        vo.setUpdatedAt(entity.getUpdatedAt());
+        vo.setCreatedBy(entity.getCreatedBy());
+        vo.setUpdatedBy(entity.getUpdatedBy());
         vo.setVersion(entity.getVersion());
     }
 
     private void recordAudit(String operation, Long id) {
-        AuditRecordDTO dto = new AuditRecordDTO(); dto.setOperationModule(AUDIT_MODULE); dto.setOperationType(operation); dto.setBizType(BIZ_TYPE); dto.setBizId(id); auditLogService.record(dto);
+        AuditRecordDTO dto = new AuditRecordDTO();
+        dto.setOperationModule(AUDIT_MODULE);
+        dto.setOperationType(operation);
+        dto.setBizType(BIZ_TYPE);
+        dto.setBizId(id);
+        auditLogService.record(dto);
     }
 }

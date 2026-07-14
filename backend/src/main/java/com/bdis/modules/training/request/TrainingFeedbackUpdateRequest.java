@@ -9,7 +9,13 @@ import lombok.Data;
 
 @Data
 public class TrainingFeedbackUpdateRequest {
-    @NotNull @DecimalMin("1.00") @DecimalMax("5.00") private BigDecimal rating;
+    @NotNull
+    @DecimalMin("1.00")
+    @DecimalMax("5.00")
+    private BigDecimal rating;
+
     private String feedbackContent;
-    @Size(max = 500) private String remark;
+
+    @Size(max = 500)
+    private String remark;
 }

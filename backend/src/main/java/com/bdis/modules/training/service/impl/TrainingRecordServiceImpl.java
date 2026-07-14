@@ -14,28 +14,28 @@ import com.bdis.modules.training.constant.TrainingPublishStatus;
 import com.bdis.modules.training.constant.TrainingStatus;
 import com.bdis.modules.training.entity.TrainingPlanEntity;
 import com.bdis.modules.training.entity.TrainingRecordEntity;
+import com.bdis.modules.training.mapper.TrainingFeedbackMapper;
 import com.bdis.modules.training.mapper.TrainingPlanMapper;
 import com.bdis.modules.training.mapper.TrainingRecordMapper;
-import com.bdis.modules.training.mapper.TrainingFeedbackMapper;
 import com.bdis.modules.training.query.TrainingRecordQuery;
+import com.bdis.modules.training.request.TrainingParticipantBatchRequest;
 import com.bdis.modules.training.request.TrainingRecordCreateRequest;
 import com.bdis.modules.training.request.TrainingRecordUpdateRequest;
-import com.bdis.modules.training.request.TrainingParticipantBatchRequest;
 import com.bdis.modules.training.service.TrainingRecordService;
-import com.bdis.modules.training.vo.TrainingRecordDetailVO;
-import com.bdis.modules.training.vo.TrainingRecordListVO;
 import com.bdis.modules.training.vo.TrainingParticipantBatchResultVO;
 import com.bdis.modules.training.vo.TrainingParticipantFailureVO;
+import com.bdis.modules.training.vo.TrainingRecordDetailVO;
+import com.bdis.modules.training.vo.TrainingRecordListVO;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -75,17 +75,20 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         validateQuery(safe);
         applyScope(safe);
         Page<TrainingRecordListVO> page =
-                recordMapper.selectPageVO(
-                        Page.of(safe.getPageNo(), safe.getPageSize()), safe);
+                recordMapper.selectPageVO(Page.of(safe.getPageNo(), safe.getPageSize()), safe);
         return PageResult.of(page.getRecords(), page);
     }
 
     @Override
     @Transactional(readOnly = true)
     public TrainingRecordDetailVO getDetail(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training record id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training record id must be positive");
+        }
         TrainingRecordDetailVO vo = recordMapper.selectDetailById(id);
-        if (vo == null) throw new ResourceNotFoundException("Training record not found");
+        if (vo == null) {
+            throw new ResourceNotFoundException("Training record not found");
+        }
         requireRecordAccess(vo.getUserId(), vo.getPlanId(), false);
         vo.setFeedback(feedbackMapper.selectDetailByRecordId(id));
         return vo;
@@ -123,7 +126,9 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         try {
-            if (recordMapper.insert(entity) == 0) throw conflict("Training record creation failed");
+            if (recordMapper.insert(entity) == 0) {
+                throw conflict("Training record creation failed");
+            }
         } catch (DuplicateKeyException exception) {
             throw conflict("Participant already exists in this training plan");
         }
@@ -164,9 +169,12 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         TrainingParticipantBatchResultVO result = new TrainingParticipantBatchResultVO();
         result.setRequestedCount(requested.size());
         result.setUniqueUserCount(uniqueIds.size());
-        frequency.forEach((userId, count) -> {
-            if (count > 1) result.getDuplicateUserIds().add(userId);
-        });
+        frequency.forEach(
+                (userId, count) -> {
+                    if (count > 1) {
+                        result.getDuplicateUserIds().add(userId);
+                    }
+                });
 
         LocalDateTime now = LocalDateTime.now();
         for (Long userId : uniqueIds) {
@@ -178,19 +186,21 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
             }
             UserEntity user = users.get(userId);
             if (user == null) {
-                result.getFailures().add(new TrainingParticipantFailureVO(userId, "User not found"));
+                result.getFailures()
+                        .add(new TrainingParticipantFailureVO(userId, "User not found"));
                 continue;
             }
             if (Objects.equals(user.getIsDeleted(), 1)) {
-                result.getFailures().add(new TrainingParticipantFailureVO(userId, "User is deleted"));
+                result.getFailures()
+                        .add(new TrainingParticipantFailureVO(userId, "User is deleted"));
                 continue;
             }
             if (!Objects.equals(user.getStatus(), 1)) {
-                result.getFailures().add(new TrainingParticipantFailureVO(userId, "User is disabled"));
+                result.getFailures()
+                        .add(new TrainingParticipantFailureVO(userId, "User is disabled"));
                 continue;
             }
-            TrainingRecordEntity entity = newDefaultRecord(
-                    plan, userId, request.getRemark(), now);
+            TrainingRecordEntity entity = newDefaultRecord(plan, userId, request.getRemark(), now);
             try {
                 if (recordMapper.insert(entity) == 0) {
                     throw conflict("Training record batch creation failed");
@@ -204,11 +214,18 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         }
         result.setSuccessCount(result.getSuccessUserIds().size());
         result.setDuplicateCount(
-                requested.size() - uniqueIds.size()
-                        + existingIds.stream().mapToInt(id -> frequency.containsKey(id) ? 1 : 0).sum()
+                requested.size()
+                        - uniqueIds.size()
+                        + existingIds.stream()
+                                .mapToInt(id -> frequency.containsKey(id) ? 1 : 0)
+                                .sum()
                         + result.getDuplicateUserIds().stream()
-                                .filter(id -> !existingIds.contains(id) && frequency.getOrDefault(id, 0) == 1)
-                                .mapToInt(id -> 1).sum());
+                                .filter(
+                                        id ->
+                                                !existingIds.contains(id)
+                                                        && frequency.getOrDefault(id, 0) == 1)
+                                .mapToInt(id -> 1)
+                                .sum());
         result.setFailureCount(result.getFailures().size());
         recordAudit("BATCH_ADD_PARTICIPANTS", planId);
         return result;
@@ -217,7 +234,9 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, TrainingRecordUpdateRequest request) {
-        if (request == null) throw new BusinessException("Training record update request is required");
+        if (request == null) {
+            throw new BusinessException("Training record update request is required");
+        }
         requireCurrentOperator();
         TrainingRecordEntity entity = requireRecord(id);
         TrainingPlanEntity plan = requireActivePlan(entity.getPlanId());
@@ -246,13 +265,27 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
         entity.setTrainingStatus(trainingStatus);
         entity.setAttendanceStatus(attendanceStatus);
-        if (request.getProgress() != null) entity.setProgress(request.getProgress());
-        if (request.getScore() != null) entity.setScore(request.getScore());
-        if (request.getStartedAt() != null) entity.setStartedAt(request.getStartedAt());
-        if (request.getCheckedInAt() != null) entity.setCheckedInAt(request.getCheckedInAt());
-        if (request.getCompletedAt() != null) entity.setCompletedAt(request.getCompletedAt());
-        if (request.getResultComment() != null) entity.setResultComment(request.getResultComment());
-        if (request.getRemark() != null) entity.setRemark(request.getRemark());
+        if (request.getProgress() != null) {
+            entity.setProgress(request.getProgress());
+        }
+        if (request.getScore() != null) {
+            entity.setScore(request.getScore());
+        }
+        if (request.getStartedAt() != null) {
+            entity.setStartedAt(request.getStartedAt());
+        }
+        if (request.getCheckedInAt() != null) {
+            entity.setCheckedInAt(request.getCheckedInAt());
+        }
+        if (request.getCompletedAt() != null) {
+            entity.setCompletedAt(request.getCompletedAt());
+        }
+        if (request.getResultComment() != null) {
+            entity.setResultComment(request.getResultComment());
+        }
+        if (request.getRemark() != null) {
+            entity.setRemark(request.getRemark());
+        }
         LocalDateTime now = LocalDateTime.now();
         if (TrainingStatus.LEARNING.equals(trainingStatus) && entity.getStartedAt() == null) {
             entity.setStartedAt(now);
@@ -325,9 +358,15 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
     }
 
     private void validateQuery(TrainingRecordQuery query) {
-        if (query.getPageNo() == null || query.getPageNo() < 1) query.setPageNo(1);
-        if (query.getPageSize() == null || query.getPageSize() < 1) query.setPageSize(10);
-        if (query.getPageSize() > 100) query.setPageSize(100);
+        if (query.getPageNo() == null || query.getPageNo() < 1) {
+            query.setPageNo(1);
+        }
+        if (query.getPageSize() == null || query.getPageSize() < 1) {
+            query.setPageSize(10);
+        }
+        if (query.getPageSize() > 100) {
+            query.setPageSize(100);
+        }
         if (StringUtils.hasText(query.getTrainingStatus())
                 && !TrainingStatus.VALUES.contains(query.getTrainingStatus())) {
             throw new BusinessException("Unsupported training status");
@@ -360,7 +399,9 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
     private TrainingPlanEntity requireActivePlan(Long id) {
         TrainingPlanEntity plan = planMapper.selectByIdIncludingDeleted(id);
-        if (plan == null || Objects.equals(plan.getIsDeleted(), 1) || !Objects.equals(plan.getStatus(), 1)) {
+        if (plan == null
+                || Objects.equals(plan.getIsDeleted(), 1)
+                || !Objects.equals(plan.getStatus(), 1)) {
             throw new ResourceNotFoundException("Training plan not found or inactive");
         }
         return plan;
@@ -373,9 +414,13 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
     }
 
     private TrainingRecordEntity requireRecord(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training record id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training record id must be positive");
+        }
         TrainingRecordEntity entity = recordMapper.selectById(id);
-        if (entity == null) throw new ResourceNotFoundException("Training record not found");
+        if (entity == null) {
+            throw new ResourceNotFoundException("Training record not found");
+        }
         return entity;
     }
 
@@ -401,11 +446,13 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
             return;
         }
         TrainingPlanEntity plan = requireActivePlan(planId);
-        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+        if (Objects.equals(userId, plan.getOwnerId())
+                || Objects.equals(userId, plan.getTrainerId())) {
             return;
         }
         throw new ForbiddenException(
-                manage ? "Only the training owner can modify this record"
+                manage
+                        ? "Only the training owner can modify this record"
                         : "Training record is outside the current user's scope");
     }
 
@@ -416,7 +463,8 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
-        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+        if (Objects.equals(userId, plan.getOwnerId())
+                || Objects.equals(userId, plan.getTrainerId())) {
             return;
         }
         throw new ForbiddenException("Only the training plan owner can manage participants");
@@ -428,7 +476,9 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
     }
 
     private UserEntity requireActiveUser(Long id, String label) {
-        if (id == null || id <= 0) throw new ResourceNotFoundException(label + " not found");
+        if (id == null || id <= 0) {
+            throw new ResourceNotFoundException(label + " not found");
+        }
         UserEntity user = userMapper.selectById(id);
         if (user == null || !Objects.equals(user.getStatus(), 1)) {
             throw new ResourceNotFoundException(label + " not found or inactive");

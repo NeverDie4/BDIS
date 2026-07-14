@@ -19,12 +19,13 @@ public interface TrainingPlanMapper extends BaseMapper<TrainingPlanEntity> {
     @Select("SELECT COUNT(1) FROM rel_training_plan_material WHERE plan_id = #{planId}")
     Long countMaterials(@Param("planId") Long planId);
 
-    @Select("SELECT COUNT(1) FROM edu_training_record "
-            + "WHERE plan_id = #{planId} AND user_id = #{userId} AND is_deleted = 0")
-    Long countActiveRecordsForUser(
-            @Param("planId") Long planId, @Param("userId") Long userId);
+    @Select(
+            "SELECT COUNT(1) FROM edu_training_record "
+                    + "WHERE plan_id = #{planId} AND user_id = #{userId} AND is_deleted = 0")
+    Long countActiveRecordsForUser(@Param("planId") Long planId, @Param("userId") Long userId);
 
-    @Update("""
+    @Update(
+            """
             UPDATE edu_training_plan
             SET publish_status = 'published',
                 published_at = #{publishedAt},
@@ -43,7 +44,8 @@ public interface TrainingPlanMapper extends BaseMapper<TrainingPlanEntity> {
             @Param("publishedAt") java.time.LocalDateTime publishedAt,
             @Param("publishedBy") Long publishedBy);
 
-    @Update("""
+    @Update(
+            """
             UPDATE edu_training_plan
             SET publish_status = 'closed',
                 updated_at = #{closedAt},
@@ -60,7 +62,8 @@ public interface TrainingPlanMapper extends BaseMapper<TrainingPlanEntity> {
             @Param("closedAt") java.time.LocalDateTime closedAt,
             @Param("closedBy") Long closedBy);
 
-    @Update("""
+    @Update(
+            """
             UPDATE edu_training_plan
             SET is_deleted = 1,
                 deleted_at = #{deletedAt},

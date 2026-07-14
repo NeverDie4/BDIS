@@ -3,14 +3,14 @@ package com.bdis.modules.research.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.common.constants.SecurityConstants;
+import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
-import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.request.ProjectMemberAddRequest;
@@ -41,8 +41,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     private final UserMapper userMapper;
     private final AuditLogService auditLogService;
 
-    public ProjectMemberServiceImpl(ResearchProjectMapper projectMapper, ProjectMemberMapper memberMapper,
-            UserMapper userMapper, AuditLogService auditLogService) {
+    public ProjectMemberServiceImpl(
+            ResearchProjectMapper projectMapper,
+            ProjectMemberMapper memberMapper,
+            UserMapper userMapper,
+            AuditLogService auditLogService) {
         this.projectMapper = projectMapper;
         this.memberMapper = memberMapper;
         this.userMapper = userMapper;
@@ -52,13 +55,23 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     @Override
     public List<ProjectMemberVO> list(Long projectId, String memberStatus) {
         requireProject(projectId);
-        LambdaQueryWrapper<ProjectMemberEntity> wrapper = new LambdaQueryWrapper<ProjectMemberEntity>()
-                .eq(ProjectMemberEntity::getProjectId, projectId);
-        if (StringUtils.hasText(memberStatus)) wrapper.eq(ProjectMemberEntity::getMemberStatus, memberStatus);
+        LambdaQueryWrapper<ProjectMemberEntity> wrapper =
+                new LambdaQueryWrapper<ProjectMemberEntity>()
+                        .eq(ProjectMemberEntity::getProjectId, projectId);
+        if (StringUtils.hasText(memberStatus)) {
+            wrapper.eq(ProjectMemberEntity::getMemberStatus, memberStatus);
+        }
         List<ProjectMemberEntity> members = memberMapper.selectList(wrapper);
         Map<Long, UserEntity> users = new HashMap<>();
-        List<Long> ids = members.stream().map(ProjectMemberEntity::getUserId).filter(Objects::nonNull).distinct().toList();
-        if (!ids.isEmpty()) userMapper.selectBatchIds(ids).forEach(user -> users.put(user.getId(), user));
+        List<Long> ids =
+                members.stream()
+                        .map(ProjectMemberEntity::getUserId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        if (!ids.isEmpty()) {
+            userMapper.selectBatchIds(ids).forEach(user -> users.put(user.getId(), user));
+        }
         return members.stream().map(member -> toVO(member, users.get(member.getUserId()))).toList();
     }
 
@@ -66,7 +79,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     public ProjectMemberVO get(Long projectId, Long userId) {
         requireProject(projectId);
         ProjectMemberEntity member = memberMapper.selectByProjectIdAndUserId(projectId, userId);
-        if (member == null) throw new ResourceNotFoundException("Project member not found");
+        if (member == null) {
+            throw new ResourceNotFoundException("Project member not found");
+        }
         return toVO(member, userMapper.selectById(userId));
     }
 
@@ -77,21 +92,42 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
         validateRole(request == null ? null : request.getMemberRole());
-        if ("leader".equals(request.getMemberRole())) throw new BusinessException("A second leader cannot be added");
+        if ("leader".equals(request.getMemberRole())) {
+            throw new BusinessException("A second leader cannot be added");
+        }
         UserEntity user = requireUser(request.getUserId());
-        ProjectMemberEntity existing = memberMapper.selectByProjectIdAndUserId(projectId, user.getId());
+        ProjectMemberEntity existing =
+                memberMapper.selectByProjectIdAndUserId(projectId, user.getId());
         LocalDateTime now = LocalDateTime.now();
         if (existing != null) {
-            if ("active".equals(existing.getMemberStatus())) throw new BusinessException("Member is already active");
-            existing.setMemberRole(request.getMemberRole()); existing.setMemberStatus("active"); existing.setJoinedAt(now); existing.setLeftAt(null); existing.setRemark(request.getRemark());
-            if (memberMapper.updateById(existing) == 0) throw new BusinessException("Member restore failed");
-            recordAudit("RESTORE", existing.getId()); return existing.getId();
+            if ("active".equals(existing.getMemberStatus())) {
+                throw new BusinessException("Member is already active");
+            }
+            existing.setMemberRole(request.getMemberRole());
+            existing.setMemberStatus("active");
+            existing.setJoinedAt(now);
+            existing.setLeftAt(null);
+            existing.setRemark(request.getRemark());
+            if (memberMapper.updateById(existing) == 0) {
+                throw new BusinessException("Member restore failed");
+            }
+            recordAudit("RESTORE", existing.getId());
+            return existing.getId();
         }
         ProjectMemberEntity member = new ProjectMemberEntity();
-        member.setProjectId(projectId); member.setUserId(user.getId()); member.setMemberRole(request.getMemberRole()); member.setMemberStatus("active");
-        member.setJoinedAt(now); member.setCreatedAt(now); member.setCreatedBy(CurrentUserUtils.currentUserId()); member.setRemark(request.getRemark());
-        if (memberMapper.insert(member) == 0) throw new BusinessException("Member add failed");
-        recordAudit("ADD", member.getId()); return member.getId();
+        member.setProjectId(projectId);
+        member.setUserId(user.getId());
+        member.setMemberRole(request.getMemberRole());
+        member.setMemberStatus("active");
+        member.setJoinedAt(now);
+        member.setCreatedAt(now);
+        member.setCreatedBy(CurrentUserUtils.currentUserId());
+        member.setRemark(request.getRemark());
+        if (memberMapper.insert(member) == 0) {
+            throw new BusinessException("Member add failed");
+        }
+        recordAudit("ADD", member.getId());
+        return member.getId();
     }
 
     @Override
@@ -101,12 +137,21 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
         validateRole(request == null ? null : request.getMemberRole());
-        if ("leader".equals(request.getMemberRole())) throw new BusinessException("Ordinary member cannot become leader");
+        if ("leader".equals(request.getMemberRole())) {
+            throw new BusinessException("Ordinary member cannot become leader");
+        }
         ProjectMemberEntity member = requireMember(projectId, userId);
-        if ("leader".equals(member.getMemberRole())) throw new BusinessException("Project leader role cannot be changed");
-        if (!"active".equals(member.getMemberStatus())) throw new BusinessException("Member is not active");
-        member.setMemberRole(request.getMemberRole()); member.setRemark(request.getRemark());
-        if (memberMapper.updateById(member) == 0) throw new BusinessException("Member role update failed");
+        if ("leader".equals(member.getMemberRole())) {
+            throw new BusinessException("Project leader role cannot be changed");
+        }
+        if (!"active".equals(member.getMemberStatus())) {
+            throw new BusinessException("Member is not active");
+        }
+        member.setMemberRole(request.getMemberRole());
+        member.setRemark(request.getRemark());
+        if (memberMapper.updateById(member) == 0) {
+            throw new BusinessException("Member role update failed");
+        }
         recordAudit("UPDATE_ROLE", member.getId());
     }
 
@@ -117,16 +162,25 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
         ProjectMemberEntity member = requireMember(projectId, userId);
-        if ("leader".equals(member.getMemberRole())) throw new BusinessException("Project leader cannot leave");
-        if (!"active".equals(member.getMemberStatus())) throw new BusinessException("Member has already left");
-        member.setMemberStatus("left"); member.setLeftAt(LocalDateTime.now());
-        if (memberMapper.updateById(member) == 0) throw new BusinessException("Member leave failed");
+        if ("leader".equals(member.getMemberRole())) {
+            throw new BusinessException("Project leader cannot leave");
+        }
+        if (!"active".equals(member.getMemberStatus())) {
+            throw new BusinessException("Member has already left");
+        }
+        member.setMemberStatus("left");
+        member.setLeftAt(LocalDateTime.now());
+        if (memberMapper.updateById(member) == 0) {
+            throw new BusinessException("Member leave failed");
+        }
         recordAudit("REMOVE", member.getId());
     }
 
     private ResearchProjectEntity requireProject(Long projectId) {
         ResearchProjectEntity project = projectMapper.selectById(projectId);
-        if (project == null) throw new ResourceNotFoundException("Research project not found");
+        if (project == null) {
+            throw new ResourceNotFoundException("Research project not found");
+        }
         requireProjectAccess(project, false);
         return project;
     }
@@ -134,7 +188,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     private void requireProjectAccess(ResearchProjectEntity project, boolean manage) {
         if (CurrentUserUtils.currentRoleCodes().isEmpty()
                 || CurrentUserUtils.currentRoleCodes().stream()
-                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+                        .anyMatch(
+                                role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
@@ -145,33 +200,59 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
             return;
         }
         throw new ForbiddenException(
-                manage ? "Only the project leader can manage project members"
+                manage
+                        ? "Only the project leader can manage project members"
                         : "User is not an active project member");
     }
 
     private ProjectMemberEntity requireMember(Long projectId, Long userId) {
         ProjectMemberEntity member = memberMapper.selectByProjectIdAndUserId(projectId, userId);
-        if (member == null) throw new ResourceNotFoundException("Project member not found");
+        if (member == null) {
+            throw new ResourceNotFoundException("Project member not found");
+        }
         return member;
     }
 
     private UserEntity requireUser(Long userId) {
         UserEntity user = userMapper.selectById(userId);
-        if (user == null || !Objects.equals(user.getStatus(), 1) || !Objects.equals(user.getIsDeleted(), 0)) throw new ResourceNotFoundException("User not found or inactive");
+        if (user == null
+                || !Objects.equals(user.getStatus(), 1)
+                || !Objects.equals(user.getIsDeleted(), 0)) {
+            throw new ResourceNotFoundException("User not found or inactive");
+        }
         return user;
     }
 
     private void validateRole(String role) {
-        if (!StringUtils.hasText(role) || !ROLES.contains(role)) throw new BusinessException("Invalid member role");
+        if (!StringUtils.hasText(role) || !ROLES.contains(role)) {
+            throw new BusinessException("Invalid member role");
+        }
     }
 
     private ProjectMemberVO toVO(ProjectMemberEntity member, UserEntity user) {
-        ProjectMemberVO vo = new ProjectMemberVO(); vo.setId(member.getId()); vo.setProjectId(member.getProjectId()); vo.setUserId(member.getUserId());
-        if (user != null) { vo.setUsername(user.getUsername()); vo.setRealName(user.getRealName()); }
-        vo.setMemberRole(member.getMemberRole()); vo.setMemberStatus(member.getMemberStatus()); vo.setJoinedAt(member.getJoinedAt()); vo.setLeftAt(member.getLeftAt()); vo.setRemark(member.getRemark()); vo.setCreatedAt(member.getCreatedAt()); return vo;
+        ProjectMemberVO vo = new ProjectMemberVO();
+        vo.setId(member.getId());
+        vo.setProjectId(member.getProjectId());
+        vo.setUserId(member.getUserId());
+        if (user != null) {
+            vo.setUsername(user.getUsername());
+            vo.setRealName(user.getRealName());
+        }
+        vo.setMemberRole(member.getMemberRole());
+        vo.setMemberStatus(member.getMemberStatus());
+        vo.setJoinedAt(member.getJoinedAt());
+        vo.setLeftAt(member.getLeftAt());
+        vo.setRemark(member.getRemark());
+        vo.setCreatedAt(member.getCreatedAt());
+        return vo;
     }
 
     private void recordAudit(String operation, Long id) {
-        AuditRecordDTO dto = new AuditRecordDTO(); dto.setOperationModule(AUDIT_MODULE); dto.setOperationType(operation); dto.setBizType(BIZ_TYPE); dto.setBizId(id); auditLogService.record(dto);
+        AuditRecordDTO dto = new AuditRecordDTO();
+        dto.setOperationModule(AUDIT_MODULE);
+        dto.setOperationType(operation);
+        dto.setBizType(BIZ_TYPE);
+        dto.setBizId(id);
+        auditLogService.record(dto);
     }
 }

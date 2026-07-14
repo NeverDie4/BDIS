@@ -2,12 +2,12 @@ package com.bdis.modules.training.service.impl;
 
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.training.constant.TrainingPublishStatus;
@@ -132,7 +132,9 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
     }
 
     private TrainingPlanEntity requireActivePlan(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training plan id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training plan id must be positive");
+        }
         TrainingPlanEntity plan = planMapper.selectByIdIncludingDeleted(id);
         if (plan == null || Objects.equals(plan.getIsDeleted(), 1)) {
             throw new ResourceNotFoundException("Training plan not found");
@@ -151,18 +153,21 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
     private void requirePlanAccess(TrainingPlanEntity plan, boolean manage) {
         if (CurrentUserUtils.currentRoleCodes().isEmpty()
                 || CurrentUserUtils.currentRoleCodes().stream()
-                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+                        .anyMatch(
+                                role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
-        if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+        if (Objects.equals(userId, plan.getOwnerId())
+                || Objects.equals(userId, plan.getTrainerId())) {
             return;
         }
         if (!manage && planMapper.countActiveRecordsForUser(plan.getId(), userId) > 0) {
             return;
         }
         throw new ForbiddenException(
-                manage ? "Only the training plan owner can manage materials"
+                manage
+                        ? "Only the training plan owner can manage materials"
                         : "Training plan materials are outside the current user's scope");
     }
 
@@ -179,7 +184,9 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
 
     private FileResourceEntity requireActiveFile(Long id) {
         FileResourceEntity file = id == null ? null : fileMapper.selectById(id);
-        if (file == null || Objects.equals(file.getIsDeleted(), 1) || !Objects.equals(file.getStatus(), 1)) {
+        if (file == null
+                || Objects.equals(file.getIsDeleted(), 1)
+                || !Objects.equals(file.getStatus(), 1)) {
             throw new ResourceNotFoundException("Training material file not found or inactive");
         }
         return file;
@@ -188,7 +195,9 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
     private Long requireCurrentOperator() {
         Long id = CurrentUserUtils.currentUserId();
         UserEntity user = id == null || id <= 0 ? null : userMapper.selectById(id);
-        if (user == null || Objects.equals(user.getIsDeleted(), 1) || !Objects.equals(user.getStatus(), 1)) {
+        if (user == null
+                || Objects.equals(user.getIsDeleted(), 1)
+                || !Objects.equals(user.getStatus(), 1)) {
             throw new ResourceNotFoundException("Current operator not found or inactive");
         }
         return id;

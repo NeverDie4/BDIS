@@ -31,7 +31,8 @@ public class CourseController {
     private final CourseService courseService;
     private final AuthorizationService authorizationService;
 
-    public CourseController(CourseService courseService, AuthorizationService authorizationService) {
+    public CourseController(
+            CourseService courseService, AuthorizationService authorizationService) {
         this.courseService = courseService;
         this.authorizationService = authorizationService;
     }
@@ -70,7 +71,8 @@ public class CourseController {
 
     @PostMapping("/{id}/publish")
     public Result<Void> publish(
-            @PathVariable @Positive Long id, @Valid @RequestBody CourseStatusChangeRequest request) {
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody CourseStatusChangeRequest request) {
         authorizationService.requirePermission("edu:course:publish");
         courseService.publish(id, request.getVersion());
         return Result.success();
@@ -78,7 +80,8 @@ public class CourseController {
 
     @PostMapping("/{id}/offline")
     public Result<Void> offline(
-            @PathVariable @Positive Long id, @Valid @RequestBody CourseStatusChangeRequest request) {
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody CourseStatusChangeRequest request) {
         authorizationService.requirePermission("edu:course:publish");
         courseService.offline(id, request.getVersion());
         return Result.success();

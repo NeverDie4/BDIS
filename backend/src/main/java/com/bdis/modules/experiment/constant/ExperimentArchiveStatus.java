@@ -35,8 +35,7 @@ public final class ExperimentArchiveStatus {
     public static void assertArchivable(String status) {
         if (!SUBMITTED.equals(status)) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Only submitted experiment records can be archived");
+                    ResultCodeEnum.CONFLICT, "Only submitted experiment records can be archived");
         }
     }
 }

@@ -3,11 +3,11 @@ package com.bdis.modules.research.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
@@ -35,7 +35,8 @@ import org.springframework.util.StringUtils;
 public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     private static final String BIZ_TYPE = "research_project";
     private static final String AUDIT_MODULE = "M13_PROJECT_MATERIAL";
-    private static final Set<String> FILE_USAGES = Set.of("attachment", "document", "dataset", "report", "image", "video", "other");
+    private static final Set<String> FILE_USAGES =
+            Set.of("attachment", "document", "dataset", "report", "image", "video", "other");
 
     private final ResearchProjectMapper projectMapper;
     private final FileBusinessMapper businessMapper;
@@ -43,8 +44,12 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     private final FileBusinessService fileBusinessService;
     private final AuditLogService auditLogService;
 
-    public ProjectMaterialServiceImpl(ResearchProjectMapper projectMapper, FileBusinessMapper businessMapper,
-            FileResourceMapper resourceMapper, FileBusinessService fileBusinessService, AuditLogService auditLogService) {
+    public ProjectMaterialServiceImpl(
+            ResearchProjectMapper projectMapper,
+            FileBusinessMapper businessMapper,
+            FileResourceMapper resourceMapper,
+            FileBusinessService fileBusinessService,
+            AuditLogService auditLogService) {
         this.projectMapper = projectMapper;
         this.businessMapper = businessMapper;
         this.resourceMapper = resourceMapper;
@@ -55,21 +60,35 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     @Override
     public List<ProjectMaterialVO> list(Long projectId, String fileUsage) {
         requireProject(projectId);
-        LambdaQueryWrapper<FileBusinessEntity> wrapper = new LambdaQueryWrapper<FileBusinessEntity>()
-                .eq(FileBusinessEntity::getBizType, BIZ_TYPE)
-                .eq(FileBusinessEntity::getBizId, projectId)
-                .orderByAsc(FileBusinessEntity::getCreatedAt)
-                .orderByAsc(FileBusinessEntity::getId);
-        if (StringUtils.hasText(fileUsage)) wrapper.eq(FileBusinessEntity::getFileUsage, fileUsage);
+        LambdaQueryWrapper<FileBusinessEntity> wrapper =
+                new LambdaQueryWrapper<FileBusinessEntity>()
+                        .eq(FileBusinessEntity::getBizType, BIZ_TYPE)
+                        .eq(FileBusinessEntity::getBizId, projectId)
+                        .orderByAsc(FileBusinessEntity::getCreatedAt)
+                        .orderByAsc(FileBusinessEntity::getId);
+        if (StringUtils.hasText(fileUsage)) {
+            wrapper.eq(FileBusinessEntity::getFileUsage, fileUsage);
+        }
         List<FileBusinessEntity> relations = businessMapper.selectList(wrapper);
-        List<Long> fileIds = relations.stream().map(FileBusinessEntity::getFileId).filter(Objects::nonNull).distinct().toList();
-        if (fileIds.isEmpty()) return List.of();
+        List<Long> fileIds =
+                relations.stream()
+                        .map(FileBusinessEntity::getFileId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        if (fileIds.isEmpty()) {
+            return List.of();
+        }
         Map<Long, FileResourceEntity> files = new LinkedHashMap<>();
         for (FileResourceEntity file : resourceMapper.selectBatchIds(fileIds)) {
-            if (Objects.equals(file.getStatus(), 1) && Objects.equals(file.getIsDeleted(), 0)) files.put(file.getId(), file);
+            if (Objects.equals(file.getStatus(), 1) && Objects.equals(file.getIsDeleted(), 0)) {
+                files.put(file.getId(), file);
+            }
         }
-        return relations.stream().filter(relation -> files.containsKey(relation.getFileId()))
-                .map(relation -> toVO(relation, files.get(relation.getFileId()))).toList();
+        return relations.stream()
+                .filter(relation -> files.containsKey(relation.getFileId()))
+                .map(relation -> toVO(relation, files.get(relation.getFileId())))
+                .toList();
     }
 
     @Override
@@ -80,13 +99,26 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
         ResearchProjectStatus.assertMutable(project);
         validateRequest(request);
         FileResourceEntity file = requireActiveFile(request.getFileId());
-        FileBusinessEntity existing = businessMapper.selectOne(new LambdaQueryWrapper<FileBusinessEntity>()
-                .eq(FileBusinessEntity::getFileId, file.getId()).eq(FileBusinessEntity::getBizType, BIZ_TYPE).eq(FileBusinessEntity::getBizId, projectId));
-        if (existing != null) throw new BusinessException(ResultCodeEnum.CONFLICT, "File is already bound to project");
+        FileBusinessEntity existing =
+                businessMapper.selectOne(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getFileId, file.getId())
+                                .eq(FileBusinessEntity::getBizType, BIZ_TYPE)
+                                .eq(FileBusinessEntity::getBizId, projectId));
+        if (existing != null) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "File is already bound to project");
+        }
         FileBusinessBindDTO dto = new FileBusinessBindDTO();
-        dto.setFileId(file.getId()); dto.setBizType(BIZ_TYPE); dto.setBizId(projectId); dto.setFileUsage(request.getFileUsage()); dto.setRemark(request.getRemark());
+        dto.setFileId(file.getId());
+        dto.setBizType(BIZ_TYPE);
+        dto.setBizId(projectId);
+        dto.setFileUsage(request.getFileUsage());
+        dto.setRemark(request.getRemark());
         FileBusinessVO relation = fileBusinessService.bind(dto);
-        if (relation == null || relation.getId() == null) throw new BusinessException(ResultCodeEnum.CONFLICT, "Project material bind failed");
+        if (relation == null || relation.getId() == null) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project material bind failed");
+        }
         recordAudit("BIND", projectId);
         return relation.getId();
     }
@@ -97,16 +129,24 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
         ResearchProjectEntity project = requireProject(projectId);
         requireProjectAccess(project, true);
         ResearchProjectStatus.assertMutable(project);
-        FileBusinessEntity relation = businessMapper.selectOne(new LambdaQueryWrapper<FileBusinessEntity>()
-                .eq(FileBusinessEntity::getFileId, fileId).eq(FileBusinessEntity::getBizType, BIZ_TYPE).eq(FileBusinessEntity::getBizId, projectId));
-        if (relation == null) throw new ResourceNotFoundException("Project material relation not found");
+        FileBusinessEntity relation =
+                businessMapper.selectOne(
+                        new LambdaQueryWrapper<FileBusinessEntity>()
+                                .eq(FileBusinessEntity::getFileId, fileId)
+                                .eq(FileBusinessEntity::getBizType, BIZ_TYPE)
+                                .eq(FileBusinessEntity::getBizId, projectId));
+        if (relation == null) {
+            throw new ResourceNotFoundException("Project material relation not found");
+        }
         fileBusinessService.unbind(relation.getId());
         recordAudit("UNBIND", projectId);
     }
 
     private ResearchProjectEntity requireProject(Long projectId) {
         ResearchProjectEntity project = projectMapper.selectById(projectId);
-        if (project == null) throw new ResourceNotFoundException("Research project not found");
+        if (project == null) {
+            throw new ResourceNotFoundException("Research project not found");
+        }
         requireProjectAccess(project, false);
         return project;
     }
@@ -114,7 +154,8 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
     private void requireProjectAccess(ResearchProjectEntity project, boolean manage) {
         if (CurrentUserUtils.currentRoleCodes().isEmpty()
                 || CurrentUserUtils.currentRoleCodes().stream()
-                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+                        .anyMatch(
+                                role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
@@ -125,38 +166,61 @@ public class ProjectMaterialServiceImpl implements ProjectMaterialService {
             return;
         }
         throw new ForbiddenException(
-                manage ? "Only the project leader can manage project materials"
+                manage
+                        ? "Only the project leader can manage project materials"
                         : "User is not an active project member");
     }
 
     private FileResourceEntity requireActiveFile(Long fileId) {
         FileResourceEntity file = resourceMapper.selectById(fileId);
-        if (file == null || !Objects.equals(file.getStatus(), 1) || !Objects.equals(file.getIsDeleted(), 0)) {
+        if (file == null
+                || !Objects.equals(file.getStatus(), 1)
+                || !Objects.equals(file.getIsDeleted(), 0)) {
             throw new ResourceNotFoundException("File not found or inactive");
         }
         return file;
     }
 
     private void validateRequest(ProjectMaterialBindRequest request) {
-        if (request == null || request.getFileId() == null || !StringUtils.hasText(request.getFileUsage())) {
+        if (request == null
+                || request.getFileId() == null
+                || !StringUtils.hasText(request.getFileUsage())) {
             throw new BusinessException("File and file usage are required");
         }
-        if (!FILE_USAGES.contains(request.getFileUsage())) throw new BusinessException("Invalid file usage");
+        if (!FILE_USAGES.contains(request.getFileUsage())) {
+            throw new BusinessException("Invalid file usage");
+        }
     }
 
     private ProjectMaterialVO toVO(FileBusinessEntity relation, FileResourceEntity file) {
         ProjectMaterialVO vo = new ProjectMaterialVO();
-        vo.setBindingId(relation.getId()); vo.setProjectId(relation.getBizId()); vo.setFileId(file.getId()); vo.setFileUsage(relation.getFileUsage());
-        vo.setRemark(relation.getRemark()); vo.setCreatedAt(relation.getCreatedAt()); vo.setFileNo(file.getFileNo()); vo.setFileName(file.getFileName());
-        vo.setOriginalFilename(file.getOriginalFilename()); vo.setFileType(file.getFileType()); vo.setFileFormat(file.getFileFormat()); vo.setFileSize(file.getFileSize());
-        vo.setFileUrl(file.getFileUrl()); vo.setThumbnailUrl(file.getThumbnailUrl()); vo.setStorageType(file.getStorageType());
-        vo.setUploaderId(file.getUploaderId()); vo.setUploaderName(file.getUploaderName()); vo.setUploadedAt(file.getUploadedAt());
+        vo.setBindingId(relation.getId());
+        vo.setProjectId(relation.getBizId());
+        vo.setFileId(file.getId());
+        vo.setFileUsage(relation.getFileUsage());
+        vo.setRemark(relation.getRemark());
+        vo.setCreatedAt(relation.getCreatedAt());
+        vo.setFileNo(file.getFileNo());
+        vo.setFileName(file.getFileName());
+        vo.setOriginalFilename(file.getOriginalFilename());
+        vo.setFileType(file.getFileType());
+        vo.setFileFormat(file.getFileFormat());
+        vo.setFileSize(file.getFileSize());
+        vo.setFileUrl(file.getFileUrl());
+        vo.setThumbnailUrl(file.getThumbnailUrl());
+        vo.setStorageType(file.getStorageType());
+        vo.setUploaderId(file.getUploaderId());
+        vo.setUploaderName(file.getUploaderName());
+        vo.setUploadedAt(file.getUploadedAt());
         return vo;
     }
 
     private void recordAudit(String operation, Long projectId) {
         AuditRecordDTO dto = new AuditRecordDTO();
-        dto.setOperationModule(AUDIT_MODULE); dto.setOperationType(operation); dto.setBizType(BIZ_TYPE); dto.setBizId(projectId);
+        dto.setOperationModule(AUDIT_MODULE);
+        dto.setOperationType(operation);
+        dto.setBizType(BIZ_TYPE);
+        dto.setBizId(projectId);
         auditLogService.record(dto);
     }
 }

@@ -13,7 +13,8 @@ public final class CoursePublishStatus {
 
     public static void requireEditable(String status) {
         if (PUBLISHED.equals(status)) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "Published course cannot be edited");
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Published course cannot be edited");
         }
         if (!DRAFT.equals(status) && !OFFLINE.equals(status)) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Invalid course publish status");
@@ -23,14 +24,14 @@ public final class CoursePublishStatus {
     public static void requirePublishable(String status) {
         if (!DRAFT.equals(status) && !OFFLINE.equals(status)) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Only draft or offline course can be published");
+                    ResultCodeEnum.CONFLICT, "Only draft or offline course can be published");
         }
     }
 
     public static void requireDeletable(String status) {
         if (PUBLISHED.equals(status)) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "Published course cannot be deleted");
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Published course cannot be deleted");
         }
         if (!DRAFT.equals(status) && !OFFLINE.equals(status)) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Invalid course publish status");
@@ -40,8 +41,7 @@ public final class CoursePublishStatus {
     public static void requireOfflineable(String status) {
         if (!PUBLISHED.equals(status)) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Only published course can be taken offline");
+                    ResultCodeEnum.CONFLICT, "Only published course can be taken offline");
         }
     }
 }

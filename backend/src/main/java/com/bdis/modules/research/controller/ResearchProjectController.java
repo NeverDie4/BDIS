@@ -30,13 +30,15 @@ public class ResearchProjectController {
     private final ResearchProjectService projectService;
     private final AuthorizationService authorizationService;
 
-    public ResearchProjectController(ResearchProjectService projectService, AuthorizationService authorizationService) {
+    public ResearchProjectController(
+            ResearchProjectService projectService, AuthorizationService authorizationService) {
         this.projectService = projectService;
         this.authorizationService = authorizationService;
     }
 
     @GetMapping
-    public Result<PageResult<ResearchProjectListVO>> page(@Valid @ModelAttribute ResearchProjectQuery query) {
+    public Result<PageResult<ResearchProjectListVO>> page(
+            @Valid @ModelAttribute ResearchProjectQuery query) {
         authorizationService.requirePermission("research:project:list");
         return Result.success(projectService.page(query));
     }
@@ -48,14 +50,16 @@ public class ResearchProjectController {
     }
 
     @PostMapping
-    public Result<ResearchProjectDetailVO> create(@Valid @RequestBody ResearchProjectCreateRequest request) {
+    public Result<ResearchProjectDetailVO> create(
+            @Valid @RequestBody ResearchProjectCreateRequest request) {
         authorizationService.requirePermission("research:project:add");
         Long id = projectService.create(request);
         return Result.success(projectService.getDetail(id));
     }
 
     @PutMapping("/{id}")
-    public Result<ResearchProjectDetailVO> update(@PathVariable @Positive Long id,
+    public Result<ResearchProjectDetailVO> update(
+            @PathVariable @Positive Long id,
             @Valid @RequestBody ResearchProjectUpdateRequest request) {
         authorizationService.requirePermission("research:project:update");
         projectService.update(id, request);
@@ -63,7 +67,8 @@ public class ResearchProjectController {
     }
 
     @PostMapping("/{id}/leader")
-    public Result<ResearchProjectDetailVO> changeLeader(@PathVariable @Positive Long id,
+    public Result<ResearchProjectDetailVO> changeLeader(
+            @PathVariable @Positive Long id,
             @Valid @RequestBody ResearchProjectLeaderChangeRequest request) {
         authorizationService.requirePermission("research:project:update");
         projectService.changeLeader(id, request);
@@ -71,7 +76,8 @@ public class ResearchProjectController {
     }
 
     @PostMapping("/{id}/status")
-    public Result<ResearchProjectDetailVO> changeStatus(@PathVariable @Positive Long id,
+    public Result<ResearchProjectDetailVO> changeStatus(
+            @PathVariable @Positive Long id,
             @Valid @RequestBody ResearchProjectStatusChangeRequest request) {
         authorizationService.requirePermission("research:project:status");
         projectService.changeStatus(id, request);

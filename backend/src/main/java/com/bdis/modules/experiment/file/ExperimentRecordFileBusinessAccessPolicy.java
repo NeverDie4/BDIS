@@ -79,8 +79,7 @@ public class ExperimentRecordFileBusinessAccessPolicy implements FileBusinessAcc
             if (project != null && Objects.equals(userId, project.getLeaderId())) {
                 return true;
             }
-            return !manage
-                    && projectMapper.existsActiveMember(record.getProjectId(), userId);
+            return !manage && projectMapper.existsActiveMember(record.getProjectId(), userId);
         }
         return false;
     }

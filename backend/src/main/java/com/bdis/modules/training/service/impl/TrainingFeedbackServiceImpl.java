@@ -61,8 +61,8 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
         TrainingFeedbackQuery safe = query == null ? new TrainingFeedbackQuery() : query;
         validateQuery(safe);
         applyScope(safe);
-        Page<TrainingFeedbackListVO> page = feedbackMapper.selectPageVO(
-                Page.of(safe.getPageNo(), safe.getPageSize()), safe);
+        Page<TrainingFeedbackListVO> page =
+                feedbackMapper.selectPageVO(Page.of(safe.getPageNo(), safe.getPageSize()), safe);
         return PageResult.of(page.getRecords(), page);
     }
 
@@ -71,7 +71,9 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
     public TrainingFeedbackDetailVO getDetail(Long id) {
         requirePositive(id, "Training feedback id");
         TrainingFeedbackDetailVO detail = feedbackMapper.selectDetailById(id);
-        if (detail == null) throw new ResourceNotFoundException("Training feedback not found");
+        if (detail == null) {
+            throw new ResourceNotFoundException("Training feedback not found");
+        }
         requireFeedbackAccess(detail.getUserId(), detail.getTrainingRecordId());
         return detail;
     }
@@ -119,11 +121,15 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, TrainingFeedbackUpdateRequest request) {
         requirePositive(id, "Training feedback id");
-        if (request == null) throw new BusinessException("Training feedback update request is required");
+        if (request == null) {
+            throw new BusinessException("Training feedback update request is required");
+        }
         validateRating(request.getRating());
         Long currentUserId = requireCurrentUser();
         TrainingFeedbackEntity entity = feedbackMapper.selectById(id);
-        if (entity == null) throw new ResourceNotFoundException("Training feedback not found");
+        if (entity == null) {
+            throw new ResourceNotFoundException("Training feedback not found");
+        }
         requireOwner(entity.getUserId(), currentUserId);
         TrainingRecordEntity record = requireRecord(entity.getTrainingRecordId());
         TrainingPlanEntity plan = requireActivePlan(record.getPlanId());
@@ -141,10 +147,18 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
     }
 
     private void validateQuery(TrainingFeedbackQuery query) {
-        if (query.getPageNo() == null || query.getPageNo() < 1) query.setPageNo(1);
-        if (query.getPageSize() == null || query.getPageSize() < 1) query.setPageSize(10);
-        if (query.getPageSize() > 100) query.setPageSize(100);
-        if (query.getRating() != null) validateRating(query.getRating());
+        if (query.getPageNo() == null || query.getPageNo() < 1) {
+            query.setPageNo(1);
+        }
+        if (query.getPageSize() == null || query.getPageSize() < 1) {
+            query.setPageSize(10);
+        }
+        if (query.getPageSize() > 100) {
+            query.setPageSize(100);
+        }
+        if (query.getRating() != null) {
+            validateRating(query.getRating());
+        }
         if (query.getSubmittedFrom() != null
                 && query.getSubmittedTo() != null
                 && query.getSubmittedFrom().isAfter(query.getSubmittedTo())) {
@@ -169,13 +183,17 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
 
     private TrainingRecordEntity requireRecord(Long id) {
         TrainingRecordEntity record = recordMapper.selectById(id);
-        if (record == null) throw new ResourceNotFoundException("Training record not found");
+        if (record == null) {
+            throw new ResourceNotFoundException("Training record not found");
+        }
         return record;
     }
 
     private TrainingPlanEntity requireActivePlan(Long id) {
         TrainingPlanEntity plan = planMapper.selectByIdIncludingDeleted(id);
-        if (plan == null || Objects.equals(plan.getIsDeleted(), 1) || !Objects.equals(plan.getStatus(), 1)) {
+        if (plan == null
+                || Objects.equals(plan.getIsDeleted(), 1)
+                || !Objects.equals(plan.getStatus(), 1)) {
             throw new ResourceNotFoundException("Training plan not found or inactive");
         }
         return plan;
@@ -183,7 +201,9 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
 
     private Long requireCurrentUser() {
         Long id = CurrentUserUtils.currentUserId();
-        if (id == null || id <= 0) throw new ForbiddenException("Authenticated user is required");
+        if (id == null || id <= 0) {
+            throw new ForbiddenException("Authenticated user is required");
+        }
         return id;
     }
 
@@ -222,7 +242,9 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
     }
 
     private void requirePositive(Long id, String label) {
-        if (id == null || id <= 0) throw new BusinessException(label + " must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException(label + " must be positive");
+        }
     }
 
     private void recordAudit(String operationType, Long id) {

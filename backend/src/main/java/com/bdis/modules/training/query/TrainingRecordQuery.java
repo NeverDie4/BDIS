@@ -15,8 +15,14 @@ public class TrainingRecordQuery {
     private String attendanceStatus;
     private LocalDateTime recordedFrom;
     private LocalDateTime recordedTo;
-    @Min(1) private Integer pageNo = 1;
-    @Min(1) @Max(100) private Integer pageSize = 10;
+
+    @Min(1)
+    private Integer pageNo = 1;
+
+    @Min(1)
+    @Max(100)
+    private Integer pageSize = 10;
+
     private Long scopeUserId;
     private Boolean scopeAll;
 }

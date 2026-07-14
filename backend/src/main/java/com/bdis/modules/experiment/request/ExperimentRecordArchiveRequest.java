@@ -8,9 +8,7 @@ import lombok.Data;
 @Data
 public class ExperimentRecordArchiveRequest {
 
-    @NotNull
-    @PositiveOrZero
-    private Integer version;
+    @NotNull @PositiveOrZero private Integer version;
 
     @Size(max = 500)
     private String archiveComment;

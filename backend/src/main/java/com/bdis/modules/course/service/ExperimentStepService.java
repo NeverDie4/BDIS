@@ -11,8 +11,7 @@ public interface ExperimentStepService {
 
     ExperimentStepVO create(Long courseId, ExperimentStepCreateRequest request);
 
-    ExperimentStepVO update(
-            Long courseId, Long stepId, ExperimentStepUpdateRequest request);
+    ExperimentStepVO update(Long courseId, Long stepId, ExperimentStepUpdateRequest request);
 
     void delete(Long courseId, Long stepId);
 }

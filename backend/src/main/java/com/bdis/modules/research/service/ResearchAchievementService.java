@@ -11,9 +11,14 @@ import java.util.List;
 
 public interface ResearchAchievementService {
     PageResult<ResearchAchievementListVO> page(ResearchAchievementQuery query);
+
     ResearchAchievementDetailVO getDetail(Long id);
+
     Long create(ResearchAchievementCreateRequest request);
+
     void update(Long id, ResearchAchievementUpdateRequest request);
+
     List<ResearchAchievementListVO> listByProjectId(Long projectId);
+
     ResearchAchievementSummaryVO summarizeByProjectId(Long projectId);
 }

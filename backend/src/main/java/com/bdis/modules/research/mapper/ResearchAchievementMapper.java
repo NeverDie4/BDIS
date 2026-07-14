@@ -7,5 +7,6 @@ import org.apache.ibatis.annotations.Select;
 
 public interface ResearchAchievementMapper extends BaseMapper<ResearchAchievementEntity> {
     @Select("SELECT * FROM research_achievement WHERE achievement_no = #{achievementNo} LIMIT 1")
-    ResearchAchievementEntity selectByAchievementNoIncludingDeleted(@Param("achievementNo") String achievementNo);
+    ResearchAchievementEntity selectByAchievementNoIncludingDeleted(
+            @Param("achievementNo") String achievementNo);
 }

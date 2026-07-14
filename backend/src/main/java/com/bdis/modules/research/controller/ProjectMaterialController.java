@@ -25,26 +25,31 @@ public class ProjectMaterialController {
     private final ProjectMaterialService materialService;
     private final AuthorizationService authorizationService;
 
-    public ProjectMaterialController(ProjectMaterialService materialService, AuthorizationService authorizationService) {
+    public ProjectMaterialController(
+            ProjectMaterialService materialService, AuthorizationService authorizationService) {
         this.materialService = materialService;
         this.authorizationService = authorizationService;
     }
 
     @GetMapping
-    public Result<List<ProjectMaterialVO>> list(@PathVariable @Positive Long projectId,
+    public Result<List<ProjectMaterialVO>> list(
+            @PathVariable @Positive Long projectId,
             @RequestParam(required = false) String fileUsage) {
         authorizationService.requirePermission("research:project-material:list");
         return Result.success(materialService.list(projectId, fileUsage));
     }
 
     @PostMapping
-    public Result<Long> bind(@PathVariable @Positive Long projectId, @Valid @RequestBody ProjectMaterialBindRequest request) {
+    public Result<Long> bind(
+            @PathVariable @Positive Long projectId,
+            @Valid @RequestBody ProjectMaterialBindRequest request) {
         authorizationService.requirePermission("research:project-material:add");
         return Result.success(materialService.bind(projectId, request));
     }
 
     @DeleteMapping("/{fileId}")
-    public Result<Void> unbind(@PathVariable @Positive Long projectId, @PathVariable @Positive Long fileId) {
+    public Result<Void> unbind(
+            @PathVariable @Positive Long projectId, @PathVariable @Positive Long fileId) {
         authorizationService.requirePermission("research:project-material:delete");
         materialService.unbind(projectId, fileId);
         return Result.success();

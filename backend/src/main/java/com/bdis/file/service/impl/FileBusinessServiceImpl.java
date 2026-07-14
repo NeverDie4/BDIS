@@ -247,8 +247,10 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                         new LambdaQueryWrapper<FileBusinessEntity>()
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
-                                .eq(fileUsage != null && !fileUsage.isBlank(),
-                                        FileBusinessEntity::getFileUsage, fileUsage)
+                                .eq(
+                                        fileUsage != null && !fileUsage.isBlank(),
+                                        FileBusinessEntity::getFileUsage,
+                                        fileUsage)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
                                 .orderByAsc(FileBusinessEntity::getCreatedAt)
                                 .orderByAsc(FileBusinessEntity::getId))

@@ -30,8 +30,7 @@ public class TrainingFeedbackController {
     private final AuthorizationService authorizationService;
 
     public TrainingFeedbackController(
-            TrainingFeedbackService feedbackService,
-            AuthorizationService authorizationService) {
+            TrainingFeedbackService feedbackService, AuthorizationService authorizationService) {
         this.feedbackService = feedbackService;
         this.authorizationService = authorizationService;
     }
@@ -62,6 +61,8 @@ public class TrainingFeedbackController {
     }
 
     private void requirePositiveId(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training feedback id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training feedback id must be positive");
+        }
     }
 }

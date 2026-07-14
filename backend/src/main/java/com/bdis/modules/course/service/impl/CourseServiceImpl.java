@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.modules.course.constant.CoursePublishStatus;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.entity.ExperimentStepEntity;
@@ -19,8 +19,8 @@ import com.bdis.modules.course.mapper.ExperimentStepMapper;
 import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
-import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.service.CourseResourceService;
+import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.service.ExperimentStepService;
 import com.bdis.modules.course.vo.CourseDetailVO;
 import com.bdis.modules.course.vo.CourseListVO;
@@ -159,8 +159,7 @@ public class CourseServiceImpl implements CourseService {
         Long recordCount = courseMapper.countActiveExperimentRecords(id);
         if (recordCount != null && recordCount > 0) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Course with experiment records cannot be deleted");
+                    ResultCodeEnum.CONFLICT, "Course with experiment records cannot be deleted");
         }
         if (courseMapper.deleteById(id) == 0) {
             throw new BusinessException("Course not found or already deleted");
@@ -247,7 +246,8 @@ public class CourseServiceImpl implements CourseService {
                 || !StringUtils.hasText(request.getCourseType())
                 || request.getTeacherId() == null
                 || request.getVersion() == null) {
-            throw new BusinessException("Course number, name, type, teacher and version are required");
+            throw new BusinessException(
+                    "Course number, name, type, teacher and version are required");
         }
     }
 
@@ -293,9 +293,7 @@ public class CourseServiceImpl implements CourseService {
         wrapper.eq(query.getStatus() != null, CourseEntity::getStatus, query.getStatus());
         applyUserScope(wrapper);
         wrapper.ge(
-                query.getStartedFrom() != null,
-                CourseEntity::getStartedAt,
-                query.getStartedFrom());
+                query.getStartedFrom() != null, CourseEntity::getStartedAt, query.getStartedFrom());
         wrapper.le(query.getStartedTo() != null, CourseEntity::getStartedAt, query.getStartedTo());
         wrapper.orderByDesc(CourseEntity::getCreatedAt).orderByDesc(CourseEntity::getId);
         return wrapper;
@@ -310,8 +308,11 @@ public class CourseServiceImpl implements CourseService {
             wrapper.eq(CourseEntity::getPublishStatus, CoursePublishStatus.PUBLISHED);
             return;
         }
-        wrapper.and(scope -> scope.eq(CourseEntity::getCreatedBy, userId)
-                .or().eq(CourseEntity::getTeacherId, userId));
+        wrapper.and(
+                scope ->
+                        scope.eq(CourseEntity::getCreatedBy, userId)
+                                .or()
+                                .eq(CourseEntity::getTeacherId, userId));
     }
 
     private void requireCourseAccess(CourseEntity course, boolean manage) {

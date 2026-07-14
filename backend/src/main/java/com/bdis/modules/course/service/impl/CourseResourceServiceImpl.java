@@ -3,12 +3,12 @@ package com.bdis.modules.course.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.file.dto.FileBusinessBindDTO;
 import com.bdis.file.service.FileBusinessService;
 import com.bdis.modules.course.constant.CoursePublishStatus;
@@ -194,12 +194,14 @@ public class CourseResourceServiceImpl implements CourseResourceService {
     private void requireCourseAccess(CourseEntity course, boolean manage) {
         if (CurrentUserUtils.currentRoleCodes().isEmpty()
                 || CurrentUserUtils.currentRoleCodes().stream()
-                        .anyMatch(role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
+                        .anyMatch(
+                                role -> SecurityConstants.ADMIN_ROLE_CODE.equalsIgnoreCase(role))) {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();
-        boolean student = CurrentUserUtils.currentRoleCodes().stream()
-                .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
+        boolean student =
+                CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
         if (student) {
             if (manage || !CoursePublishStatus.PUBLISHED.equals(course.getPublishStatus())) {
                 throw new ForbiddenException("Student cannot access this course resource");

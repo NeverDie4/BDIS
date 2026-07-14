@@ -13,8 +13,8 @@ import com.bdis.modules.training.vo.TrainingRecordListVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -77,6 +77,8 @@ public class TrainingRecordController {
     }
 
     private void requirePositiveId(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training record id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training record id must be positive");
+        }
     }
 }

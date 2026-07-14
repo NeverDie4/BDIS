@@ -9,5 +9,7 @@ import lombok.Data;
 public class TrainingRecordCreateRequest {
     @NotNull @Positive private Long planId;
     @NotNull @Positive private Long userId;
-    @Size(max = 500) private String remark;
+
+    @Size(max = 500)
+    private String remark;
 }

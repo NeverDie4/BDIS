@@ -34,8 +34,7 @@ public class ExperimentStepController {
     }
 
     @GetMapping
-    public Result<List<ExperimentStepVO>> list(
-            @PathVariable @Positive Long courseId) {
+    public Result<List<ExperimentStepVO>> list(@PathVariable @Positive Long courseId) {
         authorizationService.requirePermission("edu:course-step:list");
         return Result.success(stepService.listByCourseId(courseId));
     }

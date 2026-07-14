@@ -3,15 +3,15 @@ package com.bdis.modules.experiment.service.impl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
-import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
-import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.dto.FileBusinessBindDTO;
+import com.bdis.file.service.FileBusinessService;
 import com.bdis.file.vo.FileBusinessVO;
 import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.experiment.constant.ExperimentArchiveStatus;
@@ -93,7 +93,8 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         if (detail == null) {
             throw new ResourceNotFoundException("Experiment record not found");
         }
-        requireRecordAccess(detail.getRecorderId(), detail.getCourseId(), detail.getProjectId(), false);
+        requireRecordAccess(
+                detail.getRecorderId(), detail.getCourseId(), detail.getProjectId(), false);
         return detail;
     }
 
@@ -208,8 +209,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                         id, request.getVersion(), operator.getId(), submittedAt)
                 == 0) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Experiment record submit state or version conflict");
+                    ResultCodeEnum.CONFLICT, "Experiment record submit state or version conflict");
         }
         recordAudit("SUBMIT", id);
     }
@@ -218,13 +218,13 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional(rollbackFor = Exception.class)
     public void archive(Long id, ExperimentRecordArchiveRequest request) {
         ExperimentRecordEntity entity = requireActive(id);
-        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
         ExperimentArchiveStatus.assertArchivable(entity.getArchiveStatus());
         validateWorkflowVersion(request == null ? null : request.getVersion(), entity.getVersion());
         if (entity.getSubmittedAt() == null || entity.getSubmittedBy() == null) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Submitted experiment record metadata is incomplete");
+                    ResultCodeEnum.CONFLICT, "Submitted experiment record metadata is incomplete");
         }
         UserEntity operator = requireCurrentOperator();
 
@@ -237,8 +237,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                         request.getArchiveComment())
                 == 0) {
             throw new BusinessException(
-                    ResultCodeEnum.CONFLICT,
-                    "Experiment record archive state or version conflict");
+                    ResultCodeEnum.CONFLICT, "Experiment record archive state or version conflict");
         }
         recordAudit("ARCHIVE", id);
     }
@@ -247,7 +246,8 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional(readOnly = true)
     public List<FileResourceVO> listAttachments(Long id, String fileUsage) {
         ExperimentRecordEntity entity = requireActive(id);
-        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), false);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), false);
         validateAttachmentUsage(fileUsage, false);
         String normalizedUsage = StringUtils.hasText(fileUsage) ? fileUsage.trim() : null;
         return fileBusinessService.listByBusiness(BIZ_TYPE, id, normalizedUsage);
@@ -255,10 +255,10 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public FileBusinessVO bindAttachment(
-            Long id, ExperimentRecordAttachmentBindRequest request) {
+    public FileBusinessVO bindAttachment(Long id, ExperimentRecordAttachmentBindRequest request) {
         ExperimentRecordEntity entity = requireActive(id);
-        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
         ExperimentArchiveStatus.assertMutable(entity.getArchiveStatus());
         validateAttachmentRequest(request);
         requireCurrentOperator();
@@ -282,7 +282,8 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
     @Transactional(rollbackFor = Exception.class)
     public void unbindAttachment(Long id, Long fileId) {
         ExperimentRecordEntity entity = requireActive(id);
-        requireRecordAccess(entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
         ExperimentArchiveStatus.assertMutable(entity.getArchiveStatus());
         if (fileId == null || fileId <= 0) {
             throw new BusinessException("File id must be positive");
@@ -348,18 +349,21 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                 throw new BusinessException(ResultCodeEnum.CONFLICT, "Course is disabled");
             }
             Long userId = CurrentUserUtils.currentUserId();
-            boolean courseOwner = Objects.equals(userId, course.getCreatedBy())
-                    || Objects.equals(userId, course.getTeacherId());
-            boolean student = CurrentUserUtils.currentRoleCodes().stream()
-                    .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
-            if (hasScopedIdentity() && !isAdmin() && !courseOwner
+            boolean courseOwner =
+                    Objects.equals(userId, course.getCreatedBy())
+                            || Objects.equals(userId, course.getTeacherId());
+            boolean student =
+                    CurrentUserUtils.currentRoleCodes().stream()
+                            .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
+            if (hasScopedIdentity()
+                    && !isAdmin()
+                    && !courseOwner
                     && (!student || !"published".equalsIgnoreCase(course.getPublishStatus()))) {
                 throw new ForbiddenException("Course is outside the current user's scope");
             }
             return;
         }
-        ResearchProjectEntity project =
-                recordMapper.selectProjectByIdIncludingDeleted(projectId);
+        ResearchProjectEntity project = recordMapper.selectProjectByIdIncludingDeleted(projectId);
         if (project == null || Objects.equals(project.getIsDeleted(), 1)) {
             throw new ResourceNotFoundException("Research project not found");
         }
@@ -375,7 +379,8 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
             Long userId = CurrentUserUtils.currentUserId();
             if (!Objects.equals(userId, project.getLeaderId())
                     && !recordMapper.existsActiveProjectMember(projectId, userId)) {
-                throw new ForbiddenException("Research project is outside the current user's scope");
+                throw new ForbiddenException(
+                        "Research project is outside the current user's scope");
             }
         }
     }
@@ -440,8 +445,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
             }
             return;
         }
-        ResearchProjectEntity project =
-                recordMapper.selectProjectByIdIncludingDeleted(projectId);
+        ResearchProjectEntity project = recordMapper.selectProjectByIdIncludingDeleted(projectId);
         if (project == null || Objects.equals(project.getIsDeleted(), 1)) {
             throw new ResourceNotFoundException("Research project not found");
         }
@@ -520,7 +524,8 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         }
     }
 
-    private void requireRecordAccess(Long recorderId, Long courseId, Long projectId, boolean manage) {
+    private void requireRecordAccess(
+            Long recorderId, Long courseId, Long projectId, boolean manage) {
         if (CurrentUserUtils.currentRoleCodes().isEmpty()
                 || CurrentUserUtils.currentRoleCodes().stream()
                         .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
@@ -537,13 +542,15 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
             }
         }
         if (projectId != null) {
-            ResearchProjectEntity project = recordMapper.selectProjectByIdIncludingDeleted(projectId);
+            ResearchProjectEntity project =
+                    recordMapper.selectProjectByIdIncludingDeleted(projectId);
             if (project != null && Objects.equals(project.getLeaderId(), userId)) {
                 return;
             }
         }
         throw new ForbiddenException(
-                manage ? "Experiment record is outside the current user's scope"
+                manage
+                        ? "Experiment record is outside the current user's scope"
                         : "Experiment record is not accessible to the current user");
     }
 

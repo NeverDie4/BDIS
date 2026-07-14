@@ -8,12 +8,14 @@ import org.apache.ibatis.annotations.Update;
 
 public interface TrainingMaterialMapper extends BaseMapper<TrainingMaterialEntity> {
     @Select("SELECT * FROM edu_training_material WHERE material_no = #{materialNo} LIMIT 1")
-    TrainingMaterialEntity selectByMaterialNoIncludingDeleted(@Param("materialNo") String materialNo);
+    TrainingMaterialEntity selectByMaterialNoIncludingDeleted(
+            @Param("materialNo") String materialNo);
 
     @Select("SELECT * FROM edu_training_material WHERE id = #{id} LIMIT 1")
     TrainingMaterialEntity selectByIdIncludingDeleted(@Param("id") Long id);
 
-    @Update("""
+    @Update(
+            """
             UPDATE edu_training_material
             SET reuse_count = reuse_count + 1,
                 updated_at = CURRENT_TIMESTAMP,
@@ -22,7 +24,8 @@ public interface TrainingMaterialMapper extends BaseMapper<TrainingMaterialEntit
             """)
     int incrementReuseCount(@Param("id") Long id);
 
-    @Update("""
+    @Update(
+            """
             UPDATE edu_training_material
             SET reuse_count = reuse_count - 1,
                 updated_at = CURRENT_TIMESTAMP,
@@ -31,7 +34,8 @@ public interface TrainingMaterialMapper extends BaseMapper<TrainingMaterialEntit
             """)
     int decrementReuseCount(@Param("id") Long id);
 
-    @Update("""
+    @Update(
+            """
             UPDATE edu_training_material
             SET is_deleted = 1,
                 deleted_at = #{deletedAt},

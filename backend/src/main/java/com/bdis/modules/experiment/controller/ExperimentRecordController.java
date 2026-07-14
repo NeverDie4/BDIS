@@ -106,8 +106,7 @@ public class ExperimentRecordController {
 
     @GetMapping("/{id}/attachments")
     public Result<List<FileResourceVO>> listAttachments(
-            @PathVariable @Positive Long id,
-            @RequestParam(required = false) String fileUsage) {
+            @PathVariable @Positive Long id, @RequestParam(required = false) String fileUsage) {
         requirePositiveId(id);
         authorizationService.requirePermission("edu:experiment-attachment:list");
         return Result.success(recordService.listAttachments(id, fileUsage));

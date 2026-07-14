@@ -17,6 +17,11 @@ public class TrainingPlanQuery {
     private LocalDateTime startedTo;
     private LocalDateTime endedFrom;
     private LocalDateTime endedTo;
-    @Min(1) private Integer pageNo = 1;
-    @Min(1) @Max(100) private Integer pageSize = 10;
+
+    @Min(1)
+    private Integer pageNo = 1;
+
+    @Min(1)
+    @Max(100)
+    private Integer pageSize = 10;
 }

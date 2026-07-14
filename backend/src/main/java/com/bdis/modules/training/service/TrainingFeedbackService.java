@@ -9,7 +9,10 @@ import com.bdis.modules.training.vo.TrainingFeedbackListVO;
 
 public interface TrainingFeedbackService {
     PageResult<TrainingFeedbackListVO> page(TrainingFeedbackQuery query);
+
     TrainingFeedbackDetailVO getDetail(Long id);
+
     Long create(TrainingFeedbackCreateRequest request);
+
     void update(Long id, TrainingFeedbackUpdateRequest request);
 }

@@ -60,8 +60,7 @@ public class BusinessReferenceAccessService {
                             "research_project",
                             new BusinessReference("research_project", "file:resource:view")),
                     Map.entry(
-                            "edu_course",
-                            new BusinessReference("edu_course", "edu:course:detail")),
+                            "edu_course", new BusinessReference("edu_course", "edu:course:detail")),
                     Map.entry(
                             "edu_experiment_record",
                             new BusinessReference(

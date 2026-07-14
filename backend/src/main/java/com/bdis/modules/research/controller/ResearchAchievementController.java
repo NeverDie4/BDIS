@@ -28,13 +28,16 @@ public class ResearchAchievementController {
     private final ResearchAchievementService achievementService;
     private final AuthorizationService authorizationService;
 
-    public ResearchAchievementController(ResearchAchievementService achievementService, AuthorizationService authorizationService) {
+    public ResearchAchievementController(
+            ResearchAchievementService achievementService,
+            AuthorizationService authorizationService) {
         this.achievementService = achievementService;
         this.authorizationService = authorizationService;
     }
 
     @GetMapping
-    public Result<PageResult<ResearchAchievementListVO>> page(@Valid @ModelAttribute ResearchAchievementQuery query) {
+    public Result<PageResult<ResearchAchievementListVO>> page(
+            @Valid @ModelAttribute ResearchAchievementQuery query) {
         authorizationService.requirePermission("research:achievement:list");
         return Result.success(achievementService.page(query));
     }
@@ -46,13 +49,15 @@ public class ResearchAchievementController {
     }
 
     @PostMapping
-    public Result<ResearchAchievementDetailVO> create(@Valid @RequestBody ResearchAchievementCreateRequest request) {
+    public Result<ResearchAchievementDetailVO> create(
+            @Valid @RequestBody ResearchAchievementCreateRequest request) {
         authorizationService.requirePermission("research:achievement:add");
         return Result.success(achievementService.getDetail(achievementService.create(request)));
     }
 
     @PutMapping("/{id}")
-    public Result<ResearchAchievementDetailVO> update(@PathVariable @Positive Long id,
+    public Result<ResearchAchievementDetailVO> update(
+            @PathVariable @Positive Long id,
             @Valid @RequestBody ResearchAchievementUpdateRequest request) {
         authorizationService.requirePermission("research:achievement:update");
         achievementService.update(id, request);

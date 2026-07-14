@@ -5,8 +5,8 @@ import com.bdis.common.core.Result;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.modules.permission.service.AuthorizationService;
 import com.bdis.modules.training.query.TrainingPlanQuery;
-import com.bdis.modules.training.request.TrainingPlanCreateRequest;
 import com.bdis.modules.training.request.TrainingPlanCloseRequest;
+import com.bdis.modules.training.request.TrainingPlanCreateRequest;
 import com.bdis.modules.training.request.TrainingPlanPublishRequest;
 import com.bdis.modules.training.request.TrainingPlanUpdateRequest;
 import com.bdis.modules.training.service.TrainingPlanService;
@@ -90,8 +90,7 @@ public class TrainingPlanController {
 
     @PostMapping("/{id}/close")
     public Result<TrainingPlanDetailVO> close(
-            @PathVariable @Positive Long id,
-            @Valid @RequestBody TrainingPlanCloseRequest request) {
+            @PathVariable @Positive Long id, @Valid @RequestBody TrainingPlanCloseRequest request) {
         requirePositiveId(id);
         authorizationService.requirePermission("edu:training-plan:publish");
         planService.close(id, request);
@@ -99,6 +98,8 @@ public class TrainingPlanController {
     }
 
     private void requirePositiveId(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training plan id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training plan id must be positive");
+        }
     }
 }

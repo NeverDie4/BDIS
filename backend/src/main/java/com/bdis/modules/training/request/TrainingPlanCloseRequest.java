@@ -7,6 +7,9 @@ import lombok.Data;
 
 @Data
 public class TrainingPlanCloseRequest {
-    @NotBlank @Size(max = 500) private String reason;
+    @NotBlank
+    @Size(max = 500)
+    private String reason;
+
     @NotNull private Integer version;
 }

@@ -6,7 +6,10 @@ import java.util.List;
 
 public interface TrainingPlanMaterialService {
     List<TrainingPlanMaterialVO> list(Long planId);
+
     Long bind(Long planId, TrainingPlanMaterialBindRequest request);
+
     void unbind(Long planId, Long materialId);
+
     boolean hasValidMaterial(Long planId);
 }

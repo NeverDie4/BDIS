@@ -14,7 +14,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT * FROM sys_user WHERE id IN
             <foreach collection="userIds" item="id" open="(" separator="," close=")">
@@ -24,7 +25,8 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
             """)
     List<UserEntity> selectUsersIncludingDeleted(@Param("userIds") List<Long> userIds);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT * FROM edu_training_record
             WHERE plan_id = #{planId} AND user_id IN
@@ -35,7 +37,9 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
             """)
     List<TrainingRecordEntity> selectByPlanAndUsers(
             @Param("planId") Long planId, @Param("userIds") List<Long> userIds);
-    @Select("""
+
+    @Select(
+            """
             SELECT * FROM edu_training_record
             WHERE plan_id = #{planId} AND user_id = #{userId}
             LIMIT 1
@@ -43,7 +47,8 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
     TrainingRecordEntity selectByPlanAndUser(
             @Param("planId") Long planId, @Param("userId") Long userId);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT r.id, r.plan_id, p.plan_no, p.plan_name, r.user_id,
                    u.username, u.real_name, r.course_id, r.progress,
@@ -81,7 +86,8 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
     Page<TrainingRecordListVO> selectPageVO(
             Page<TrainingRecordListVO> page, @Param("query") TrainingRecordQuery query);
 
-    @Select("""
+    @Select(
+            """
             SELECT r.id, r.plan_id, p.plan_no, p.plan_name, r.user_id,
                    u.username, u.real_name, r.course_id, r.progress,
                    r.training_status, r.attendance_status, r.score,
@@ -95,7 +101,8 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
             """)
     TrainingRecordDetailVO selectDetailById(@Param("id") Long id);
 
-    @Delete("""
+    @Delete(
+            """
             DELETE FROM edu_training_record
             WHERE id = #{id}
               AND COALESCE(attendance_status, 'pending') = 'pending'
@@ -111,7 +118,8 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
             """)
     int deletePristine(@Param("id") Long id);
 
-    @Select("""
+    @Select(
+            """
             SELECT p.id AS plan_id, p.plan_no, p.plan_name, p.publish_status,
                    COUNT(r.id) AS total_participant_count,
                    COALESCE(SUM(r.training_status = 'completed'), 0) AS completed_count,

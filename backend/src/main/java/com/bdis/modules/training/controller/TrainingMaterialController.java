@@ -13,7 +13,15 @@ import com.bdis.modules.training.vo.TrainingMaterialListVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
@@ -69,6 +77,8 @@ public class TrainingMaterialController {
     }
 
     private void requirePositive(Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training material id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training material id must be positive");
+        }
     }
 }

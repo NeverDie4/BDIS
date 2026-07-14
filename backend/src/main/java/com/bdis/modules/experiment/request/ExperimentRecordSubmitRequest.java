@@ -7,7 +7,5 @@ import lombok.Data;
 @Data
 public class ExperimentRecordSubmitRequest {
 
-    @NotNull
-    @PositiveOrZero
-    private Integer version;
+    @NotNull @PositiveOrZero private Integer version;
 }

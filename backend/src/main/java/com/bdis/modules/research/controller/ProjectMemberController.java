@@ -27,20 +27,23 @@ public class ProjectMemberController {
     private final ProjectMemberService memberService;
     private final AuthorizationService authorizationService;
 
-    public ProjectMemberController(ProjectMemberService memberService, AuthorizationService authorizationService) {
+    public ProjectMemberController(
+            ProjectMemberService memberService, AuthorizationService authorizationService) {
         this.memberService = memberService;
         this.authorizationService = authorizationService;
     }
 
     @GetMapping
-    public Result<List<ProjectMemberVO>> list(@PathVariable @Positive Long projectId,
+    public Result<List<ProjectMemberVO>> list(
+            @PathVariable @Positive Long projectId,
             @RequestParam(required = false) String memberStatus) {
         authorizationService.requirePermission("research:project-member:list");
         return Result.success(memberService.list(projectId, memberStatus));
     }
 
     @PostMapping
-    public Result<ProjectMemberVO> add(@PathVariable @Positive Long projectId,
+    public Result<ProjectMemberVO> add(
+            @PathVariable @Positive Long projectId,
             @Valid @RequestBody ProjectMemberAddRequest request) {
         authorizationService.requirePermission("research:project-member:add");
         Long userId = request.getUserId();
@@ -49,15 +52,18 @@ public class ProjectMemberController {
     }
 
     @PutMapping("/{userId}")
-    public Result<ProjectMemberVO> updateRole(@PathVariable @Positive Long projectId,
-            @PathVariable @Positive Long userId, @Valid @RequestBody ProjectMemberUpdateRequest request) {
+    public Result<ProjectMemberVO> updateRole(
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long userId,
+            @Valid @RequestBody ProjectMemberUpdateRequest request) {
         authorizationService.requirePermission("research:project-member:update");
         memberService.updateRole(projectId, userId, request);
         return Result.success(memberService.get(projectId, userId));
     }
 
     @DeleteMapping("/{userId}")
-    public Result<Void> remove(@PathVariable @Positive Long projectId, @PathVariable @Positive Long userId) {
+    public Result<Void> remove(
+            @PathVariable @Positive Long projectId, @PathVariable @Positive Long userId) {
         authorizationService.requirePermission("research:project-member:remove");
         memberService.remove(projectId, userId);
         return Result.success();

@@ -10,7 +10,13 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
@@ -20,7 +26,8 @@ public class TrainingPlanMaterialController {
     private final AuthorizationService authorizationService;
 
     public TrainingPlanMaterialController(
-            TrainingPlanMaterialService materialService, AuthorizationService authorizationService) {
+            TrainingPlanMaterialService materialService,
+            AuthorizationService authorizationService) {
         this.materialService = materialService;
         this.authorizationService = authorizationService;
     }
@@ -43,8 +50,7 @@ public class TrainingPlanMaterialController {
 
     @DeleteMapping("/{materialId}")
     public Result<Void> unbind(
-            @PathVariable @Positive Long planId,
-            @PathVariable @Positive Long materialId) {
+            @PathVariable @Positive Long planId, @PathVariable @Positive Long materialId) {
         requirePositive(planId, "Training plan id");
         requirePositive(materialId, "Training material id");
         authorizationService.requirePermission("edu:training-material:bind");
@@ -53,6 +59,8 @@ public class TrainingPlanMaterialController {
     }
 
     private void requirePositive(Long id, String label) {
-        if (id == null || id <= 0) throw new BusinessException(label + " must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException(label + " must be positive");
+        }
     }
 }

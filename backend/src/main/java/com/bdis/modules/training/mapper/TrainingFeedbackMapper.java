@@ -10,7 +10,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface TrainingFeedbackMapper extends BaseMapper<TrainingFeedbackEntity> {
-    @Select("""
+    @Select(
+            """
             SELECT * FROM edu_training_feedback
             WHERE training_record_id = #{recordId} AND user_id = #{userId}
             LIMIT 1
@@ -21,7 +22,8 @@ public interface TrainingFeedbackMapper extends BaseMapper<TrainingFeedbackEntit
     @Select("SELECT COUNT(1) FROM edu_training_feedback WHERE training_record_id = #{recordId}")
     Long countByRecordId(@Param("recordId") Long recordId);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT f.id, f.training_record_id, r.plan_id, p.plan_no, p.plan_name,
                    f.user_id, u.username, u.real_name, f.rating,
@@ -64,7 +66,8 @@ public interface TrainingFeedbackMapper extends BaseMapper<TrainingFeedbackEntit
     Page<TrainingFeedbackListVO> selectPageVO(
             Page<TrainingFeedbackListVO> page, @Param("query") TrainingFeedbackQuery query);
 
-    @Select("""
+    @Select(
+            """
             SELECT f.id, f.training_record_id, r.plan_id, p.plan_no, p.plan_name,
                    f.user_id, u.username, u.real_name, f.rating,
                    f.feedback_content, f.submitted_at, f.created_at, f.updated_at,
@@ -78,7 +81,8 @@ public interface TrainingFeedbackMapper extends BaseMapper<TrainingFeedbackEntit
             """)
     TrainingFeedbackDetailVO selectDetailById(@Param("id") Long id);
 
-    @Select("""
+    @Select(
+            """
             SELECT f.id, f.training_record_id, r.plan_id, p.plan_no, p.plan_name,
                    f.user_id, u.username, u.real_name, f.rating,
                    f.feedback_content, f.submitted_at, f.created_at, f.updated_at,

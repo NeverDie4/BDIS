@@ -20,15 +20,16 @@ public class TrainingSummaryController {
     private final AuthorizationService authorizationService;
 
     public TrainingSummaryController(
-            TrainingSummaryService summaryService,
-            AuthorizationService authorizationService) {
+            TrainingSummaryService summaryService, AuthorizationService authorizationService) {
         this.summaryService = summaryService;
         this.authorizationService = authorizationService;
     }
 
     @GetMapping("/{id}/summary")
     public Result<TrainingSummaryVO> summary(@PathVariable @Positive Long id) {
-        if (id == null || id <= 0) throw new BusinessException("Training plan id must be positive");
+        if (id == null || id <= 0) {
+            throw new BusinessException("Training plan id must be positive");
+        }
         authorizationService.requirePermission("edu:training-summary:view");
         return Result.success(summaryService.getSummary(id));
     }

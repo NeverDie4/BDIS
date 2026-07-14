@@ -31,8 +31,7 @@ public interface ExperimentRecordService {
 
     List<FileResourceVO> listAttachments(Long id, String fileUsage);
 
-    FileBusinessVO bindAttachment(
-            Long id, ExperimentRecordAttachmentBindRequest request);
+    FileBusinessVO bindAttachment(Long id, ExperimentRecordAttachmentBindRequest request);
 
     void unbindAttachment(Long id, Long fileId);
 }
