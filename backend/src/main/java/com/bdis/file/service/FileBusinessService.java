@@ -26,6 +26,8 @@ public interface FileBusinessService {
 
     void deleteByBusinessAndFile(String bizType, Long bizId, Long fileId);
 
+    long countByFileId(Long fileId);
+
     boolean isBound(Long fileId, String bizType, Long bizId);
 
     boolean existsByBusiness(String bizType, Long bizId);

@@ -14,4 +14,6 @@ public class MapPointQuery {
     private Long speciesId;
 
     private Long baseId;
+
+    private Boolean includeDisabled = false;
 }

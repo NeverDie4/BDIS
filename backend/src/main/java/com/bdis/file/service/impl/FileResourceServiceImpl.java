@@ -279,6 +279,30 @@ public class FileResourceServiceImpl implements FileResourceService {
         deleteEntity(entity);
     }
 
+    @Override
+    @Transactional
+    public void deleteOwnUnboundUpload(Long fileId) {
+        FileResourceEntity entity = requireFile(fileId);
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (currentUserId == null || !currentUserId.equals(entity.getUploaderId())) {
+            throw new ForbiddenException("只能清理本人上传的临时文件");
+        }
+        if (!"private".equalsIgnoreCase(entity.getAccessLevel())) {
+            throw new ForbiddenException("已发布文件不能作为临时上传清理");
+        }
+        long bindingCount = fileBusinessService.countByFileId(fileId);
+        if (bindingCount != 0) {
+            throw new ForbiddenException("已绑定业务的文件不能作为临时上传清理");
+        }
+        deleteEntity(entity);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSystem(Long fileId) {
+        deleteEntity(requireFile(fileId));
+    }
+
     private FileResourceVO createImportedPrivateResource(
             FileStorageService.StoredFile storedFile,
             Path storedPath,
