@@ -53,10 +53,17 @@ public class DeclarationServiceImpl implements DeclarationService {
         DeclarationQuery safeQuery = query == null ? new DeclarationQuery() : query;
         LambdaQueryWrapper<DeclarationEntity> wrapper =
                 new LambdaQueryWrapper<DeclarationEntity>()
-                        .like(
+                        .and(
                                 StringUtils.hasText(safeQuery.getKeyword()),
-                                DeclarationEntity::getApplicationTitle,
-                                safeQuery.getKeyword())
+                                keywordWrapper ->
+                                        keywordWrapper
+                                                .like(
+                                                        DeclarationEntity::getApplicationTitle,
+                                                        safeQuery.getKeyword())
+                                                .or()
+                                                .like(
+                                                        DeclarationEntity::getApplicationNo,
+                                                        safeQuery.getKeyword()))
                         .eq(
                                 StringUtils.hasText(safeQuery.getApplicationType()),
                                 DeclarationEntity::getApplicationType,
@@ -69,6 +76,21 @@ public class DeclarationServiceImpl implements DeclarationService {
                                 safeQuery.getApplicantId() != null,
                                 DeclarationEntity::getApplicantId,
                                 safeQuery.getApplicantId())
+                        .ge(
+                                safeQuery.getSubmittedStartDate() != null,
+                                DeclarationEntity::getSubmittedAt,
+                                safeQuery.getSubmittedStartDate() == null
+                                        ? null
+                                        : safeQuery.getSubmittedStartDate().atStartOfDay())
+                        .lt(
+                                safeQuery.getSubmittedEndDate() != null,
+                                DeclarationEntity::getSubmittedAt,
+                                safeQuery.getSubmittedEndDate() == null
+                                        ? null
+                                        : safeQuery
+                                                .getSubmittedEndDate()
+                                                .plusDays(1)
+                                                .atStartOfDay())
                         .orderByDesc(DeclarationEntity::getUpdatedAt);
         accessService.requirePermission("declaration:application:view");
         accessService.applyOwnerScope(

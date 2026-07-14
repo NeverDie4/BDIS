@@ -1,109 +1,103 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Key } from "react";
+import { App } from "antd";
+import { useCallback, useEffect, useState } from "react";
 import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import {
-  evaluationApplicants,
-  evaluationApplications,
-  evaluationIndicators,
-  evaluationResults,
-  evaluationTasks,
-} from "@/mocks/evaluation";
-import { ApplicationDetailDrawer } from "./ApplicationDetailDrawer";
-import { ApplicationWorkspace } from "./ApplicationWorkspace";
-import { EvaluationBottomGrid } from "./EvaluationBottomGrid";
+  fetchDeclarations,
+  fetchEvaluationTasks,
+  fetchIndicators,
+  type Declaration,
+  type EvaluationIndicator,
+  type EvaluationTask,
+} from "@/lib/evaluation";
+import { getApiErrorMessage } from "@/lib/request";
+import { useAuthStore } from "@/stores/auth-store";
+import { DeclarationWorkspace } from "./DeclarationWorkspace";
 import { EvaluationModuleTabs } from "./EvaluationModuleTabs";
-import { EvaluationSummaryGrid } from "./EvaluationSummaryGrid";
-import { EvaluationViewport } from "./EvaluationViewport";
-import { buildEvaluationSummary } from "./summary";
-import type { ApplicationFilters, EvaluationApplication, EvaluationTabKey } from "./types";
-import { filterEvaluationApplications } from "./utils";
+import { EvaluationTaskWorkspace } from "./EvaluationTaskWorkspace";
+import { EvaluationWorkbench } from "./EvaluationWorkbench";
+import { IndicatorWorkspace } from "./IndicatorWorkspace";
+import type { EvaluationTabKey } from "./types";
 import styles from "./evaluation.module.css";
 
-const emptyFilters: ApplicationFilters = { keyword: "" };
-
 export function EvaluationPageClient() {
-  const [activeTab, setActiveTab] = useState<EvaluationTabKey>("archives");
-  const [draftFilters, setDraftFilters] = useState<ApplicationFilters>(emptyFilters);
-  const [appliedFilters, setAppliedFilters] = useState<ApplicationFilters>(emptyFilters);
-  const [pageNo, setPageNo] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
-  const [selectedApplication, setSelectedApplication] = useState<EvaluationApplication | null>(null);
+  const { message } = App.useApp();
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const [activeTab, setActiveTab] = useState<EvaluationTabKey>("workspace");
+  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState<EvaluationTask[]>([]);
+  const [indicators, setIndicators] = useState<EvaluationIndicator[]>([]);
+  const [declarations, setDeclarations] = useState<Declaration[]>([]);
 
-  const filteredRecords = useMemo(
-    () => filterEvaluationApplications(evaluationApplications, appliedFilters),
-    [appliedFilters],
-  );
-  const pagedRecords = useMemo(
-    () => filteredRecords.slice((pageNo - 1) * pageSize, pageNo * pageSize),
-    [filteredRecords, pageNo, pageSize],
-  );
-  const selectedApplications = useMemo(
-    () => evaluationApplications.filter((application) => selectedRowKeys.includes(application.id)),
-    [selectedRowKeys],
-  );
-  const summary = useMemo(() => buildEvaluationSummary(evaluationTasks, evaluationApplications), []);
-  const recentResults = useMemo(
-    () => [...evaluationResults].sort((left, right) => right.completedAt.localeCompare(left.completedAt)),
-    [],
-  );
-  const bottomApplication = selectedApplication ?? undefined;
+  const loadWorkbench = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [taskPage, indicatorPage, declarationPage] = await Promise.all([
+        hasPermission("evaluation:task:view")
+          ? fetchEvaluationTasks({ pageNum: 1, pageSize: 200 })
+          : Promise.resolve({ records: [] as EvaluationTask[] }),
+        hasPermission("evaluation:standard:view")
+          ? fetchIndicators({ pageNum: 1, pageSize: 200 })
+          : Promise.resolve({ records: [] as EvaluationIndicator[] }),
+        hasPermission("declaration:application:view")
+          ? fetchDeclarations({ pageNum: 1, pageSize: 200 })
+          : Promise.resolve({ records: [] as Declaration[] }),
+      ]);
+      setTasks(taskPage.records);
+      setIndicators(indicatorPage.records);
+      setDeclarations(declarationPage.records);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "评价工作台加载失败"));
+    } finally {
+      setLoading(false);
+    }
+  }, [hasPermission, message]);
 
   useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
-    if (pageNo > maxPage) setPageNo(maxPage);
-  }, [filteredRecords.length, pageNo, pageSize]);
+    if (activeTab === "workspace") void loadWorkbench();
+  }, [activeTab, loadWorkbench]);
 
-  const search = () => {
-    setAppliedFilters({ ...draftFilters });
-    setPageNo(1);
-  };
-
-  const reset = () => {
-    setDraftFilters(emptyFilters);
-    setAppliedFilters(emptyFilters);
-    setPageNo(1);
+  const navigate = (tab: EvaluationTabKey) => {
+    const requiredPermission: Partial<Record<EvaluationTabKey, string>> = {
+      tasks: "evaluation:task:view",
+      indicators: "evaluation:standard:view",
+      archives: "declaration:application:view",
+    };
+    const permission = requiredPermission[tab];
+    if (permission && !hasPermission(permission)) {
+      message.warning("当前账号没有访问该业务页的权限");
+      return;
+    }
+    setActiveTab(tab);
   };
 
   return (
     <div className={styles.evaluationPage}>
       <ModuleHeroBanner
-        description="围绕评价任务、指标体系、申报材料与审核流程，完成评价结果汇总与申报档案管理。"
+        variant="compact"
+        description="统一管理评价指标、评价任务、评分结果与申报审核档案。"
         eyebrow="EVALUATION & APPLICATION"
         sealText="评审"
         title="评价申报"
       />
-      <div className={styles.mockNotice} role="note">
-        演示数据 / Mock：当前评价页面使用本地演示数据，未接入真实接口。
-      </div>
-      <EvaluationSummaryGrid summary={summary} />
-      <EvaluationViewport
-        tabs={<EvaluationModuleTabs activeKey={activeTab} onChange={setActiveTab} />}
-        main={activeTab === "archives" ? <ApplicationWorkspace
-            applicantOptions={evaluationApplicants}
-            filters={draftFilters}
-            onFiltersChange={setDraftFilters}
-            onPageChange={(nextPage, nextPageSize) => {
-              setPageNo(nextPageSize !== pageSize ? 1 : nextPage);
-              setPageSize(nextPageSize);
-            }}
-            onReset={reset}
-            onSearch={search}
-            onSelectionChange={setSelectedRowKeys}
-            onView={setSelectedApplication}
-            pageNo={pageNo}
-            pageSize={pageSize}
-            records={pagedRecords}
-            selectedApplications={selectedApplications}
-            selectedRowKeys={selectedRowKeys}
-            taskOptions={evaluationTasks}
-            total={filteredRecords.length}
-          /> : <div className={styles.placeholderPanel}>当前模块将在后续轮次接入真实数据与业务流程。</div>}
-        bottom={activeTab === "archives" ? <EvaluationBottomGrid application={bottomApplication} indicators={evaluationIndicators} results={recentResults} /> : null}
-      />
-      <ApplicationDetailDrawer application={selectedApplication} open={selectedApplication !== null} onClose={() => setSelectedApplication(null)} />
+      <section className={styles.evaluationSurface}>
+        <EvaluationModuleTabs activeKey={activeTab} onChange={navigate} />
+        <div className={styles.tabContent}>
+          {activeTab === "workspace" ? (
+            <EvaluationWorkbench
+              loading={loading}
+              tasks={tasks}
+              indicators={indicators}
+              declarations={declarations}
+              onNavigate={navigate}
+            />
+          ) : null}
+          {activeTab === "tasks" ? <EvaluationTaskWorkspace /> : null}
+          {activeTab === "indicators" ? <IndicatorWorkspace /> : null}
+          {activeTab === "archives" ? <DeclarationWorkspace /> : null}
+        </div>
+      </section>
     </div>
   );
 }
