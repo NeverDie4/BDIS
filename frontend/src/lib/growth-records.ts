@@ -96,6 +96,27 @@ export type GrowthTaskApi = {
   collectorName?: string;
   taskStatus?: string;
 };
+export type GrowthCollectorOptionApi = {
+  id: number;
+  name: string;
+};
+
+export type GrowthTaskCreatePayload = {
+  taskCode: string;
+  taskName: string;
+  speciesId?: number;
+  speciesName?: string;
+  baseId?: number;
+  baseName?: string;
+  collectPlace?: string;
+  plannedStartTime?: string;
+  plannedEndTime?: string;
+  collectorId: number;
+  collectorName: string;
+  taskStatus?: string;
+  description?: string;
+  remark?: string;
+};
 
 export type GrowthChartPointApi = {
   recordId: number;
@@ -274,6 +295,17 @@ export function fetchGrowthTasks() {
     pageNum: 1,
     pageSize: 200,
   });
+}
+
+export function fetchAssignableGrowthCollectors() {
+  return apiGet<GrowthCollectorOptionApi[]>("/herb/collection-task/assignable-collectors");
+}
+
+export function createGrowthTask(data: GrowthTaskCreatePayload) {
+  return apiPost<GrowthTaskApi>("/herb/collection-task", data);
+}
+export function publishGrowthTask(taskId: number) {
+  return apiPut<GrowthTaskApi>(`/herb/collection-task/${taskId}/publish`);
 }
 
 export function fetchMyGrowthTasks() {

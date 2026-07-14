@@ -392,3 +392,22 @@ test("growth 固定详情使用剩余高度滚动且末端内容不被裁切", (
     /\.detailPanel \.drawerContent\s*\{[^}]*height:\s*100%;[^}]*max-height:\s*none;[^}]*overflow-y:\s*auto;[^}]*padding-bottom:\s*32px;/s,
   );
 });
+
+test("管理员和教师可创建必须指定采集员的采集任务", () => {
+  assert.match(dataSource, /export function createGrowthTask/);
+  assert.match(dataSource, /apiPost<GrowthTaskApi>\("\/herb\/collection-task", data\)/);
+  assert.match(pageSource, /const canCreateTask = roleCodes\.some\(\(role\) => \["ADMIN", "TEACHER"\]\.includes\(role\)\)/);
+  assert.match(pageSource, />\s*创建采集任务\s*</);
+  assert.match(pageSource, /name="collectorId"/);
+  assert.match(pageSource, /rules=\{\[\{ required: true, message: "请选择采集员" \}\]\}/);
+  assert.match(pageSource, /collectorName:/);
+  assert.match(pageSource, /await createGrowthTask/);
+});
+test("草稿采集任务必须通过真实发布接口后才对手机端可见", () => {
+  assert.match(dataSource, /export function publishGrowthTask\(taskId: number\)/);
+  assert.match(dataSource, /apiPut<GrowthTaskApi>\(`\/herb\/collection-task\/\$\{taskId\}\/publish`\)/);
+  assert.match(pageSource, /selectedTask\?\.taskStatus !== "draft"/);
+  assert.match(pageSource, />\s*发布任务\s*</);
+  assert.match(pageSource, /await publishGrowthTask\(selectedTask\.id\)/);
+  assert.match(pageSource, /指定采集员现在可在手机端查看/);
+});

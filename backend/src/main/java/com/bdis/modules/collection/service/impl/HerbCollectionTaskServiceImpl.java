@@ -55,7 +55,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
             throw new BusinessException("Task code already exists");
         }
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
-        collectionAccessService.requireAssignableCollector(request.getCollectorId());
+        String collectorName =
+                collectionAccessService.requireAssignableCollector(request.getCollectorId());
         String taskStatus =
                 normalizeStatus(request.getTaskStatus(), HerbCollectionTaskStatusConstants.DRAFT);
 
@@ -71,7 +72,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         entity.setPlannedStartTime(request.getPlannedStartTime());
         entity.setPlannedEndTime(request.getPlannedEndTime());
         entity.setCollectorId(request.getCollectorId());
-        entity.setCollectorName(request.getCollectorName());
+        entity.setCollectorName(collectorName);
         entity.setTaskStatus(taskStatus);
         entity.setDescription(request.getDescription());
         entity.setRemark(request.getRemark());
@@ -92,7 +93,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         HerbCollectionTaskEntity existing = getActiveEntity(id);
         collectionAccessService.requireTaskManage(existing);
         validateUpdateRequest(request);
-        collectionAccessService.requireAssignableCollector(request.getCollectorId());
+        String collectorName =
+                collectionAccessService.requireAssignableCollector(request.getCollectorId());
         String speciesName = resolveSpeciesName(request.getSpeciesId(), request.getSpeciesName());
         String taskStatus = normalizeStatus(request.getTaskStatus(), existing.getTaskStatus());
 
@@ -105,7 +107,7 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         existing.setPlannedStartTime(request.getPlannedStartTime());
         existing.setPlannedEndTime(request.getPlannedEndTime());
         existing.setCollectorId(request.getCollectorId());
-        existing.setCollectorName(request.getCollectorName());
+        existing.setCollectorName(collectorName);
         existing.setTaskStatus(taskStatus);
         existing.setDescription(request.getDescription());
         existing.setRemark(request.getRemark());

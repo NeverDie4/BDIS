@@ -10,11 +10,17 @@ import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.permission.service.DataScopeService;
 import com.bdis.modules.permission.vo.DataScopeResultVO;
+import com.bdis.modules.user.entity.RoleEntity;
 import com.bdis.modules.user.entity.UserEntity;
+import com.bdis.modules.user.entity.UserRoleEntity;
+import com.bdis.modules.user.mapper.RoleMapper;
 import com.bdis.modules.user.mapper.UserMapper;
+import com.bdis.modules.user.mapper.UserRoleMapper;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -26,6 +32,8 @@ public class CollectionAccessService {
     private final DataScopeService dataScopeService;
     private final UserMapper userMapper;
     private final HerbCollectionTaskMapper herbCollectionTaskMapper;
+    private RoleMapper roleMapper;
+    private UserRoleMapper userRoleMapper;
 
     public CollectionAccessService(
             DataScopeService dataScopeService,
@@ -35,6 +43,49 @@ public class CollectionAccessService {
         this.userMapper = userMapper;
         this.herbCollectionTaskMapper = herbCollectionTaskMapper;
     }
+
+    @Autowired
+    void setRoleAssignmentMappers(RoleMapper roleMapper, UserRoleMapper userRoleMapper) {
+        this.roleMapper = roleMapper;
+        this.userRoleMapper = userRoleMapper;
+    }
+
+    public List<AssignableCollector> listAssignableCollectors() {
+        RoleEntity collectorRole =
+                roleMapper.selectOne(
+                        new LambdaQueryWrapper<RoleEntity>()
+                                .eq(RoleEntity::getRoleCode, "COLLECTOR")
+                                .eq(RoleEntity::getStatus, 1));
+        if (collectorRole == null) {
+            return List.of();
+        }
+        Set<Long> collectorIds = new LinkedHashSet<>();
+        userRoleMapper
+                .selectList(
+                        new LambdaQueryWrapper<UserRoleEntity>()
+                                .eq(UserRoleEntity::getRoleId, collectorRole.getId()))
+                .stream()
+                .map(UserRoleEntity::getUserId)
+                .forEach(collectorIds::add);
+        CollectionAccessScope scope = currentScope();
+        if (!scope.isAllIncluded()) {
+            collectorIds.retainAll(scope.getOwnerIds());
+        }
+        if (collectorIds.isEmpty()) {
+            return List.of();
+        }
+        return userMapper.selectBatchIds(collectorIds).stream()
+                .filter(user -> user.getStatus() != null && user.getStatus() == 1)
+                .sorted(Comparator.comparing(this::collectorDisplayName))
+                .map(user -> new AssignableCollector(user.getId(), collectorDisplayName(user)))
+                .toList();
+    }
+
+    private String collectorDisplayName(UserEntity user) {
+        return StringUtils.hasText(user.getRealName()) ? user.getRealName() : user.getUsername();
+    }
+
+    public record AssignableCollector(Long id, String name) {}
 
     public CollectionAccessScope currentScope() {
         CurrentUser current = SecurityUtils.currentUser();
@@ -83,18 +134,32 @@ public class CollectionAccessService {
                 : current.getUsername();
     }
 
-    public void requireAssignableCollector(Long collectorId) {
+    public String requireAssignableCollector(Long collectorId) {
         if (collectorId == null) {
-            return;
+            return null;
         }
         UserEntity collector = userMapper.selectById(collectorId);
         if (collector == null || collector.getStatus() == null || collector.getStatus() != 1) {
             throw new ResourceNotFoundException("采集人不存在或已停用");
         }
+        RoleEntity collectorRole =
+                roleMapper.selectOne(
+                        new LambdaQueryWrapper<RoleEntity>()
+                                .eq(RoleEntity::getRoleCode, "COLLECTOR")
+                                .eq(RoleEntity::getStatus, 1));
+        if (collectorRole == null
+                || userRoleMapper.selectCount(
+                                new LambdaQueryWrapper<UserRoleEntity>()
+                                        .eq(UserRoleEntity::getUserId, collectorId)
+                                        .eq(UserRoleEntity::getRoleId, collectorRole.getId()))
+                        == 0) {
+            throw new ForbiddenException("只能向采集员角色用户分配采集任务");
+        }
         CollectionAccessScope scope = currentScope();
         if (!scope.isAllIncluded() && !scope.getOwnerIds().contains(collectorId)) {
             throw new ForbiddenException("不能向数据范围外的用户分配采集任务");
         }
+        return collectorDisplayName(collector);
     }
 
     public void requireTaskAccess(HerbCollectionTaskEntity task) {
