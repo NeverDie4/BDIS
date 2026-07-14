@@ -205,6 +205,25 @@ class ExperimentRecordControllerTest {
     }
 
     @Test
+    void gradeUsesDedicatedPathPermissionAndReturnsUpdatedDetail() throws Exception {
+        ExperimentRecordDetailVO vo = new ExperimentRecordDetailVO();
+        vo.setId(1L);
+        vo.setScore(new java.math.BigDecimal("92.5"));
+        when(recordService.getDetail(1L)).thenReturn(vo);
+
+        mockMvc.perform(
+                        post("/experiment-records/1/grade")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"version\":0,\"score\":92.5,"
+                                                + "\"gradeComment\":\"过程完整\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.score").value(92.5));
+        verify(authorizationService).requirePermission("edu:experiment-record:grade");
+        verify(recordService).grade(any(), any());
+    }
+
+    @Test
     void workflowEndpointsValidateIdAndVersion() throws Exception {
         mockMvc.perform(
                         post("/experiment-records/0/submit")

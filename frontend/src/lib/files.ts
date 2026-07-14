@@ -52,12 +52,12 @@ export async function deleteFileResource(fileId: number) {
 function withBrowserFileUrl(file: FileResource): FileResource {
   return {
     ...file,
-    fileUrl: toBrowserUrl(file.fileUrl),
-    thumbnailUrl: file.thumbnailUrl ? toBrowserUrl(file.thumbnailUrl) : file.thumbnailUrl,
+    fileUrl: toBrowserFileUrl(file.fileUrl),
+    thumbnailUrl: file.thumbnailUrl ? toBrowserFileUrl(file.thumbnailUrl) : file.thumbnailUrl,
   };
 }
 
-function toBrowserUrl(value: string) {
+export function toBrowserFileUrl(value: string) {
   if (/^https?:\/\//i.test(value)) {
     return value;
   }

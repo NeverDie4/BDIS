@@ -22,6 +22,7 @@ import com.bdis.modules.experiment.query.ExperimentRecordQuery;
 import com.bdis.modules.experiment.request.ExperimentRecordArchiveRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordAttachmentBindRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordCreateRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordGradeRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordSubmitRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordUpdateRequest;
 import com.bdis.modules.experiment.service.ExperimentRecordService;
@@ -32,6 +33,7 @@ import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -240,6 +242,33 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                     ResultCodeEnum.CONFLICT, "Experiment record archive state or version conflict");
         }
         recordAudit("ARCHIVE", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void grade(Long id, ExperimentRecordGradeRequest request) {
+        ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
+        if (!ExperimentArchiveStatus.SUBMITTED.equals(entity.getArchiveStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Only submitted experiment records can be graded");
+        }
+        validateGrade(request, entity);
+        UserEntity operator = requireCurrentOperator();
+        LocalDateTime gradedAt = LocalDateTime.now();
+        if (recordMapper.gradeByIdAndVersion(
+                        id,
+                        request.getVersion(),
+                        operator.getId(),
+                        request.getScore(),
+                        gradedAt,
+                        request.getGradeComment())
+                == 0) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Experiment record grade state or version conflict");
+        }
+        recordAudit("GRADE", id);
     }
 
     @Override
@@ -461,6 +490,25 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         if (!Objects.equals(requestVersion, entityVersion)) {
             throw new BusinessException(
                     ResultCodeEnum.CONFLICT, "Experiment record version conflict");
+        }
+    }
+
+    private void validateGrade(
+            ExperimentRecordGradeRequest request, ExperimentRecordEntity entity) {
+        if (request == null || request.getVersion() == null || request.getScore() == null) {
+            throw new BusinessException("Experiment record version and score are required");
+        }
+        if (!Objects.equals(request.getVersion(), entity.getVersion())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Experiment record version conflict");
+        }
+        BigDecimal score = request.getScore();
+        if (score.compareTo(BigDecimal.ZERO) < 0
+                || score.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new BusinessException("Experiment score must be between 0 and 100");
+        }
+        if (request.getGradeComment() != null && request.getGradeComment().length() > 1000) {
+            throw new BusinessException("Experiment grade comment is too long");
         }
     }
 

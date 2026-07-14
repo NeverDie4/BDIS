@@ -8,6 +8,8 @@ import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.vo.ResearchProjectDetailVO;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
+import com.bdis.modules.research.vo.ResearchUserCandidateVO;
+import java.util.List;
 
 public interface ResearchProjectService {
     PageResult<ResearchProjectListVO> page(ResearchProjectQuery query);
@@ -21,4 +23,6 @@ public interface ResearchProjectService {
     void changeLeader(Long id, ResearchProjectLeaderChangeRequest request);
 
     void changeStatus(Long id, ResearchProjectStatusChangeRequest request);
+
+    List<ResearchUserCandidateVO> listUserCandidates();
 }

@@ -29,6 +29,7 @@ import com.bdis.modules.research.service.ResearchAchievementService;
 import com.bdis.modules.research.service.ResearchProjectService;
 import com.bdis.modules.research.vo.ResearchProjectDetailVO;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
+import com.bdis.modules.research.vo.ResearchUserCandidateVO;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
@@ -142,6 +143,42 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
                                                 herbs.get(entity.getSpeciesId())))
                         .toList();
         return PageResult.of(records, page);
+    }
+
+    @Override
+    public List<ResearchUserCandidateVO> listUserCandidates() {
+        Map<Long, String> leaderRoles =
+                userMapper.selectResearchLeaderUserIds().stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        id -> id,
+                                        id -> {
+                                            String role = userMapper.selectResearchLeaderRole(id);
+                                            return role == null ? null : role.toLowerCase();
+                                        },
+                                        (left, right) -> left));
+        return userMapper.selectList(
+                        new LambdaQueryWrapper<UserEntity>()
+                                .eq(UserEntity::getStatus, 1)
+                                .eq(UserEntity::getIsDeleted, 0)
+                                .orderByAsc(UserEntity::getRealName)
+                                .orderByAsc(UserEntity::getUsername))
+                .stream()
+                .map(
+                        user -> {
+                            ResearchUserCandidateVO vo = new ResearchUserCandidateVO();
+                            vo.setId(user.getId());
+                            vo.setUsername(user.getUsername());
+                            vo.setRealName(user.getRealName());
+                            String role = leaderRoles.get(user.getId());
+                            vo.setUserType(
+                                    StringUtils.hasText(user.getUserType())
+                                            ? user.getUserType().toLowerCase()
+                                            : role);
+                            vo.setStatus(user.getStatus());
+                            return vo;
+                        })
+                .toList();
     }
 
     @Override
@@ -435,7 +472,12 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         UserEntity user = userMapper.selectById(leaderId);
         if (user == null
                 || !Objects.equals(user.getStatus(), 1)
-                || !Set.of("teacher", "researcher").contains(user.getUserType())) {
+                || (!Set.of("teacher", "researcher")
+                                .contains(
+                                        user.getUserType() == null
+                                                ? ""
+                                                : user.getUserType().toLowerCase())
+                        && userMapper.selectResearchLeaderRole(leaderId) == null)) {
             throw new BusinessException(
                     ResultCodeEnum.VALIDATION_ERROR,
                     "Leader must be an enabled teacher or researcher");

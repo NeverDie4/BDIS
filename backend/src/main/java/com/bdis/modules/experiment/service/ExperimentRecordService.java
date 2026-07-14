@@ -6,6 +6,7 @@ import com.bdis.modules.experiment.query.ExperimentRecordQuery;
 import com.bdis.modules.experiment.request.ExperimentRecordArchiveRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordAttachmentBindRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordCreateRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordGradeRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordSubmitRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordUpdateRequest;
 import com.bdis.modules.experiment.vo.ExperimentRecordDetailVO;
@@ -28,6 +29,8 @@ public interface ExperimentRecordService {
     void submit(Long id, ExperimentRecordSubmitRequest request);
 
     void archive(Long id, ExperimentRecordArchiveRequest request);
+
+    void grade(Long id, ExperimentRecordGradeRequest request);
 
     List<FileResourceVO> listAttachments(Long id, String fileUsage);
 

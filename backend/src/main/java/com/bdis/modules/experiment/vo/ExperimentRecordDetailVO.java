@@ -1,6 +1,7 @@
 package com.bdis.modules.experiment.vo;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import lombok.Data;
 
 @Data
@@ -22,6 +23,11 @@ public class ExperimentRecordDetailVO {
     private String recorderName;
     private LocalDateTime recordedAt;
     private String archiveStatus;
+    private BigDecimal score;
+    private Long gradedBy;
+    private LocalDateTime gradedAt;
+    private String gradedByName;
+    private String gradeComment;
     private LocalDateTime submittedAt;
     private Long submittedBy;
     private String submittedByName;

@@ -1,6 +1,6 @@
 ﻿import type { Key } from "react";
 import { DownOutlined } from "@ant-design/icons";
-import { Button, Dropdown, Space, Table } from "antd";
+import { Button, Dropdown, Empty, Space, Table } from "antd";
 import type { MenuProps, TableColumnsType } from "antd";
 import Image from "next/image";
 import { TeachingStatusTag } from "./TeachingStatusTag";
@@ -8,9 +8,21 @@ import type { CourseDetailData, CourseRecord } from "./types";
 import styles from "./teaching.module.css";
 
 type CourseTableProps = {
+  courses: CourseRecord[];
+  loading?: boolean;
+  canEdit?: boolean;
+  canPublish?: boolean;
+  canDelete?: boolean;
+  canEnroll?: boolean;
+  viewMode?: "all" | "mine";
+  onEnrollCourse?: (course: CourseRecord) => void;
   selectedRowKeys: Key[];
   onSelectionChange: (keys: Key[]) => void;
   onViewCourse: (course: CourseRecord) => void;
+  onEditCourse: (course: CourseRecord) => void;
+  onPublishCourse: (course: CourseRecord) => void;
+  onOfflineCourse: (course: CourseRecord) => void;
+  onDeleteCourse: (course: CourseRecord) => void;
 };
 
 const baseCourseDetail: CourseDetailData = {
@@ -157,12 +169,23 @@ const courseData: CourseRecord[] = [
   },
 ];
 
-const moreItems: MenuProps["items"] = [
-  { key: "records", label: "实验记录" },
-  { key: "preview", label: "学生预览" },
-];
-
-export function CourseTable({ selectedRowKeys, onSelectionChange, onViewCourse }: CourseTableProps) {
+export function CourseTable({
+  courses,
+  loading,
+  canEdit,
+  canPublish,
+  canDelete,
+  canEnroll,
+  viewMode,
+  onEnrollCourse,
+  selectedRowKeys,
+  onSelectionChange,
+  onViewCourse,
+  onEditCourse,
+  onPublishCourse,
+  onOfflineCourse,
+  onDeleteCourse,
+}: CourseTableProps) {
   const columns: TableColumnsType<CourseRecord> = [
     {
       title: "序号",
@@ -193,6 +216,13 @@ export function CourseTable({ selectedRowKeys, onSelectionChange, onViewCourse }
     },
     { title: "学科方向", dataIndex: "subject", key: "subject", ellipsis: true, width: 110 },
     { title: "负责人", dataIndex: "teacher", key: "teacher", width: 90 },
+    ...(viewMode === "mine" ? [{
+      title: "我的成绩",
+      dataIndex: "score",
+      key: "score",
+      width: 90,
+      render: (score: number | undefined) => score == null ? "待批阅" : `${score} 分`,
+    }] : []),
     {
       title: "课程状态",
       dataIndex: "status",
@@ -209,8 +239,23 @@ export function CourseTable({ selectedRowKeys, onSelectionChange, onViewCourse }
       render: (_value, record) => (
         <Space size={2}>
           <Button className={styles.actionLink} type="link" onClick={() => onViewCourse(record)}>查看</Button>
-          <Button className={styles.actionLink} type="link" onClick={() => undefined}>编辑</Button>
-          <Dropdown menu={{ items: moreItems }} trigger={["click"]}>
+          {canEnroll && record.enrollmentStatus === "available" ? <Button className={styles.actionLink} type="link" onClick={() => onEnrollCourse?.(record)}>选课</Button> : null}
+          {canEdit ? <Button className={styles.actionLink} type="link" onClick={() => onEditCourse(record)}>编辑</Button> : null}
+          <Dropdown
+            menu={{
+              items: [
+                record.status === "published" && canPublish ? { key: "offline", label: "下线" } : null,
+                record.status !== "published" && canPublish ? { key: "publish", label: "发布" } : null,
+                canDelete ? { key: "delete", label: "删除", danger: true } : null,
+              ].filter(Boolean) as MenuProps["items"],
+              onClick: ({ key }) => {
+                if (key === "publish") onPublishCourse(record);
+                if (key === "offline") onOfflineCourse(record);
+                if (key === "delete") onDeleteCourse(record);
+              },
+            }}
+            trigger={["click"]}
+          >
             <Button className={styles.actionLink} type="link" onClick={(event) => event.preventDefault()}>
               更多 <DownOutlined />
             </Button>
@@ -224,7 +269,9 @@ export function CourseTable({ selectedRowKeys, onSelectionChange, onViewCourse }
     <Table<CourseRecord>
       className={styles.dataTable}
       columns={columns}
-      dataSource={courseData}
+      dataSource={courses}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无课程" /> }}
+      loading={loading}
       pagination={{ pageSize: 5, showSizeChanger: false, showTotal: (total) => `共 ${total} 条` }}
       rowKey="id"
       rowSelection={{ selectedRowKeys, onChange: onSelectionChange }}

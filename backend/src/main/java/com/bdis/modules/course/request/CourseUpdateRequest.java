@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.util.List;
 import lombok.Data;
 
 @Data
@@ -31,6 +33,20 @@ public class CourseUpdateRequest {
 
     @Size(max = 500, message = "videoUrl must not exceed 500 characters")
     private String videoUrl;
+
+    private List<String> applicableMajors;
+
+    private Integer hours;
+
+    private BigDecimal credits;
+
+    private List<String> prerequisites;
+
+    private List<String> teachingObjectives;
+
+    private List<String> teachingMethods;
+
+    private List<String> tags;
 
     private LocalDateTime startedAt;
 

@@ -8,6 +8,7 @@ import com.bdis.modules.experiment.query.ExperimentRecordQuery;
 import com.bdis.modules.experiment.request.ExperimentRecordArchiveRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordAttachmentBindRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordCreateRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordGradeRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordSubmitRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordUpdateRequest;
 import com.bdis.modules.experiment.service.ExperimentRecordService;
@@ -101,6 +102,16 @@ public class ExperimentRecordController {
         requirePositiveId(id);
         authorizationService.requirePermission("edu:experiment-record:archive");
         recordService.archive(id, request);
+        return Result.success(recordService.getDetail(id));
+    }
+
+    @PostMapping("/{id}/grade")
+    public Result<ExperimentRecordDetailVO> grade(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody ExperimentRecordGradeRequest request) {
+        requirePositiveId(id);
+        authorizationService.requirePermission("edu:experiment-record:grade");
+        recordService.grade(id, request);
         return Result.success(recordService.getDetail(id));
     }
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { Badge, Button, Drawer, Space, Tooltip, Typography } from "antd";
-import { BellOutlined, LoginOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { BellOutlined, LoginOutlined } from "@ant-design/icons";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { getPortalNavigationRoutes } from "@/config/routes";
@@ -44,7 +45,13 @@ export function HeaderNav() {
     <header className={styles.header}>
       <Link href="/" className={styles.brand} aria-label="返回首页">
         <span className={styles.brandMark}>
-          <SafetyCertificateOutlined />
+          <Image
+            src="/images/login/herbal-gallery-logo.png"
+            alt="本草研究院标本馆标志"
+            width={54}
+            height={54}
+            priority
+          />
         </span>
         <span>
           <span className={styles.brandName}>本草研究院标本馆</span>

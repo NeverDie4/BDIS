@@ -11,6 +11,8 @@ import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.service.ResearchProjectService;
 import com.bdis.modules.research.vo.ResearchProjectDetailVO;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
+import com.bdis.modules.research.vo.ResearchUserCandidateVO;
+import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
@@ -47,6 +49,12 @@ public class ResearchProjectController {
     public Result<ResearchProjectDetailVO> detail(@PathVariable @Positive Long id) {
         authorizationService.requirePermission("research:project:detail");
         return Result.success(projectService.getDetail(id));
+    }
+
+    @GetMapping("/candidate-users")
+    public Result<List<ResearchUserCandidateVO>> candidateUsers() {
+        authorizationService.requirePermission("research:project:detail");
+        return Result.success(projectService.listUserCandidates());
     }
 
     @PostMapping

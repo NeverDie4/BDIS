@@ -1,0 +1,236 @@
+import { apiDelete, apiGet, apiPost, apiPut, getApiErrorMessage } from "@/lib/request";
+import { toBrowserFileUrl } from "@/lib/files";
+import type { PageResult } from "@/types/api";
+import type { CourseRecord } from "@/components/teaching/types";
+
+export type CoursePublishStatus = "published" | "draft" | "offline";
+
+export type CourseListApi = {
+  id: number;
+  courseNo: string;
+  courseName: string;
+  courseType: string;
+  teacherId: number;
+  teacherName?: string;
+  publishStatus: CoursePublishStatus;
+  startedAt?: string;
+  endedAt?: string;
+  status?: number;
+  updatedAt?: string;
+};
+
+export type CourseStepApi = {
+  id: number;
+  courseId: number;
+  stepNo: string;
+  stepTitle: string;
+  stepContent?: string;
+  expectedResult?: string;
+  sortOrder?: number;
+  version: number;
+};
+
+export type CourseResourceApi = {
+  id: number;
+  courseId: number;
+  resourceName: string;
+  resourceType?: string;
+  fileId: number;
+  fileName?: string;
+  originalFilename?: string;
+  fileType?: string;
+  fileFormat?: string;
+  fileSize?: number;
+  fileUrl?: string;
+  sortOrder?: number;
+  status?: number;
+};
+
+export type CourseDetailApi = CourseListApi & {
+  description?: string;
+  videoUrl?: string;
+  applicableMajors?: string[];
+  hours?: number;
+  credits?: number;
+  prerequisites?: string[];
+  teachingObjectives?: string[];
+  teachingMethods?: string[];
+  tags?: string[];
+  publishedAt?: string;
+  publishedBy?: number;
+  remark?: string;
+  createdAt?: string;
+  createdBy?: number;
+  version: number;
+  steps: CourseStepApi[];
+  resources: CourseResourceApi[];
+};
+
+export type CoursePayload = {
+  courseNo: string;
+  courseName: string;
+  courseType: string;
+  teacherId: number;
+  description?: string;
+  videoUrl?: string;
+  applicableMajors?: string[];
+  hours?: number;
+  credits?: number;
+  prerequisites?: string[];
+  teachingObjectives?: string[];
+  teachingMethods?: string[];
+  tags?: string[];
+  startedAt?: string;
+  endedAt?: string;
+  remark?: string;
+};
+
+export type CourseUpdatePayload = CoursePayload & { version: number };
+
+export type CourseStepPayload = {
+  stepNo: string;
+  stepTitle: string;
+  stepContent?: string;
+  expectedResult?: string;
+  sortOrder?: number;
+};
+
+export type CourseResourcePayload = {
+  fileId: number;
+  resourceName: string;
+  resourceType?: string;
+  sortOrder?: number;
+};
+
+export async function listCourses(params?: Record<string, unknown>) {
+  return apiGet<PageResult<CourseListApi>>("/courses", {
+    pageNo: 1,
+    pageSize: 50,
+    ...params,
+  });
+}
+
+export function getCourse(courseId: number) {
+  return apiGet<CourseDetailApi>(`/courses/${courseId}`);
+}
+
+export function createCourse(payload: CoursePayload) {
+  return apiPost<CourseDetailApi>("/courses", payload);
+}
+
+export function updateCourse(courseId: number, payload: CourseUpdatePayload) {
+  return apiPut<CourseDetailApi>(`/courses/${courseId}`, payload);
+}
+
+export function deleteCourse(courseId: number) {
+  return apiDelete<void>(`/courses/${courseId}`);
+}
+
+export function publishCourse(courseId: number, version: number) {
+  return apiPost<void>(`/courses/${courseId}/publish`, { version });
+}
+
+export function offlineCourse(courseId: number, version: number) {
+  return apiPost<void>(`/courses/${courseId}/offline`, { version });
+}
+
+export function createCourseStep(courseId: number, payload: CourseStepPayload) {
+  return apiPost<CourseStepApi>(`/courses/${courseId}/steps`, payload);
+}
+
+export function updateCourseStep(courseId: number, stepId: number, payload: CourseStepPayload & { version: number }) {
+  return apiPut<CourseStepApi>(`/courses/${courseId}/steps/${stepId}`, payload);
+}
+
+export function deleteCourseStep(courseId: number, stepId: number) {
+  return apiDelete<void>(`/courses/${courseId}/steps/${stepId}`);
+}
+
+export function bindCourseResource(courseId: number, payload: CourseResourcePayload) {
+  return apiPost<CourseResourceApi>(`/courses/${courseId}/resources`, payload);
+}
+
+export function deleteCourseResource(courseId: number, resourceId: number) {
+  return apiDelete<void>(`/courses/${courseId}/resources/${resourceId}`);
+}
+
+function formatFileSize(bytes?: number) {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+export function mapCourseList(course: CourseListApi): CourseRecord {
+  return {
+    id: String(course.id),
+    courseNo: course.courseNo,
+    courseName: course.courseName,
+    category: course.courseType,
+    subject: course.courseType,
+    teacher: course.teacherName ?? String(course.teacherId),
+    teacherId: course.teacherId,
+    term: course.startedAt ? course.startedAt.slice(0, 7) : "",
+    status: course.publishStatus,
+    updatedAt: course.updatedAt ?? "",
+    thumbnail: "/images/herbs/showcase/huangqi.png",
+    description: "",
+    version: 0,
+    detail: {
+      applicableMajors: [],
+      hours: 0,
+      credits: 0,
+      prerequisites: [],
+      teachingObjectives: [],
+      teachingMethods: [],
+      publishedAt: "",
+      tags: [],
+      experimentSteps: [],
+      resources: [],
+      videos: [],
+      relatedHerbs: [],
+      relatedProjects: [],
+      relatedCollections: [],
+      experimentRecords: [],
+      videoUrl: "",
+    },
+  };
+}
+
+export function mapCourseDetail(course: CourseDetailApi): CourseRecord {
+  const record = mapCourseList(course);
+  return {
+    ...record,
+    description: course.description ?? "",
+    version: course.version,
+    detail: {
+      ...record.detail,
+      applicableMajors: course.applicableMajors ?? [],
+      hours: course.hours ?? 0,
+      credits: course.credits ?? 0,
+      prerequisites: course.prerequisites ?? [],
+      teachingObjectives: course.teachingObjectives ?? [],
+      teachingMethods: course.teachingMethods ?? [],
+      tags: course.tags ?? [],
+      videoUrl: course.videoUrl ? toBrowserFileUrl(course.videoUrl) : "",
+      publishedAt: course.publishedAt ?? "尚未发布",
+      experimentSteps: course.steps.map((step) => ({
+        id: step.id,
+        stepNo: step.stepNo,
+        title: step.stepTitle,
+        description: step.stepContent ?? "",
+        expectedResult: step.expectedResult,
+        version: step.version,
+      })),
+      resources: course.resources.map((resource) => ({
+        id: resource.id,
+        fileId: resource.fileId,
+        name: resource.resourceName,
+        type: resource.resourceType ?? "课程资源",
+        size: formatFileSize(resource.fileSize),
+        url: resource.fileUrl,
+      })),
+    },
+  };
+}
+
+export { getApiErrorMessage };

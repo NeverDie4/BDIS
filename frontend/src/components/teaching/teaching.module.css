@@ -5,13 +5,13 @@
   height: calc(100vh - 78px);
   min-width: 0;
   min-height: 0;
-  margin-top: -36px;
+  margin-top: 0;
   margin-left: 0;
   overflow: hidden;
 }
 
 .moduleHero {
-  margin-bottom: var(--space-md);
+  margin-bottom: 0;
 }
 
 .moduleTabs {
@@ -153,7 +153,7 @@
 
 .managementGrid {
   display: grid;
-  grid-template-columns: minmax(0, 56fr) minmax(0, 44fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   width: 100%;
   min-width: 0;
@@ -637,6 +637,105 @@
   list-style: none;
 }
 
+.trainingManagementPanel {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+}
+
+.trainingManagementPanel :global(.ant-table) {
+  background: transparent;
+}
+
+.trainingManagementPanel :global(.ant-table-thead > tr > th) {
+  background: rgba(239, 233, 219, 0.68) !important;
+}
+
+.trainingDetailBody {
+  display: grid;
+  gap: 14px;
+}
+
+.trainingDetailBody :global(.ant-card) {
+  border-color: var(--color-border);
+  background: rgba(255, 250, 242, 0.66);
+}
+
+.trainingDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  color: var(--color-muted);
+}
+
+.trainingDetailBody p {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.trainingStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingStatsGrid :global(.ant-statistic-title) {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.trainingStatsGrid :global(.ant-statistic-content) {
+  color: var(--color-primary);
+  font-size: 20px;
+}
+
+.trainingDetailSection {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.56);
+  padding: 12px;
+}
+
+.trainingMaterialRow,
+.trainingFeedbackRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-bottom: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 8px 0;
+}
+
+.trainingMaterialRow span,
+.trainingFeedbackRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingMaterialRow small {
+  margin-left: auto;
+  color: var(--color-muted);
+}
+
+.trainingFormRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detailVideo {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: #111;
+}
+
 .detailStepList > li {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -772,6 +871,77 @@
   font-size: 14px;
 }
 
+.recordToolbar,
+.recordSectionHeading,
+.recordMetaLine,
+.recordActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recordToolbar {
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.recordMetaLine {
+  flex-wrap: wrap;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.recordMetaLine span + span::before {
+  margin-right: 8px;
+  content: "·";
+}
+
+.recordActions {
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+
+.recordFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+
+.recordAttachmentSection {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+}
+
+.recordSectionHeading {
+  justify-content: space-between;
+}
+
+.recordAttachmentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 6px 8px;
+}
+
+.recordAttachmentRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mutedText {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+
 @media (max-width: 1199px) {
     .mainFilters,
   .filterFooter {
@@ -827,7 +997,7 @@
 
 @media (max-width: 640px) {
   .teachingPage {
-    margin-top: -24px;
+    margin-top: 0;
   }
 
   .trainingGrid {

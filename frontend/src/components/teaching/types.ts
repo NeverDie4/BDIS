@@ -5,19 +5,28 @@ export type TeachingStatus =
   | "draft"
   | "offline"
   | "ongoing"
+  | "planning"
+  | "suspended"
   | "completed"
   | "applying";
 
 export interface CourseExperimentStep {
+  id?: number;
+  stepNo?: string;
   title: string;
   description: string;
-  duration: string;
+  duration?: string;
+  expectedResult?: string;
+  version?: number;
 }
 
 export interface CourseResourceItem {
+  id?: number;
+  fileId?: number;
   name: string;
   type: string;
-  size: string;
+  size?: string;
+  url?: string;
 }
 
 export interface CourseVideoItem {
@@ -49,6 +58,7 @@ export interface CourseDetailData {
   relatedProjects: string[];
   relatedCollections: string[];
   experimentRecords: CourseExperimentRecord[];
+  videoUrl?: string;
 }
 
 export interface CourseRecord {
@@ -58,12 +68,16 @@ export interface CourseRecord {
   category: string;
   subject: string;
   teacher: string;
+  teacherId?: number;
   term: string;
   status: "published" | "draft" | "offline";
   updatedAt: string;
   thumbnail: string;
   description: string;
+  version?: number;
   detail: CourseDetailData;
+  enrollmentStatus?: "enrolled" | "available" | "closed";
+  score?: number;
 }
 
 export interface ResearchRecord {
@@ -72,6 +86,20 @@ export interface ResearchRecord {
   projectName: string;
   leader: string;
   period: string;
-  status: "ongoing" | "completed" | "applying";
+  leaderId?: number;
+  status: "planning" | "ongoing" | "suspended" | "completed" | "applying";
   updatedAt: string;
+  version?: number;
+  detail?: ResearchDetailData;
+}
+
+export interface ResearchDetailData {
+  projectType: string;
+  description: string;
+  speciesId?: number;
+  speciesName?: string;
+  leaderId: number;
+  members: Array<{ id: number; userId: number; username?: string; realName?: string; memberRole: string; memberStatus: string }>;
+  materials: Array<{ bindingId: number; fileId: number; fileName?: string; fileUsage: string; fileUrl?: string }>;
+  achievements: Array<{ id: number; achievementNo: string; achievementName: string; achievementType: string; achievementStage?: string; achievementStatus: string; version: number; fileName?: string }>;
 }
