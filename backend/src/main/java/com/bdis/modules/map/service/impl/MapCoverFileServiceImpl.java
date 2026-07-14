@@ -15,7 +15,6 @@ import com.bdis.modules.file.entity.FileResourceEntity;
 import com.bdis.modules.file.mapper.FileBusinessMapper;
 import com.bdis.modules.file.mapper.FileResourceMapper;
 import com.bdis.modules.map.service.MapCoverFileService;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -105,7 +104,7 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
                 fileResourceService.resolveLocalPath("/api/files/" + file.getId() + "/content"),
                 file.getOriginalFilename());
         if (alreadyBound) {
-            ensurePublic(file);
+            fileResourceService.publishForBusiness(fileId, BIZ_TYPE, pointId);
             return publicUrl(fileId);
         }
 
@@ -115,7 +114,7 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
         bind.setBizId(pointId);
         bind.setFileUsage(FILE_USAGE);
         fileBusinessService.bind(bind);
-        ensurePublic(file);
+        fileResourceService.publishForBusiness(fileId, BIZ_TYPE, pointId);
         return publicUrl(fileId);
     }
 
@@ -148,18 +147,6 @@ public class MapCoverFileServiceImpl implements MapCoverFileService {
         return fileBusinessMapper.selectList(
                 new LambdaQueryWrapper<FileBusinessEntity>()
                         .eq(FileBusinessEntity::getFileId, fileId));
-    }
-
-    private void ensurePublic(FileResourceEntity file) {
-        if ("public".equalsIgnoreCase(file.getAccessLevel())) {
-            return;
-        }
-        file.setAccessLevel("public");
-        file.setUpdatedAt(LocalDateTime.now());
-        file.setUpdatedBy(CurrentUserUtils.currentUserId());
-        if (fileResourceMapper.updateById(file) != 1) {
-            throw new BusinessException(ResultCodeEnum.CONFLICT, "地图封面状态已变化，请重试");
-        }
     }
 
     private void deleteAfterCommit(Long fileId) {

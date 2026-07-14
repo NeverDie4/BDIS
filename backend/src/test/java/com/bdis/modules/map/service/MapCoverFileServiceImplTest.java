@@ -77,14 +77,12 @@ class MapCoverFileServiceImplTest {
         FileResourceEntity file = privateImage(7L, 10L);
         when(fileResourceService.resolveFileId("/api/files/7/content")).thenReturn(7L);
         when(fileResourceMapper.selectById(7L)).thenReturn(file);
-        when(fileResourceMapper.updateById(file)).thenReturn(1);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
 
         String result = service.replaceCover(21L, null, "/api/files/7/content");
 
         assertThat(result).isEqualTo("/api/public-files/7/content");
-        assertThat(file.getAccessLevel()).isEqualTo("public");
-        verify(fileResourceMapper).updateById(file);
+        verify(fileResourceService).publishForBusiness(7L, "map_point", 21L);
         verify(imageContentValidator).requireAllowedImage(any(), any());
         ArgumentCaptor<FileBusinessBindDTO> bindCaptor =
                 ArgumentCaptor.forClass(FileBusinessBindDTO.class);
@@ -111,7 +109,6 @@ class MapCoverFileServiceImplTest {
         when(fileResourceService.resolveFileId("/api/public-files/7/content")).thenReturn(7L);
         when(fileResourceService.resolveFileId("/api/files/9/content")).thenReturn(9L);
         when(fileResourceMapper.selectById(9L)).thenReturn(nextFile);
-        when(fileResourceMapper.updateById(nextFile)).thenReturn(1);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
         when(fileBusinessMapper.selectCount(any())).thenReturn(1L, 0L);
 
@@ -127,7 +124,6 @@ class MapCoverFileServiceImplTest {
         when(fileResourceService.resolveFileId("/api/public-files/7/content")).thenReturn(7L);
         when(fileResourceService.resolveFileId("/api/files/9/content")).thenReturn(9L);
         when(fileResourceMapper.selectById(9L)).thenReturn(nextFile);
-        when(fileResourceMapper.updateById(nextFile)).thenReturn(1);
         when(fileBusinessMapper.selectList(any())).thenReturn(List.of());
         when(fileBusinessMapper.selectCount(any())).thenReturn(1L, 0L);
         TransactionSynchronizationManager.initSynchronization();

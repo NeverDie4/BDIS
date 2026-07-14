@@ -52,7 +52,8 @@ GROUP BY candidate.`distribution_id`
 HAVING COUNT(*) = 1;
 
 INSERT INTO `sys_file_business` (
-  `file_id`, `biz_type`, `biz_id`, `file_usage`, `sort_order`, `created_at`, `created_by`, `remark`
+  `file_id`, `biz_type`, `biz_id`, `file_usage`, `sort_order`, `is_public`,
+  `created_at`, `created_by`, `remark`
 )
 SELECT
   candidate.`file_id`,
@@ -60,6 +61,7 @@ SELECT
   candidate.`distribution_id`,
   'cover',
   0,
+  1,
   CURRENT_TIMESTAMP,
   distribution.`created_by`,
   '历史地图封面保守绑定迁移'
@@ -87,7 +89,14 @@ INNER JOIN `sys_file_business` AS binding
 INNER JOIN `herb_distribution` AS distribution
   ON distribution.`id` = binding.`biz_id`
   AND distribution.`is_deleted` = 0
-SET file_resource.`access_level` = 'public',
+SET binding.`is_public` = 1,
+    file_resource.`access_level` = 'public',
+    file_resource.`file_url` = CONCAT(
+      '/api/public-files/', file_resource.`id`, '/content'
+    ),
+    file_resource.`thumbnail_url` = CONCAT(
+      '/api/public-files/', file_resource.`id`, '/content'
+    ),
     distribution.`cover_image_url` = CONCAT(
       '/api/public-files/', file_resource.`id`, '/content'
     )
