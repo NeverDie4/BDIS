@@ -6,6 +6,15 @@
   padding-bottom: var(--space-xl);
 }
 
+.mockNotice {
+  border: 1px solid #e0b35a;
+  border-radius: var(--radius-button);
+  background: #fff7e6;
+  color: #8a5a00;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

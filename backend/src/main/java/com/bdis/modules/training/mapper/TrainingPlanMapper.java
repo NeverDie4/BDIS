@@ -19,6 +19,11 @@ public interface TrainingPlanMapper extends BaseMapper<TrainingPlanEntity> {
     @Select("SELECT COUNT(1) FROM rel_training_plan_material WHERE plan_id = #{planId}")
     Long countMaterials(@Param("planId") Long planId);
 
+    @Select("SELECT COUNT(1) FROM edu_training_record "
+            + "WHERE plan_id = #{planId} AND user_id = #{userId} AND is_deleted = 0")
+    Long countActiveRecordsForUser(
+            @Param("planId") Long planId, @Param("userId") Long userId);
+
     @Update("""
             UPDATE edu_training_plan
             SET publish_status = 'published',

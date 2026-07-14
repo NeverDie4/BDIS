@@ -158,6 +158,9 @@ public class TrainingPlanMaterialServiceImpl implements TrainingPlanMaterialServ
         if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
             return;
         }
+        if (!manage && planMapper.countActiveRecordsForUser(plan.getId(), userId) > 0) {
+            return;
+        }
         throw new ForbiddenException(
                 manage ? "Only the training plan owner can manage materials"
                         : "Training plan materials are outside the current user's scope");

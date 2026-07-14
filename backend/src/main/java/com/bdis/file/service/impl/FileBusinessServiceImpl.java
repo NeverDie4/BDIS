@@ -68,6 +68,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
         entity.setBizId(dto.getBizId());
         entity.setFileUsage(dto.getFileUsage());
         entity.setPublicVisible(false);
+        entity.setSortOrder(dto.getSortOrder() == null ? 0 : dto.getSortOrder());
         entity.setRemark(dto.getRemark());
         entity.setCreatedAt(LocalDateTime.now());
         entity.setCreatedBy(CurrentUserUtils.currentUserId());
@@ -228,7 +229,8 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
-                                .orderByDesc(FileBusinessEntity::getId))
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
+                                .orderByAsc(FileBusinessEntity::getId))
                 .stream()
                 .map(FileBusinessEntity::getFileId)
                 .map(fileResourceMapper::selectById)
@@ -248,7 +250,8 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                                 .eq(fileUsage != null && !fileUsage.isBlank(),
                                         FileBusinessEntity::getFileUsage, fileUsage)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
-                                .orderByDesc(FileBusinessEntity::getId))
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
+                                .orderByAsc(FileBusinessEntity::getId))
                 .stream()
                 .map(FileBusinessEntity::getFileId)
                 .map(fileResourceMapper::selectById)
@@ -266,6 +269,7 @@ public class FileBusinessServiceImpl implements FileBusinessService {
                                 .eq(FileBusinessEntity::getBizType, bizType)
                                 .eq(FileBusinessEntity::getBizId, bizId)
                                 .orderByAsc(FileBusinessEntity::getSortOrder)
+                                .orderByAsc(FileBusinessEntity::getCreatedAt)
                                 .orderByAsc(FileBusinessEntity::getId))
                 .stream()
                 .map(this::toVO)

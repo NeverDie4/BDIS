@@ -33,6 +33,12 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
     @Select("SELECT * FROM research_project WHERE id = #{id} LIMIT 1")
     ResearchProjectEntity selectProjectByIdIncludingDeleted(@Param("id") Long id);
 
+    @Select("SELECT COUNT(1) > 0 FROM rel_project_member "
+            + "WHERE project_id = #{projectId} AND user_id = #{userId} "
+            + "AND member_status = 'active'")
+    boolean existsActiveProjectMember(
+            @Param("projectId") Long projectId, @Param("userId") Long userId);
+
     @Select(
             """
             <script>

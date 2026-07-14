@@ -5,6 +5,7 @@ import com.bdis.audit.dto.AuditRecordDTO;
 import com.bdis.audit.service.AuditLogService;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
@@ -346,6 +347,15 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
             if (!Objects.equals(course.getStatus(), 1)) {
                 throw new BusinessException(ResultCodeEnum.CONFLICT, "Course is disabled");
             }
+            Long userId = CurrentUserUtils.currentUserId();
+            boolean courseOwner = Objects.equals(userId, course.getCreatedBy())
+                    || Objects.equals(userId, course.getTeacherId());
+            boolean student = CurrentUserUtils.currentRoleCodes().stream()
+                    .anyMatch(role -> "STUDENT".equalsIgnoreCase(role));
+            if (hasScopedIdentity() && !isAdmin() && !courseOwner
+                    && (!student || !"published".equalsIgnoreCase(course.getPublishStatus()))) {
+                throw new ForbiddenException("Course is outside the current user's scope");
+            }
             return;
         }
         ResearchProjectEntity project =
@@ -361,6 +371,22 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                     ResultCodeEnum.CONFLICT,
                     "Completed research projects cannot receive new experiment records");
         }
+        if (hasScopedIdentity() && !isAdmin()) {
+            Long userId = CurrentUserUtils.currentUserId();
+            if (!Objects.equals(userId, project.getLeaderId())
+                    && !recordMapper.existsActiveProjectMember(projectId, userId)) {
+                throw new ForbiddenException("Research project is outside the current user's scope");
+            }
+        }
+    }
+
+    private boolean isAdmin() {
+        return CurrentUserUtils.currentRoleCodes().stream()
+                .anyMatch(SecurityConstants.ADMIN_ROLE_CODE::equalsIgnoreCase);
+    }
+
+    private boolean hasScopedIdentity() {
+        return !CurrentUserUtils.currentRoleCodes().isEmpty();
     }
 
     private void validateSourceSelection(Long courseId, Long projectId) {

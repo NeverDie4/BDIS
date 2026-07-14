@@ -75,6 +75,9 @@ export function EvaluationPageClient() {
         sealText="评审"
         title="评价申报"
       />
+      <div className={styles.mockNotice} role="note">
+        演示数据 / Mock：当前评价页面使用本地演示数据，未接入真实接口。
+      </div>
       <EvaluationSummaryGrid summary={summary} />
       <EvaluationViewport
         tabs={<EvaluationModuleTabs activeKey={activeTab} onChange={setActiveTab} />}

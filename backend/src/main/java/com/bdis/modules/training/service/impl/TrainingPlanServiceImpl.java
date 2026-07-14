@@ -363,7 +363,9 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         }
         Long userId = CurrentUserUtils.currentUserId();
         wrapper.and(scope -> scope.eq(TrainingPlanEntity::getOwnerId, userId)
-                .or().eq(TrainingPlanEntity::getTrainerId, userId));
+                .or().eq(TrainingPlanEntity::getTrainerId, userId)
+                .or().apply("EXISTS (SELECT 1 FROM edu_training_record r "
+                        + "WHERE r.plan_id = id AND r.user_id = {0} AND r.is_deleted = 0)", userId));
     }
 
     private void requirePlanAccess(TrainingPlanEntity plan, boolean manage) {
@@ -372,6 +374,9 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         }
         Long userId = CurrentUserUtils.currentUserId();
         if (Objects.equals(userId, plan.getOwnerId()) || Objects.equals(userId, plan.getTrainerId())) {
+            return;
+        }
+        if (!manage && planMapper.countActiveRecordsForUser(plan.getId(), userId) > 0) {
             return;
         }
         throw new ForbiddenException(
