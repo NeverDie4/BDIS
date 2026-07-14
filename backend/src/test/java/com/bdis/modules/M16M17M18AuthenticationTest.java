@@ -1,5 +1,6 @@
 package com.bdis.modules;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -25,9 +26,12 @@ import com.bdis.modules.evaluation.service.EvaluationStandardService;
 import com.bdis.modules.evaluation.service.EvaluationTaskService;
 import com.bdis.modules.performance.controller.PerformanceController;
 import com.bdis.modules.performance.controller.PerformanceMaterialController;
+import com.bdis.modules.performance.controller.PerformanceParticipantController;
 import com.bdis.modules.performance.controller.PerformanceStandardController;
+import com.bdis.modules.performance.controller.PerformanceStatisticsController;
 import com.bdis.modules.performance.service.PerformanceAuditService;
 import com.bdis.modules.performance.service.PerformanceMaterialService;
+import com.bdis.modules.performance.service.PerformanceParticipantService;
 import com.bdis.modules.performance.service.PerformanceService;
 import com.bdis.modules.performance.service.PerformanceStandardService;
 import com.bdis.modules.settings.service.UserSessionService;
@@ -57,7 +61,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
             DeclarationArchiveController.class,
             PerformanceController.class,
             PerformanceMaterialController.class,
-            PerformanceStandardController.class
+            PerformanceStandardController.class,
+            PerformanceParticipantController.class,
+            PerformanceStatisticsController.class
         })
 class M16M17M18AuthenticationTest {
 
@@ -79,11 +85,11 @@ class M16M17M18AuthenticationTest {
     @MockBean private PerformanceAuditService performanceAuditService;
     @MockBean private PerformanceMaterialService performanceMaterialService;
     @MockBean private PerformanceStandardService performanceStandardService;
+    @MockBean private PerformanceParticipantService performanceParticipantService;
 
     @ParameterizedTest(name = "{0} {1} rejects anonymous access")
     @MethodSource("protectedInterfaces")
-    void allTwentyEightInterfacesRequireAuthentication(String method, String path)
-            throws Exception {
+    void allProtectedInterfacesRequireAuthentication(String method, String path) throws Exception {
         mockMvc.perform(request(method, path)).andExpect(status().isUnauthorized());
     }
 
@@ -114,9 +120,19 @@ class M16M17M18AuthenticationTest {
                 Arguments.of("POST", "/performances/1/audit-records"),
                 Arguments.of("GET", "/performances/1/materials"),
                 Arguments.of("POST", "/performances/1/materials"),
+                Arguments.of("DELETE", "/performances/1/materials/1"),
+                Arguments.of("GET", "/performances/1/participants"),
+                Arguments.of("GET", "/performances/1/participants/participant-users"),
+                Arguments.of("POST", "/performances/1/participants"),
+                Arguments.of("PUT", "/performances/1/participants/1"),
+                Arguments.of("DELETE", "/performances/1/participants/1"),
+                Arguments.of("GET", "/performance-statistics"),
                 Arguments.of("GET", "/performance-standards"),
                 Arguments.of("POST", "/performance-standards"),
-                Arguments.of("PUT", "/performance-standards/1"));
+                Arguments.of("PUT", "/performance-standards/1"),
+                Arguments.of("POST", "/performance-standards/1/versions"),
+                Arguments.of("POST", "/performance-standards/1/publish"),
+                Arguments.of("POST", "/performance-standards/1/disable"));
     }
 
     private static MockHttpServletRequestBuilder request(String method, String path) {
@@ -125,6 +141,7 @@ class M16M17M18AuthenticationTest {
                     case "GET" -> get(path);
                     case "POST" -> post(path);
                     case "PUT" -> put(path);
+                    case "DELETE" -> delete(path);
                     default -> throw new IllegalArgumentException("Unsupported method: " + method);
                 };
         if (!"GET".equals(method)) {

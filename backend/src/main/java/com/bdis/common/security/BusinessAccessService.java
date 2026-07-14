@@ -1,6 +1,7 @@
 package com.bdis.common.security;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.modules.permission.dto.AuthorizationDecisionDTO;
@@ -33,9 +34,34 @@ public class BusinessAccessService {
 
     public <T> void applyOwnerScope(
             LambdaQueryWrapper<T> wrapper, String resourceType, SFunction<T, ?> ownerField) {
+        Set<Long> ownerIds = resolveOwnerIds(resourceType);
+        if (ownerIds == null) {
+            return;
+        }
+        if (ownerIds.isEmpty()) {
+            wrapper.apply("1 = 0");
+        } else {
+            wrapper.in(ownerField, ownerIds);
+        }
+    }
+
+    public <T> void applyOwnerScope(
+            QueryWrapper<T> wrapper, String resourceType, String ownerColumn) {
+        Set<Long> ownerIds = resolveOwnerIds(resourceType);
+        if (ownerIds == null) {
+            return;
+        }
+        if (ownerIds.isEmpty()) {
+            wrapper.apply("1 = 0");
+        } else {
+            wrapper.in(ownerColumn, ownerIds);
+        }
+    }
+
+    private Set<Long> resolveOwnerIds(String resourceType) {
         DataScopeResultVO scope = dataScopeService.resolveForCurrentUser(resourceType);
         if (scope.isAllIncluded()) {
-            return;
+            return null;
         }
         Set<Long> ownerIds = new HashSet<>();
         if (scope.isSelfIncluded()) {
@@ -60,11 +86,7 @@ public class BusinessAccessService {
                             .map(UserEntity::getId)
                             .collect(java.util.stream.Collectors.toSet()));
         }
-        if (ownerIds.isEmpty()) {
-            wrapper.apply("1 = 0");
-        } else {
-            wrapper.in(ownerField, ownerIds);
-        }
+        return ownerIds;
     }
 
     public void requireResourceAccess(

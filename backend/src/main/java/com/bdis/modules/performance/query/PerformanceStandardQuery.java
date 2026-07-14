@@ -16,4 +16,6 @@ public class PerformanceStandardQuery {
     private String performanceType;
 
     private Integer status;
+
+    private String lifecycleStatus;
 }

@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
                 .body(Result.error(ResultCodeEnum.VALIDATION_ERROR, "请求体不能为空或格式不正确", null));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Result<Void>> handleIllegalArgument(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest()
+                .body(Result.error(ResultCodeEnum.VALIDATION_ERROR, exception.getMessage(), null));
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<Void>> handleBusiness(BusinessException exception) {
         HttpStatus status =
