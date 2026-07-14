@@ -1,15 +1,21 @@
 package com.bdis.modules.performance.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.security.BusinessAccessService;
 import com.bdis.common.security.BusinessReferenceAccessService;
 import com.bdis.modules.performance.dto.PerformanceRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
+import com.bdis.modules.performance.entity.PerformanceParticipantEntity;
+import com.bdis.modules.performance.entity.PerformanceStandardEntity;
 import com.bdis.modules.performance.mapper.PerformanceAuditMapper;
 import com.bdis.modules.performance.mapper.PerformanceMapper;
+import com.bdis.modules.performance.mapper.PerformanceParticipantMapper;
 import com.bdis.modules.performance.mapper.PerformanceStandardMapper;
 import com.bdis.modules.performance.query.PerformanceQuery;
 import com.bdis.modules.performance.query.PerformanceStatisticsQuery;
@@ -25,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -40,10 +47,12 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     private final PerformanceMapper performanceMapper;
     private final PerformanceStandardMapper standardMapper;
+    private final PerformanceParticipantMapper participantMapper;
     private final PerformanceAuditMapper auditMapper;
     private final PerformanceMaterialService materialService;
     private final BusinessAccessService accessService;
     private final BusinessReferenceAccessService referenceAccessService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public IPage<PerformanceEntity> listPerformances(PerformanceQuery query) {
@@ -57,6 +66,7 @@ public class PerformanceServiceImpl implements PerformanceService {
     }
 
     @Override
+    @Transactional
     public PerformanceEntity createPerformance(PerformanceRequest request) {
         accessService.requirePermission("performance:record:create");
         Long userId = accessService.currentUserId();
@@ -67,14 +77,19 @@ public class PerformanceServiceImpl implements PerformanceService {
         entity.setUserId(userId);
         entity.setPerformanceTitle(request.getPerformanceTitle());
         entity.setPerformanceType(request.getPerformanceType());
+        entity.setPerformanceLevel(defaultText(request.getPerformanceLevel(), "unspecified"));
+        entity.setOccurredAt(request.getOccurredAt());
         entity.setStandardId(request.getStandardId());
         entity.setSourceType(request.getSourceType());
         entity.setSourceId(request.getSourceId());
+        entity.setSourceNameSnapshot(
+                resolveSourceName(request.getSourceType(), request.getSourceId()));
         entity.setIdentifyStatus("draft");
         entity.setStatus(1);
         entity.setCreatedBy(userId);
         entity.setRemark(request.getRemark());
         performanceMapper.insert(entity);
+        createOwnerParticipant(entity, userId);
         return performanceMapper.selectById(entity.getId());
     }
 
@@ -90,6 +105,13 @@ public class PerformanceServiceImpl implements PerformanceService {
                         ? null
                         : standardMapper.selectById(performance.getStandardId()));
         detail.setMaterials(materialService.listMaterials(performanceId));
+        detail.setParticipants(
+                participantMapper.selectList(
+                        new LambdaQueryWrapper<PerformanceParticipantEntity>()
+                                .eq(PerformanceParticipantEntity::getPerformanceId, performanceId)
+                                .orderByDesc(PerformanceParticipantEntity::getIsPrimary)
+                                .orderByAsc(PerformanceParticipantEntity::getSortOrder)
+                                .orderByAsc(PerformanceParticipantEntity::getId)));
         detail.setAuditRecords(
                 auditMapper.selectList(
                         new LambdaQueryWrapper<PerformanceAuditEntity>()
@@ -111,12 +133,16 @@ public class PerformanceServiceImpl implements PerformanceService {
         validateSource(request.getSourceType(), request.getSourceId());
         entity.setPerformanceTitle(request.getPerformanceTitle());
         entity.setPerformanceType(request.getPerformanceType());
+        entity.setPerformanceLevel(defaultText(request.getPerformanceLevel(), "unspecified"));
+        entity.setOccurredAt(request.getOccurredAt());
         entity.setStandardId(request.getStandardId());
         entity.setSourceType(request.getSourceType());
         entity.setSourceId(request.getSourceId());
+        entity.setSourceNameSnapshot(
+                resolveSourceName(request.getSourceType(), request.getSourceId()));
         entity.setUpdatedBy(accessService.currentUserId());
         entity.setRemark(request.getRemark());
-        performanceMapper.updateById(entity);
+        updateOrThrow(entity, "业绩已被其他请求修改，请刷新后重试");
         return performanceMapper.selectById(performanceId);
     }
 
@@ -134,10 +160,22 @@ public class PerformanceServiceImpl implements PerformanceService {
         if (userId == null || !userId.equals(entity.getUserId())) {
             throw new IllegalArgumentException("提交人必须与业绩所属用户一致");
         }
+        PerformanceStandardEntity standard = validateSubmittableStandard(entity.getStandardId());
+        int materialCount = materialService.listMaterials(performanceId).size();
+        int minMaterialCount =
+                Integer.valueOf(1).equals(standard.getMaterialRequired())
+                        ? standard.getMinMaterialCount() == null
+                                ? 1
+                                : standard.getMinMaterialCount()
+                        : 0;
+        if (materialCount < minMaterialCount) {
+            throw new IllegalArgumentException("佐证材料不足，当前标准至少需要 " + minMaterialCount + " 份材料");
+        }
+        snapshotStandard(entity, standard);
         entity.setIdentifyStatus("submitted");
         entity.setSubmittedAt(LocalDateTime.now());
         entity.setUpdatedBy(userId);
-        performanceMapper.updateById(entity);
+        updateOrThrow(entity, "业绩状态已变更，请刷新后重试");
         saveAuditRecord(performanceId, userId, "submit", "submitted", "业绩提交", null);
         return performanceMapper.selectById(performanceId);
     }
@@ -147,17 +185,42 @@ public class PerformanceServiceImpl implements PerformanceService {
         accessService.requirePermission("performance:record:view");
         PerformanceStatisticsQuery safeQuery =
                 query == null ? new PerformanceStatisticsQuery() : query;
-        LambdaQueryWrapper<PerformanceEntity> wrapper = buildStatisticsWrapper(safeQuery);
-        accessService.applyOwnerScope(wrapper, "perf_record", PerformanceEntity::getUserId);
-        List<PerformanceEntity> records = performanceMapper.selectList(wrapper);
+        QueryWrapper<PerformanceEntity> wrapper = statisticsWrapper(safeQuery);
         PerformanceStatisticsVO statistics = new PerformanceStatisticsVO();
-        statistics.setTotalCount((long) records.size());
-        statistics.setDraftCount(countStatus(records, "draft"));
-        statistics.setSubmittedCount(countStatus(records, "submitted"));
-        statistics.setApprovedCount(countStatus(records, "approved"));
-        statistics.setRejectedCount(countStatus(records, "rejected"));
-        statistics.setTypeCounts(countByType(records));
+        statistics.setTotalCount(performanceMapper.selectCount(wrapper));
+        Map<String, Long> statusCounts = groupCounts(safeQuery, "identify_status");
+        statistics.setDraftCount(statusCounts.getOrDefault("draft", 0L));
+        statistics.setSubmittedCount(statusCounts.getOrDefault("submitted", 0L));
+        statistics.setApprovedCount(statusCounts.getOrDefault("approved", 0L));
+        statistics.setRejectedCount(statusCounts.getOrDefault("rejected", 0L));
+        statistics.setTypeCounts(groupCounts(safeQuery, "performance_type"));
         return statistics;
+    }
+
+    private QueryWrapper<PerformanceEntity> statisticsWrapper(
+            PerformanceStatisticsQuery safeQuery) {
+        QueryWrapper<PerformanceEntity> wrapper = buildStatisticsWrapper(safeQuery);
+        if (safeQuery.getParticipantUserId() != null) {
+            List<Long> performanceIds =
+                    participantMapper
+                            .selectObjs(
+                                    new LambdaQueryWrapper<PerformanceParticipantEntity>()
+                                            .select(PerformanceParticipantEntity::getPerformanceId)
+                                            .eq(
+                                                    PerformanceParticipantEntity::getUserId,
+                                                    safeQuery.getParticipantUserId()))
+                            .stream()
+                            .map(value -> ((Number) value).longValue())
+                            .distinct()
+                            .toList();
+            if (performanceIds.isEmpty()) {
+                wrapper.apply("1 = 0");
+            } else {
+                wrapper.in("id", performanceIds);
+            }
+        }
+        accessService.applyOwnerScope(wrapper, "perf_record", "user_id");
+        return wrapper;
     }
 
     private LambdaQueryWrapper<PerformanceEntity> buildListWrapper(PerformanceQuery query) {
@@ -172,6 +235,10 @@ public class PerformanceServiceImpl implements PerformanceService {
                         PerformanceEntity::getPerformanceType,
                         query.getPerformanceType())
                 .eq(
+                        StringUtils.hasText(query.getPerformanceLevel()),
+                        PerformanceEntity::getPerformanceLevel,
+                        query.getPerformanceLevel())
+                .eq(
                         StringUtils.hasText(query.getIdentifyStatus()),
                         PerformanceEntity::getIdentifyStatus,
                         query.getIdentifyStatus())
@@ -182,32 +249,47 @@ public class PerformanceServiceImpl implements PerformanceService {
                 .eq(
                         StringUtils.hasText(query.getSourceType()),
                         PerformanceEntity::getSourceType,
-                        query.getSourceType());
+                        query.getSourceType())
+                .ge(
+                        query.getOccurredFrom() != null,
+                        PerformanceEntity::getOccurredAt,
+                        query.getOccurredFrom())
+                .le(
+                        query.getOccurredTo() != null,
+                        PerformanceEntity::getOccurredAt,
+                        query.getOccurredTo());
     }
 
-    private LambdaQueryWrapper<PerformanceEntity> buildStatisticsWrapper(
+    private QueryWrapper<PerformanceEntity> buildStatisticsWrapper(
             PerformanceStatisticsQuery query) {
-        return new LambdaQueryWrapper<PerformanceEntity>()
-                .eq(query.getUserId() != null, PerformanceEntity::getUserId, query.getUserId())
+        return new QueryWrapper<PerformanceEntity>()
+                .eq(query.getUserId() != null, "user_id", query.getUserId())
                 .eq(
                         StringUtils.hasText(query.getPerformanceType()),
-                        PerformanceEntity::getPerformanceType,
+                        "performance_type",
                         query.getPerformanceType())
                 .eq(
+                        StringUtils.hasText(query.getPerformanceLevel()),
+                        "performance_level",
+                        query.getPerformanceLevel())
+                .eq(
                         StringUtils.hasText(query.getIdentifyStatus()),
-                        PerformanceEntity::getIdentifyStatus,
-                        query.getIdentifyStatus());
+                        "identify_status",
+                        query.getIdentifyStatus())
+                .ge(query.getOccurredFrom() != null, "occurred_at", query.getOccurredFrom())
+                .le(query.getOccurredTo() != null, "occurred_at", query.getOccurredTo());
     }
 
-    private Long countStatus(List<PerformanceEntity> records, String status) {
-        return records.stream().filter(record -> status.equals(record.getIdentifyStatus())).count();
-    }
-
-    private Map<String, Long> countByType(List<PerformanceEntity> records) {
+    private Map<String, Long> groupCounts(PerformanceStatisticsQuery query, String column) {
+        QueryWrapper<PerformanceEntity> wrapper = statisticsWrapper(query);
+        wrapper.select(column + " as bucket", "count(*) as total").groupBy(column);
         Map<String, Long> counts = new LinkedHashMap<>();
-        for (PerformanceEntity record : records) {
-            String type = defaultText(record.getPerformanceType(), "unknown");
-            counts.put(type, counts.getOrDefault(type, 0L) + 1);
+        for (Map<String, Object> row : performanceMapper.selectMaps(wrapper)) {
+            Object bucket = row.get("bucket");
+            Object total = row.get("total");
+            String key =
+                    bucket == null || bucket.toString().isBlank() ? "unknown" : bucket.toString();
+            counts.put(key, total instanceof Number number ? number.longValue() : 0L);
         }
         return counts;
     }
@@ -245,6 +327,52 @@ public class PerformanceServiceImpl implements PerformanceService {
         }
     }
 
+    private PerformanceStandardEntity validateSubmittableStandard(Long standardId) {
+        if (standardId == null) {
+            throw new IllegalArgumentException("提交业绩必须选择已发布的认定标准");
+        }
+        PerformanceStandardEntity standard = standardMapper.selectById(standardId);
+        if (standard == null) {
+            throw new IllegalArgumentException("认定标准不存在");
+        }
+        if (!"published".equals(standard.getLifecycleStatus())) {
+            throw new IllegalArgumentException("认定标准未发布或已停用");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if ((standard.getEffectiveFrom() != null && now.isBefore(standard.getEffectiveFrom()))
+                || (standard.getEffectiveTo() != null && now.isAfter(standard.getEffectiveTo()))) {
+            throw new IllegalArgumentException("认定标准当前不在适用期内");
+        }
+        return standard;
+    }
+
+    private void snapshotStandard(
+            PerformanceEntity performance, PerformanceStandardEntity standard) {
+        performance.setStandardNoSnapshot(standard.getStandardNo());
+        performance.setStandardVersionSnapshot(standard.getStandardVersion());
+        performance.setStandardNameSnapshot(standard.getStandardName());
+        performance.setStandardRuleSnapshot(
+                String.format(
+                        "scoreRule: %s%nlevelRule: %s%nmaterialRequired: %s%nminMaterialCount: %s",
+                        defaultText(standard.getScoreRule(), ""),
+                        defaultText(standard.getLevelRule(), ""),
+                        standard.getMaterialRequired(),
+                        standard.getMinMaterialCount()));
+    }
+
+    private void createOwnerParticipant(PerformanceEntity performance, Long userId) {
+        PerformanceParticipantEntity participant = new PerformanceParticipantEntity();
+        participant.setPerformanceId(performance.getId());
+        participant.setUserId(userId);
+        participant.setParticipantRole("owner");
+        participant.setSortOrder(0);
+        participant.setIsPrimary(1);
+        participant.setStatus(1);
+        participant.setCreatedBy(userId);
+        participant.setRemark("业绩负责人");
+        participantMapper.insert(participant);
+    }
+
     private void validateSource(String sourceType, Long sourceId) {
         if (!StringUtils.hasText(sourceType) && sourceId == null) {
             return;
@@ -252,7 +380,50 @@ public class PerformanceServiceImpl implements PerformanceService {
         if (!StringUtils.hasText(sourceType) || sourceId == null) {
             throw new IllegalArgumentException("来源类型和来源 ID 必须同时提供");
         }
+        if (!Set.of(
+                        "eval_application",
+                        "research_project",
+                        "edu_course",
+                        "edu_experiment_record",
+                        "edu_training_plan")
+                .contains(sourceType)) {
+            throw new IllegalArgumentException("业绩不支持该来源类型");
+        }
         referenceAccessService.validate(sourceType, sourceId);
+    }
+
+    private String resolveSourceName(String sourceType, Long sourceId) {
+        if (!StringUtils.hasText(sourceType) && sourceId == null) {
+            return null;
+        }
+        return switch (sourceType) {
+            case "eval_application" ->
+                    sourceTitle(
+                            "select application_title from eval_application where id = ?",
+                            sourceId);
+            case "research_project" ->
+                    sourceTitle("select project_name from research_project where id = ?", sourceId);
+            case "edu_course" ->
+                    sourceTitle("select course_name from edu_course where id = ?", sourceId);
+            case "edu_experiment_record" ->
+                    sourceTitle(
+                            "select experiment_title from edu_experiment_record where id = ?",
+                            sourceId);
+            case "edu_training_plan" ->
+                    sourceTitle("select plan_name from edu_training_plan where id = ?", sourceId);
+            default -> null;
+        };
+    }
+
+    private String sourceTitle(String sql, Long sourceId) {
+        List<String> values = jdbcTemplate.queryForList(sql, String.class, sourceId);
+        return values.isEmpty() ? null : values.getFirst();
+    }
+
+    private void updateOrThrow(PerformanceEntity entity, String message) {
+        if (performanceMapper.updateById(entity) != 1) {
+            throw new BusinessException(ResultCodeEnum.RESOURCE_CONFLICT, message);
+        }
     }
 
     private void assertIdentifyStatus(String identifyStatus) {

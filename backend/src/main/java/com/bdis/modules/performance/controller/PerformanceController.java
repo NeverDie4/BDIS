@@ -1,6 +1,7 @@
 package com.bdis.modules.performance.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.bdis.audit.annotation.AuditLogAnnotation;
 import com.bdis.common.core.Result;
 import com.bdis.modules.performance.dto.PerformanceAuditRequest;
 import com.bdis.modules.performance.dto.PerformanceRequest;
@@ -34,6 +35,10 @@ public class PerformanceController {
     }
 
     @PostMapping
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "CREATE",
+            bizType = "perf_record")
     public Result<PerformanceEntity> createPerformance(
             @Valid @RequestBody PerformanceRequest request) {
         return Result.success(performanceService.createPerformance(request));
@@ -45,17 +50,29 @@ public class PerformanceController {
     }
 
     @PutMapping("/{performanceId}")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "UPDATE",
+            bizType = "perf_record")
     public Result<PerformanceEntity> updatePerformance(
             @PathVariable Long performanceId, @Valid @RequestBody PerformanceRequest request) {
         return Result.success(performanceService.updatePerformance(performanceId, request));
     }
 
     @PostMapping("/{performanceId}/submissions")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "SUBMIT",
+            bizType = "perf_record")
     public Result<PerformanceEntity> submitPerformance(@PathVariable Long performanceId) {
         return Result.success(performanceService.submitPerformance(performanceId));
     }
 
     @PostMapping("/{performanceId}/audit-records")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "AUDIT",
+            bizType = "perf_record")
     public Result<PerformanceAuditEntity> auditPerformance(
             @PathVariable Long performanceId, @Valid @RequestBody PerformanceAuditRequest request) {
         return Result.success(performanceAuditService.auditPerformance(performanceId, request));

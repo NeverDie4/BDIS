@@ -46,6 +46,7 @@ public class PerformanceMaterialServiceImpl implements PerformanceMaterialServic
         bind.setBizId(performanceId);
         bind.setFileUsage(
                 StringUtils.hasText(request.getFileUsage()) ? request.getFileUsage() : "material");
+        bind.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
         bind.setRemark(request.getRemark());
         FileBusinessVO relation = fileBusinessService.bind(bind);
         return PerformanceMaterialVO.fromFileBusiness(relation);
@@ -59,6 +60,24 @@ public class PerformanceMaterialServiceImpl implements PerformanceMaterialServic
         return fileBusinessService.listBindingsByBusiness(BIZ_TYPE, performanceId).stream()
                 .map(PerformanceMaterialVO::fromFileBusiness)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void removeMaterial(Long performanceId, Long relationId) {
+        PerformanceEntity performance = findPerformance(performanceId);
+        accessService.requireResourceAccess(
+                BIZ_TYPE, performanceId, "performance:record:update", performance.getUserId());
+        if (!"draft".equals(performance.getIdentifyStatus())
+                && !"rejected".equals(performance.getIdentifyStatus())) {
+            throw new IllegalArgumentException("只有草稿或退回状态的业绩可以删除材料");
+        }
+        com.bdis.file.vo.FileBusinessVO relation =
+                fileBusinessService.listBindingsByBusiness(BIZ_TYPE, performanceId).stream()
+                        .filter(binding -> relationId.equals(binding.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("材料关联不存在"));
+        fileBusinessService.unbind(relation.getId());
     }
 
     private PerformanceEntity findPerformance(Long performanceId) {
