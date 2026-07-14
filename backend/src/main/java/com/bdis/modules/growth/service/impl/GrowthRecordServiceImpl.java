@@ -154,6 +154,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         if (point == null) {
             throw new ResourceNotFoundException("地图点位不存在");
         }
+        if (!Integer.valueOf(1).equals(point.getStatus())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "停用的地图点位不能新增采集记录");
+        }
         validateGrowthDictionaries(
                 request.getGrowthStage(), request.getSoilType(), request.getWeather());
         GrowthRecordEntity record = new GrowthRecordEntity();

@@ -3,8 +3,13 @@
 import { App, Button, Image, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { ImageUp, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getFileRequestErrorMessage, uploadFile, type FileResource } from "@/lib/files";
+import { useEffect, useRef, useState } from "react";
+import {
+  deleteOwnUnboundUpload,
+  getFileRequestErrorMessage,
+  uploadFile,
+  type FileResource,
+} from "@/lib/files";
 import styles from "./FileUploadField.module.css";
 
 interface FileUploadFieldProps {
@@ -15,6 +20,7 @@ interface FileUploadFieldProps {
   bizType?: string;
   bizId?: number;
   fileUsage?: string;
+  accessLevel?: "private" | "public";
   buttonText?: string;
   onUploaded?: (file: FileResource) => void;
 }
@@ -27,18 +33,40 @@ export function FileUploadField({
   bizType,
   bizId,
   fileUsage,
+  accessLevel,
   buttonText = "上传文件",
   onUploaded,
 }: FileUploadFieldProps) {
   const { message } = App.useApp();
-  const [localPreviewUrl, setLocalPreviewUrl] = useState<string>();
+  const [previewUrl, setPreviewUrl] = useState(value);
+  const localPreviewUrlRef = useRef<string | undefined>(undefined);
+  const pendingFileIdRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!localPreviewUrlRef.current) {
+      setPreviewUrl(value);
+    }
+  }, [value]);
 
   useEffect(
     () => () => {
-      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+      if (localPreviewUrlRef.current) {
+        URL.revokeObjectURL(localPreviewUrlRef.current);
+      }
+      if (pendingFileIdRef.current) {
+        void deleteOwnUnboundUpload(pendingFileIdRef.current).catch(() => undefined);
+      }
     },
-    [localPreviewUrl],
+    [],
   );
+
+  function replaceLocalPreview(nextUrl?: string) {
+    if (localPreviewUrlRef.current) {
+      URL.revokeObjectURL(localPreviewUrlRef.current);
+    }
+    localPreviewUrlRef.current = nextUrl;
+    setPreviewUrl(nextUrl ?? value);
+  }
 
   function beforeUpload(file: File) {
     if (accept === "image/*" && !file.type.startsWith("image/")) {
@@ -53,15 +81,24 @@ export function FileUploadField({
   }
 
   const customRequest: UploadProps["customRequest"] = async (options) => {
+    const file = options.file as File;
+    const nextPreviewUrl = accept === "image/*" ? URL.createObjectURL(file) : undefined;
     try {
-      const file = options.file as File;
-      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage });
-      setLocalPreviewUrl(URL.createObjectURL(file));
+      const uploaded = await uploadFile(file, { bizType, bizId, fileUsage, accessLevel });
+      const previousPendingFileId = pendingFileIdRef.current;
+      pendingFileIdRef.current = bizId ? undefined : uploaded.id;
+      if (previousPendingFileId && previousPendingFileId !== uploaded.id) {
+        void deleteOwnUnboundUpload(previousPendingFileId).catch(() => undefined);
+      }
+      replaceLocalPreview(nextPreviewUrl);
       onChange?.(uploaded.fileUrl);
       onUploaded?.(uploaded);
       options.onSuccess?.(uploaded);
       message.success("文件上传成功");
     } catch (error) {
+      if (nextPreviewUrl) {
+        URL.revokeObjectURL(nextPreviewUrl);
+      }
       options.onError?.(error as Error);
       message.error(getFileRequestErrorMessage(error));
     }
@@ -78,14 +115,20 @@ export function FileUploadField({
             aria-label="移除已上传文件"
             icon={<X size={13} />}
             onClick={() => {
-              setLocalPreviewUrl(undefined);
+              const pendingFileId = pendingFileIdRef.current;
+              pendingFileIdRef.current = undefined;
+              if (pendingFileId) {
+                void deleteOwnUnboundUpload(pendingFileId).catch(() => undefined);
+              }
+              replaceLocalPreview(undefined);
+              setPreviewUrl(undefined);
               onChange?.(undefined);
             }}
           />
           {accept === "image/*" ? (
             <Image
               className={styles.image}
-              src={localPreviewUrl ?? value}
+              src={previewUrl ?? value}
               alt="已上传图片"
               preview={false}
             />

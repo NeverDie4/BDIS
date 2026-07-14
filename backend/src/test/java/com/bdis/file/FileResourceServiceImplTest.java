@@ -108,6 +108,56 @@ class FileResourceServiceImplTest {
     }
 
     @Test
+    void deletesCurrentUsersPrivateUnboundUpload() {
+        authenticate(10L);
+        FileResourceEntity file = privateFile(7L, 10L);
+        when(fileResourceMapper.selectById(7L)).thenReturn(file);
+        when(fileBusinessService.countByFileId(7L)).thenReturn(0L);
+
+        fileResourceService.deleteOwnUnboundUpload(7L);
+
+        verify(fileBusinessService).deleteByFileId(7L);
+        verify(fileResourceMapper).deleteById(7L);
+        verify(fileStorageService).delete(file.getStoragePath());
+    }
+
+    @Test
+    void refusesToDeleteBoundUploadThroughTemporaryCleanup() {
+        authenticate(10L);
+        when(fileResourceMapper.selectById(7L)).thenReturn(privateFile(7L, 10L));
+        when(fileBusinessService.countByFileId(7L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> fileResourceService.deleteOwnUnboundUpload(7L))
+                .isInstanceOf(ForbiddenException.class);
+        verify(fileResourceMapper, org.mockito.Mockito.never()).deleteById(any());
+    }
+
+    private void authenticate(Long userId) {
+        CurrentUser user =
+                new CurrentUser(
+                        userId,
+                        "teacher",
+                        "Teacher",
+                        null,
+                        null,
+                        Set.of("TEACHER"),
+                        Set.of(2L),
+                        Set.of("file:resource:upload"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, null));
+    }
+
+    private FileResourceEntity privateFile(Long id, Long uploaderId) {
+        FileResourceEntity file = new FileResourceEntity();
+        file.setId(id);
+        file.setUploaderId(uploaderId);
+        file.setAccessLevel("private");
+        file.setStoragePath("2026/07/file.png");
+        file.setStatus(1);
+        return file;
+    }
+
+    @Test
     void uploadPersistsOnlyControlledContentUrl() {
         MockMultipartFile multipart =
                 new MockMultipartFile(

@@ -1,9 +1,11 @@
 "use client";
 
-import { App, Button, Empty, Input, Select, Space, Spin, Tag } from "antd";
+import { App, Button, Empty, Form, Input, InputNumber, Modal, Select, Spin, Tag } from "antd";
 import L, { type LatLng, type Map as LeafletMap } from "leaflet";
-import { Layers, LocateFixed, Minus, Plus, RefreshCw, Ruler, Search, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Building2, ChevronRight, CirclePause, Download, Layers, LocateFixed, MapPinned, Maximize2, Minimize2, Minus, Pencil, Plus, Ruler, Search, Sprout, Trash2, Warehouse, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { escapeCsvCell } from "@/lib/csv";
+import { fetchDictionaryOptions, type DictionaryOption } from "@/lib/dictionaries";
 import {
   createMapPoint,
   createGrowthRecord,
@@ -16,7 +18,9 @@ import {
   type MapPoint,
   type MapPointPayload,
   updateMapPoint,
+  updateMapPointStatus,
 } from "@/lib/map-points";
+import { useAuthStore } from "@/stores/auth-store";
 import { HerbPointFormModal } from "./HerbPointFormModal";
 import styles from "./HerbDistributionMap.module.css";
 
@@ -77,6 +81,7 @@ interface MeasurePoint {
 }
 
 type FormMode = "create" | "edit";
+type GrowthCreateFormValues = Omit<GrowthRecordPayload, "collectorName" | "dataSource">;
 
 function escapeHtml(value?: string) {
   return (value ?? "")
@@ -183,6 +188,17 @@ function formatDateTime(value?: string) {
   return value.replace("T", " ").slice(0, 16);
 }
 
+function getDistributionTypeLabel(value?: string) {
+  if (value === "cultivated") return "人工种植";
+  if (value === "wild") return "野生分布";
+  if (value === "specimen") return "标本点位";
+  return value || "";
+}
+
+function formatPointNo(id: number) {
+  return `DP${String(id).padStart(6, "0")}`;
+}
+
 function createLabelIcon(className: string, text: string) {
   return L.divIcon({
     className,
@@ -252,16 +268,25 @@ function buildPopupContent(
 
 export function HerbDistributionMap() {
   const { message, modal } = App.useApp();
+  const currentUser = useAuthStore((state) => state.user);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canManagePoints = hasPermission("map:point:update");
+  const [growthCreateForm] = Form.useForm<GrowthCreateFormValues>();
   const [points, setPoints] = useState<MapPoint[]>([]);
   const [keyword, setKeyword] = useState("");
+  const [herbFilter, setHerbFilter] = useState<string>();
   const [districtFilter, setDistrictFilter] = useState<string>();
+  const [baseFilter, setBaseFilter] = useState<string>();
   const [sourceFilter, setSourceFilter] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number>();
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<MeasurePoint[]>([]);
   const [activeLayer, setActiveLayer] = useState<MapLayerKey>("standard");
   const [mapZoom, setMapZoom] = useState(9);
   const [mapReady, setMapReady] = useState(false);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [fullscreenTop, setFullscreenTop] = useState(78);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>("create");
   const [editingPoint, setEditingPoint] = useState<Partial<MapPoint>>();
@@ -270,12 +295,11 @@ export function HerbDistributionMap() {
   const [growthRecords, setGrowthRecords] = useState<GrowthRecord[]>([]);
   const [growthLoading, setGrowthLoading] = useState(false);
   const [growthSubmitting, setGrowthSubmitting] = useState(false);
-  const [growthForm, setGrowthForm] = useState<GrowthRecordPayload>({
-    collectorName: "",
-    growthStage: "",
-    sampleWeight: undefined,
-    remark: "",
-  });
+  const [growthCreateOpen, setGrowthCreateOpen] = useState(false);
+  const [collectionHistoryOpen, setCollectionHistoryOpen] = useState(false);
+  const [growthStageOptions, setGrowthStageOptions] = useState<DictionaryOption[]>([]);
+  const [soilTypeOptions, setSoilTypeOptions] = useState<DictionaryOption[]>([]);
+  const [weatherOptions, setWeatherOptions] = useState<DictionaryOption[]>([]);
   const mapElementRef = useRef<HTMLDivElement>(null);
   const miniMapElementRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -306,6 +330,24 @@ export function HerbDistributionMap() {
     [points],
   );
 
+  const herbOptions = useMemo(
+    () =>
+      Array.from(new Set(points.map((point) => point.herbName).filter(Boolean))).map((herbName) => ({
+        label: herbName,
+        value: herbName,
+      })),
+    [points],
+  );
+
+  const baseOptions = useMemo(
+    () =>
+      Array.from(new Set(points.map((point) => point.baseName).filter(Boolean))).map((baseName) => ({
+        label: baseName,
+        value: baseName,
+      })),
+    [points],
+  );
+
   const sourceOptions = useMemo(
     () =>
       Array.from(new Set(points.map((point) => point.dataSource).filter(Boolean))).map((source) => ({
@@ -318,7 +360,13 @@ export function HerbDistributionMap() {
   const filteredPoints = useMemo(
     () =>
       points.filter((point) => {
+        if (herbFilter && point.herbName !== herbFilter) {
+          return false;
+        }
         if (districtFilter && point.district !== districtFilter) {
+          return false;
+        }
+        if (baseFilter && point.baseName !== baseFilter) {
           return false;
         }
         if (sourceFilter && point.dataSource !== sourceFilter) {
@@ -326,12 +374,32 @@ export function HerbDistributionMap() {
         }
         return true;
       }),
-    [districtFilter, points, sourceFilter],
+    [baseFilter, districtFilter, herbFilter, points, sourceFilter],
   );
 
   const selectedPoint = useMemo(
-    () => filteredPoints.find((point) => point.id === selectedPointId) ?? filteredPoints[0],
+    () => filteredPoints.find((point) => point.id === selectedPointId),
     [filteredPoints, selectedPointId],
+  );
+
+  const sortedGrowthRecords = useMemo(
+    () =>
+      [...growthRecords].sort((left, right) => {
+        const leftTime = left.collectedAt ? new Date(left.collectedAt).getTime() : 0;
+        const rightTime = right.collectedAt ? new Date(right.collectedAt).getTime() : 0;
+        return rightTime - leftTime || right.id - left.id;
+      }),
+    [growthRecords],
+  );
+
+  const mapStatistics = useMemo(
+    () => ({
+      herbCount: new Set(filteredPoints.map((point) => point.speciesId || point.herbName)).size,
+      pointCount: filteredPoints.length,
+      baseCount: new Set(filteredPoints.map((point) => point.baseId || point.baseName).filter(Boolean)).size,
+      districtCount: new Set(filteredPoints.map((point) => point.district).filter(Boolean)).size,
+    }),
+    [filteredPoints],
   );
 
   const activeLayerConfig = useMemo(
@@ -394,10 +462,14 @@ export function HerbDistributionMap() {
     );
   }, [message]);
 
-  const loadPoints = useCallback(async () => {
+  const loadPoints = useCallback(async (searchKeyword: string) => {
     setLoading(true);
     try {
-      const data = await fetchMapPoints(keyword ? { keyword } : undefined);
+      const normalizedKeyword = searchKeyword.trim();
+      const data = await fetchMapPoints({
+        keyword: normalizedKeyword || undefined,
+        includeDisabled: canManagePoints || undefined,
+      });
       setPoints(data);
       setSelectedPointId((current) => current ?? data[0]?.id);
       setEmptyNoticeVisible(true);
@@ -406,7 +478,26 @@ export function HerbDistributionMap() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, message]);
+  }, [canManagePoints, message]);
+
+  const resetMap = useCallback(() => {
+    setKeyword("");
+    setHerbFilter(undefined);
+    setDistrictFilter(undefined);
+    setBaseFilter(undefined);
+    setSourceFilter(undefined);
+    setSelectedPointId(undefined);
+    setEmptyNoticeVisible(true);
+    setMeasuring(false);
+    setMeasurePoints([]);
+    setMapZoom(9);
+    mapRef.current?.setView(CHONGQING_CENTER, 9, { animate: false });
+    if (activeLayer !== "standard") {
+      switchMapLayer("standard");
+    }
+
+    void loadPoints("");
+  }, [activeLayer, loadPoints, switchMapLayer]);
 
   const openCreateForm = useCallback((latlng: LatLng) => {
     setFormMode("create");
@@ -443,6 +534,25 @@ export function HerbDistributionMap() {
     });
   }, [message, modal]);
 
+  const viewPoint = useCallback((point: MapPoint) => {
+    setSelectedPointId(point.id);
+    mapRef.current?.flyTo([point.latitude, point.longitude], Math.max(mapRef.current.getZoom(), 11));
+  }, []);
+
+  const togglePointStatus = useCallback(async (point: MapPoint) => {
+    const nextStatus: 0 | 1 = point.status === 0 ? 1 : 0;
+    setStatusUpdatingId(point.id);
+    try {
+      const next = await updateMapPointStatus(point.id, nextStatus);
+      setPoints((current) => current.map((item) => (item.id === next.id ? next : item)));
+      message.success(nextStatus === 1 ? "地图点位已启用" : "地图点位已停用");
+    } catch (error) {
+      message.error(getMapPointRequestErrorMessage(error, nextStatus === 1 ? "地图点位启用" : "地图点位停用"));
+    } finally {
+      setStatusUpdatingId(undefined);
+    }
+  }, [message]);
+
   useEffect(() => {
     measuringRef.current = measuring;
   }, [measuring]);
@@ -450,6 +560,42 @@ export function HerbDistributionMap() {
   useEffect(() => {
     previewLayerRef.current = previewLayer;
   }, [previewLayer]);
+
+  useEffect(() => {
+    if (!mapFullscreen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const syncHeaderHeight = () => {
+      const header = document.querySelector("header");
+      setFullscreenTop(Math.max(0, Math.round(header?.getBoundingClientRect().bottom ?? 0)));
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMapFullscreen(false);
+      }
+    };
+
+    syncHeaderHeight();
+    document.body.style.overflow = "hidden";
+    window.addEventListener("resize", syncHeaderHeight);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("resize", syncHeaderHeight);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mapFullscreen]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      mapRef.current?.invalidateSize({ animate: false });
+      miniMapRef.current?.invalidateSize({ animate: false });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [mapFullscreen]);
 
   useEffect(() => {
     if (!mapElementRef.current || mapRef.current) {
@@ -561,7 +707,7 @@ export function HerbDistributionMap() {
   }, [mapReady]);
 
   useEffect(() => {
-    loadPoints();
+    void loadPoints("");
   }, [loadPoints]);
 
   useEffect(() => {
@@ -578,6 +724,23 @@ export function HerbDistributionMap() {
   }, [message, selectedPoint?.id]);
 
   useEffect(() => {
+    setCollectionHistoryOpen(false);
+    setGrowthCreateOpen(false);
+  }, [selectedPoint?.id]);
+
+  useEffect(() => {
+    Promise.all([
+      fetchDictionaryOptions("growth_stage"),
+      fetchDictionaryOptions("soil_type"),
+      fetchDictionaryOptions("weather"),
+    ]).then(([growthStages, soilTypes, weatherTypes]) => {
+      setGrowthStageOptions(growthStages);
+      setSoilTypeOptions(soilTypes);
+      setWeatherOptions(weatherTypes);
+    });
+  }, []);
+
+  useEffect(() => {
     if (selectedPointId && !filteredPoints.some((point) => point.id === selectedPointId)) {
       setSelectedPointId(filteredPoints[0]?.id);
     }
@@ -591,7 +754,7 @@ export function HerbDistributionMap() {
 
     layer.clearLayers();
     filteredPoints.forEach((point) => {
-      if (point.latitude == null || point.longitude == null) {
+      if (point.status === 0 || point.latitude == null || point.longitude == null) {
         return;
       }
       L.marker([point.latitude, point.longitude], { icon: createHerbIcon(point) })
@@ -710,21 +873,17 @@ export function HerbDistributionMap() {
     }
   }
 
-  async function handleGrowthSubmit() {
+  async function handleGrowthSubmit(values: GrowthCreateFormValues) {
     if (!selectedPoint?.id) {
-      return;
-    }
-    if (!growthForm.collectorName?.trim()) {
-      message.warning("请填写采集者");
       return;
     }
 
     setGrowthSubmitting(true);
     try {
       const next = await createGrowthRecord(selectedPoint.id, {
-        ...growthForm,
-        collectorName: growthForm.collectorName.trim(),
-        dataSource: growthForm.dataSource || "map",
+        ...values,
+        collectorName: currentUser?.realName || currentUser?.username || "当前用户",
+        dataSource: "map",
       });
       setGrowthRecords((current) => [next, ...current]);
       setPoints((current) =>
@@ -732,7 +891,8 @@ export function HerbDistributionMap() {
           point.id === selectedPoint.id ? { ...point, lastCollectedAt: next.collectedAt } : point,
         ),
       );
-      setGrowthForm({ collectorName: "", growthStage: "", sampleWeight: undefined, remark: "" });
+      growthCreateForm.resetFields();
+      setGrowthCreateOpen(false);
       message.success("采集记录已保存");
     } catch (error) {
       message.error(getMapPointRequestErrorMessage(error, "采集记录保存"));
@@ -746,41 +906,106 @@ export function HerbDistributionMap() {
     setMeasurePoints([]);
   }
 
+  function exportMapPoints() {
+    if (filteredPoints.length === 0) {
+      message.warning("当前没有可导出的地图点位");
+      return;
+    }
+
+    const rows: Array<Array<string | number | undefined>> = [
+      ["点位编号", "药材名称", "点位名称", "区县", "基地", "经度", "纬度", "分布类型", "状态", "数据来源", "最近采集时间", "详细地址"],
+      ...filteredPoints.map((point) => [
+        point.id,
+        point.herbName,
+        point.locationName,
+        point.district,
+        point.baseName,
+        point.longitude,
+        point.latitude,
+        getDistributionTypeLabel(point.distributionType),
+        point.status === 0 ? "停用" : "启用",
+        point.dataSource,
+        formatDateTime(point.lastCollectedAt),
+        point.address,
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `重庆中药材分布点位_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    message.success(`已导出 ${filteredPoints.length} 条地图点位`);
+  }
+
   return (
     <div className={styles.shell}>
       <div className={styles.toolbar}>
-        <Space.Compact>
+        <label className={styles.filterField}>
+          <span className={styles.filterLabel}>药材品种</span>
+          <Select
+            allowClear
+            className={styles.filterSelect}
+            placeholder="全部药材"
+            options={herbOptions}
+            value={herbFilter}
+            onChange={setHerbFilter}
+          />
+        </label>
+        <label className={styles.filterField}>
+          <span className={styles.filterLabel}>区县</span>
+          <Select
+            allowClear
+            className={styles.filterSelect}
+            placeholder="全部区县"
+            options={districtOptions}
+            value={districtFilter}
+            onChange={setDistrictFilter}
+          />
+        </label>
+        <label className={styles.filterField}>
+          <span className={styles.filterLabel}>基地</span>
+          <Select
+            allowClear
+            className={styles.filterSelect}
+            placeholder="全部基地"
+            options={baseOptions}
+            value={baseFilter}
+            onChange={setBaseFilter}
+          />
+        </label>
+        <label className={styles.filterField}>
+          <span className={styles.filterLabel}>数据来源</span>
+          <Select
+            allowClear
+            className={styles.filterSelect}
+            placeholder="全部来源"
+            options={sourceOptions}
+            value={sourceFilter}
+            onChange={setSourceFilter}
+          />
+        </label>
+        <label className={`${styles.filterField} ${styles.keywordField}`}>
+          <span className={styles.filterLabel}>关键词搜索</span>
           <Input
             allowClear
+            className={styles.keywordInput}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
-            onPressEnter={loadPoints}
+            onPressEnter={() => loadPoints(keyword)}
             placeholder="搜索药材、地点或地址"
-            prefix={<Search size={16} />}
+            suffix={<Search size={16} />}
           />
-          <Button onClick={loadPoints}>查询</Button>
-        </Space.Compact>
-        <Select
-          allowClear
-          className={styles.filterSelect}
-          placeholder="全部区县"
-          options={districtOptions}
-          value={districtFilter}
-          onChange={setDistrictFilter}
-        />
-        <Select
-          allowClear
-          className={styles.filterSelect}
-          placeholder="全部来源"
-          options={sourceOptions}
-          value={sourceFilter}
-          onChange={setSourceFilter}
-        />
-        <Space>
-          <Button icon={<RefreshCw size={16} />} onClick={loadPoints}>
-            刷新
+        </label>
+        <div className={styles.toolbarActions}>
+          <Button type="primary" onClick={() => loadPoints(keyword)}>
+            查询
           </Button>
-        </Space>
+          <Button onClick={resetMap}>重置</Button>
+        </div>
       </div>
 
       <div className={styles.contentGrid}>
@@ -789,54 +1014,118 @@ export function HerbDistributionMap() {
             <strong>分布点列表</strong>
             <span>共 {filteredPoints.length} 条</span>
           </div>
-          <Button type="primary" block onClick={() => openCreateForm(L.latLng(CHONGQING_CENTER))}>
-            新增点位
-          </Button>
+          <div className={styles.pointActions}>
+            <Button type="primary" icon={<Plus size={15} />} onClick={() => openCreateForm(L.latLng(CHONGQING_CENTER))}>
+              新增点
+            </Button>
+            <Button disabled={!selectedPoint} icon={<Pencil size={15} />} onClick={() => selectedPoint && openEditForm(selectedPoint)}>
+              编辑
+            </Button>
+            <Button
+              disabled={!selectedPoint}
+              loading={selectedPoint ? statusUpdatingId === selectedPoint.id : false}
+              icon={<CirclePause size={15} />}
+              onClick={() => selectedPoint && togglePointStatus(selectedPoint)}
+            >
+              {selectedPoint?.status === 0 ? "启用" : "停用"}
+            </Button>
+            <Button danger disabled={!selectedPoint} icon={<Trash2 size={15} />} onClick={() => selectedPoint && confirmDelete(selectedPoint)}>
+              删除
+            </Button>
+          </div>
           <div className={styles.pointList}>
             {filteredPoints.map((point) => (
-              <button
-                type="button"
+              <div
                 key={point.id}
                 className={`${styles.pointItem} ${selectedPoint?.id === point.id ? styles.pointItemActive : ""}`}
-                onClick={() => {
-                  setSelectedPointId(point.id);
-                  mapRef.current?.flyTo([point.latitude, point.longitude], Math.max(mapZoom, 11));
-                }}
               >
-                <div
-                  className={styles.pointThumb}
-                  style={point.coverImageUrl ? { backgroundImage: `url(${point.coverImageUrl})` } : undefined}
-                  aria-label={point.herbName}
+                <button type="button" className={styles.pointSummary} onClick={() => viewPoint(point)}>
+                  <div
+                    className={styles.pointThumb}
+                    style={point.coverImageUrl ? { backgroundImage: `url(${point.coverImageUrl})` } : undefined}
+                    aria-label={point.herbName}
+                  >
+                    {!point.coverImageUrl && <span>药</span>}
+                  </div>
+                  <div className={styles.pointMeta}>
+                    <strong>{point.locationName || point.herbName}</strong>
+                    <span>{[point.district, point.baseName || point.herbName].filter(Boolean).join(" · ")}</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.pointStatus} ${point.status === 0 ? styles.pointStatusDisabled : styles.pointStatusEnabled}`}
+                  disabled={statusUpdatingId === point.id}
+                  onClick={() => togglePointStatus(point)}
                 >
-                  {!point.coverImageUrl && <span>药</span>}
-                </div>
-                <div className={styles.pointMeta}>
-                  <strong>{point.locationName || point.herbName}</strong>
-                  <span>{[point.district, point.baseName || point.herbName].filter(Boolean).join(" · ")}</span>
-                </div>
-                <Tag color={point.status === 0 ? "default" : "green"}>{point.status === 0 ? "停用" : "启用"}</Tag>
-              </button>
+                  {statusUpdatingId === point.id ? "处理中" : point.status === 0 ? "停用" : "启用"}
+                </button>
+                <button type="button" className={styles.viewPointButton} onClick={() => viewPoint(point)}>
+                  <span>查看</span>
+                  <ChevronRight size={15} />
+                </button>
+              </div>
             ))}
             {filteredPoints.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无点位" />}
           </div>
         </aside>
 
-      <div className={`${styles.mapWrap} ${activeLayer === "satellite" ? styles.satelliteMap : styles.lightMap}`}>
+      <section
+        className={`${styles.mapPanel} ${mapFullscreen ? styles.mapPanelFullscreen : ""}`}
+        style={{ "--map-fullscreen-top": `${fullscreenTop}px` } as CSSProperties}
+      >
+        <div className={styles.mapPanelHeader}>
+          <h2>重庆中药材分布地图</h2>
+          <Button icon={<Download size={15} />} onClick={exportMapPoints}>
+            导出数据
+          </Button>
+        </div>
+        <div className={styles.mapStatistics}>
+          <div className={styles.statCard}>
+            <span className={styles.statIcon}><Sprout size={23} /></span>
+            <span className={styles.statContent}><small>药材种类</small><strong>{mapStatistics.herbCount}<em>种</em></strong></span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statIcon}><MapPinned size={23} /></span>
+            <span className={styles.statContent}><small>分布点位</small><strong>{mapStatistics.pointCount}<em>个</em></strong></span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statIcon}><Warehouse size={23} /></span>
+            <span className={styles.statContent}><small>涉及基地</small><strong>{mapStatistics.baseCount}<em>个</em></strong></span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statIcon}><Building2 size={23} /></span>
+            <span className={styles.statContent}><small>重点区县</small><strong>{mapStatistics.districtCount}<em>个</em></strong></span>
+          </div>
+        </div>
+        <div className={`${styles.mapWrap} ${activeLayer === "satellite" ? styles.satelliteMap : styles.lightMap}`}>
         {loading && (
           <div className={styles.loadingMask}>
             <Spin />
           </div>
         )}
         <div ref={mapElementRef} className={styles.mapCanvas} />
-        <button
-          type="button"
-          className={`${styles.measureMapButton} ${measuring ? styles.measureMapButtonActive : ""}`}
-          aria-label={measuring ? "结束测距" : "测距"}
-          onClick={toggleMeasure}
-        >
-          <Ruler size={16} />
-          <span>{measuring ? "结束测距" : "测距"}</span>
-        </button>
+        <div className={styles.mapTopActions}>
+          <button
+            type="button"
+            className={`${styles.measureMapButton} ${measuring ? styles.measureMapButtonActive : ""}`}
+            aria-label={measuring ? "结束测距" : "测距"}
+            onClick={toggleMeasure}
+          >
+            <Ruler size={16} />
+            <span>{measuring ? "结束测距" : "测距"}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.fullscreenMapButton}
+            aria-label={mapFullscreen ? "退出全屏地图" : "全屏显示地图"}
+            aria-pressed={mapFullscreen}
+            title={mapFullscreen ? "退出全屏" : "全屏"}
+            onClick={() => setMapFullscreen((current) => !current)}
+          >
+            {mapFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          </button>
+        </div>
         <div className={styles.mapControls} aria-label="地图控制">
           <button type="button" className={styles.mapControlButton} aria-label="放大地图" onClick={zoomIn}>
             <Plus size={18} />
@@ -899,14 +1188,20 @@ export function HerbDistributionMap() {
             <Empty description="暂无地图点位，可点击地图新增" />
           </div>
         )}
-      </div>
+        </div>
+      </section>
 
         <aside className={styles.detailPanel}>
           {selectedPoint ? (
             <>
               <div className={styles.detailHeader}>
                 <div>
-                  <h3>{selectedPoint.locationName || selectedPoint.herbName}</h3>
+                  <div className={styles.detailTitleRow}>
+                    <h3>{selectedPoint.locationName || selectedPoint.herbName}</h3>
+                    <Tag color={selectedPoint.status === 0 ? "default" : "green"}>
+                      {selectedPoint.status === 0 ? "停用" : "启用"}
+                    </Tag>
+                  </div>
                   <p>{[selectedPoint.district, selectedPoint.address].filter(Boolean).join(" · ") || "地图点位"}</p>
                 </div>
                 <Button type="text" icon={<X size={16} />} onClick={() => setSelectedPointId(undefined)} />
@@ -914,83 +1209,99 @@ export function HerbDistributionMap() {
 
               <div className={styles.detailSection}>
                 <h4>基本信息</h4>
-                <div className={styles.infoRows}>
-                  <span>药材名称</span>
-                  <strong>{selectedPoint.herbName}</strong>
-                  <span>经纬度</span>
-                  <strong>
-                    {selectedPoint.longitude.toFixed(6)}, {selectedPoint.latitude.toFixed(6)}
-                  </strong>
-                  <span>数据来源</span>
-                  <strong>{selectedPoint.dataSource || "暂无"}</strong>
-                  <span>最近采集</span>
-                  <strong>{formatDateTime(selectedPoint.lastCollectedAt)}</strong>
+                <div className={styles.detailHero}>
+                  <div
+                    className={styles.detailCover}
+                    style={selectedPoint.coverImageUrl ? { backgroundImage: `url(${selectedPoint.coverImageUrl})` } : undefined}
+                  >
+                    {!selectedPoint.coverImageUrl && <span>药</span>}
+                  </div>
+                  <div className={styles.infoRows}>
+                    <span>点位编号</span>
+                    <strong>{formatPointNo(selectedPoint.id)}</strong>
+                    <span>药材名称</span>
+                    <strong>{selectedPoint.herbName}</strong>
+                    <span>所在区县</span>
+                    <strong>{selectedPoint.district || "暂无"}</strong>
+                    <span>基地名称</span>
+                    <strong>{selectedPoint.baseName || "暂无"}</strong>
+                    <span>数据来源</span>
+                    <strong>{selectedPoint.dataSource || "暂无"}</strong>
+                  </div>
                 </div>
-              </div>
-
-              <div className={styles.detailSection}>
-                <h4>药材说明</h4>
-                <p className={styles.detailText}>
-                  {selectedPoint.efficacy || selectedPoint.distributionDesc || selectedPoint.herbDescription || "暂无说明"}
-                </p>
+                {(selectedPoint.aliasName || selectedPoint.latinName) && (
+                  <div className={styles.herbIdentity}>
+                    {selectedPoint.aliasName && <Tag color="green">别名：{selectedPoint.aliasName}</Tag>}
+                    {selectedPoint.latinName && <Tag>拉丁名：{selectedPoint.latinName}</Tag>}
+                  </div>
+                )}
               </div>
 
               <div className={styles.detailSection}>
                 <div className={styles.sectionTitleRow}>
-                  <h4>采集记录</h4>
-                  <Tag>{growthRecords.length} 次</Tag>
-                </div>
-                <div className={styles.collectionForm}>
-                  <Input
-                    placeholder="采集者"
-                    value={growthForm.collectorName}
-                    onChange={(event) => setGrowthForm((current) => ({ ...current, collectorName: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="生长阶段，如花期/结果期"
-                    value={growthForm.growthStage}
-                    onChange={(event) => setGrowthForm((current) => ({ ...current, growthStage: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="采集重量 g"
-                    type="number"
-                    value={growthForm.sampleWeight}
-                    onChange={(event) =>
-                      setGrowthForm((current) => ({
-                        ...current,
-                        sampleWeight: event.target.value ? Number(event.target.value) : undefined,
-                      }))
-                    }
-                  />
-                  <Input
-                    placeholder="备注"
-                    value={growthForm.remark}
-                    onChange={(event) => setGrowthForm((current) => ({ ...current, remark: event.target.value }))}
-                  />
-                  <Button type="primary" loading={growthSubmitting} onClick={handleGrowthSubmit}>
-                    保存采集
+                  <h4>经纬度</h4>
+                  <Button size="small" icon={<LocateFixed size={14} />} onClick={() => viewPoint(selectedPoint)}>
+                    查看地图
                   </Button>
                 </div>
+                <div className={styles.coordinateRow}>
+                  <span>经度 <strong>{selectedPoint.longitude.toFixed(6)}°E</strong></span>
+                  <span>纬度 <strong>{selectedPoint.latitude.toFixed(6)}°N</strong></span>
+                </div>
+              </div>
+
+              <div className={styles.detailSection}>
+                <h4>基地信息</h4>
+                <div className={styles.infoRows}>
+                  <span>基地名称</span>
+                  <strong>{selectedPoint.baseName || "暂无"}</strong>
+                  <span>分布类型</span>
+                  <strong>{getDistributionTypeLabel(selectedPoint.distributionType) || "暂无"}</strong>
+                  {selectedPoint.altitude != null && <><span>海拔</span><strong>{selectedPoint.altitude} m</strong></>}
+                  <span>详细地址</span>
+                  <strong>{selectedPoint.address || "暂无"}</strong>
+                </div>
+              </div>
+
+              <div className={styles.detailSection}>
+                <div className={styles.sectionTitleRow}>
+                  <h4>最近采集记录</h4>
+                  <Tag>{growthRecords.length} 次</Tag>
+                </div>
                 <Spin spinning={growthLoading}>
-                  <div className={styles.collectionList}>
-                    {growthRecords.map((record) => (
-                      <div key={record.id} className={styles.collectionItem}>
-                        <div>
-                          <strong>{record.collectorName || "未知采集者"}</strong>
-                          <span>{formatDateTime(record.collectedAt)}</span>
-                        </div>
-                        <p>
-                          {[record.growthStage, record.sampleWeight ? `${record.sampleWeight} g` : undefined, record.weather]
-                            .filter(Boolean)
-                            .join(" · ") || "暂无采集详情"}
-                        </p>
+                  {sortedGrowthRecords[0] ? (
+                    <div className={styles.latestCollection}>
+                      <div className={styles.latestCollectionGrid}>
+                        <span>采集时间</span><strong>{formatDateTime(sortedGrowthRecords[0].collectedAt)}</strong>
+                        <span>采集者</span><strong>{sortedGrowthRecords[0].collectorName || "未知采集者"}</strong>
+                        <span>生长阶段</span><strong>{sortedGrowthRecords[0].growthStage || "暂无"}</strong>
+                        <span>采集重量</span><strong>{sortedGrowthRecords[0].sampleWeight != null ? `${sortedGrowthRecords[0].sampleWeight} g` : "暂无"}</strong>
+                        <span>数据来源</span><strong>{sortedGrowthRecords[0].dataSource || "暂无"}</strong>
+                        <span>天气</span><strong>{sortedGrowthRecords[0].weather || "暂无"}</strong>
                       </div>
-                    ))}
-                    {growthRecords.length === 0 && (
-                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无采集记录" />
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无采集记录" />
+                  )}
                 </Spin>
+                <div className={styles.collectionActionRow}>
+                  <Button
+                    type="primary"
+                    disabled={selectedPoint.status === 0}
+                    title={selectedPoint.status === 0 ? "停用点位不能新增采集记录" : undefined}
+                    onClick={() => setGrowthCreateOpen(true)}
+                  >
+                    新增采集记录
+                  </Button>
+                  <Button
+                    type="link"
+                    className={styles.viewAllButton}
+                    disabled={sortedGrowthRecords.length === 0}
+                    onClick={() => setCollectionHistoryOpen(true)}
+                  >
+                    查看全部 <ChevronRight size={14} />
+                  </Button>
+                </div>
               </div>
             </>
           ) : (
@@ -1012,6 +1323,85 @@ export function HerbDistributionMap() {
         onCancel={() => setFormOpen(false)}
         onSubmit={handleSubmit}
       />
+      <Modal
+        open={growthCreateOpen}
+        title="新增采集记录"
+        footer={null}
+        destroyOnHidden
+        onCancel={() => setGrowthCreateOpen(false)}
+      >
+        <Form
+          form={growthCreateForm}
+          layout="vertical"
+          preserve={false}
+          onFinish={handleGrowthSubmit}
+        >
+          <Form.Item label="药材品种">
+            <Input disabled value={selectedPoint?.herbName || ""} />
+          </Form.Item>
+          <Form.Item label="分布点位">
+            <Input disabled value={selectedPoint?.locationName || selectedPoint?.district || ""} />
+          </Form.Item>
+          <Form.Item name="growthStage" label="生长阶段">
+            {growthStageOptions.length ? <Select allowClear options={growthStageOptions} /> : <Input />}
+          </Form.Item>
+          <Form.Item name="soilType" label="土壤类型">
+            {soilTypeOptions.length ? <Select allowClear options={soilTypeOptions} /> : <Input />}
+          </Form.Item>
+          <Form.Item name="weather" label="天气">
+            {weatherOptions.length ? <Select allowClear options={weatherOptions} /> : <Input />}
+          </Form.Item>
+          <Form.Item name="temperature" label="温度">
+            <InputNumber style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="humidity" label="湿度">
+            <InputNumber min={0} max={100} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="soilPh" label="土壤 pH">
+            <InputNumber min={0} max={14} step={0.1} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="sampleWeight" label="样本重量（g）">
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="remark" label="备注">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Button block htmlType="submit" type="primary" loading={growthSubmitting}>
+            保存草稿
+          </Button>
+        </Form>
+      </Modal>
+      <Modal
+        open={collectionHistoryOpen}
+        title={`${selectedPoint?.herbName || "药材"}全部采集记录`}
+        footer={null}
+        width={680}
+        destroyOnHidden
+        onCancel={() => setCollectionHistoryOpen(false)}
+      >
+        <Spin spinning={growthLoading}>
+          <div className={styles.collectionHistoryList}>
+            {sortedGrowthRecords.map((record) => (
+              <div key={record.id} className={styles.collectionHistoryItem}>
+                <div className={styles.collectionHistoryHeader}>
+                  <strong>{record.collectorName || "未知采集者"}</strong>
+                  <span>{formatDateTime(record.collectedAt)}</span>
+                </div>
+                <div className={styles.collectionHistoryGrid}>
+                  <span>生长阶段</span><strong>{record.growthStage || "暂无"}</strong>
+                  <span>采集重量</span><strong>{record.sampleWeight != null ? `${record.sampleWeight} g` : "暂无"}</strong>
+                  <span>天气</span><strong>{record.weather || "暂无"}</strong>
+                  <span>温度</span><strong>{record.temperature != null ? `${record.temperature} ℃` : "暂无"}</strong>
+                  <span>湿度</span><strong>{record.humidity != null ? `${record.humidity}%` : "暂无"}</strong>
+                  <span>土壤</span><strong>{record.soilType || "暂无"}</strong>
+                </div>
+                {record.remark && <p>{record.remark}</p>}
+              </div>
+            ))}
+            {sortedGrowthRecords.length === 0 && <Empty description="暂无采集记录" />}
+          </div>
+        </Spin>
+      </Modal>
     </div>
   );
 }
