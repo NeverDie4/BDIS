@@ -39,6 +39,7 @@ import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { deleteOwnUnboundUpload, uploadFile } from "@/lib/files";
+import { resolveServerPagination, toPageRequest } from "@/lib/performance-pagination";
 import { fetchProtectedFileBlob } from "@/lib/protected-files";
 import { getApiErrorMessage } from "@/lib/request";
 import {
@@ -143,6 +144,9 @@ export function PerformancePageClient() {
   const [activeTab, setActiveTab] = useState("records");
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
+  const [recordPagination, setRecordPagination] = useState({ current: 1, pageSize: 10 });
+  const [standardPagination, setStandardPagination] = useState({ current: 1, pageSize: 10 });
+  const [standardSearch, setStandardSearch] = useState("");
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [standardModalOpen, setStandardModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PerformanceRecord>();
@@ -161,18 +165,27 @@ export function PerformancePageClient() {
   }>();
 
   const records = useQuery({
-    queryKey: ["performance", "records", keyword, status],
+    queryKey: ["performance", "records", keyword, status, recordPagination],
     queryFn: () =>
       fetchPerformances({
-        pageNum: 1,
-        pageSize: 100,
+        ...toPageRequest(recordPagination),
         keyword: keyword || undefined,
         identifyStatus: status,
       }),
   });
   const standards = useQuery({
-    queryKey: ["performance", "standards"],
-    queryFn: () => fetchStandards({ pageNum: 1, pageSize: 100 }),
+    queryKey: ["performance", "standards", standardPagination],
+    queryFn: () => fetchStandards(toPageRequest(standardPagination)),
+  });
+  const publishedStandardOptions = useQuery({
+    queryKey: ["performance", "published-standard-options", standardSearch],
+    queryFn: () =>
+      fetchStandards({
+        pageNum: 1,
+        pageSize: 20,
+        keyword: standardSearch || undefined,
+        lifecycleStatus: "published",
+      }),
   });
   const users = useQuery({
     queryKey: ["performance", "participant-users", selectedId],
@@ -190,11 +203,8 @@ export function PerformancePageClient() {
   });
 
   const publishedStandards = useMemo(
-    () =>
-      (standards.data?.records ?? []).filter(
-        (standard) => standard.lifecycleStatus === "published",
-      ),
-    [standards.data],
+    () => publishedStandardOptions.data?.records ?? [],
+    [publishedStandardOptions.data],
   );
 
   const refresh = async () => {
@@ -380,7 +390,10 @@ export function PerformancePageClient() {
         message.success("标准草稿已创建");
       }
       setStandardModalOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["performance", "standards"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["performance", "standards"] }),
+        queryClient.invalidateQueries({ queryKey: ["performance", "published-standard-options"] }),
+      ]);
     } catch (error) {
       if (error && typeof error === "object" && "errorFields" in error) return;
       message.error(getApiErrorMessage(error, "保存标准失败"));
@@ -399,7 +412,10 @@ export function PerformancePageClient() {
         await disableStandard(standard.id);
         message.success("标准已停用");
       }
-      await queryClient.invalidateQueries({ queryKey: ["performance", "standards"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["performance", "standards"] }),
+        queryClient.invalidateQueries({ queryKey: ["performance", "published-standard-options"] }),
+      ]);
     } catch (error) {
       message.error(
         getApiErrorMessage(error, action === "publish" ? "发布标准失败" : "停用标准失败"),
@@ -614,7 +630,10 @@ export function PerformancePageClient() {
                       allowClear
                       placeholder="搜索业绩名称"
                       value={keyword}
-                      onChange={(event) => setKeyword(event.target.value)}
+                      onChange={(event) => {
+                        setKeyword(event.target.value);
+                        setRecordPagination((current) => ({ ...current, current: 1 }));
+                      }}
                     />
                     <Select
                       allowClear
@@ -624,7 +643,10 @@ export function PerformancePageClient() {
                         label,
                       }))}
                       value={status}
-                      onChange={setStatus}
+                      onChange={(value) => {
+                        setStatus(value);
+                        setRecordPagination((current) => ({ ...current, current: 1 }));
+                      }}
                     />
                   </Space>
                   <Table
@@ -632,7 +654,21 @@ export function PerformancePageClient() {
                     columns={recordColumns}
                     dataSource={records.data?.records ?? []}
                     loading={records.isLoading}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                      current: recordPagination.current,
+                      pageSize: recordPagination.pageSize,
+                      total: records.data?.total ?? 0,
+                      showSizeChanger: true,
+                      onChange: (current, pageSize) =>
+                        setRecordPagination((previous) =>
+                          resolveServerPagination(
+                            previous.current,
+                            previous.pageSize,
+                            current,
+                            pageSize,
+                          ),
+                        ),
+                    }}
                     scroll={{ x: 980 }}
                   />
                 </>
@@ -655,7 +691,21 @@ export function PerformancePageClient() {
                     columns={standardColumns}
                     dataSource={standards.data?.records ?? []}
                     loading={standards.isLoading}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                      current: standardPagination.current,
+                      pageSize: standardPagination.pageSize,
+                      total: standards.data?.total ?? 0,
+                      showSizeChanger: true,
+                      onChange: (current, pageSize) =>
+                        setStandardPagination((previous) =>
+                          resolveServerPagination(
+                            previous.current,
+                            previous.pageSize,
+                            current,
+                            pageSize,
+                          ),
+                        ),
+                    }}
                     scroll={{ x: 920 }}
                   />
                 </>
@@ -718,10 +768,14 @@ export function PerformancePageClient() {
               <Form.Item label="认定标准" name="standardId">
                 <Select
                   allowClear
+                  filterOption={false}
+                  loading={publishedStandardOptions.isLoading}
                   options={publishedStandards.map((standard) => ({
                     value: standard.id,
                     label: `${standard.standardName} v${standard.standardVersion}`,
                   }))}
+                  showSearch
+                  onSearch={setStandardSearch}
                 />
               </Form.Item>
             </Col>

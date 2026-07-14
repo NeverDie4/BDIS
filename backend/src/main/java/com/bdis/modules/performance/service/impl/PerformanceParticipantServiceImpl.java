@@ -44,11 +44,13 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
     @Override
     public List<PerformanceParticipantUserVO> listParticipantUsers(Long performanceId) {
         requireEditablePerformance(performanceId);
+        LambdaQueryWrapper<UserEntity> wrapper =
+                new LambdaQueryWrapper<UserEntity>()
+                        .eq(UserEntity::getStatus, 1)
+                        .orderByAsc(UserEntity::getUsername);
+        accessService.applyUserScope(wrapper, "perf_record");
         return userMapper
-                .selectList(
-                        new LambdaQueryWrapper<UserEntity>()
-                                .eq(UserEntity::getStatus, 1)
-                                .orderByAsc(UserEntity::getUsername))
+                .selectList(wrapper)
                 .stream()
                 .map(PerformanceParticipantUserVO::from)
                 .toList();
@@ -170,6 +172,7 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
         if (user == null || !Integer.valueOf(1).equals(user.getStatus())) {
             throw new IllegalArgumentException("参与人不存在或已停用");
         }
+        accessService.requireUserInScope("perf_record", userId);
     }
 
     private void updateOrThrow(PerformanceParticipantEntity entity) {
