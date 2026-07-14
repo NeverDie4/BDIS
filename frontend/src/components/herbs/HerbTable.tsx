@@ -1,120 +1,102 @@
-import { Button, Space, Table, Tag } from "antd";
+import { Button, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
+import type { Key } from "react";
 import type { HerbTableRecord } from "./types";
 import styles from "./herbs.module.css";
 
 export type { HerbTableRecord } from "./types";
 
 type HerbTableProps = {
+  canEdit?: boolean;
+  loading?: boolean;
+  records?: HerbTableRecord[];
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  selectedRowKeys?: Key[];
+  onSelectionChange?: (keys: Key[]) => void;
+  onPageChange?: (page: number, pageSize: number) => void;
   onView: (record: HerbTableRecord) => void;
+  onEdit: (record: HerbTableRecord) => void;
 };
 
-const tableData: HerbTableRecord[] = [
-  {
-    id: "herb-001",
-    herbName: "黄连",
-    aliasName: "川连",
-    categoryName: "根及根茎类",
-    medicinalPart: "根茎",
-    status: "enabled",
-    region: "重庆石柱",
-  },
-  {
-    id: "herb-002",
-    herbName: "金银花",
-    aliasName: "忍冬花",
-    categoryName: "花叶类",
-    medicinalPart: "花蕾",
-    status: "enabled",
-    region: "重庆秀山",
-  },
-  {
-    id: "herb-003",
-    herbName: "鱼腥草",
-    aliasName: "折耳根",
-    categoryName: "全草类",
-    medicinalPart: "全草",
-    status: "disabled",
-    region: "重庆万州",
-  },
-  {
-    id: "herb-004",
-    herbName: "杜仲",
-    aliasName: "思仲",
-    categoryName: "皮类",
-    medicinalPart: "树皮",
-    status: "enabled",
-    region: "重庆南川",
-  },
-];
-
-export function HerbTable({ onView }: HerbTableProps) {
+export function HerbTable({
+  canEdit = false,
+  loading = false,
+  records = [],
+  page = 1,
+  pageSize = 10,
+  total = 0,
+  selectedRowKeys = [],
+  onSelectionChange = () => undefined,
+  onPageChange = () => undefined,
+  onView,
+  onEdit,
+}: HerbTableProps) {
   const columns: TableColumnsType<HerbTableRecord> = [
     {
       title: "序号",
       key: "index",
-      render: (_value, _record, index) => index + 1,
-      width: 64,
+      render: (_value, _record, index) => (page - 1) * pageSize + index + 1,
+      width: "5%",
+    },
+    {
+      title: "药材编号",
+      dataIndex: "herbCode",
+      key: "herbCode",
+      width: "14%",
     },
     {
       title: "药材名称",
       dataIndex: "herbName",
       key: "herbName",
-      width: 220,
+      width: "12%",
     },
     {
       title: "别名",
       dataIndex: "aliasName",
       key: "aliasName",
       ellipsis: true,
-      width: 180,
+      width: "11%",
+      render: (value?: string) => value || "-",
     },
     {
       title: "所属分类",
       dataIndex: "categoryName",
       key: "categoryName",
-      width: 150,
+      width: "10%",
+      render: (_value, record) => record.categoryName || record.category || "-",
     },
     {
       title: "药用部位",
       dataIndex: "medicinalPart",
       key: "medicinalPart",
-      width: 130,
-    },
-    {
-      title: "状态",
-      dataIndex: "status",
-      key: "status",
-      width: 100,
-      render: (status: HerbTableRecord["status"]) => (
-        <Tag color={status === "enabled" ? "success" : "default"}>
-          {status === "enabled" ? "启用" : "停用"}
-        </Tag>
-      ),
+      width: "9%",
+      render: (value?: string) => value || "-",
     },
     {
       title: "分布地区",
-      dataIndex: "region",
-      key: "region",
+      dataIndex: "distributionRegionText",
+      key: "distributionRegionText",
       ellipsis: true,
-      width: 220,
+      width: "21%",
+      render: (value?: string) => value || "-",
     },
     {
       title: "操作",
       key: "actions",
       fixed: "right",
-      width: 160,
+      width: "14%",
       render: (_value, record) => (
         <Space size={4}>
           <Button type="link" onClick={() => onView(record)}>
             查看
           </Button>
-          <Button type="link" onClick={() => undefined}>
-            编辑
-          </Button>
-          <Button type="link" onClick={() => undefined}>
-            更多
-          </Button>
+          {canEdit ? (
+            <Button type="link" onClick={() => onEdit(record)}>
+              编辑
+            </Button>
+          ) : null}
         </Space>
       ),
     },
@@ -125,13 +107,21 @@ export function HerbTable({ onView }: HerbTableProps) {
       bordered={false}
       className={styles.table}
       columns={columns}
-      dataSource={tableData}
-      pagination={{ pageSize: 10 }}
+      dataSource={records}
+      loading={loading}
+      pagination={{
+        current: page,
+        pageSize,
+        total,
+        showSizeChanger: true,
+        onChange: onPageChange,
+      }}
       rowKey="id"
-      rowSelection={{}}
-      scroll={{ x: "max-content" }}
+      rowSelection={{ columnWidth: "4%", selectedRowKeys, onChange: onSelectionChange }}
+      scroll={{ x: 1080 }}
       size="middle"
       sticky
+      tableLayout="fixed"
     />
   );
 }

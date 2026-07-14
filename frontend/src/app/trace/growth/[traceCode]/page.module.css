@@ -88,6 +88,7 @@
 .metricCard strong { color: #0f5132; font-size: 20px; line-height: 1.35; overflow-wrap: anywhere; }
 .metricCard small { margin-left: 4px; color: #68796c; font-size: 12px; }
 
+.imageSection { height: fit-content; min-height: 0; }
 .imageGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
 .imageGrid figure { position: relative; overflow: hidden; margin: 0; border: 1px solid #e5dac8; border-radius: 12px; background: #fff; }
 .imageGrid :global(.ant-image), .imageGrid :global(.ant-image-img), .imageGrid :global(.ant-skeleton), .imageGrid :global(.ant-skeleton-image) { width: 100% !important; height: auto !important; aspect-ratio: 4/3; object-fit: cover; }

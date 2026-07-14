@@ -46,14 +46,16 @@ const TRACE_EVENT_LABELS: Record<string, string> = {
   public_trace_disabled: "关闭公开溯源",
 };
 
+const EMPTY_VALUE = "—";
+
 type ErrorKind = "missing" | "private" | "network";
 
 function formatTime(value?: string) {
-  return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "-";
+  return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : EMPTY_VALUE;
 }
 
 function statusLabel(status?: string) {
-  return STATUS_META[status || ""]?.label || "状态未记录";
+  return STATUS_META[status || ""]?.label || "暂无数据";
 }
 
 function statusTransition(before?: string, after?: string) {
@@ -61,11 +63,33 @@ function statusTransition(before?: string, after?: string) {
   const afterLabel = after && after !== "-" ? statusLabel(after) : undefined;
   if (!beforeLabel && afterLabel) return `初始状态：${afterLabel}`;
   if (beforeLabel && afterLabel) return `${beforeLabel} → ${afterLabel}`;
-  return afterLabel || beforeLabel || "状态未变化";
+  return afterLabel || beforeLabel || "暂无状态变化";
 }
 
 function eventTitle(event: GrowthPublicTraceEventApi) {
   return event.eventTitle || TRACE_EVENT_LABELS[event.eventType] || "溯源事件";
+}
+
+function displayValue(value?: number | string | null) {
+  return value == null || (typeof value === "string" && !value.trim()) ? EMPTY_VALUE : value;
+}
+
+function isArchiveComplete(archive: GrowthPublicTraceArchiveApi) {
+  return Boolean(
+    archive.recordId &&
+      archive.traceCode &&
+      (archive.herbName || archive.speciesName) &&
+      archive.taskId &&
+      archive.taskName &&
+      archive.batchId &&
+      archive.batchName &&
+      archive.collectTime &&
+      archive.collectorName &&
+      archive.growthStage &&
+      archive.latestAuditResult === "approved" &&
+      archive.latestAuditTime &&
+      archive.reviewerName,
+  );
 }
 
 function Metric({ label, value, unit }: { label: string; value?: number | string; unit?: string }) {
@@ -73,8 +97,8 @@ function Metric({ label, value, unit }: { label: string; value?: number | string
     <div className={styles.metricCard}>
       <span>{label}</span>
       <strong>
-        {value ?? "-"}
-        {value != null && unit ? <small>{unit}</small> : null}
+        {displayValue(value)}
+        {displayValue(value) !== EMPTY_VALUE && unit ? <small>{unit}</small> : null}
       </strong>
     </div>
   );
@@ -178,6 +202,7 @@ export default function PublicGrowthTracePage() {
   const herbName = archive.herbName || archive.speciesName || "未命名药材";
   const images = archive.images || [];
   const timeline = archive.traceTimeline || [];
+  const showTrustedStamp = archive.auditStatus === "approved" && isArchiveComplete(archive);
 
   return (
     <main className={styles.page}>
@@ -207,7 +232,7 @@ export default function PublicGrowthTracePage() {
             </div>
           </div>
           <div className={styles.coverAside}>
-            {archive.auditStatus === "approved" ? (
+            {showTrustedStamp ? (
               <div className={styles.approvalStamp}>
                 审核通过<small>数据可信</small>
               </div>
@@ -257,7 +282,7 @@ export default function PublicGrowthTracePage() {
             ].map(([label, value]) => (
               <div key={label}>
                 <dt>{label}</dt>
-                <dd>{value || "-"}</dd>
+                <dd>{displayValue(value)}</dd>
               </div>
             ))}
           </dl>
@@ -294,7 +319,7 @@ export default function PublicGrowthTracePage() {
           </section>
         </div>
 
-        <section className={styles.section}>
+        <section className={`${styles.section} ${styles.imageSection}`}>
           <header>
             <h2>现场图片证据</h2>
             <p>以下图片来自该采集批次，用于佐证本次生长记录。</p>
@@ -340,11 +365,11 @@ export default function PublicGrowthTracePage() {
               </div>
               <div>
                 <dt>审核结果</dt>
-                <dd>{archive.latestAuditResult || "-"}</dd>
+                <dd>{statusLabel(archive.latestAuditResult)}</dd>
               </div>
               <div>
                 <dt>审核人</dt>
-                <dd>{archive.reviewerName || "-"}</dd>
+                <dd>{displayValue(archive.reviewerName)}</dd>
               </div>
               <div>
                 <dt>审核时间</dt>

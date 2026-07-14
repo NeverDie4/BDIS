@@ -14,6 +14,12 @@ export const publicRoutes: RouteMeta[] = [
     navOrder: 70,
   },
   {
+    path: "/trace/growth/[traceCode]",
+    title: "生长溯源",
+    owner: "platform",
+    public: true,
+  },
+  {
     path: "/mobile/collect",
     title: "移动采集",
     owner: "mobile",

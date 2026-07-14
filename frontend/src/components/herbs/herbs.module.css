@@ -134,8 +134,7 @@
 }
 
 .keywordFilter,
-.selectFilter,
-.statusFilter {
+.selectFilter {
   margin: 0;
 }
 
@@ -147,13 +146,8 @@
   flex: 0 1 150px;
 }
 
-.statusFilter {
-  flex: 0 1 130px;
-}
-
 .keywordFilter :global(.ant-form-item-control),
-.selectFilter :global(.ant-form-item-control),
-.statusFilter :global(.ant-form-item-control) {
+.selectFilter :global(.ant-form-item-control) {
   width: 100%;
 }
 
