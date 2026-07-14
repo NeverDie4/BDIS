@@ -46,6 +46,48 @@ test("药材分类 API 不暴露状态查询或写入参数", async () => {
   assert.doesNotMatch(fetcher, /status|\{\s*status\s*\}/);
 });
 
+test("药材资源三个页签均不展示或提交状态属性并重排剩余列", async () => {
+  const clientSource = await readSource("components/herbs/HerbResourceClient.tsx");
+  const tableSource = await readSource("components/herbs/HerbTable.tsx");
+  const filterSource = await readSource("components/herbs/HerbFilterBar.tsx");
+  const detailSource = await readSource("components/herbs/HerbDetailPanel.tsx");
+  const typeSource = await readSource("components/herbs/types.ts");
+  const apiSource = await readSource("lib/herbs.ts");
+
+  const baseColumns = section(clientSource, "const baseColumns", "function renderTable");
+  const categoryTable = section(clientSource, "<Table<DictItemApi>", "/>" );
+  const baseTable = section(clientSource, "<Table<HerbBaseApi>", "/>" );
+  const hero = section(clientSource, "<ModuleHeroBanner", "/>" );
+  const formFields = section(clientSource, "function renderFormFields", "const tabName");
+  const exports = section(clientSource, "function handleExport", "const categoryColumns");
+
+  assert.doesNotMatch(tableSource, /dataIndex:\s*"status"|statusText|<Tag/);
+  assert.doesNotMatch(baseColumns, /T\.status|dataIndex:\s*"status"|<Tag/);
+  assert.doesNotMatch(formFields, /name="status"|T\.status|statusOptions/);
+  assert.doesNotMatch(exports, /T\.status|statusText|formatStatus/);
+  assert.doesNotMatch(filterSource, /name="status"|statusOptions|statusFilter/);
+  assert.doesNotMatch(detailSource, /key:\s*"status"|statusText|<Tag/);
+  assert.doesNotMatch(typeSource, /status\??:|statusText\??:/);
+  assert.doesNotMatch(apiSource, /status\??:|statusText\??:|status:\s*1/);
+
+  const regionColumn = section(
+    tableSource,
+    'dataIndex: "distributionRegionText"',
+    "render: (value?: string)",
+  );
+  assert.match(regionColumn, /width:\s*"\d+%"/);
+  assert.match(tableSource, /tableLayout="fixed"/);
+  assert.match(tableSource, /scroll=\{\{ x:\s*1080 \}\}/);
+  assert.ok((tableSource.match(/width:\s*"\d+%"/g) ?? []).length >= 8);
+  assert.match(categoryTable, /tableLayout="fixed"/);
+  assert.match(categoryTable, /scroll=\{\{ x:\s*900 \}\}/);
+  assert.match(baseTable, /tableLayout="fixed"/);
+  assert.match(baseTable, /scroll=\{\{ x:\s*1200 \}\}/);
+  assert.ok((baseColumns.match(/width:\s*"\d+%"/g) ?? []).length >= 9);
+  assert.doesNotMatch(hero, /actions=/);
+  assert.match(baseColumns, /dataIndex:\s*"address"[\s\S]*?ellipsis:\s*true/);
+});
+
 test("药材资源批量删除必须汇报部分成功并刷新当前页签", async () => {
   const source = await readSource("components/herbs/HerbResourceClient.tsx");
 

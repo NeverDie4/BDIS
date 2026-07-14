@@ -1,7 +1,6 @@
 "use client";
 
-import { PlusOutlined } from "@ant-design/icons";
-import { App, Button, Form, Input, InputNumber, Modal, Select, Table, Tag } from "antd";
+import { App, Button, Form, Input, InputNumber, Modal, Select, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import type { Key } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -39,8 +38,6 @@ type ModalMode = "create" | "edit";
 type EditableRecord = HerbTableRecord | DictItemApi | HerbBaseApi;
 
 const T = {
-  enabled: "\u542f\u7528",
-  disabled: "\u505c\u7528",
   create: "\u65b0\u589e",
   edit: "\u7f16\u8f91",
   save: "\u4fdd\u5b58",
@@ -72,7 +69,6 @@ const T = {
   categoryName: "\u5206\u7c7b\u540d\u79f0",
   itemValue: "\u5b57\u5178\u503c",
   sortOrder: "\u6392\u5e8f",
-  status: "\u72b6\u6001",
   remark: "\u5907\u6ce8",
   action: "\u64cd\u4f5c",
   baseNo: "\u57fa\u5730\u7f16\u53f7",
@@ -100,25 +96,12 @@ const T = {
   requiredBaseName: "\u8bf7\u8f93\u5165\u57fa\u5730\u540d\u79f0",
 };
 
-const statusOptions = [
-  { label: T.enabled, value: 1 },
-  { label: T.disabled, value: 0 },
-];
-
 const baseTypeOptions = [
   { label: "\u79cd\u690d\u57fa\u5730", value: "planting" },
   { label: "\u793a\u8303\u57fa\u5730", value: "demo" },
   { label: "\u4fdd\u62a4\u57fa\u5730", value: "protection" },
   { label: "\u79d1\u7814\u57fa\u5730", value: "research" },
 ];
-
-function formatStatus(status?: number) {
-  return status === 1 ? T.enabled : T.disabled;
-}
-
-function statusColor(status?: number) {
-  return status === 1 ? "success" : "default";
-}
 
 function flattenCategories(items: DictItemApi[]): DictItemApi[] {
   return items.flatMap((item) => [item, ...flattenCategories(item.children ?? [])]);
@@ -195,9 +178,8 @@ export function HerbResourceClient() {
       keyword: filters.keyword,
       category: filters.category,
       medicinalPart: filters.medicinalPart,
-      status: filters.status,
     }),
-    [filters.category, filters.keyword, filters.medicinalPart, filters.status, page, pageSize],
+    [filters.category, filters.keyword, filters.medicinalPart, page, pageSize],
   );
 
   const categoryOptions = useMemo(
@@ -298,7 +280,6 @@ export function HerbResourceClient() {
     setModalMode("create");
     setEditingRecord(null);
     form.resetFields();
-    if (activeTab !== "categories") form.setFieldsValue({ status: 1 });
     setFormOpen(true);
   }
 
@@ -370,7 +351,6 @@ export function HerbResourceClient() {
           medicinalPart: values.medicinalPart,
           efficacy: values.efficacy,
           description: values.description,
-          status: values.status,
         });
         if (modalMode === "edit" && editingRecord) await updateHerbSpecies(editingRecord.id, payload);
         else await createHerbSpecies(payload);
@@ -398,7 +378,6 @@ export function HerbResourceClient() {
           contactName: values.contactName,
           contactPhone: values.contactPhone,
           description: values.description,
-          status: values.status,
           remark: values.remark,
         });
         if (modalMode === "edit" && editingRecord) await updateHerbBase(editingRecord.id, payload);
@@ -426,7 +405,6 @@ export function HerbResourceClient() {
           [T.aliasName]: item.aliasName,
           [T.categoryName]: item.categoryName || item.category,
           [T.medicinalPart]: item.medicinalPart,
-          [T.status]: item.statusText || formatStatus(item.status),
           ["\u5206\u5e03\u5730\u533a"]: item.distributionRegionText,
         })),
       );
@@ -458,34 +436,32 @@ export function HerbResourceClient() {
         [T.address]: item.address,
         [T.contact]: item.contactName,
         [T.phone]: item.contactPhone,
-        [T.status]: formatStatus(item.status),
       })),
     );
     message.success(T.exportedBase);
   }
 
   const categoryColumns: TableColumnsType<DictItemApi> = [
-    { title: T.index, key: "index", width: 70, render: (_value, _record, index) => index + 1 },
-    { title: T.categoryCode, dataIndex: "itemCode", key: "itemCode", width: 160 },
-    { title: T.categoryName, dataIndex: "itemName", key: "itemName", width: 180 },
-    { title: T.itemValue, dataIndex: "itemValue", key: "itemValue", width: 160, render: (value?: string) => value || "-" },
-    { title: T.sortOrder, dataIndex: "sortOrder", key: "sortOrder", width: 90, render: (value?: number) => value ?? "-" },
+    { title: T.index, key: "index", width: "5%", render: (_value, _record, index) => index + 1 },
+    { title: T.categoryCode, dataIndex: "itemCode", key: "itemCode", width: "15%" },
+    { title: T.categoryName, dataIndex: "itemName", key: "itemName", width: "16%" },
+    { title: T.itemValue, dataIndex: "itemValue", key: "itemValue", width: "14%", render: (value?: string) => value || "-" },
+    { title: T.sortOrder, dataIndex: "sortOrder", key: "sortOrder", width: "8%", render: (value?: number) => value ?? "-" },
 
-    { title: T.remark, dataIndex: "remark", key: "remark", ellipsis: true, render: (value?: string) => value || "-" },
-    { title: T.action, key: "actions", fixed: "right", width: 90, render: (_value, record) => canEdit ? <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> : "-" },
+    { title: T.remark, dataIndex: "remark", key: "remark", ellipsis: true, width: "28%", render: (value?: string) => value || "-" },
+    { title: T.action, key: "actions", fixed: "right", width: "10%", render: (_value, record) => canEdit ? <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> : "-" },
   ];
 
   const baseColumns: TableColumnsType<HerbBaseApi> = [
-    { title: T.index, key: "index", width: 70, render: (_value, _record, index) => (page - 1) * pageSize + index + 1 },
-    { title: T.baseNo, dataIndex: "baseNo", key: "baseNo", width: 150 },
-    { title: T.baseName, dataIndex: "baseName", key: "baseName", width: 190 },
-    { title: T.baseType, dataIndex: "baseType", key: "baseType", width: 130, render: (value?: string) => value || "-" },
-    { title: T.region, dataIndex: "regionName", key: "regionName", width: 150, render: (value?: string) => value || "-" },
-    { title: T.address, dataIndex: "address", key: "address", ellipsis: true, render: (value?: string) => value || "-" },
-    { title: T.contact, dataIndex: "contactName", key: "contactName", width: 120, render: (value?: string) => value || "-" },
-    { title: T.phone, dataIndex: "contactPhone", key: "contactPhone", width: 140, render: (value?: string) => value || "-" },
-    { title: T.status, dataIndex: "status", key: "status", width: 100, render: (value?: number) => <Tag color={statusColor(value)}>{formatStatus(value)}</Tag> },
-    { title: T.action, key: "actions", fixed: "right", width: 90, render: (_value, record) => canEdit ? <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> : "-" },
+    { title: T.index, key: "index", width: "5%", render: (_value, _record, index) => (page - 1) * pageSize + index + 1 },
+    { title: T.baseNo, dataIndex: "baseNo", key: "baseNo", width: "11%" },
+    { title: T.baseName, dataIndex: "baseName", key: "baseName", width: "13%" },
+    { title: T.baseType, dataIndex: "baseType", key: "baseType", width: "10%", render: (value?: string) => value || "-" },
+    { title: T.region, dataIndex: "regionName", key: "regionName", width: "11%", render: (value?: string) => value || "-" },
+    { title: T.address, dataIndex: "address", key: "address", ellipsis: true, width: "18%", render: (value?: string) => value || "-" },
+    { title: T.contact, dataIndex: "contactName", key: "contactName", width: "9%", render: (value?: string) => value || "-" },
+    { title: T.phone, dataIndex: "contactPhone", key: "contactPhone", width: "11%", render: (value?: string) => value || "-" },
+    { title: T.action, key: "actions", fixed: "right", width: "8%", render: (_value, record) => canEdit ? <Button type="link" onClick={() => openEditModal(record)}>{T.edit}</Button> : "-" },
   ];
 
   function renderTable() {
@@ -493,9 +469,9 @@ export function HerbResourceClient() {
       return <HerbTable canEdit={canEdit} loading={loading} records={records} page={page} pageSize={pageSize} total={total} selectedRowKeys={selectedRowKeys} onSelectionChange={setSelectedRowKeys} onPageChange={handlePageChange} onView={setSelectedHerb} onEdit={openEditModal} />;
     }
     if (activeTab === "categories") {
-      return <Table<DictItemApi> bordered={false} className={styles.table} columns={categoryColumns} dataSource={categories} loading={loading} pagination={false} rowKey="id" rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }} scroll={{ x: "max-content" }} size="middle" sticky />;
+      return <Table<DictItemApi> bordered={false} className={styles.table} columns={categoryColumns} dataSource={categories} loading={loading} pagination={false} rowKey="id" rowSelection={{ columnWidth: "4%", selectedRowKeys, onChange: setSelectedRowKeys }} scroll={{ x: 900 }} size="middle" sticky tableLayout="fixed" />;
     }
-    return <Table<HerbBaseApi> bordered={false} className={styles.table} columns={baseColumns} dataSource={bases} loading={loading} pagination={{ current: page, pageSize, total, showSizeChanger: true, onChange: handlePageChange }} rowKey="id" rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }} scroll={{ x: "max-content" }} size="middle" sticky />;
+    return <Table<HerbBaseApi> bordered={false} className={styles.table} columns={baseColumns} dataSource={bases} loading={loading} pagination={{ current: page, pageSize, total, showSizeChanger: true, onChange: handlePageChange }} rowKey="id" rowSelection={{ columnWidth: "4%", selectedRowKeys, onChange: setSelectedRowKeys }} scroll={{ x: 1200 }} size="middle" sticky tableLayout="fixed" />;
   }
 
   function renderFormFields() {
@@ -509,7 +485,6 @@ export function HerbResourceClient() {
         <Form.Item name="medicinalPart" label={T.medicinalPart}><Input maxLength={100} /></Form.Item>
         <Form.Item name="efficacy" label={T.efficacy}><Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /></Form.Item>
         <Form.Item name="description" label={T.description}><Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /></Form.Item>
-        <Form.Item name="status" label={T.status}><Select options={statusOptions} /></Form.Item>
       </>;
     }
     if (activeTab === "categories") {
@@ -533,7 +508,6 @@ export function HerbResourceClient() {
       <Form.Item name="contactName" label={T.contact}><Input maxLength={100} /></Form.Item>
       <Form.Item name="contactPhone" label={T.phone}><Input maxLength={50} /></Form.Item>
       <Form.Item name="description" label={T.description}><Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /></Form.Item>
-      <Form.Item name="status" label={T.status}><Select options={statusOptions} /></Form.Item>
       <Form.Item name="remark" label={T.remark}><Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /></Form.Item>
     </>;
   }
@@ -544,7 +518,7 @@ export function HerbResourceClient() {
     <div className={styles.herbPage}>
       <div className={`${styles.workspace} ${selectedHerb ? styles.workspaceWithDetail : ""}`}>
         <section className={styles.leftWorkspace}>
-          <ModuleHeroBanner actions={canCreate ? <Button icon={<PlusOutlined />} onClick={openCreateModal} type="primary">{T.create}{tabName}</Button> : undefined} description={T.desc} eyebrow="HERBAL RESOURCE CENTER" sealText={T.seal} title={T.title} />
+          <ModuleHeroBanner description={T.desc} eyebrow="HERBAL RESOURCE CENTER" sealText={T.seal} title={T.title} />
           <section className={styles.managementPanel}>
             <HerbResourceTabs activeTab={activeTab} onTabChange={setActiveTab} />
             {activeTab === "species" ? <HerbFilterBar categoryOptions={categoryOptions} onSearch={handleSearch} /> : null}
@@ -555,7 +529,7 @@ export function HerbResourceClient() {
         {selectedHerb ? <HerbDetailPanel herb={selectedHerb} onClose={() => setSelectedHerb(null)} /> : null}
       </div>
       <Modal title={`${modalMode === "edit" ? T.edit : T.create}${tabName}`} open={formOpen} confirmLoading={submitting} okText={T.save} cancelText={T.cancel} destroyOnHidden onCancel={() => setFormOpen(false)} onOk={() => void handleSubmit()}>
-        <Form form={form} layout="vertical" preserve={false} initialValues={activeTab === "categories" ? undefined : { status: 1 }}>{renderFormFields()}</Form>
+        <Form form={form} layout="vertical" preserve={false}>{renderFormFields()}</Form>
       </Modal>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Button, Space, Table, Tag } from "antd";
+import { Button, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import type { Key } from "react";
 import type { HerbTableRecord } from "./types";
@@ -20,10 +20,6 @@ type HerbTableProps = {
   onEdit: (record: HerbTableRecord) => void;
 };
 
-function statusColor(status?: number) {
-  return status === 1 ? "success" : "default";
-}
-
 export function HerbTable({
   canEdit = false,
   loading = false,
@@ -42,64 +38,55 @@ export function HerbTable({
       title: "序号",
       key: "index",
       render: (_value, _record, index) => (page - 1) * pageSize + index + 1,
-      width: 64,
+      width: "5%",
     },
     {
       title: "药材编号",
       dataIndex: "herbCode",
       key: "herbCode",
-      width: 150,
+      width: "14%",
     },
     {
       title: "药材名称",
       dataIndex: "herbName",
       key: "herbName",
-      width: 180,
+      width: "12%",
     },
     {
       title: "别名",
       dataIndex: "aliasName",
       key: "aliasName",
       ellipsis: true,
-      width: 160,
+      width: "11%",
       render: (value?: string) => value || "-",
     },
     {
       title: "所属分类",
       dataIndex: "categoryName",
       key: "categoryName",
-      width: 150,
+      width: "10%",
       render: (_value, record) => record.categoryName || record.category || "-",
     },
     {
       title: "药用部位",
       dataIndex: "medicinalPart",
       key: "medicinalPart",
-      width: 130,
+      width: "9%",
       render: (value?: string) => value || "-",
-    },
-    {
-      title: "状态",
-      dataIndex: "status",
-      key: "status",
-      width: 100,
-      render: (_value, record) => (
-        <Tag color={statusColor(record.status)}>{record.statusText || (record.status === 1 ? "启用" : "停用")}</Tag>
-      ),
     },
     {
       title: "分布地区",
       dataIndex: "distributionRegionText",
       key: "distributionRegionText",
       ellipsis: true,
-      width: 220,
+      width: "21%",
       render: (value?: string) => value || "-",
     },
     {
       title: "操作",
       key: "actions",
       fixed: "right",
-      width: 120,
+      width: "14%",
       render: (_value, record) => (
         <Space size={4}>
           <Button type="link" onClick={() => onView(record)}>
@@ -130,10 +117,11 @@ export function HerbTable({
         onChange: onPageChange,
       }}
       rowKey="id"
-      rowSelection={{ selectedRowKeys, onChange: onSelectionChange }}
-      scroll={{ x: "max-content" }}
+      rowSelection={{ columnWidth: "4%", selectedRowKeys, onChange: onSelectionChange }}
+      scroll={{ x: 1080 }}
       size="middle"
       sticky
+      tableLayout="fixed"
     />
   );
 }

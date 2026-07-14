@@ -5,7 +5,6 @@ export type HerbFilterValues = {
   keyword?: string;
   category?: string;
   medicinalPart?: string;
-  status?: number;
 };
 
 type HerbFilterBarProps = {
@@ -18,11 +17,6 @@ const fallbackCategoryOptions = [
   { label: "花叶类", value: "flower-leaf" },
   { label: "全草类", value: "whole" },
   { label: "皮类", value: "bark" },
-];
-
-const statusOptions = [
-  { label: "启用", value: 1 },
-  { label: "停用", value: 0 },
 ];
 
 const partOptions = [
@@ -54,9 +48,6 @@ export function HerbFilterBar({ categoryOptions = fallbackCategoryOptions, onSea
       </Form.Item>
       <Form.Item className={styles.selectFilter} name="category">
         <Select allowClear options={categoryOptions} placeholder="所属分类" />
-      </Form.Item>
-      <Form.Item className={styles.statusFilter} name="status">
-        <Select allowClear options={statusOptions} placeholder="状态" />
       </Form.Item>
       <Form.Item className={styles.selectFilter} name="medicinalPart">
         <Select allowClear options={partOptions} placeholder="药用部位" />

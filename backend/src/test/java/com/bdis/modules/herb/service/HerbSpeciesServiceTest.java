@@ -83,6 +83,25 @@ class HerbSpeciesServiceTest {
     }
 
     @Test
+    void updateSpeciesPreservesStatusWhenRequestOmitsIt() {
+        HerbEntity existing = new HerbEntity();
+        existing.setId(1L);
+        existing.setHerbNo("HERB_HUANGLIAN");
+        existing.setHerbName("Huanglian");
+        existing.setStatus(1);
+        when(herbSpeciesMapper.selectActiveById(1L)).thenReturn(existing);
+
+        HerbSpeciesUpdateRequest request = new HerbSpeciesUpdateRequest();
+        request.setHerbName("Updated Huanglian");
+
+        herbSpeciesService.update(1L, request);
+
+        ArgumentCaptor<HerbEntity> captor = ArgumentCaptor.forClass(HerbEntity.class);
+        verify(herbSpeciesMapper).updateSpecies(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(1);
+    }
+
+    @Test
     void deleteSpeciesUsesLogicalDelete() {
         HerbEntity existing = new HerbEntity();
         existing.setId(1L);

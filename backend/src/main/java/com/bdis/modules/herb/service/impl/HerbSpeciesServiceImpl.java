@@ -73,7 +73,9 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         existing.setMedicinalPart(request.getMedicinalPart());
         existing.setEfficacy(request.getEfficacy());
         existing.setDescription(request.getDescription());
-        existing.setStatus(request.getStatus());
+        if (request.getStatus() != null) {
+            existing.setStatus(request.getStatus());
+        }
         existing.setUpdatedAt(LocalDateTime.now());
         herbSpeciesMapper.updateSpecies(existing);
         return toVO(existing);

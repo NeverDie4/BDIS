@@ -1,4 +1,4 @@
-import { Button, Descriptions, Tabs, Tag } from "antd";
+import { Button, Descriptions, Tabs } from "antd";
 import type { HerbTableRecord } from "./types";
 import styles from "./herbs.module.css";
 
@@ -71,15 +71,6 @@ export function HerbDetailPanel({ herb, onClose }: HerbDetailPanelProps) {
                       key: "efficacy",
                       label: "功效",
                       children: valueOrDash(herb.efficacy),
-                    },
-                    {
-                      key: "status",
-                      label: "状态",
-                      children: (
-                        <Tag color={herb.status === 1 ? "success" : "default"}>
-                          {herb.statusText || (herb.status === 1 ? "启用" : "停用")}
-                        </Tag>
-                      ),
                     },
                     {
                       key: "region",

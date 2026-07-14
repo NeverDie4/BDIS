@@ -12,8 +12,6 @@ export type HerbSpeciesApi = {
   medicinalPart?: string;
   efficacy?: string;
   description?: string;
-  status?: number;
-  statusText?: string;
   distributionRegions?: string[];
   distributionRegionText?: string;
   createTime?: string;
@@ -33,7 +31,6 @@ export type HerbBaseApi = {
   contactName?: string;
   contactPhone?: string;
   description?: string;
-  status?: number;
   remark?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -60,7 +57,6 @@ export type HerbSpeciesPayload = {
   medicinalPart?: string;
   efficacy?: string;
   description?: string;
-  status?: number;
 };
 
 export type DictItemPayload = {
@@ -83,7 +79,6 @@ export type HerbBasePayload = {
   contactName?: string;
   contactPhone?: string;
   description?: string;
-  status?: number;
   remark?: string;
 };
 
@@ -93,7 +88,6 @@ export function fetchHerbSpecies(params: {
   keyword?: string;
   category?: string;
   medicinalPart?: string;
-  status?: number;
 }) {
   return apiGet<PageResult<HerbSpeciesApi>>("/herb/species/page", params);
 }
@@ -134,11 +128,10 @@ export function fetchHerbBases(params?: {
   page?: number;
   size?: number;
   keyword?: string;
-  status?: number;
   baseType?: string;
   regionId?: number;
 }) {
-  return apiGet<PageResult<HerbBaseApi>>("/herb-bases", params ?? { page: 1, size: 100, status: 1 });
+  return apiGet<PageResult<HerbBaseApi>>("/herb-bases", params ?? { page: 1, size: 100 });
 }
 
 export function createHerbBase(payload: HerbBasePayload) {
