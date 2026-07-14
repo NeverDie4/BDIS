@@ -13,5 +13,7 @@ public class HerbSpeciesQueryRequest {
 
     private String category;
 
+    private String medicinalPart;
+
     private Integer status;
 }

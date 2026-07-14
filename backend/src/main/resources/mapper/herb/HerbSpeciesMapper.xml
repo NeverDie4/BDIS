@@ -11,6 +11,7 @@
         <result column="alias_name" property="aliasName"/>
         <result column="category_id" property="categoryId"/>
         <result column="category_code" property="categoryCode"/>
+        <result column="category_name" property="categoryName"/>
         <result column="medicinal_part" property="medicinalPart"/>
         <result column="efficacy" property="efficacy"/>
         <result column="growth_environment" property="growthEnvironment"/>
@@ -18,6 +19,7 @@
         <result column="growth_cycle" property="growthCycle"/>
         <result column="description" property="description"/>
         <result column="knowledge_entity_id" property="knowledgeEntityId"/>
+        <result column="distribution_region_text" property="distributionRegionText"/>
         <result column="status" property="status"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
@@ -43,6 +45,52 @@
         created_at,
         updated_at,
         is_deleted
+    </sql>
+
+    <sql id="DisplayColumns">
+        s.id,
+        s.herb_no,
+        s.herb_name,
+        s.latin_name,
+        s.alias_name,
+        s.category_id,
+        s.category_code,
+        COALESCE(category.item_name, s.category_code) AS category_name,
+        s.medicinal_part,
+        s.efficacy,
+        s.growth_environment,
+        s.origin_area,
+        s.growth_cycle,
+        s.description,
+        s.knowledge_entity_id,
+        regions.distribution_region_text,
+        s.status,
+        s.created_at,
+        s.updated_at,
+        s.is_deleted
+    </sql>
+
+    <sql id="DisplayJoins">
+        LEFT JOIN dict_type category_type
+          ON category_type.type_code = 'herb_category'
+         AND category_type.status = 1
+         AND category_type.is_deleted = 0
+        LEFT JOIN dict_item category
+          ON category.type_id = category_type.id
+         AND category.item_code = s.category_code
+         AND category.status = 1
+         AND category.is_deleted = 0
+        LEFT JOIN (
+            SELECT
+                species_id,
+                GROUP_CONCAT(DISTINCT district ORDER BY district SEPARATOR '、') AS distribution_region_text
+            FROM herb_distribution
+            WHERE is_deleted = 0
+              AND status = 1
+              AND district IS NOT NULL
+              AND district != ''
+            GROUP BY species_id
+        ) regions ON regions.species_id = s.id
     </sql>
 
     <insert id="insertSpecies" parameterType="com.bdis.modules.herb.entity.HerbEntity"
@@ -117,10 +165,11 @@
 
     <select id="selectActiveById" resultMap="BaseResultMap">
         SELECT
-        <include refid="BaseColumns"/>
-        FROM herb_species
-        WHERE id = #{id}
-          AND is_deleted = 0
+        <include refid="DisplayColumns"/>
+        FROM herb_species s
+        <include refid="DisplayJoins"/>
+        WHERE s.id = #{id}
+          AND s.is_deleted = 0
     </select>
 
     <select id="selectByHerbCode" resultMap="BaseResultMap">
@@ -147,55 +196,63 @@
 
     <select id="countPage" resultType="java.lang.Long">
         SELECT COUNT(1)
-        FROM herb_species
+        FROM herb_species s
         <where>
-            is_deleted = 0
+            s.is_deleted = 0
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
-                    herb_name LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR herb_no LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR alias_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.herb_no LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.alias_name LIKE CONCAT('%', #{query.keyword}, '%')
                 )
             </if>
             <if test="query.category != null and query.category != ''">
-                AND category_code = #{query.category}
+                AND s.category_code = #{query.category}
+            </if>
+            <if test="query.medicinalPart != null and query.medicinalPart != ''">
+                AND s.medicinal_part = #{query.medicinalPart}
             </if>
             <if test="query.status != null">
-                AND status = #{query.status}
+                AND s.status = #{query.status}
             </if>
         </where>
     </select>
 
     <select id="selectPage" resultMap="BaseResultMap">
         SELECT
-        <include refid="BaseColumns"/>
-        FROM herb_species
+        <include refid="DisplayColumns"/>
+        FROM herb_species s
+        <include refid="DisplayJoins"/>
         <where>
-            is_deleted = 0
+            s.is_deleted = 0
             <if test="query.keyword != null and query.keyword != ''">
                 AND (
-                    herb_name LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR herb_no LIKE CONCAT('%', #{query.keyword}, '%')
-                    OR alias_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    s.herb_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.herb_no LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR s.alias_name LIKE CONCAT('%', #{query.keyword}, '%')
                 )
             </if>
             <if test="query.category != null and query.category != ''">
-                AND category_code = #{query.category}
+                AND s.category_code = #{query.category}
+            </if>
+            <if test="query.medicinalPart != null and query.medicinalPart != ''">
+                AND s.medicinal_part = #{query.medicinalPart}
             </if>
             <if test="query.status != null">
-                AND status = #{query.status}
+                AND s.status = #{query.status}
             </if>
         </where>
-        ORDER BY created_at DESC
+        ORDER BY s.created_at DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
     <select id="selectEnabledList" resultMap="BaseResultMap">
         SELECT
-        <include refid="BaseColumns"/>
-        FROM herb_species
-        WHERE is_deleted = 0
-          AND status = 1
-        ORDER BY created_at DESC
+        <include refid="DisplayColumns"/>
+        FROM herb_species s
+        <include refid="DisplayJoins"/>
+        WHERE s.is_deleted = 0
+          AND s.status = 1
+        ORDER BY s.created_at DESC
     </select>
 </mapper>

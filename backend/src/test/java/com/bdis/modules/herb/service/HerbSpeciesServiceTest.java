@@ -100,6 +100,39 @@ class HerbSpeciesServiceTest {
     }
 
     @Test
+    void pageSpeciesReturnsDisplayFieldsFromDatabaseContract() {
+        HerbSpeciesQueryRequest request = new HerbSpeciesQueryRequest();
+        request.setPageNum(1);
+        request.setPageSize(10);
+        request.setMedicinalPart("根茎");
+
+        HerbEntity entity = new HerbEntity();
+        entity.setId(7L);
+        entity.setHerbNo("HERB_HUANGLIAN");
+        entity.setHerbName("黄连");
+        entity.setAliasName("川连");
+        entity.setCategoryCode("root");
+        entity.setCategoryName("根及根茎类");
+        entity.setMedicinalPart("根茎");
+        entity.setStatus(1);
+        entity.setDistributionRegionText("重庆南川、重庆石柱、重庆石柱");
+
+        when(herbSpeciesMapper.countPage(request)).thenReturn(1L);
+        when(herbSpeciesMapper.selectPage(request, 0L, 10)).thenReturn(List.of(entity));
+
+        PageResult<HerbSpeciesVO> result = herbSpeciesService.page(request);
+
+        HerbSpeciesVO vo = result.getRecords().getFirst();
+        assertThat(vo.getHerbCode()).isEqualTo("HERB_HUANGLIAN");
+        assertThat(vo.getCategory()).isEqualTo("root");
+        assertThat(vo.getCategoryName()).isEqualTo("根及根茎类");
+        assertThat(vo.getMedicinalPart()).isEqualTo("根茎");
+        assertThat(vo.getStatus()).isEqualTo(1);
+        assertThat(vo.getStatusText()).isEqualTo("启用");
+        assertThat(vo.getDistributionRegionText()).isEqualTo("重庆南川、重庆石柱、重庆石柱");
+        assertThat(vo.getDistributionRegions()).containsExactly("重庆南川", "重庆石柱");
+    }
+    @Test
     void pageSpeciesNormalizesInvalidPageParameters() {
         HerbSpeciesQueryRequest request = new HerbSpeciesQueryRequest();
         request.setPageNum(0);

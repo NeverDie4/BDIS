@@ -16,6 +16,10 @@ const publicTraceCssSource = readFileSync(
   new URL("../src/app/trace/growth/[traceCode]/page.module.css", import.meta.url),
   "utf8",
 );
+const publicRoutesSource = readFileSync(
+  new URL("../src/config/routes/public.ts", import.meta.url),
+  "utf8",
+);
 const reviewerScopeMigrationUrl = new URL(
   "../../backend/src/main/resources/db/migration/V20260714_006__grant_growth_reviewer_data_scope.sql",
   import.meta.url,
@@ -347,6 +351,10 @@ test("公开生长溯源页提供档案、错误状态、盖章和打印能力",
   assert.match(publicTraceCssSource, /@media print/);
   assert.match(publicTraceCssSource, /@page\s*\{\s*size:\s*A4/);
   assert.match(publicTraceCssSource, /\.noPrint\s*\{\s*display:\s*none\s*!important/);
+});
+
+test("公开生长溯源页面必须注册为免登录路由", () => {
+  assert.match(publicRoutesSource, /path:\s*"\/trace\/growth\/\[traceCode\]"[\s\S]*public:\s*true/);
 });
 
 test("growth 筛选任务框不越界且审核操作栏位于详情末尾", () => {

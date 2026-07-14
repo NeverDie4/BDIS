@@ -7,13 +7,17 @@ type HerbDetailPanelProps = {
   onClose: () => void;
 };
 
+function valueOrDash(value?: string | number) {
+  return value == null || value === "" ? "-" : value;
+}
+
 export function HerbDetailPanel({ herb, onClose }: HerbDetailPanelProps) {
   return (
     <aside className={styles.detailPanel}>
       <div className={styles.detailHeader}>
         <div className={styles.detailTitleGroup}>
           <h2>{herb.herbName}</h2>
-          <p>{herb.aliasName}</p>
+          <p>{herb.aliasName || herb.herbCode}</p>
         </div>
         <Button type="text" aria-label="关闭药材详情" onClick={onClose}>
           ×
@@ -34,38 +38,58 @@ export function HerbDetailPanel({ herb, onClose }: HerbDetailPanelProps) {
                   size="small"
                   items={[
                     {
+                      key: "code",
+                      label: "药材编号",
+                      children: valueOrDash(herb.herbCode),
+                    },
+                    {
                       key: "name",
                       label: "药材名称",
-                      children: herb.herbName,
+                      children: valueOrDash(herb.herbName),
+                    },
+                    {
+                      key: "latin",
+                      label: "拉丁名",
+                      children: valueOrDash(herb.latinName),
                     },
                     {
                       key: "alias",
                       label: "别名",
-                      children: herb.aliasName,
+                      children: valueOrDash(herb.aliasName),
                     },
                     {
                       key: "category",
                       label: "所属分类",
-                      children: herb.categoryName,
+                      children: valueOrDash(herb.categoryName || herb.category),
                     },
                     {
                       key: "part",
                       label: "药用部位",
-                      children: herb.medicinalPart,
+                      children: valueOrDash(herb.medicinalPart),
+                    },
+                    {
+                      key: "efficacy",
+                      label: "功效",
+                      children: valueOrDash(herb.efficacy),
                     },
                     {
                       key: "status",
                       label: "状态",
                       children: (
-                        <Tag color={herb.status === "enabled" ? "success" : "default"}>
-                          {herb.status === "enabled" ? "启用" : "停用"}
+                        <Tag color={herb.status === 1 ? "success" : "default"}>
+                          {herb.statusText || (herb.status === 1 ? "启用" : "停用")}
                         </Tag>
                       ),
                     },
                     {
                       key: "region",
                       label: "分布地区",
-                      children: herb.region,
+                      children: valueOrDash(herb.distributionRegionText),
+                    },
+                    {
+                      key: "description",
+                      label: "描述",
+                      children: valueOrDash(herb.description),
                     },
                   ]}
                 />
@@ -74,7 +98,7 @@ export function HerbDetailPanel({ herb, onClose }: HerbDetailPanelProps) {
           },
           {
             key: "images",
-            label: "图片图谱",
+            label: "图片图鉴",
             children: <div className={styles.detailContent} />,
           },
           {

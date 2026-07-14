@@ -1,9 +1,18 @@
 export interface HerbTableRecord {
-  id: string;
+  id: number;
+  herbCode: string;
   herbName: string;
-  aliasName: string;
-  categoryName: string;
-  medicinalPart: string;
-  status: "enabled" | "disabled";
-  region: string;
+  latinName?: string;
+  aliasName?: string;
+  category?: string;
+  categoryName?: string;
+  medicinalPart?: string;
+  efficacy?: string;
+  description?: string;
+  status?: number;
+  statusText?: string;
+  distributionRegions?: string[];
+  distributionRegionText?: string;
+  createTime?: string;
+  updateTime?: string;
 }

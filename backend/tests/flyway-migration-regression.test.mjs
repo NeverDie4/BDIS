@@ -106,3 +106,13 @@ test("迁移版本唯一且 PR 迁移晚于 dev 基线", async () => {
   for (const name of expected)
     assert.ok(files.includes(name), `missing migration ${name}`);
 });
+test("药材分类字典类型由独立前向迁移初始化", async () => {
+  const migration = await readMigration(
+    "V20260714_017__seed_herb_category_dictionary.sql",
+  );
+
+  assert.match(migration, /INSERT\s+IGNORE\s+INTO\s+`dict_type`/i);
+  assert.match(migration, /'herb_category'/);
+  assert.match(migration, /中药材分类/);
+  assert.doesNotMatch(migration, /ALTER\s+TABLE|DROP\s+COLUMN/i);
+});
