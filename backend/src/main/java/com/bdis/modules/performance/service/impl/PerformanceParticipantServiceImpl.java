@@ -3,6 +3,7 @@ package com.bdis.modules.performance.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.performance.dto.PerformanceParticipantRequest;
 import com.bdis.modules.performance.entity.PerformanceEntity;
@@ -43,12 +44,13 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
 
     @Override
     public List<PerformanceParticipantUserVO> listParticipantUsers(Long performanceId) {
-        requireEditablePerformance(performanceId);
+        PerformanceEntity performance = requireEditablePerformance(performanceId);
+        UserEntity owner = requireParticipantScopeOwner(performance);
         LambdaQueryWrapper<UserEntity> wrapper =
                 new LambdaQueryWrapper<UserEntity>()
                         .eq(UserEntity::getStatus, 1)
                         .orderByAsc(UserEntity::getUsername);
-        accessService.applyUserScope(wrapper, "perf_record");
+        applyParticipantBusinessScope(wrapper, owner);
         return userMapper
                 .selectList(wrapper)
                 .stream()
@@ -61,7 +63,7 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
     public PerformanceParticipantEntity addParticipant(
             Long performanceId, PerformanceParticipantRequest request) {
         PerformanceEntity performance = requireEditablePerformance(performanceId);
-        requireActiveUser(request.getUserId());
+        requireActiveParticipant(performance, request.getUserId());
         if (existsParticipant(performanceId, request.getUserId())) {
             throw new IllegalArgumentException("参与人已存在");
         }
@@ -100,7 +102,7 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
         } else if (Boolean.TRUE.equals(request.getPrimary())) {
             throw new IllegalArgumentException("负责人已由业绩归属人固定维护");
         }
-        requireActiveUser(request.getUserId());
+        requireActiveParticipant(performance, request.getUserId());
         if (!entity.getUserId().equals(request.getUserId())
                 && existsParticipant(performanceId, request.getUserId())) {
             throw new IllegalArgumentException("参与人已存在");
@@ -167,12 +169,49 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
                 > 0;
     }
 
-    private void requireActiveUser(Long userId) {
+    private void requireActiveParticipant(PerformanceEntity performance, Long userId) {
         UserEntity user = userMapper.selectById(userId);
         if (user == null || !Integer.valueOf(1).equals(user.getStatus())) {
             throw new IllegalArgumentException("参与人不存在或已停用");
         }
-        accessService.requireUserInScope("perf_record", userId);
+        if (!isInParticipantBusinessScope(requireParticipantScopeOwner(performance), user)) {
+            throw new ForbiddenException("参与人必须与业绩负责人属于同一部门或机构");
+        }
+    }
+
+    private UserEntity requireParticipantScopeOwner(PerformanceEntity performance) {
+        UserEntity owner = userMapper.selectById(performance.getUserId());
+        if (owner == null || !Integer.valueOf(1).equals(owner.getStatus())) {
+            throw new IllegalArgumentException("业绩负责人不存在或已停用，不能维护参与人");
+        }
+        return owner;
+    }
+
+    private void applyParticipantBusinessScope(
+            LambdaQueryWrapper<UserEntity> wrapper, UserEntity owner) {
+        if (owner.getOrganizationId() != null) {
+            wrapper.eq(UserEntity::getOrganizationId, owner.getOrganizationId());
+        }
+        if (owner.getDepartmentId() != null) {
+            wrapper.eq(UserEntity::getDepartmentId, owner.getDepartmentId());
+        }
+        if (owner.getOrganizationId() == null && owner.getDepartmentId() == null) {
+            wrapper.eq(UserEntity::getId, owner.getId());
+        }
+    }
+
+    private boolean isInParticipantBusinessScope(UserEntity owner, UserEntity participant) {
+        if (owner.getDepartmentId() != null
+                && !owner.getDepartmentId().equals(participant.getDepartmentId())) {
+            return false;
+        }
+        if (owner.getOrganizationId() != null
+                && !owner.getOrganizationId().equals(participant.getOrganizationId())) {
+            return false;
+        }
+        return owner.getDepartmentId() != null
+                || owner.getOrganizationId() != null
+                || owner.getId().equals(participant.getId());
     }
 
     private void updateOrThrow(PerformanceParticipantEntity entity) {

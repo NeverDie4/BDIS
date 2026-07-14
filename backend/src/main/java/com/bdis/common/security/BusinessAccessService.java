@@ -32,24 +32,6 @@ public class BusinessAccessService {
         authorizationService.requirePermission(permissionCode);
     }
 
-    public void applyUserScope(LambdaQueryWrapper<UserEntity> wrapper, String resourceType) {
-        dataScopeService.applyToQuery(
-                wrapper,
-                resourceType,
-                UserEntity::getId,
-                UserEntity::getOrganizationId,
-                UserEntity::getDepartmentId);
-    }
-
-    public void requireUserInScope(String resourceType, Long userId) {
-        LambdaQueryWrapper<UserEntity> wrapper =
-                new LambdaQueryWrapper<UserEntity>().eq(UserEntity::getId, userId);
-        applyUserScope(wrapper, resourceType);
-        if (userMapper.selectCount(wrapper) == 0) {
-            throw new ForbiddenException("参与人超出当前数据范围");
-        }
-    }
-
     public <T> void applyOwnerScope(
             LambdaQueryWrapper<T> wrapper, String resourceType, SFunction<T, ?> ownerField) {
         Set<Long> ownerIds = resolveOwnerIds(resourceType);
