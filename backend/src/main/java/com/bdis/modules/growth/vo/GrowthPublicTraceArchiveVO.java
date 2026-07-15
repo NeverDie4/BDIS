@@ -18,6 +18,7 @@ public class GrowthPublicTraceArchiveVO {
     private String herbName;
     private Long taskId;
     private String taskName;
+    private String taskTraceCode;
     private Long batchId;
     private String batchName;
     private String baseName;

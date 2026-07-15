@@ -71,3 +71,26 @@ test('生长记录表单已注册且 Web 继续读取任务趋势接口', async 
   assert.match(pagesJson, /"path":\s*"pages\/growth\/form"/)
   assert.match(webApi, /herb\/collection-task\/\$\{taskId\}\/growth-records\/chart/)
 })
+
+test('移动端生长记录采集 WGS84 定位并随记录提交', async () => {
+  const [form, manifest] = await Promise.all([
+    readSource('pages/growth/form.vue'),
+    readSource('manifest.json')
+  ])
+
+  assert.match(form, /longitude:\s*''/)
+  assert.match(form, /latitude:\s*''/)
+  assert.match(form, /uni\.getLocation\(\{/)
+  assert.match(form, /type:\s*'wgs84'/)
+  assert.match(form, /isHighAccuracy:\s*true/)
+  assert.match(form, /function captureLocation\(\)/)
+  assert.match(form, /form\.longitude\s*=\s*longitude\.toFixed\(7\)/)
+  assert.match(form, /form\.latitude\s*=\s*latitude\.toFixed\(7\)/)
+  assert.match(form, /payload\.longitude\s*=\s*Number\(form\.longitude\)/)
+  assert.match(form, /payload\.latitude\s*=\s*Number\(form\.latitude\)/)
+  assert.match(form, /定位失败/)
+  assert.match(manifest, /android\.permission\.ACCESS_FINE_LOCATION/)
+  assert.match(manifest, /NSLocationWhenInUseUsageDescription/)
+  assert.match(manifest, /scope\.userLocation/)
+  assert.match(manifest, /getLocation/)
+})

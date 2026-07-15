@@ -348,6 +348,8 @@ public class HerbCollectionTaskServiceImpl implements HerbCollectionTaskService 
         vo.setCollectorName(entity.getCollectorName());
         vo.setTaskStatus(entity.getTaskStatus());
         vo.setDescription(entity.getDescription());
+        vo.setTraceCode(entity.getTraceCode());
+        vo.setPublicVisible(entity.getPublicVisible());
         vo.setRemark(entity.getRemark());
         vo.setCreateTime(entity.getCreatedAt());
         vo.setUpdateTime(entity.getUpdatedAt());

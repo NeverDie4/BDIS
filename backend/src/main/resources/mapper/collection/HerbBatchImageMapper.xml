@@ -342,6 +342,34 @@
         ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
     </select>
 
+    <select id="selectBatchImagesWithIdentificationByBatchIds"
+            resultMap="BatchImageVOResultMap">
+        SELECT
+        <include refid="BatchImageVOColumns"/>
+        FROM herb_batch_image bi
+        LEFT JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_identification_result r
+            ON r.id = COALESCE(
+                bi.identification_result_id,
+                (
+                    SELECT latest.id
+                    FROM herb_identification_result latest
+                    WHERE latest.image_id = bi.image_id
+                      AND latest.is_deleted = 0
+                    ORDER BY latest.identify_time DESC, latest.created_at DESC
+                    LIMIT 1
+                )
+            )
+            AND r.is_deleted = 0
+        WHERE bi.batch_id IN
+        <foreach collection="batchIds" item="batchId" open="(" separator="," close=")">
+            #{batchId}
+        </foreach>
+          AND bi.is_deleted = 0
+          AND bi.bind_status = 'bound'
+        ORDER BY bi.batch_id, bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
+    </select>
+
     <select id="selectBatchInfoByImageId" resultMap="ImageBatchVOResultMap">
         SELECT
         b.id AS batch_id,

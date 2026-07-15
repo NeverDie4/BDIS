@@ -40,8 +40,10 @@
 
     <resultMap id="ImageVOResultMap" type="com.bdis.modules.herb.vo.HerbImageVO">
         <id column="id" property="id"/>
+        <result column="batch_id" property="batchId"/>
         <result column="image_no" property="imageCode"/>
         <result column="image_url" property="imageUrl"/>
+        <result column="thumbnail_url" property="thumbnailUrl"/>
         <result column="original_filename" property="imageName"/>
         <result column="species_id" property="speciesId"/>
         <result column="species_name" property="speciesName"/>
@@ -97,12 +99,14 @@
 
     <sql id="ImageVOColumns">
         i.id,
+        NULL AS batch_id,
         i.image_no,
         CASE
             WHEN fr.id IS NULL THEN i.image_url
             WHEN fr.access_level = 'public' THEN CONCAT('/api/public-files/', fr.id, '/content')
             ELSE CONCAT('/api/files/', fr.id, '/content')
         END AS image_url,
+        i.thumbnail_url,
         i.original_filename,
         i.species_id,
         i.growth_record_id,
@@ -233,12 +237,14 @@
     <select id="selectByBatchId" resultMap="ImageVOResultMap">
         SELECT
         i.id,
+        bi.batch_id,
         i.image_no,
         CASE
             WHEN fr.id IS NULL THEN i.image_url
             WHEN fr.access_level = 'public' THEN CONCAT('/api/public-files/', fr.id, '/content')
             ELSE CONCAT('/api/files/', fr.id, '/content')
         END AS image_url,
+        i.thumbnail_url,
         i.original_filename,
         i.species_id,
         i.growth_record_id,
@@ -264,6 +270,76 @@
           AND bi.is_deleted = 0
           AND bi.bind_status = 'bound'
         ORDER BY bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
+    </select>
+
+    <select id="selectByBatchIds" resultMap="ImageVOResultMap">
+        SELECT
+        i.id,
+        bi.batch_id,
+        i.image_no,
+        CASE
+            WHEN fr.id IS NULL THEN i.image_url
+            WHEN fr.access_level = 'public' THEN CONCAT('/api/public-files/', fr.id, '/content')
+            ELSE CONCAT('/api/files/', fr.id, '/content')
+        END AS image_url,
+        i.thumbnail_url,
+        i.original_filename,
+        i.species_id,
+        i.growth_record_id,
+        s.herb_name AS species_name,
+        i.upload_source,
+        i.uploader_id,
+        COALESCE(u.real_name, u.username) AS uploader_name,
+        i.distribution_id,
+        i.collected_location,
+        i.collected_at,
+        i.created_at AS upload_time,
+        i.image_type,
+        bi.image_role,
+        i.growth_stage,
+        i.health_status,
+        i.process_status
+        FROM herb_batch_image bi
+        INNER JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
+        LEFT JOIN herb_species s ON s.id = i.species_id AND s.is_deleted = 0
+        LEFT JOIN sys_file_resource fr ON fr.file_url = i.image_url AND fr.is_deleted = 0
+        LEFT JOIN sys_user u ON u.id = i.uploader_id AND u.is_deleted = 0
+        WHERE bi.batch_id IN
+        <foreach collection="batchIds" item="batchId" open="(" separator="," close=")">
+            #{batchId}
+        </foreach>
+          AND bi.is_deleted = 0
+          AND bi.bind_status = 'bound'
+        ORDER BY bi.batch_id, bi.is_primary DESC, bi.sort_order ASC, bi.created_at ASC
+    </select>
+
+    <select id="selectPublicByTraceCodeAndImageId" resultMap="ImageVOResultMap">
+        SELECT
+        i.id,
+        b.id AS batch_id,
+        i.image_url
+        FROM herb_collection_task t
+        INNER JOIN herb_batch b
+          ON b.task_id = t.id
+         AND b.is_deleted = 0
+        INNER JOIN herb_growth_record gr
+          ON gr.batch_id = b.id
+         AND gr.is_deleted = 0
+         AND gr.review_status = 'approved'
+        INNER JOIN herb_batch_image bi
+          ON bi.batch_id = b.id
+         AND bi.is_deleted = 0
+         AND bi.bind_status = 'bound'
+        INNER JOIN herb_image i
+          ON i.id = bi.image_id
+         AND i.is_deleted = 0
+        WHERE t.trace_code = #{traceCode}
+          AND t.public_visible = 1
+          AND t.status = 1
+          AND t.is_deleted = 0
+          AND (t.task_status IS NULL OR t.task_status != 'cancelled')
+          AND i.id = #{imageId}
+        LIMIT 1
     </select>
 
     <select id="countPage" resultType="java.lang.Long">

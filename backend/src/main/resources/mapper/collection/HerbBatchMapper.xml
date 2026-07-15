@@ -466,4 +466,14 @@
         <include refid="ListWhere"/>
         ORDER BY b.created_at DESC
     </select>
+
+    <select id="selectByTaskId" resultMap="BatchVOResultMap">
+        SELECT
+        <include refid="BatchVOColumns"/>
+        FROM herb_batch b
+        LEFT JOIN herb_collection_task t ON t.id = b.task_id AND t.is_deleted = 0
+        WHERE b.task_id = #{taskId}
+          AND b.is_deleted = 0
+        ORDER BY COALESCE(b.collect_start_time, b.created_at), b.id
+    </select>
 </mapper>

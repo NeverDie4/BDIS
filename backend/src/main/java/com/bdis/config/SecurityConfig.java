@@ -82,6 +82,8 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.GET, "/trace/growth/**")
                                         .permitAll()
+                                        .requestMatchers(HttpMethod.GET, "/trace/digital-life/**")
+                                        .permitAll()
                                         .requestMatchers("/files/uploads/**")
                                         .denyAll()
                                         .requestMatchers(
