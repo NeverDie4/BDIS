@@ -16,10 +16,12 @@ import com.bdis.common.security.SecurityUtils;
 import com.bdis.common.security.TokenBlacklistService;
 import com.bdis.modules.auth.dto.BootstrapAdminDTO;
 import com.bdis.modules.auth.dto.LoginDTO;
+import com.bdis.modules.auth.dto.RefreshSessionDTO;
 import com.bdis.modules.auth.service.AuthService;
 import com.bdis.modules.auth.service.CurrentUserService;
 import com.bdis.modules.auth.vo.CurrentUserVO;
 import com.bdis.modules.auth.vo.LoginVO;
+import com.bdis.modules.settings.entity.UserSessionEntity;
 import com.bdis.modules.settings.service.UserPreferenceService;
 import com.bdis.modules.settings.service.UserSessionService;
 import com.bdis.modules.user.entity.RoleEntity;
@@ -29,7 +31,14 @@ import com.bdis.modules.user.mapper.RoleMapper;
 import com.bdis.modules.user.mapper.UserMapper;
 import com.bdis.modules.user.mapper.UserRoleMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,6 +47,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserMapper userMapper;
 
@@ -139,15 +150,33 @@ public class AuthServiceImpl implements AuthService {
         userMapper.updateById(user);
         CurrentUser currentUser = currentUserService.load(user.getId());
         IssuedToken issuedToken = jwtUtils.generate(currentUser);
-        userSessionService.create(user.getId(), issuedToken, request);
-        LoginVO vo = new LoginVO();
-        vo.setAccessToken(issuedToken.accessToken());
-        vo.setExpiresIn(jwtProperties.getAccessTokenTtlMinutes() * 60);
-        vo.setUser(toCurrentUserVO(currentUser));
-        vo.setPreferredLandingPath(userPreferenceService.preferredLandingPath(currentUser));
-        vo.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
+        String refreshToken = generateRefreshToken();
+        Instant refreshExpiresAt =
+                issuedToken.issuedAt().plusSeconds(jwtProperties.getRefreshTokenTtlDays() * 86400);
+        userSessionService.create(
+                user.getId(), issuedToken, hashRefreshToken(refreshToken), refreshExpiresAt, request);
+        LoginVO vo = buildLoginVO(currentUser, issuedToken, refreshToken);
         recordLogin(user.getId(), user.getUsername(), "SUCCESS", null);
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public LoginVO refresh(RefreshSessionDTO dto, HttpServletRequest request) {
+        UserSessionEntity session =
+                userSessionService.validateRefreshToken(hashRefreshToken(dto.getRefreshToken()));
+        CurrentUser currentUser = currentUserService.load(session.getUserId());
+        IssuedToken issuedToken = jwtUtils.generate(currentUser);
+        String refreshToken = generateRefreshToken();
+        Instant refreshExpiresAt =
+                issuedToken.issuedAt().plusSeconds(jwtProperties.getRefreshTokenTtlDays() * 86400);
+        userSessionService.rotateRefreshToken(
+                session,
+                issuedToken,
+                hashRefreshToken(dto.getRefreshToken()),
+                hashRefreshToken(refreshToken),
+                refreshExpiresAt);
+        return buildLoginVO(currentUser, issuedToken, refreshToken);
     }
 
     @Override
@@ -205,6 +234,36 @@ public class AuthServiceImpl implements AuthService {
         vo.setMustChangePassword(
                 userEntity != null && Boolean.TRUE.equals(userEntity.getMustChangePassword()));
         return vo;
+    }
+
+    private LoginVO buildLoginVO(CurrentUser currentUser, IssuedToken issuedToken, String refreshToken) {
+        LoginVO vo = new LoginVO();
+        vo.setAccessToken(issuedToken.accessToken());
+        vo.setRefreshToken(refreshToken);
+        vo.setExpiresIn(jwtProperties.getAccessTokenTtlMinutes() * 60);
+        vo.setRefreshExpiresIn(jwtProperties.getRefreshTokenTtlDays() * 86400);
+        vo.setUser(toCurrentUserVO(currentUser));
+        vo.setPreferredLandingPath(userPreferenceService.preferredLandingPath(currentUser));
+        UserEntity user = userMapper.selectById(currentUser.getUserId());
+        vo.setMustChangePassword(user != null && Boolean.TRUE.equals(user.getMustChangePassword()));
+        return vo;
+    }
+
+    private String generateRefreshToken() {
+        byte[] value = new byte[32];
+        SECURE_RANDOM.nextBytes(value);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(value);
+    }
+
+    private String hashRefreshToken(String refreshToken) {
+        try {
+            return HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(refreshToken.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 must be available", exception);
+        }
     }
 
     private void recordLogin(Long userId, String username, String result, String failReason) {

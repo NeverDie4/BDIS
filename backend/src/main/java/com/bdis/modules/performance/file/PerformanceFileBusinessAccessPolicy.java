@@ -36,17 +36,27 @@ public class PerformanceFileBusinessAccessPolicy implements FileBusinessAccessPo
 
     @Override
     public boolean canAttach(Long bizId) {
-        return isAllowed(bizId, "performance:record:update");
+        return isEditableAndAllowed(bizId);
     }
 
     @Override
     public boolean canDetach(Long bizId) {
-        return canAttach(bizId);
+        return isEditableAndAllowed(bizId);
     }
 
     @Override
     public boolean canPublish(Long bizId) {
-        return isAllowed(bizId, "performance:record:audit");
+        return false;
+    }
+
+    private boolean isEditableAndAllowed(Long bizId) {
+        PerformanceEntity performance = performanceMapper.selectById(bizId);
+        if (performance == null
+                || !("draft".equals(performance.getIdentifyStatus())
+                        || "rejected".equals(performance.getIdentifyStatus()))) {
+            return false;
+        }
+        return isAllowed(performance, "performance:record:update");
     }
 
     private boolean isAllowed(Long bizId, String permissionCode) {
@@ -54,9 +64,13 @@ public class PerformanceFileBusinessAccessPolicy implements FileBusinessAccessPo
         if (performance == null) {
             return false;
         }
+        return isAllowed(performance, permissionCode);
+    }
+
+    private boolean isAllowed(PerformanceEntity performance, String permissionCode) {
         try {
             accessService.requireResourceAccess(
-                    bizType(), bizId, permissionCode, performance.getUserId());
+                    bizType(), performance.getId(), permissionCode, performance.getUserId());
             return true;
         } catch (ForbiddenException exception) {
             return false;

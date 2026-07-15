@@ -10,6 +10,7 @@ import { resolvePostLoginPath } from "@/config/routes";
 import { apiPost, getApiErrorMessage } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CurrentUser, LoginResult } from "@/types/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +18,7 @@ import styles from "./LoginPage.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { message } = App.useApp();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -28,7 +30,8 @@ export default function LoginPage() {
     setLoginLoading(true);
     try {
       const result = await apiPost<LoginResult>("/auth/sessions", values);
-      setAuth(result.accessToken, result.user);
+      queryClient.clear();
+      setAuth(result.accessToken, result.refreshToken, result.user);
       message.success("登录成功");
 
       if (result.mustChangePassword || result.user.mustChangePassword) {

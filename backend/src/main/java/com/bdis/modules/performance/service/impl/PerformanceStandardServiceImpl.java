@@ -23,6 +23,8 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class PerformanceStandardServiceImpl implements PerformanceStandardService {
 
+    private static final long MAX_PAGE_SIZE = 100L;
+
     private static final DateTimeFormatter NO_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
@@ -116,6 +118,9 @@ public class PerformanceStandardServiceImpl implements PerformanceStandardServic
         if (source == null) {
             throw new IllegalArgumentException("认定标准不存在");
         }
+        if ("draft".equals(source.getLifecycleStatus())) {
+            throw new IllegalArgumentException("草稿标准应直接编辑，发布或停用后才能创建新版本");
+        }
         Integer maxVersion =
                 standardMapper
                         .selectList(
@@ -185,7 +190,7 @@ public class PerformanceStandardServiceImpl implements PerformanceStandardServic
     private Page<PerformanceStandardEntity> page(Long pageNum, Long pageSize) {
         return new Page<>(
                 pageNum == null || pageNum < 1 ? 1 : pageNum,
-                pageSize == null || pageSize < 1 ? 10 : pageSize);
+                pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, MAX_PAGE_SIZE));
     }
 
     private String defaultText(String value, String defaultValue) {

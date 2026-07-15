@@ -2,10 +2,12 @@ import { getStorage, removeStorage, setStorage } from './storage'
 
 const TOKEN_KEY = 'authToken'
 const TOKEN_TYPE_KEY = 'authTokenType'
+const REFRESH_TOKEN_KEY = 'authRefreshToken'
 const USER_KEY = 'authUser'
 
 export function setAuthSession(session = {}) {
   const token = session.accessToken || session.token || ''
+  const refreshToken = session.refreshToken || ''
   const tokenType = session.tokenType || 'Bearer'
 
   if (!token) {
@@ -14,10 +16,14 @@ export function setAuthSession(session = {}) {
   }
 
   setStorage(TOKEN_KEY, token)
+  if (refreshToken) {
+    setStorage(REFRESH_TOKEN_KEY, refreshToken)
+  }
   setStorage(TOKEN_TYPE_KEY, tokenType)
   setStorage(USER_KEY, session.user || null)
   return {
     token,
+    refreshToken,
     tokenType,
     user: session.user || null
   }
@@ -25,6 +31,10 @@ export function setAuthSession(session = {}) {
 
 export function getAuthToken() {
   return getStorage(TOKEN_KEY, '')
+}
+
+export function getRefreshToken() {
+  return getStorage(REFRESH_TOKEN_KEY, '')
 }
 
 export function getAuthHeader() {
@@ -48,6 +58,7 @@ export function isLoggedIn() {
 export function clearAuthSession() {
   removeStorage(TOKEN_KEY)
   removeStorage(TOKEN_TYPE_KEY)
+  removeStorage(REFRESH_TOKEN_KEY)
   removeStorage(USER_KEY)
 }
 

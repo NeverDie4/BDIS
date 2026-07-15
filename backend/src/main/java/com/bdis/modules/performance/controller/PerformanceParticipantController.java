@@ -1,11 +1,13 @@
 package com.bdis.modules.performance.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bdis.audit.annotation.AuditLogAnnotation;
 import com.bdis.common.core.Result;
 import com.bdis.modules.performance.dto.PerformanceParticipantRequest;
 import com.bdis.modules.performance.entity.PerformanceParticipantEntity;
 import com.bdis.modules.performance.service.PerformanceParticipantService;
 import com.bdis.modules.performance.vo.PerformanceParticipantUserVO;
+import com.bdis.modules.performance.vo.PerformanceParticipantVO;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -26,14 +29,18 @@ public class PerformanceParticipantController {
     private final PerformanceParticipantService participantService;
 
     @GetMapping
-    public Result<List<PerformanceParticipantEntity>> list(@PathVariable Long performanceId) {
+    public Result<List<PerformanceParticipantVO>> list(@PathVariable Long performanceId) {
         return Result.success(participantService.listParticipants(performanceId));
     }
 
     @GetMapping("/participant-users")
-    public Result<List<PerformanceParticipantUserVO>> listParticipantUsers(
-            @PathVariable Long performanceId) {
-        return Result.success(participantService.listParticipantUsers(performanceId));
+    public Result<IPage<PerformanceParticipantUserVO>> listParticipantUsers(
+            @PathVariable Long performanceId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") Long pageNum,
+            @RequestParam(defaultValue = "20") Long pageSize) {
+        return Result.success(
+                participantService.listParticipantUsers(performanceId, keyword, pageNum, pageSize));
     }
 
     @PostMapping

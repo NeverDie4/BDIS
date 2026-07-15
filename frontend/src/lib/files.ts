@@ -58,14 +58,6 @@ export async function deleteOwnUnboundUpload(fileId: number) {
   await request.delete(`/files/${fileId}/unbound-upload`);
 }
 
-function withBrowserFileUrl(file: FileResource): FileResource {
-  return {
-    ...file,
-    fileUrl: toBrowserFileUrl(file.fileUrl),
-    thumbnailUrl: file.thumbnailUrl ? toBrowserFileUrl(file.thumbnailUrl) : file.thumbnailUrl,
-  };
-}
-
 export function toBrowserFileUrl(value: string) {
   if (/^https?:\/\//i.test(value)) {
     return value;

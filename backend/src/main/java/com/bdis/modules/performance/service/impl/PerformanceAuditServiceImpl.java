@@ -52,7 +52,7 @@ public class PerformanceAuditServiceImpl implements PerformanceAuditService {
             throw new IllegalArgumentException("认定结果只能是 approved 或 rejected");
         }
         if ("rejected".equals(result) && !StringUtils.hasText(request.resolvedComment())) {
-            throw new IllegalArgumentException("退回业绩时必须填写认定意见");
+            throw new IllegalArgumentException("要求修改时必须填写认定意见");
         }
 
         performance.setIdentifyStatus(result);

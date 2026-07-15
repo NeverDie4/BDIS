@@ -23,6 +23,8 @@ public class UserSessionEntity {
 
     private String tokenJti;
 
+    private String refreshTokenHash;
+
     private String clientType;
 
     private String deviceName;
@@ -36,6 +38,8 @@ public class UserSessionEntity {
     private LocalDateTime lastActiveAt;
 
     private LocalDateTime expiresAt;
+
+    private LocalDateTime refreshExpiresAt;
 
     private LocalDateTime revokedAt;
 
