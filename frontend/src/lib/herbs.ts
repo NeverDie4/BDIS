@@ -60,3 +60,7 @@ export function createHerbSpecies(payload: HerbSpeciesPayload) {
 export function fetchHerbBases() {
   return apiGet<PageResult<HerbBaseApi>>("/herb-bases", { page: 1, size: 100, status: 1 });
 }
+
+export function fetchEnabledHerbBases() {
+  return apiGet<HerbBaseApi[]>("/herb-bases/enabled");
+}

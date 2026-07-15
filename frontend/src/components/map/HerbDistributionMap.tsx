@@ -1,8 +1,8 @@
 "use client";
 
-import { App, Button, Empty, Form, Input, InputNumber, Modal, Select, Spin, Tag } from "antd";
+import { App, Button, Empty, Form, Input, InputNumber, Modal, Select, Slider, Spin, Tag } from "antd";
 import L, { type LatLng, type Map as LeafletMap } from "leaflet";
-import { Building2, ChevronRight, CirclePause, Download, Layers, LocateFixed, MapPinned, Maximize2, Minimize2, Minus, Pencil, Plus, Ruler, Search, Sprout, Trash2, Warehouse, X } from "lucide-react";
+import { Building2, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CirclePause, Download, History, Layers, ListOrdered, LocateFixed, MapPinned, Maximize2, Minimize2, Minus, Navigation, Pause, Pencil, Play, Plus, RefreshCw, Route, Ruler, Search, Sparkles, Sprout, Trash2, Warehouse, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { escapeCsvCell } from "@/lib/csv";
 import { fetchDictionaryOptions, type DictionaryOption } from "@/lib/dictionaries";
@@ -82,6 +82,49 @@ interface MeasurePoint {
 
 type FormMode = "create" | "edit";
 type GrowthCreateFormValues = Omit<GrowthRecordPayload, "collectorName" | "dataSource">;
+
+interface TemporalPointSnapshot {
+  point: MapPoint;
+  record?: GrowthRecord;
+  month: string;
+}
+
+interface RouteOrigin extends MeasurePoint {
+  label: string;
+}
+
+interface RoutePlan {
+  distanceMeters: number;
+  durationSeconds: number;
+  geometry: [number, number][];
+  roadRoute: boolean;
+  steps: RouteNavigationStep[];
+}
+
+interface RouteNavigationStep {
+  instruction: string;
+  location: [number, number];
+  routeIndex: number;
+}
+
+interface NavigationPosition extends MeasurePoint {
+  heading?: number;
+  speed?: number;
+  accuracy?: number;
+}
+
+type SuitabilityLevel = "high" | "medium" | "low";
+
+interface SuitabilitySnapshot {
+  point: MapPoint;
+  score: number;
+  level: SuitabilityLevel;
+  altitude: number;
+  altitudeEstimated: boolean;
+  nearbyPointCount: number;
+  recordCount: number;
+  recentStage: string;
+}
 
 function escapeHtml(value?: string) {
   return (value ?? "")
@@ -188,6 +231,80 @@ function formatDateTime(value?: string) {
   return value.replace("T", " ").slice(0, 16);
 }
 
+function toMonthKey(value?: string) {
+  return value?.match(/^\d{4}-\d{2}/)?.[0];
+}
+
+function formatTimelineMonth(value?: string) {
+  if (!value) {
+    return "暂无采集时间";
+  }
+  const [year, month] = value.split("-");
+  return `${year} 年 ${Number(month)} 月`;
+}
+
+function growthStageTone(stage?: string) {
+  const value = stage?.toLowerCase() ?? "";
+  if (value.includes("成熟") || value.includes("采收") || value.includes("mature")) return "mature";
+  if (value.includes("开花") || value.includes("flower")) return "flowering";
+  if (value.includes("幼") || value.includes("苗") || value.includes("seed")) return "seedling";
+  return "growing";
+}
+
+function getSuitabilityLevel(score: number): SuitabilityLevel {
+  if (score >= 75) return "high";
+  if (score >= 52) return "medium";
+  return "low";
+}
+
+function suitabilityColor(level: SuitabilityLevel) {
+  if (level === "high") return "#16a34a";
+  if (level === "medium") return "#eab308";
+  return "#f97316";
+}
+
+function stageSuitabilityScore(stage?: string) {
+  const tone = growthStageTone(stage);
+  if (tone === "mature") return 100;
+  if (tone === "flowering") return 86;
+  if (tone === "growing") return stage ? 70 : 48;
+  return 58;
+}
+
+function median(values: number[]) {
+  if (values.length === 0) return 900;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+function formatTemporalGrowthStage(stage?: string) {
+  const tone = growthStageTone(stage);
+  if (tone === "seedling") return "苗期";
+  if (tone === "flowering") return "开花期";
+  if (tone === "mature") return "成熟期";
+  return stage ? "营养生长期" : "已采集";
+}
+
+function createTemporalHerbIcon(snapshot: TemporalPointSnapshot, isCurrentMonth: boolean) {
+  const stage = formatTemporalGrowthStage(snapshot.record?.growthStage);
+  const tone = growthStageTone(snapshot.record?.growthStage);
+  return L.divIcon({
+    className: "bdis-temporal-marker",
+    html: `
+      <div class="bdis-temporal-marker-wrap ${isCurrentMonth ? "bdis-temporal-marker-current" : ""}">
+        <span class="bdis-temporal-marker-core bdis-temporal-marker-${tone}"></span>
+        <span class="bdis-temporal-marker-ring"></span>
+        <span class="bdis-temporal-marker-name">${escapeHtml(snapshot.point.herbName)}</span>
+        <span class="bdis-temporal-marker-stage">${escapeHtml(stage)}</span>
+      </div>
+    `,
+    iconSize: [96, 72],
+    iconAnchor: [48, 36],
+    popupAnchor: [0, -34],
+  });
+}
+
 function getDistributionTypeLabel(value?: string) {
   if (value === "cultivated") return "人工种植";
   if (value === "wild") return "野生分布";
@@ -215,6 +332,90 @@ function createWaypointIcon(index: number, isSatellite: boolean) {
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   });
+}
+
+function createRouteStopIcon(index: number, isCurrentStop = false) {
+  return L.divIcon({
+    className: `bdis-route-stop-marker ${isCurrentStop ? "bdis-route-stop-current" : ""}`,
+    html: `<span>${index}</span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -14],
+  });
+}
+
+function createNavigationIcon(heading?: number) {
+  return L.divIcon({
+    className: "bdis-navigation-marker",
+    html: `<span style="transform: rotate(${Math.round(heading ?? 0)}deg)"></span>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+  });
+}
+
+function pointDistance(from: MeasurePoint, to: MeasurePoint) {
+  return L.latLng(from.lat, from.lng).distanceTo(L.latLng(to.lat, to.lng));
+}
+
+function closestRouteIndex(geometry: [number, number][], position: MeasurePoint) {
+  let closestIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  geometry.forEach(([lat, lng], index) => {
+    const distance = pointDistance(position, { lat, lng });
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  });
+  return { index: closestIndex, distance: closestDistance };
+}
+
+function remainingRouteDistance(geometry: [number, number][], startIndex: number) {
+  return geometry.slice(startIndex, -1).reduce(
+    (sum, coordinate, index) =>
+      sum + pointDistance({ lat: coordinate[0], lng: coordinate[1] }, { lat: geometry[startIndex + index + 1][0], lng: geometry[startIndex + index + 1][1] }),
+    0,
+  );
+}
+
+function formatNavigationInstruction(type?: string, modifier?: string, roadName?: string) {
+  const direction = modifier === "left" ? "左转" : modifier === "right" ? "右转" : modifier === "straight" ? "直行" : "继续前行";
+  if (type === "depart") return "沿当前道路出发";
+  if (type === "arrive") return "到达采集点";
+  if (type === "roundabout") return "进入环岛";
+  return roadName ? `${direction}进入 ${roadName}` : direction;
+}
+
+function optimizeRouteOrder(points: MapPoint[], origin?: RouteOrigin) {
+  if (points.length < 2) {
+    return points;
+  }
+  const remaining = [...points];
+  const ordered: MapPoint[] = [];
+  let current: MeasurePoint;
+  if (origin) {
+    current = origin;
+  } else {
+    const first = remaining.shift();
+    if (!first) return ordered;
+    ordered.push(first);
+    current = { lat: first.latitude, lng: first.longitude };
+  }
+  while (remaining.length > 0) {
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    remaining.forEach((point, index) => {
+      const distance = pointDistance(current, { lat: point.latitude, lng: point.longitude });
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    const next = remaining.splice(nearestIndex, 1)[0];
+    ordered.push(next);
+    current = { lat: next.latitude, lng: next.longitude };
+  }
+  return ordered;
 }
 
 function buildPopupContent(
@@ -300,16 +501,55 @@ export function HerbDistributionMap() {
   const [growthStageOptions, setGrowthStageOptions] = useState<DictionaryOption[]>([]);
   const [soilTypeOptions, setSoilTypeOptions] = useState<DictionaryOption[]>([]);
   const [weatherOptions, setWeatherOptions] = useState<DictionaryOption[]>([]);
+  const [temporalMode, setTemporalMode] = useState(false);
+  const [temporalLoading, setTemporalLoading] = useState(false);
+  const [temporalPlaying, setTemporalPlaying] = useState(false);
+  const [temporalSpecies, setTemporalSpecies] = useState<string[]>([]);
+  const [temporalProgress, setTemporalProgress] = useState(0);
+  const [temporalRecordsByPoint, setTemporalRecordsByPoint] = useState<Record<number, GrowthRecord[]>>({});
+  const [temporalReloadKey, setTemporalReloadKey] = useState(0);
+  const [suitabilityMode, setSuitabilityMode] = useState(false);
+  const [suitabilityCollapsed, setSuitabilityCollapsed] = useState(false);
+  const [suitabilityHerb, setSuitabilityHerb] = useState<string>();
+  const [suitabilityRadius, setSuitabilityRadius] = useState(18);
+  const [suitabilityLoading, setSuitabilityLoading] = useState(false);
+  const [suitabilityRecordsByPoint, setSuitabilityRecordsByPoint] = useState<Record<number, GrowthRecord[]>>({});
+  const [suitabilityReloadKey, setSuitabilityReloadKey] = useState(0);
+  const [routePlanning, setRoutePlanning] = useState(false);
+  const [routePointIds, setRoutePointIds] = useState<number[]>([]);
+  const [routeOrderedPointIds, setRouteOrderedPointIds] = useState<number[]>([]);
+  const [routeOrigin, setRouteOrigin] = useState<RouteOrigin>();
+  const [routePlan, setRoutePlan] = useState<RoutePlan>();
+  const [routePlanningLoading, setRoutePlanningLoading] = useState(false);
+  const [routePlannerCollapsed, setRoutePlannerCollapsed] = useState(false);
+  const [routeNavigating, setRouteNavigating] = useState(false);
+  const [navigationHudCollapsed, setNavigationHudCollapsed] = useState(false);
+  const [navigationPosition, setNavigationPosition] = useState<NavigationPosition>();
+  const [navigationStopIndex, setNavigationStopIndex] = useState(0);
+  const [navigationRouteIndex, setNavigationRouteIndex] = useState(0);
+  const [sidePanelHeight, setSidePanelHeight] = useState<number>();
   const mapElementRef = useRef<HTMLDivElement>(null);
   const miniMapElementRef = useRef<HTMLDivElement>(null);
+  const detailPanelRef = useRef<HTMLElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const miniMapRef = useRef<LeafletMap | null>(null);
   const baseLayerRef = useRef<L.TileLayer | null>(null);
   const miniBaseLayerRef = useRef<L.TileLayer | null>(null);
   const previewLayerRef = useRef<MapLayerKey>("satellite");
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const suitabilityLayerRef = useRef<L.LayerGroup | null>(null);
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const navigationLayerRef = useRef<L.LayerGroup | null>(null);
   const measuringRef = useRef(false);
+  const temporalModeRef = useRef(false);
+  const suitabilityModeRef = useRef(false);
+  const routePlanningRef = useRef(false);
+  const messageRef = useRef(message);
+  const lastRouteRefreshRef = useRef(0);
+  const routePlanGeneratorRef = useRef<
+    ((origin: RouteOrigin, points: MapPoint[], silent: boolean) => Promise<RoutePlan | undefined>) | undefined
+  >(undefined);
 
   const totalDistance = useMemo(() => {
     if (measurePoints.length < 2) {
@@ -377,9 +617,111 @@ export function HerbDistributionMap() {
     [baseFilter, districtFilter, herbFilter, points, sourceFilter],
   );
 
+  const suitabilityPoints = useMemo(
+    () => filteredPoints.filter((point) => point.herbName === suitabilityHerb && point.status !== 0),
+    [filteredPoints, suitabilityHerb],
+  );
+
+  const suitabilitySnapshots = useMemo<SuitabilitySnapshot[]>(() => {
+    if (!suitabilityMode || suitabilityPoints.length === 0) return [];
+
+    const referenceAltitude = median(
+      suitabilityPoints
+        .map((point) => point.altitude)
+        .filter((altitude): altitude is number => altitude != null && Number.isFinite(altitude)),
+    );
+    const radiusMeters = suitabilityRadius * 1000;
+    const densityCounts = suitabilityPoints.map((point) =>
+      suitabilityPoints.filter((candidate) =>
+        pointDistance(
+          { lat: point.latitude, lng: point.longitude },
+          { lat: candidate.latitude, lng: candidate.longitude },
+        ) <= radiusMeters,
+      ).length,
+    );
+    const maxDensity = Math.max(...densityCounts, 1);
+
+    return suitabilityPoints.map((point, index) => {
+      const altitudeEstimated = point.altitude == null || !Number.isFinite(point.altitude);
+      const altitude = altitudeEstimated ? referenceAltitude : point.altitude!;
+      const altitudeScore = Math.max(0, 1 - Math.abs(altitude - referenceAltitude) / 650) * 35;
+      const densityScore = (densityCounts[index] / maxDensity) * 35;
+      const records = suitabilityRecordsByPoint[point.id] ?? [];
+      const latestRecord = [...records].sort((left, right) =>
+        (right.collectedAt ?? "").localeCompare(left.collectedAt ?? ""),
+      )[0];
+      const score = Math.round(altitudeScore + densityScore + stageSuitabilityScore(latestRecord?.growthStage) * 0.3);
+      return {
+        point,
+        score,
+        level: getSuitabilityLevel(score),
+        altitude: Math.round(altitude),
+        altitudeEstimated,
+        nearbyPointCount: densityCounts[index],
+        recordCount: records.length,
+        recentStage: latestRecord?.growthStage || "未记录",
+      };
+    });
+  }, [suitabilityMode, suitabilityPoints, suitabilityRadius, suitabilityRecordsByPoint]);
+
+  const suitabilityStatistics = useMemo(() => ({
+    high: suitabilitySnapshots.filter((item) => item.level === "high").length,
+    medium: suitabilitySnapshots.filter((item) => item.level === "medium").length,
+    low: suitabilitySnapshots.filter((item) => item.level === "low").length,
+    records: suitabilitySnapshots.reduce((total, item) => total + item.recordCount, 0),
+    estimatedAltitude: suitabilitySnapshots.filter((item) => item.altitudeEstimated).length,
+  }), [suitabilitySnapshots]);
+
   const selectedPoint = useMemo(
     () => filteredPoints.find((point) => point.id === selectedPointId),
     [filteredPoints, selectedPointId],
+  );
+
+  const routeSelectedPoints = useMemo(
+    () => routePointIds.map((id) => filteredPoints.find((point) => point.id === id)).filter(Boolean) as MapPoint[],
+    [filteredPoints, routePointIds],
+  );
+
+  const routeOrderedPoints = useMemo(
+    () =>
+      routeOrderedPointIds
+        .map((id) => filteredPoints.find((point) => point.id === id))
+        .filter(Boolean) as MapPoint[],
+    [filteredPoints, routeOrderedPointIds],
+  );
+
+  const navigationStops = routeOrderedPoints.length > 0 ? routeOrderedPoints : routeSelectedPoints;
+  const navigationTarget = navigationStops[navigationStopIndex];
+  const navigationInstruction = useMemo(
+    () => routePlan?.steps.find((step) => step.routeIndex > navigationRouteIndex),
+    [navigationRouteIndex, routePlan?.steps],
+  );
+  const navigationRouteRemainingDistance = useMemo(
+    () => {
+      if (!routePlan || !navigationPosition) return undefined;
+      const closestCoordinate = routePlan.geometry[navigationRouteIndex];
+      const approachDistance = closestCoordinate
+        ? pointDistance(navigationPosition, { lat: closestCoordinate[0], lng: closestCoordinate[1] })
+        : 0;
+      return approachDistance + remainingRouteDistance(routePlan.geometry, navigationRouteIndex);
+    },
+    [navigationPosition, navigationRouteIndex, routePlan],
+  );
+  const navigationRemainingDistance = useMemo(
+    () =>
+      navigationPosition && navigationTarget
+        ? pointDistance(navigationPosition, { lat: navigationTarget.latitude, lng: navigationTarget.longitude })
+        : undefined,
+    [navigationPosition, navigationTarget],
+  );
+
+  const temporalSpeciesOptions = useMemo(
+    () =>
+      Array.from(new Set(filteredPoints.map((point) => point.herbName).filter(Boolean))).map((herbName) => ({
+        label: herbName,
+        value: herbName,
+      })),
+    [filteredPoints],
   );
 
   const sortedGrowthRecords = useMemo(
@@ -390,6 +732,60 @@ export function HerbDistributionMap() {
         return rightTime - leftTime || right.id - left.id;
       }),
     [growthRecords],
+  );
+
+  const temporalMonths = useMemo(() => {
+    const months = new Set<string>();
+    filteredPoints.forEach((point) => {
+      const fallbackMonth = toMonthKey(point.lastCollectedAt);
+      if (fallbackMonth) {
+        months.add(fallbackMonth);
+      }
+      temporalRecordsByPoint[point.id]?.forEach((record) => {
+        const month = toMonthKey(record.collectedAt);
+        if (month) {
+          months.add(month);
+        }
+      });
+    });
+    return [...months].sort();
+  }, [filteredPoints, temporalRecordsByPoint]);
+
+  const temporalMonthIndex = Math.min(
+    Math.round(temporalProgress),
+    Math.max(temporalMonths.length - 1, 0),
+  );
+  const activeTemporalMonth = temporalMonths[temporalMonthIndex];
+
+  const temporalSnapshots = useMemo<TemporalPointSnapshot[]>(() => {
+    if (!temporalMode || !activeTemporalMonth) {
+      return [];
+    }
+    const selectedSpecies = new Set(temporalSpecies);
+    return filteredPoints.flatMap((point) => {
+      if (selectedSpecies.size > 0 && !selectedSpecies.has(point.herbName)) {
+        return [];
+      }
+      const latestRecord = [...(temporalRecordsByPoint[point.id] ?? [])]
+        .filter((record) => {
+          const month = toMonthKey(record.collectedAt);
+          return month && month <= activeTemporalMonth;
+        })
+        .sort((left, right) => (right.collectedAt ?? "").localeCompare(left.collectedAt ?? ""))[0];
+      const recordMonth = toMonthKey(latestRecord?.collectedAt);
+      if (latestRecord && recordMonth) {
+        return [{ point, record: latestRecord, month: recordMonth }];
+      }
+      const fallbackMonth = toMonthKey(point.lastCollectedAt);
+      return fallbackMonth && fallbackMonth <= activeTemporalMonth ? [{ point, month: fallbackMonth }] : [];
+    });
+  }, [activeTemporalMonth, filteredPoints, temporalMode, temporalRecordsByPoint, temporalSpecies]);
+
+  const temporalCurrentCollectionCount = useMemo(
+    () =>
+      temporalSnapshots.filter((snapshot) => toMonthKey(snapshot.record?.collectedAt) === activeTemporalMonth)
+        .length,
+    [activeTemporalMonth, temporalSnapshots],
   );
 
   const mapStatistics = useMemo(
@@ -490,6 +886,22 @@ export function HerbDistributionMap() {
     setEmptyNoticeVisible(true);
     setMeasuring(false);
     setMeasurePoints([]);
+    setTemporalMode(false);
+    setTemporalPlaying(false);
+    setTemporalProgress(0);
+    setTemporalSpecies([]);
+    setSuitabilityMode(false);
+    setSuitabilityCollapsed(false);
+    setSuitabilityHerb(undefined);
+    setRoutePlanning(false);
+    setRoutePointIds([]);
+    setRouteOrderedPointIds([]);
+    setRouteOrigin(undefined);
+    setRoutePlan(undefined);
+    setRoutePlannerCollapsed(false);
+    setRouteNavigating(false);
+    setNavigationHudCollapsed(false);
+    setNavigationPosition(undefined);
     setMapZoom(9);
     mapRef.current?.setView(CHONGQING_CENTER, 9, { animate: false });
     if (activeLayer !== "standard") {
@@ -498,6 +910,110 @@ export function HerbDistributionMap() {
 
     void loadPoints("");
   }, [activeLayer, loadPoints, switchMapLayer]);
+
+  const toggleTemporalMode = useCallback(() => {
+    if (temporalMode) {
+      setTemporalMode(false);
+      setTemporalPlaying(false);
+      return;
+    }
+    setMeasuring(false);
+    setMeasurePoints([]);
+    setRoutePlanning(false);
+    setSuitabilityMode(false);
+    setSuitabilityCollapsed(false);
+    setTemporalSpecies(Array.from(new Set(filteredPoints.map((point) => point.herbName).filter(Boolean))));
+    setTemporalProgress(0);
+    setTemporalReloadKey((current) => current + 1);
+    setTemporalMode(true);
+  }, [filteredPoints, temporalMode]);
+
+  const toggleRoutePlanning = useCallback(() => {
+    setRoutePlanning((current) => !current);
+    setMeasuring(false);
+    setMeasurePoints([]);
+    setTemporalMode(false);
+    setTemporalPlaying(false);
+    setSuitabilityMode(false);
+    setSuitabilityCollapsed(false);
+    setRoutePlan(undefined);
+    setRoutePlannerCollapsed(false);
+    setRouteNavigating(false);
+    setNavigationHudCollapsed(false);
+    setNavigationPosition(undefined);
+  }, []);
+
+  const toggleSuitabilityMode = useCallback(() => {
+    if (suitabilityMode) {
+      setSuitabilityMode(false);
+      return;
+    }
+    setMeasuring(false);
+    setMeasurePoints([]);
+    setTemporalMode(false);
+    setTemporalPlaying(false);
+    setRoutePlanning(false);
+    setRouteNavigating(false);
+    setNavigationHudCollapsed(false);
+    setSuitabilityCollapsed(false);
+    setSuitabilityHerb((current) =>
+      current && filteredPoints.some((point) => point.herbName === current)
+        ? current
+        : filteredPoints.find((point) => point.status !== 0)?.herbName,
+    );
+    setSuitabilityReloadKey((current) => current + 1);
+    setSuitabilityMode(true);
+  }, [filteredPoints, suitabilityMode]);
+
+  const toggleRoutePoint = useCallback((pointId: number) => {
+    setRoutePointIds((current) => {
+      const next = current.includes(pointId)
+        ? current.filter((id) => id !== pointId)
+        : [...current, pointId];
+      setRouteOrderedPointIds(next);
+      return next;
+    });
+    setRoutePlan(undefined);
+  }, []);
+
+  const locateRouteOrigin = useCallback(() => {
+    if (!navigator.geolocation) {
+      message.warning("当前浏览器不支持定位，路线将从第一个采集点开始");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const origin = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          label: "当前位置",
+        };
+        setRouteOrigin(origin);
+        setRoutePlan(undefined);
+        mapRef.current?.flyTo([origin.lat, origin.lng], Math.max(mapRef.current.getZoom(), 12));
+        message.success("已将当前位置设为路线起点");
+      },
+      () => message.warning("未能获取当前位置，路线将从第一个采集点开始"),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+    );
+  }, [message]);
+
+  const toggleTemporalPlayback = useCallback(() => {
+    if (temporalMonths.length < 2) {
+      message.warning("当前筛选结果缺少两个以上采集月份，无法播放演变");
+      return;
+    }
+    if (temporalMonthIndex >= temporalMonths.length - 1) {
+      setTemporalProgress(0);
+    }
+    setTemporalPlaying((current) => !current);
+  }, [message, temporalMonthIndex, temporalMonths.length]);
+
+  const refreshTemporalData = useCallback(() => {
+    setTemporalPlaying(false);
+    setTemporalProgress(0);
+    setTemporalReloadKey((current) => current + 1);
+  }, []);
 
   const openCreateForm = useCallback((latlng: LatLng) => {
     setFormMode("create");
@@ -558,6 +1074,22 @@ export function HerbDistributionMap() {
   }, [measuring]);
 
   useEffect(() => {
+    temporalModeRef.current = temporalMode;
+  }, [temporalMode]);
+
+  useEffect(() => {
+    suitabilityModeRef.current = suitabilityMode;
+  }, [suitabilityMode]);
+
+  useEffect(() => {
+    routePlanningRef.current = routePlanning;
+  }, [routePlanning]);
+
+  useEffect(() => {
+    messageRef.current = message;
+  }, [message]);
+
+  useEffect(() => {
     previewLayerRef.current = previewLayer;
   }, [previewLayer]);
 
@@ -598,6 +1130,40 @@ export function HerbDistributionMap() {
   }, [mapFullscreen]);
 
   useEffect(() => {
+    const detailPanel = detailPanelRef.current;
+    if (!detailPanel || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const desktopQuery = window.matchMedia("(min-width: 1201px)");
+    const syncHeight = () => {
+      setSidePanelHeight(desktopQuery.matches ? Math.ceil(detailPanel.getBoundingClientRect().height) : undefined);
+    };
+    const observer = new ResizeObserver(syncHeight);
+    observer.observe(detailPanel);
+    desktopQuery.addEventListener("change", syncHeight);
+    syncHeight();
+
+    return () => {
+      observer.disconnect();
+      desktopQuery.removeEventListener("change", syncHeight);
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = mapElementRef.current;
+    if (!mapReady || !container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize({ animate: false });
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [mapReady]);
+
+  useEffect(() => {
     if (!mapElementRef.current || mapRef.current) {
       return;
     }
@@ -613,7 +1179,10 @@ export function HerbDistributionMap() {
     L.control.scale({ imperial: false, metric: true, position: "bottomright" }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
+    suitabilityLayerRef.current = L.layerGroup().addTo(map);
     measureLayerRef.current = L.layerGroup().addTo(map);
+    routeLayerRef.current = L.layerGroup().addTo(map);
+    navigationLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     setMapZoom(map.getZoom());
     setMapReady(true);
@@ -623,7 +1192,9 @@ export function HerbDistributionMap() {
         setMeasurePoints((current) => [...current, { lat: event.latlng.lat, lng: event.latlng.lng }]);
         return;
       }
-      openCreateForm(event.latlng);
+      if (!temporalModeRef.current && !suitabilityModeRef.current && !routePlanningRef.current) {
+        openCreateForm(event.latlng);
+      }
     });
     map.on("dblclick", () => setMeasuring(false));
     map.on("zoomend", () => setMapZoom(map.getZoom()));
@@ -633,6 +1204,9 @@ export function HerbDistributionMap() {
       map.remove();
       mapRef.current = null;
       baseLayerRef.current = null;
+      suitabilityLayerRef.current = null;
+      routeLayerRef.current = null;
+      navigationLayerRef.current = null;
     };
   }, [openCreateForm]);
 
@@ -711,6 +1285,118 @@ export function HerbDistributionMap() {
   }, [loadPoints]);
 
   useEffect(() => {
+    if (!temporalMode) {
+      return;
+    }
+    let cancelled = false;
+    const activePoints = filteredPoints.filter((point) => point.id != null);
+    if (activePoints.length === 0) {
+      setTemporalRecordsByPoint({});
+      return;
+    }
+
+    setTemporalLoading(true);
+    Promise.allSettled(
+      activePoints.map(async (point) => [point.id, await fetchGrowthRecords(point.id)] as const),
+    )
+      .then((results) => {
+        if (cancelled) {
+          return;
+        }
+        const nextRecords: Record<number, GrowthRecord[]> = {};
+        let failedCount = 0;
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            nextRecords[result.value[0]] = result.value[1];
+          } else {
+            failedCount += 1;
+          }
+        });
+        setTemporalRecordsByPoint(nextRecords);
+        if (failedCount > 0) {
+          messageRef.current.warning(`有 ${failedCount} 个点位的采集记录暂未加载，演变结果已展示可用数据`);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTemporalLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filteredPoints, temporalMode, temporalReloadKey]);
+
+  useEffect(() => {
+    if (!suitabilityMode || suitabilityPoints.length === 0) {
+      if (suitabilityMode) {
+        setSuitabilityRecordsByPoint({});
+      }
+      return;
+    }
+    let cancelled = false;
+    setSuitabilityLoading(true);
+    Promise.allSettled(
+      suitabilityPoints.map(async (point) => [point.id, await fetchGrowthRecords(point.id)] as const),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const nextRecords: Record<number, GrowthRecord[]> = {};
+        let failedCount = 0;
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            nextRecords[result.value[0]] = result.value[1];
+          } else {
+            failedCount += 1;
+          }
+        });
+        setSuitabilityRecordsByPoint(nextRecords);
+        if (failedCount > 0) {
+          messageRef.current.warning(`有 ${failedCount} 个点位的采集记录未加载，分析已基于可用数据完成`);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSuitabilityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [suitabilityMode, suitabilityPoints, suitabilityReloadKey]);
+
+  useEffect(() => {
+    setTemporalProgress((current) => Math.min(current, Math.max(temporalMonths.length - 1, 0)));
+  }, [temporalMonths.length]);
+
+  useEffect(() => {
+    if (!temporalMode) {
+      return;
+    }
+    const availableSpecies = temporalSpeciesOptions.map((item) => item.value);
+    setTemporalSpecies((current) => {
+      const retained = current.filter((item) => availableSpecies.includes(item));
+      return retained.length > 0 ? retained : availableSpecies;
+    });
+  }, [temporalMode, temporalSpeciesOptions]);
+
+  useEffect(() => {
+    if (!temporalPlaying || temporalMonths.length < 2) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setTemporalProgress((current) => {
+        const lastMonthIndex = temporalMonths.length - 1;
+        if (current >= lastMonthIndex) {
+          setTemporalPlaying(false);
+          return current;
+        }
+        return Math.min(current + 0.05, lastMonthIndex);
+      });
+    }, 80);
+    return () => window.clearInterval(timer);
+  }, [temporalMonths.length, temporalPlaying]);
+
+  useEffect(() => {
     if (!selectedPoint?.id) {
       setGrowthRecords([]);
       return;
@@ -753,12 +1439,24 @@ export function HerbDistributionMap() {
     }
 
     layer.clearLayers();
-    filteredPoints.forEach((point) => {
+    const pointsToRender = temporalMode ? temporalSnapshots.map((snapshot) => snapshot.point) : filteredPoints;
+    pointsToRender.forEach((point) => {
       if (point.status === 0 || point.latitude == null || point.longitude == null) {
         return;
       }
-      L.marker([point.latitude, point.longitude], { icon: createHerbIcon(point) })
-        .on("click", () => setSelectedPointId(point.id))
+      const snapshot = temporalMode
+        ? temporalSnapshots.find((candidate) => candidate.point.id === point.id)
+        : undefined;
+      const icon = snapshot
+        ? createTemporalHerbIcon(snapshot, snapshot.month === activeTemporalMonth)
+        : createHerbIcon(point);
+      L.marker([point.latitude, point.longitude], { icon })
+        .on("click", () => {
+          setSelectedPointId(point.id);
+          if (routePlanningRef.current) {
+            toggleRoutePoint(point.id);
+          }
+        })
         .bindPopup(buildPopupContent(point, openEditForm, confirmDelete), {
           className: "bdis-herb-popup",
           maxWidth: 280,
@@ -766,7 +1464,33 @@ export function HerbDistributionMap() {
         })
         .addTo(layer);
     });
-  }, [confirmDelete, filteredPoints, openEditForm]);
+  }, [activeTemporalMonth, confirmDelete, filteredPoints, openEditForm, temporalMode, temporalSnapshots, toggleRoutePoint]);
+
+  useEffect(() => {
+    const layer = suitabilityLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!suitabilityMode) return;
+
+    suitabilitySnapshots.forEach((snapshot) => {
+      const color = suitabilityColor(snapshot.level);
+      const radius = Math.max(4500, suitabilityRadius * 1000 * (0.5 + snapshot.score / 200));
+      L.circle([snapshot.point.latitude, snapshot.point.longitude], {
+        radius,
+        color,
+        weight: snapshot.level === "high" ? 2.5 : 1.5,
+        opacity: 0.72,
+        fillColor: color,
+        fillOpacity: snapshot.level === "high" ? 0.24 : snapshot.level === "medium" ? 0.16 : 0.11,
+        interactive: false,
+      })
+        .bindTooltip(
+          `${snapshot.point.herbName} · ${snapshot.level === "high" ? "高适生" : snapshot.level === "medium" ? "中适生" : "低适生"} ${snapshot.score} 分`,
+          { sticky: true },
+        )
+        .addTo(layer);
+    });
+  }, [suitabilityMode, suitabilityRadius, suitabilitySnapshots]);
 
   useEffect(() => {
     const layer = measureLayerRef.current;
@@ -854,6 +1578,119 @@ export function HerbDistributionMap() {
     }
   }, [activeLayer, mapZoom, measurePoints, totalDistance]);
 
+  useEffect(() => {
+    const layer = routeLayerRef.current;
+    if (!layer) {
+      return;
+    }
+    layer.clearLayers();
+    const orderedPoints = routeOrderedPoints.length > 0 ? routeOrderedPoints : routeSelectedPoints;
+    if (!routePlanning || orderedPoints.length === 0) {
+      return;
+    }
+
+    const fallbackGeometry: [number, number][] = [
+      ...(routeOrigin ? [[routeOrigin.lat, routeOrigin.lng] as [number, number]] : []),
+      ...orderedPoints.map((point) => [point.latitude, point.longitude] as [number, number]),
+    ];
+    const geometry = routePlan?.geometry.length ? routePlan.geometry : fallbackGeometry;
+    if (geometry.length >= 2) {
+      L.polyline(geometry, {
+        color: routePlan?.roadRoute ? "#0f766e" : "#2563eb",
+        weight: routePlan?.roadRoute ? 5 : 3,
+        opacity: 0.84,
+        dashArray: routePlan?.roadRoute ? undefined : "8 8",
+        className: routeNavigating ? "bdis-route-line bdis-route-line-active" : "bdis-route-line",
+      }).addTo(layer);
+    }
+    if (routeOrigin) {
+      L.circleMarker([routeOrigin.lat, routeOrigin.lng], {
+        radius: 8,
+        color: "#ffffff",
+        fillColor: "#2563eb",
+        fillOpacity: 1,
+        weight: 3,
+      })
+        .bindTooltip("起点：当前位置", { direction: "top" })
+        .addTo(layer);
+    }
+    orderedPoints.forEach((point, index) => {
+      L.marker([point.latitude, point.longitude], {
+        icon: createRouteStopIcon(index + 1, routeNavigating && index === navigationStopIndex),
+        zIndexOffset: 900,
+      })
+        .bindTooltip(`${index + 1}. ${point.herbName}`, { direction: "top" })
+        .addTo(layer);
+    });
+  }, [navigationStopIndex, routeNavigating, routeOrigin, routeOrderedPoints, routePlan, routePlanning, routeSelectedPoints]);
+
+  useEffect(() => {
+    if (!routeNavigating || !navigator.geolocation || !routePlan) {
+      return;
+    }
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const nextPosition: NavigationPosition = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          heading: position.coords.heading ?? undefined,
+          speed: position.coords.speed ?? undefined,
+          accuracy: position.coords.accuracy,
+        };
+        setNavigationPosition(nextPosition);
+        mapRef.current?.setView(
+          [nextPosition.lat, nextPosition.lng],
+          Math.max(mapRef.current.getZoom(), 16),
+          { animate: true },
+        );
+        const closest = closestRouteIndex(routePlan.geometry, nextPosition);
+        setNavigationRouteIndex(closest.index);
+        if (closest.distance > 80 && Date.now() - lastRouteRefreshRef.current > 20000) {
+          lastRouteRefreshRef.current = Date.now();
+          const origin: RouteOrigin = { ...nextPosition, label: "当前位置" };
+          const remainingStops = navigationStops.slice(navigationStopIndex);
+          setRouteOrigin(origin);
+          setNavigationStopIndex(0);
+          void routePlanGeneratorRef.current?.(origin, remainingStops, true);
+          message.info("检测到偏离路线，正在重新规划剩余采集点");
+        }
+      },
+      () => message.warning("当前位置更新失败，请检查浏览器位置权限"),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [message, navigationStopIndex, navigationStops, routeNavigating, routePlan]);
+
+  useEffect(() => {
+    const layer = navigationLayerRef.current;
+    if (!layer) {
+      return;
+    }
+    layer.clearLayers();
+    if (!routeNavigating || !navigationPosition) {
+      return;
+    }
+    L.marker([navigationPosition.lat, navigationPosition.lng], {
+      icon: createNavigationIcon(navigationPosition.heading),
+      zIndexOffset: 1200,
+    })
+      .bindTooltip("当前位置", { direction: "top" })
+      .addTo(layer);
+  }, [navigationPosition, routeNavigating]);
+
+  useEffect(() => {
+    if (!routeNavigating || navigationRemainingDistance == null || navigationRemainingDistance > 50) {
+      return;
+    }
+    if (navigationStopIndex >= navigationStops.length - 1) {
+      message.success("已完成全部采集点导航");
+      setRouteNavigating(false);
+      setNavigationPosition(undefined);
+      return;
+    }
+    setNavigationStopIndex((current) => current + 1);
+  }, [message, navigationRemainingDistance, navigationStopIndex, navigationStops.length, routeNavigating]);
+
   async function handleSubmit(payload: MapPointPayload) {
     try {
       if (formMode === "edit" && editingPoint?.id) {
@@ -902,8 +1739,171 @@ export function HerbDistributionMap() {
   }
 
   function toggleMeasure() {
+    setRoutePlanning(false);
+    setTemporalMode(false);
+    setTemporalPlaying(false);
     setMeasuring((current) => !current);
     setMeasurePoints([]);
+  }
+
+  async function generateRoutePlan(
+    originOverride = routeOrigin,
+    pointsOverride = routeSelectedPoints,
+    silent = false,
+  ): Promise<RoutePlan | undefined> {
+    if (pointsOverride.length === 0) {
+      message.warning("请先在地图或左侧列表中选择至少一个采集点");
+      return undefined;
+    }
+    const orderedPoints = optimizeRouteOrder(pointsOverride, originOverride);
+    setRouteOrderedPointIds(orderedPoints.map((point) => point.id));
+    const routeCoordinates = [
+      ...(originOverride ? [[originOverride.lat, originOverride.lng] as [number, number]] : []),
+      ...orderedPoints.map((point) => [point.latitude, point.longitude] as [number, number]),
+    ];
+    const fallbackDistance = routeCoordinates.slice(0, -1).reduce(
+      (sum, coordinate, index) =>
+        sum + pointDistance({ lat: coordinate[0], lng: coordinate[1] }, { lat: routeCoordinates[index + 1][0], lng: routeCoordinates[index + 1][1] }),
+      0,
+    );
+
+    setRoutePlanningLoading(true);
+    try {
+      if (routeCoordinates.length < 2) {
+        const plan = { distanceMeters: 0, durationSeconds: 0, geometry: routeCoordinates, roadRoute: false, steps: [] };
+        setRoutePlan(plan);
+        return plan;
+      }
+      const coordinates = routeCoordinates.map(([lat, lng]) => `${lng},${lat}`).join(";");
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`,
+      );
+      if (!response.ok) {
+        throw new Error("route service unavailable");
+      }
+      const result = (await response.json()) as {
+        code?: string;
+        routes?: Array<{
+          distance: number;
+          duration: number;
+          geometry?: { coordinates?: [number, number][] };
+          legs?: Array<{ steps?: Array<{ name?: string; maneuver?: { type?: string; modifier?: string; location?: [number, number] } }> }>;
+        }>;
+      };
+      const route = result.routes?.[0];
+      if (result.code !== "Ok" || !route?.geometry?.coordinates) {
+        throw new Error("route data unavailable");
+      }
+      const geometry = route.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]);
+      const steps = (route.legs ?? []).flatMap((leg) => leg.steps ?? []).flatMap((step) => {
+        const location = step.maneuver?.location;
+        if (!location) return [];
+        const coordinate: [number, number] = [location[1], location[0]];
+        return [{
+          instruction: formatNavigationInstruction(step.maneuver?.type, step.maneuver?.modifier, step.name),
+          location: coordinate,
+          routeIndex: closestRouteIndex(geometry, { lat: coordinate[0], lng: coordinate[1] }).index,
+        }];
+      });
+      const plan = {
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        geometry,
+        roadRoute: true,
+        steps,
+      };
+      setRoutePlan(plan);
+      if (!silent) {
+        message.success(`已生成 ${orderedPoints.length} 个采集点的最优路线`);
+      }
+      return plan;
+    } catch {
+      const plan = {
+        distanceMeters: fallbackDistance,
+        durationSeconds: Math.round(fallbackDistance / (35 * 1000 / 3600)),
+        geometry: routeCoordinates,
+        roadRoute: false,
+        steps: [],
+      };
+      setRoutePlan(plan);
+      if (!silent) {
+        message.warning("道路路线服务暂不可用，已使用直线估算路线");
+      }
+      return plan;
+    } finally {
+      setRoutePlanningLoading(false);
+    }
+  }
+
+  routePlanGeneratorRef.current = generateRoutePlan;
+
+  function startRouteNavigation() {
+    if (routeSelectedPoints.length === 0) {
+      message.warning("请先选择采集点");
+      return;
+    }
+    if (!navigator.geolocation) {
+      message.error("当前浏览器不支持实时定位，无法启动本地图导航");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const origin = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          label: "当前位置",
+        };
+        setRouteOrigin(origin);
+        setNavigationPosition({ ...origin, heading: position.coords.heading ?? undefined, speed: position.coords.speed ?? undefined, accuracy: position.coords.accuracy });
+        const plan = await generateRoutePlan(origin, routeSelectedPoints, true);
+        if (!plan) return;
+        setNavigationStopIndex(0);
+        setNavigationRouteIndex(0);
+        setNavigationHudCollapsed(false);
+        setRouteNavigating(true);
+        mapRef.current?.setView([origin.lat, origin.lng], Math.max(mapRef.current.getZoom(), 16), { animate: true });
+      },
+      () => message.error("无法获取当前位置，请允许浏览器位置权限后重试"),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+    );
+  }
+
+  function stopRouteNavigation() {
+    setRouteNavigating(false);
+    setNavigationPosition(undefined);
+    setNavigationRouteIndex(0);
+    setNavigationHudCollapsed(false);
+  }
+
+  function exportRouteTask() {
+    const orderedPoints = routeOrderedPoints.length > 0 ? routeOrderedPoints : routeSelectedPoints;
+    if (orderedPoints.length === 0) {
+      message.warning("请先选择要导出的采集点");
+      return;
+    }
+    const rows: Array<Array<string | number | undefined>> = [
+      ["访问顺序", "药材名称", "点位名称", "区县", "详细地址", "经度", "纬度", "最近采集时间"],
+      ...orderedPoints.map((point, index) => [
+        index + 1,
+        point.herbName,
+        point.locationName,
+        point.district,
+        point.address,
+        point.longitude,
+        point.latitude,
+        formatDateTime(point.lastCollectedAt),
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `采集路线任务清单_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    message.success(`已导出 ${orderedPoints.length} 个采集点的任务清单`);
   }
 
   function exportMapPoints() {
@@ -1009,7 +2009,7 @@ export function HerbDistributionMap() {
       </div>
 
       <div className={styles.contentGrid}>
-        <aside className={styles.pointListPanel}>
+        <aside className={styles.pointListPanel} style={sidePanelHeight ? { height: sidePanelHeight } : undefined}>
           <div className={styles.panelHeader}>
             <strong>分布点列表</strong>
             <span>共 {filteredPoints.length} 条</span>
@@ -1037,7 +2037,7 @@ export function HerbDistributionMap() {
             {filteredPoints.map((point) => (
               <div
                 key={point.id}
-                className={`${styles.pointItem} ${selectedPoint?.id === point.id ? styles.pointItemActive : ""}`}
+                className={`${styles.pointItem} ${routePlanning ? styles.pointItemRoutePlanning : ""} ${selectedPoint?.id === point.id ? styles.pointItemActive : ""} ${routePointIds.includes(point.id) ? styles.routePointSelected : ""}`}
               >
                 <button type="button" className={styles.pointSummary} onClick={() => viewPoint(point)}>
                   <div
@@ -1060,6 +2060,15 @@ export function HerbDistributionMap() {
                 >
                   {statusUpdatingId === point.id ? "处理中" : point.status === 0 ? "停用" : "启用"}
                 </button>
+                {routePlanning && (
+                  <button
+                    type="button"
+                    className={`${styles.routePointButton} ${routePointIds.includes(point.id) ? styles.routePointButtonActive : ""}`}
+                    onClick={() => toggleRoutePoint(point.id)}
+                  >
+                    {routePointIds.includes(point.id) ? "已选" : "加入"}
+                  </button>
+                )}
                 <button type="button" className={styles.viewPointButton} onClick={() => viewPoint(point)}>
                   <span>查看</span>
                   <ChevronRight size={15} />
@@ -1071,8 +2080,11 @@ export function HerbDistributionMap() {
         </aside>
 
       <section
-        className={`${styles.mapPanel} ${mapFullscreen ? styles.mapPanelFullscreen : ""}`}
-        style={{ "--map-fullscreen-top": `${fullscreenTop}px` } as CSSProperties}
+        className={`${styles.mapPanel} ${mapFullscreen ? styles.mapPanelFullscreen : ""} ${!mapFullscreen && sidePanelHeight ? styles.mapPanelSynced : ""}`}
+        style={{
+          "--map-fullscreen-top": `${fullscreenTop}px`,
+          ...(!mapFullscreen && sidePanelHeight ? { height: sidePanelHeight, minHeight: 0 } : {}),
+        } as CSSProperties}
       >
         <div className={styles.mapPanelHeader}>
           <h2>重庆中药材分布地图</h2>
@@ -1105,7 +2117,282 @@ export function HerbDistributionMap() {
           </div>
         )}
         <div ref={mapElementRef} className={styles.mapCanvas} />
+        <button
+          type="button"
+          className={`${styles.temporalModeButton} ${temporalMode ? styles.temporalModeButtonActive : ""}`}
+          aria-label={temporalMode ? "退出时空演变" : "进入时空演变"}
+          aria-pressed={temporalMode}
+          onClick={toggleTemporalMode}
+        >
+          <History size={17} />
+          <span>{temporalMode ? "退出演变" : "时空演变"}</span>
+        </button>
+        <button
+          type="button"
+          className={`${styles.suitabilityModeButton} ${suitabilityMode ? styles.suitabilityModeButtonActive : ""} ${temporalMode ? styles.suitabilityModeButtonHidden : ""}`}
+          aria-label={suitabilityMode ? "退出药材适生区热力分析" : "进入药材适生区热力分析"}
+          aria-pressed={suitabilityMode}
+          onClick={toggleSuitabilityMode}
+        >
+          <Sparkles size={17} />
+          <span>{suitabilityMode ? "退出适生分析" : "适生分析"}</span>
+        </button>
+        {suitabilityMode && !suitabilityCollapsed && (
+          <section className={styles.suitabilityPanel} aria-label="药材适生区热力分析">
+            <div className={styles.suitabilityPanelHeader}>
+              <span><Sparkles size={17} />药材适生区热力分析</span>
+              <span className={styles.suitabilityPanelActions}>
+                <button type="button" aria-label="收起适生分析" title="收起" onClick={() => setSuitabilityCollapsed(true)}><ChevronLeft size={16} /></button>
+                <button type="button" aria-label="退出适生分析" title="退出适生分析" onClick={toggleSuitabilityMode}><X size={16} /></button>
+              </span>
+            </div>
+            <div className={styles.suitabilityPanelBody}>
+              <label className={styles.suitabilityField}>
+                <span>分析药材</span>
+                <Select
+                  value={suitabilityHerb}
+                  options={herbOptions}
+                  placeholder="选择药材"
+                  onChange={(value) => {
+                    setSuitabilityHerb(value);
+                    setSuitabilityReloadKey((current) => current + 1);
+                  }}
+                />
+              </label>
+              <div className={styles.suitabilityField}>
+                <span>密度分析半径 <b>{suitabilityRadius} km</b></span>
+                <Slider min={8} max={35} value={suitabilityRadius} onChange={setSuitabilityRadius} />
+              </div>
+              <div className={styles.suitabilityMetrics}>
+                <span><small>高适生区</small><strong>{suitabilityStatistics.high}</strong></span>
+                <span><small>中适生区</small><strong>{suitabilityStatistics.medium}</strong></span>
+                <span><small>采集记录</small><strong>{suitabilityStatistics.records}</strong></span>
+              </div>
+              <div className={styles.suitabilityLegend}>
+                <span><i className={styles.suitabilityLegendHigh} />高适生 75-100</span>
+                <span><i className={styles.suitabilityLegendMedium} />中适生 52-74</span>
+                <span><i className={styles.suitabilityLegendLow} />低适生 0-51</span>
+              </div>
+              {suitabilityLoading ? (
+                <div className={styles.suitabilityLoading}><Spin size="small" />正在汇总采集与生长数据</div>
+              ) : suitabilitySnapshots.length === 0 ? (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前筛选范围内没有可分析点位" />
+              ) : (
+                <div className={styles.suitabilityResults}>
+                  {suitabilitySnapshots
+                    .slice()
+                    .sort((left, right) => right.score - left.score)
+                    .slice(0, 4)
+                    .map((item) => (
+                      <button key={item.point.id} type="button" onClick={() => viewPoint(item.point)}>
+                        <i style={{ backgroundColor: suitabilityColor(item.level) }} />
+                        <span><strong>{item.point.locationName || item.point.district || "采集区域"}</strong><small>海拔 {item.altitude} m{item.altitudeEstimated ? "（估算）" : ""} · {item.nearbyPointCount} 个邻近点</small></span>
+                        <b>{item.score}</b>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className={styles.suitabilityPanelFooter}>
+              <span>评分：海拔 35% · 采集密度 35% · 生长状态 30%</span>
+              <button type="button" onClick={() => setSuitabilityReloadKey((current) => current + 1)} title="刷新分析数据"><RefreshCw size={14} />刷新</button>
+            </div>
+          </section>
+        )}
+        {suitabilityMode && suitabilityCollapsed && (
+          <button
+            type="button"
+            className={styles.suitabilityRestoreButton}
+            aria-label="展开药材适生区热力分析"
+            title="展开适生分析"
+            onClick={() => setSuitabilityCollapsed(false)}
+          >
+            <Sparkles size={16} />
+            <span>适生分析</span>
+            <ChevronRight size={15} />
+          </button>
+        )}
+        {temporalMode && (
+          <>
+            <div className={styles.temporalStatusCard}>
+              <span className={styles.temporalStatusIcon}><Sparkles size={15} /></span>
+              <span>
+                <strong>{activeTemporalMonth ? formatTimelineMonth(activeTemporalMonth) : "等待采集数据"}</strong>
+                <small>{temporalLoading ? "正在汇总采集记录" : `已呈现 ${temporalSnapshots.length} 个有效点位`}</small>
+              </span>
+            </div>
+            <section className={styles.temporalTimeline} aria-label="药材生长时空演变控制台">
+              <div className={styles.temporalTimelineHeader}>
+                <div className={styles.temporalTitle}>
+                  <CalendarRange size={17} />
+                  <span>药材生长时空演变</span>
+                </div>
+                <Select
+                  mode="multiple"
+                  className={styles.temporalSpeciesSelect}
+                  value={temporalSpecies}
+                  options={temporalSpeciesOptions}
+                  maxTagCount="responsive"
+                  placeholder="选择参与演变的药材"
+                  onChange={(values) => setTemporalSpecies(values.length > 0 ? values : temporalSpeciesOptions.map((item) => item.value))}
+                />
+                <span className={styles.temporalDataSummary}>
+                  {temporalCurrentCollectionCount} 条当期采集 · {temporalSnapshots.length} 个点位
+                </span>
+              </div>
+              <div className={styles.temporalTimelineControls}>
+                <button
+                  type="button"
+                  className={styles.temporalPlayButton}
+                  disabled={temporalMonths.length < 2}
+                  aria-label={temporalPlaying ? "暂停演变" : "播放演变"}
+                  onClick={toggleTemporalPlayback}
+                >
+                  {temporalPlaying ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
+                </button>
+                <button
+                  type="button"
+                  className={styles.temporalResetButton}
+                  aria-label="刷新时空演变数据"
+                  title="刷新演变数据"
+                  onClick={refreshTemporalData}
+                >
+                  <RefreshCw size={15} />
+                </button>
+                <div className={styles.temporalSliderWrap}>
+                  <Slider
+                    min={0}
+                    max={Math.max(temporalMonths.length - 1, 0)}
+                    step={0.02}
+                    value={temporalProgress}
+                    tooltip={{ formatter: (value) => formatTimelineMonth(temporalMonths[Number(value)]) }}
+                    disabled={temporalMonths.length === 0}
+                    onChange={(value) => {
+                      setTemporalPlaying(false);
+                      setTemporalProgress(value);
+                    }}
+                  />
+                  <div className={styles.temporalAxisLabels}>
+                    <span>{formatTimelineMonth(temporalMonths[0])}</span>
+                    <strong>{formatTimelineMonth(activeTemporalMonth)}</strong>
+                    <span>{formatTimelineMonth(temporalMonths[temporalMonths.length - 1])}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+        {routePlanning && !routePlannerCollapsed && (
+          <section className={styles.routePlannerPanel} aria-label="采集路线规划">
+            <div className={styles.routePlannerHeader}>
+              <span><Route size={17} />采集路线规划</span>
+              <span className={styles.routePlannerHeaderActions}>
+                <button type="button" aria-label="收起路线规划" title="收起" onClick={() => setRoutePlannerCollapsed(true)}><ChevronLeft size={16} /></button>
+                <button type="button" aria-label="退出路线规划" title="退出路线规划" onClick={toggleRoutePlanning}><X size={16} /></button>
+              </span>
+            </div>
+            <p className={styles.routePlannerHint}>在地图标记或左侧列表中加入一个或多个采集点，再生成路线。</p>
+            <div className={styles.routeOriginRow}>
+              <span>{routeOrigin ? "起点：当前位置" : "起点：第一个采集点"}</span>
+              <button type="button" onClick={locateRouteOrigin}><LocateFixed size={14} />定位起点</button>
+            </div>
+            <div className={styles.routePlannerActions}>
+              <Button type="primary" icon={<ListOrdered size={15} />} loading={routePlanningLoading} onClick={() => void generateRoutePlan()}>
+                自动规划
+              </Button>
+              <Button disabled={routeSelectedPoints.length === 0} onClick={() => {
+                setRoutePointIds([]);
+                setRouteOrderedPointIds([]);
+                setRoutePlan(undefined);
+              }}>
+                清空
+              </Button>
+            </div>
+            <div className={styles.routePlannerMetrics}>
+              <span><strong>{routeSelectedPoints.length}</strong> 个采集点</span>
+              <span><strong>{routePlan ? formatDistance(routePlan.distanceMeters) : "--"}</strong> 预计里程</span>
+              <span><strong>{routePlan ? `${Math.max(1, Math.round(routePlan.durationSeconds / 60))} 分钟` : "--"}</strong> 预计时长</span>
+            </div>
+            <div className={styles.routeStopList}>
+              {(routeOrderedPoints.length > 0 ? routeOrderedPoints : routeSelectedPoints).map((point, index) => (
+                <div key={point.id} className={styles.routeStopItem}>
+                  <span>{index + 1}</span>
+                  <strong>{point.herbName}</strong>
+                  <small>{point.locationName || point.district || "采集点"}</small>
+                </div>
+              ))}
+              {routeSelectedPoints.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未选择采集点" />}
+            </div>
+            <div className={styles.routePlannerFooter}>
+              <Button
+                icon={<Navigation size={15} />}
+                disabled={routeSelectedPoints.length === 0 || !routePlan}
+                onClick={routeNavigating ? stopRouteNavigation : startRouteNavigation}
+              >
+                {routeNavigating ? "结束导航" : "开始导航"}
+              </Button>
+              <Button icon={<Download size={15} />} disabled={routeSelectedPoints.length === 0} onClick={exportRouteTask}>
+                导出任务
+              </Button>
+            </div>
+          </section>
+        )}
+        {routePlanning && routePlannerCollapsed && (
+          <button
+            type="button"
+            className={styles.routePlannerRestoreButton}
+            aria-label="展开采集路线规划"
+            title="展开路线规划"
+            onClick={() => setRoutePlannerCollapsed(false)}
+          >
+            <Route size={16} />
+            <span>路线</span>
+            <ChevronRight size={15} />
+          </button>
+        )}
+        {routeNavigating && navigationTarget && !navigationHudCollapsed && (
+          <section className={styles.navigationHud} aria-label="采集路线导航">
+            <div className={styles.navigationHudHeader}>
+              <span><Navigation size={16} />正在导航</span>
+              <span className={styles.navigationHudHeaderActions}>
+                <button type="button" aria-label="收起导航卡片" title="收起" onClick={() => setNavigationHudCollapsed(true)}><ChevronDown size={16} /></button>
+                <button type="button" aria-label="结束导航" title="结束导航" onClick={stopRouteNavigation}><X size={15} /></button>
+              </span>
+            </div>
+            <strong>下一点：{navigationStopIndex + 1}. {navigationTarget.herbName}</strong>
+            <small>{navigationTarget.locationName || navigationTarget.district || "采集点"}</small>
+            <p className={styles.navigationInstruction}>{navigationInstruction?.instruction || "沿路线继续前行"}</p>
+            <div className={styles.navigationHudMetrics}>
+              <span>路线剩余 <b>{navigationRouteRemainingDistance == null ? "定位中" : formatDistance(navigationRouteRemainingDistance)}</b></span>
+              <span>进度 <b>{navigationStopIndex + 1}/{navigationStops.length}</b></span>
+            </div>
+            <small>到达采集点 50 米范围内将自动切换下一点</small>
+          </section>
+        )}
+        {routeNavigating && navigationTarget && navigationHudCollapsed && (
+          <button
+            type="button"
+            className={styles.navigationHudRestoreButton}
+            aria-label="展开导航卡片"
+            title="展开导航"
+            onClick={() => setNavigationHudCollapsed(false)}
+          >
+            <Navigation size={16} />
+            <span>导航至 {navigationTarget.herbName}</span>
+            <ChevronUp size={16} />
+          </button>
+        )}
         <div className={styles.mapTopActions}>
+          <button
+            type="button"
+            className={`${styles.routeMapButton} ${routePlanning ? styles.routeMapButtonActive : ""}`}
+            aria-label={routePlanning ? "退出路线规划" : "采集路线规划"}
+            aria-pressed={routePlanning}
+            onClick={toggleRoutePlanning}
+          >
+            <Route size={16} />
+            <span>路线规划</span>
+          </button>
           <button
             type="button"
             className={`${styles.measureMapButton} ${measuring ? styles.measureMapButtonActive : ""}`}
@@ -1191,7 +2478,7 @@ export function HerbDistributionMap() {
         </div>
       </section>
 
-        <aside className={styles.detailPanel}>
+        <aside ref={detailPanelRef} className={styles.detailPanel}>
           {selectedPoint ? (
             <>
               <div className={styles.detailHeader}>
