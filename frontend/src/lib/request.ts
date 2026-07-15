@@ -1,9 +1,15 @@
 "use client";
 
 import axios from "axios";
-import type { ApiResult } from "@/types/api";
+import type { AxiosError, InternalAxiosRequestConfig } from "axios";
+import type { ApiResult, LoginResult } from "@/types/api";
 import { buildLoginUrl, getCurrentRelativeUrl } from "./auth-navigation";
-import { clearStoredToken, getStoredToken } from "./auth-token";
+import {
+  clearStoredToken,
+  getStoredRefreshToken,
+  getStoredToken,
+  setStoredAuthTokens,
+} from "./auth-token";
 import { getOrCreateDeviceId } from "./device-id";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
@@ -12,6 +18,12 @@ const AUTH_REDIRECT_FLAG = "__bdisAuthRedirect";
 type AuthRedirectError = {
   [AUTH_REDIRECT_FLAG]?: true;
 };
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _authRetry?: boolean;
+};
+
+let refreshPromise: Promise<string> | null = null;
 
 function isPasswordChangeRequired(error: unknown) {
   return (
@@ -29,6 +41,50 @@ export const request = axios.create({
   },
 });
 
+async function refreshAccessToken() {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) {
+    throw new Error("missing refresh token");
+  }
+  const deviceId = getOrCreateDeviceId();
+  const response = await axios.post<ApiResult<LoginResult>>(
+    `${API_BASE_URL}/auth/sessions/refresh`,
+    { refreshToken },
+    {
+      timeout: 15000,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(deviceId ? { "X-Device-Id": deviceId } : {}),
+      },
+    },
+  );
+  const session = response.data.data;
+  setStoredAuthTokens(session.accessToken, session.refreshToken);
+  return session.accessToken;
+}
+
+function redirectToLogin(error: unknown) {
+  clearStoredToken();
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    (error as AuthRedirectError)[AUTH_REDIRECT_FLAG] = true;
+    window.location.href = buildLoginUrl(getCurrentRelativeUrl());
+  }
+}
+
+function shouldRefreshAccessToken(config: RetryableRequestConfig | undefined) {
+  if (!config || config._authRetry || !getStoredRefreshToken()) {
+    return false;
+  }
+  const url = String(config.url ?? "");
+  const method = String(config.method ?? "get").toLowerCase();
+  return !(
+    (method === "post" && url.includes("/auth/sessions")) ||
+    url.includes("/auth/sessions/refresh") ||
+    url.includes("/auth/bootstrap-admin")
+  );
+}
+
 request.interceptors.request.use((config) => {
   const deviceId = getOrCreateDeviceId();
   if (deviceId) {
@@ -43,7 +99,7 @@ request.interceptors.request.use((config) => {
 
 request.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
+  async (error: unknown) => {
     if (isPasswordChangeRequired(error) && typeof window !== "undefined") {
       const securitySettingsUrl = "/settings?tab=security";
       if (`${window.location.pathname}${window.location.search}` !== securitySettingsUrl) {
@@ -52,11 +108,24 @@ request.interceptors.response.use(
       return Promise.reject(error);
     }
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      clearStoredToken();
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        (error as AuthRedirectError)[AUTH_REDIRECT_FLAG] = true;
-        window.location.href = buildLoginUrl(getCurrentRelativeUrl());
+      const config = error.config as RetryableRequestConfig | undefined;
+      if (config && shouldRefreshAccessToken(config)) {
+        config._authRetry = true;
+        try {
+          refreshPromise = refreshPromise ?? refreshAccessToken();
+          const accessToken = await refreshPromise;
+          config.headers.Authorization = `Bearer ${accessToken}`;
+          return request(config);
+        } catch (refreshError) {
+          if ((refreshError as AxiosError).response?.status === 401) {
+            redirectToLogin(error);
+          }
+          return Promise.reject(refreshError);
+        } finally {
+          refreshPromise = null;
+        }
       }
+      redirectToLogin(error);
     }
     return Promise.reject(error);
   },

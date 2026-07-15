@@ -36,7 +36,7 @@ export default function LoginPage() {
     try {
       const result = await apiPost<LoginResult>("/auth/sessions", values);
       queryClient.clear();
-      setAuth(result.accessToken, result.user);
+      setAuth(result.accessToken, result.refreshToken, result.user);
       message.success("登录成功");
       if (result.mustChangePassword || result.user.mustChangePassword) {
         router.replace("/settings?tab=security");

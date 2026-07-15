@@ -53,7 +53,11 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Override
     @Transactional
     public SessionAuthenticationDetails create(
-            Long userId, IssuedToken token, HttpServletRequest request) {
+            Long userId,
+            IssuedToken token,
+            String refreshTokenHash,
+            Instant refreshExpiresAt,
+            HttpServletRequest request) {
         String deviceId = normalizeDeviceId(request.getHeader(DEVICE_ID_HEADER));
         expireElapsedSessions(userId);
         if (deviceId != null) {
@@ -70,6 +74,7 @@ public class UserSessionServiceImpl implements UserSessionService {
         session.setUserId(userId);
         session.setDeviceId(deviceId);
         session.setTokenJti(token.jti());
+        session.setRefreshTokenHash(refreshTokenHash);
         session.setClientType(resolveClientType(request.getHeader("User-Agent")));
         session.setDeviceName(resolveDeviceName(request.getHeader("User-Agent")));
         session.setIpAddress(clientIp(request));
@@ -77,6 +82,7 @@ public class UserSessionServiceImpl implements UserSessionService {
         session.setIssuedAt(toLocalDateTime(token.issuedAt()));
         session.setLastActiveAt(toLocalDateTime(token.issuedAt()));
         session.setExpiresAt(toLocalDateTime(token.expiresAt()));
+        session.setRefreshExpiresAt(toLocalDateTime(refreshExpiresAt));
         session.setSessionStatus(ACTIVE);
         sessionMapper.insert(session);
         return new SessionAuthenticationDetails(
@@ -116,6 +122,65 @@ public class UserSessionServiceImpl implements UserSessionService {
             sessionMapper.updateById(session);
         }
         return session;
+    }
+
+    @Override
+    @Transactional
+    public UserSessionEntity validateRefreshToken(String refreshTokenHash) {
+        UserSessionEntity session =
+                sessionMapper.selectOne(
+                        new LambdaQueryWrapper<UserSessionEntity>()
+                                .eq(UserSessionEntity::getRefreshTokenHash, refreshTokenHash)
+                                .last("limit 1"));
+        LocalDateTime now = LocalDateTime.now();
+        if (session == null
+                || !ACTIVE.equals(session.getSessionStatus())
+                || session.getRefreshExpiresAt() == null
+                || !now.isBefore(session.getRefreshExpiresAt())) {
+            throw new UnauthorizedException("登录会话已失效，请重新登录");
+        }
+        UserEntity user = userMapper.selectById(session.getUserId());
+        if (user == null || user.getStatus() == null || user.getStatus() != 1) {
+            throw new UnauthorizedException("账号不存在或已停用");
+        }
+        return session;
+    }
+
+    @Override
+    @Transactional
+    public void rotateRefreshToken(
+            UserSessionEntity session,
+            IssuedToken token,
+            String previousRefreshTokenHash,
+            String refreshTokenHash,
+            Instant refreshExpiresAt) {
+        LocalDateTime issuedAt = toLocalDateTime(token.issuedAt());
+        LocalDateTime accessExpiresAt = toLocalDateTime(token.expiresAt());
+        LocalDateTime refreshExpiresAtValue = toLocalDateTime(refreshExpiresAt);
+        int updated =
+                sessionMapper.update(
+                        null,
+                        new LambdaUpdateWrapper<UserSessionEntity>()
+                                .eq(UserSessionEntity::getId, session.getId())
+                                .eq(
+                                        UserSessionEntity::getRefreshTokenHash,
+                                        previousRefreshTokenHash)
+                                .eq(UserSessionEntity::getSessionStatus, ACTIVE)
+                                .set(UserSessionEntity::getTokenJti, token.jti())
+                                .set(UserSessionEntity::getRefreshTokenHash, refreshTokenHash)
+                                .set(UserSessionEntity::getIssuedAt, issuedAt)
+                                .set(UserSessionEntity::getLastActiveAt, issuedAt)
+                                .set(UserSessionEntity::getExpiresAt, accessExpiresAt)
+                                .set(UserSessionEntity::getRefreshExpiresAt, refreshExpiresAtValue));
+        if (updated != 1) {
+            throw new UnauthorizedException("Refresh Token 已失效，请重新登录");
+        }
+        session.setTokenJti(token.jti());
+        session.setRefreshTokenHash(refreshTokenHash);
+        session.setIssuedAt(issuedAt);
+        session.setLastActiveAt(issuedAt);
+        session.setExpiresAt(accessExpiresAt);
+        session.setRefreshExpiresAt(refreshExpiresAtValue);
     }
 
     @Override
@@ -214,7 +279,21 @@ public class UserSessionServiceImpl implements UserSessionService {
                 new LambdaUpdateWrapper<UserSessionEntity>()
                         .eq(UserSessionEntity::getUserId, userId)
                         .eq(UserSessionEntity::getSessionStatus, ACTIVE)
-                        .le(UserSessionEntity::getExpiresAt, LocalDateTime.now())
+                        .and(
+                                wrapper ->
+                                        wrapper.le(
+                                                        UserSessionEntity::getRefreshExpiresAt,
+                                                        LocalDateTime.now())
+                                                .or(
+                                                        nested ->
+                                                                nested.isNull(
+                                                                                UserSessionEntity
+                                                                                        ::getRefreshExpiresAt)
+                                                                        .le(
+                                                                                UserSessionEntity
+                                                                                        ::getExpiresAt,
+                                                                                LocalDateTime
+                                                                                        .now())))
                         .set(UserSessionEntity::getSessionStatus, "expired"));
     }
 

@@ -76,6 +76,15 @@ class SecurityConfigTest {
     }
 
     @Test
+    void refreshSessionEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(
+                        post("/auth/sessions/refresh")
+                                .contentType("application/json")
+                                .content("{\"refreshToken\":\"token\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void mockSoapEndpointOnlyAllowsLoopbackRequests() throws Exception {
         mockMvc.perform(
                         get("/services/campus-growth")
