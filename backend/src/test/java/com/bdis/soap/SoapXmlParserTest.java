@@ -77,6 +77,21 @@ class SoapXmlParserTest {
     }
 
     @Test
+    void parseGrowthRecordShouldRejectMultipleRecordsInsteadOfDroppingThem() {
+        String xml =
+                """
+                <Envelope><Body><queryGrowthRecordsResponse>
+                  <code>SUCCESS</code><records>
+                    <record><externalNo>CAMPUS-001</externalNo></record>
+                    <record><externalNo>CAMPUS-002</externalNo></record>
+                  </records>
+                </queryGrowthRecordsResponse></Body></Envelope>
+                """;
+
+        assertThrows(SoapExchangeException.class, () -> soapXmlParser.parseGrowthRecord(xml));
+    }
+
+    @Test
     void parseGrowthRecordShouldRejectDoctype() {
         String xml =
                 """

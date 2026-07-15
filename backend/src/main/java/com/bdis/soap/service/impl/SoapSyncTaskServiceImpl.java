@@ -35,6 +35,11 @@ import org.springframework.util.StringUtils;
 @Service
 public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
 
+    private static final String GROWTH_RECORD_RESOURCE = "GROWTH_RECORD";
+    private static final String CAMPUS_GROWTH_SERVICE = "CampusGrowthDataService";
+    private static final String QUERY_GROWTH_RECORDS_METHOD = "queryGrowthRecords";
+    private static final String INBOUND_DIRECTION = "INBOUND";
+
     private final SoapSyncTaskMapper taskMapper;
     private final SoapExchangeRecordMapper exchangeRecordMapper;
     private final SoapClient soapClient;
@@ -62,19 +67,20 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
 
     @Override
     public SoapExchangeRecordVO createAndExecute(SoapSyncTaskDTO dto) {
+        validateDemoContract(dto);
         if (StringUtils.hasText(dto.getRequestXml())) {
             throw new BusinessException(
                     ResultCodeEnum.VALIDATION_ERROR, "requestXml 不支持手工注入，系统会生成 SOAP 请求");
         }
         SoapSyncTaskEntity task = new SoapSyncTaskEntity();
         task.setTaskNo("SOAP-" + UUID.randomUUID());
-        task.setTaskName(dto.getResourceType());
-        task.setResourceType(dto.getResourceType());
-        task.setServiceName(defaultValue(dto.getServiceName(), "MockHerbService"));
-        task.setMethodName(defaultValue(dto.getMethodName(), "syncGrowthRecord"));
-        task.setSyncDirection(defaultValue(dto.getDirection(), "INBOUND"));
+        task.setTaskName(GROWTH_RECORD_RESOURCE);
+        task.setResourceType(GROWTH_RECORD_RESOURCE);
+        task.setServiceName(CAMPUS_GROWTH_SERVICE);
+        task.setMethodName(QUERY_GROWTH_RECORDS_METHOD);
+        task.setSyncDirection(INBOUND_DIRECTION);
         task.setSyncStatus("PENDING");
-        task.setIsMock(dto.getMock() == null || dto.getMock());
+        task.setIsMock(true);
         task.setRetryCount(0);
         task.setStatus(1);
         task.setIsDeleted(0);
@@ -143,6 +149,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
     }
 
     private SoapExchangeRecordVO execute(SoapSyncTaskEntity task) {
+        validatePersistedDemoContract(task);
         task.setSyncStatus("PROCESSING");
         taskMapper.updateById(task);
         String requestXml = null;
@@ -169,7 +176,9 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
             errorMessage = exception.getMessage();
             task.setSyncStatus("FAILED");
         }
-        task.setLastSyncAt(LocalDateTime.now());
+        if ("SUCCESS".equals(status)) {
+            task.setLastSyncAt(LocalDateTime.now());
+        }
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
         SoapExchangeRecordEntity record = new SoapExchangeRecordEntity();
@@ -250,7 +259,36 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         return vo;
     }
 
-    private String defaultValue(String value, String defaultValue) {
-        return value == null || value.isBlank() ? defaultValue : value;
+    private void validateDemoContract(SoapSyncTaskDTO dto) {
+        if (!GROWTH_RECORD_RESOURCE.equals(dto.getResourceType())) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 仅支持 GROWTH_RECORD 资源类型");
+        }
+        if (StringUtils.hasText(dto.getServiceName())
+                && !CAMPUS_GROWTH_SERVICE.equals(dto.getServiceName())) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 服务固定为 CampusGrowthDataService");
+        }
+        if (StringUtils.hasText(dto.getMethodName())
+                && !QUERY_GROWTH_RECORDS_METHOD.equals(dto.getMethodName())) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 操作固定为 queryGrowthRecords");
+        }
+        if (StringUtils.hasText(dto.getDirection()) && !INBOUND_DIRECTION.equals(dto.getDirection())) {
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 仅支持入站同步");
+        }
+        if (Boolean.FALSE.equals(dto.getMock())) {
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 仅支持本地 mock");
+        }
+    }
+
+    private void validatePersistedDemoContract(SoapSyncTaskEntity task) {
+        if (!GROWTH_RECORD_RESOURCE.equals(task.getResourceType())
+                || !CAMPUS_GROWTH_SERVICE.equals(task.getServiceName())
+                || !QUERY_GROWTH_RECORDS_METHOD.equals(task.getMethodName())
+                || !INBOUND_DIRECTION.equals(task.getSyncDirection())
+                || !Boolean.TRUE.equals(task.getIsMock())) {
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "SOAP 任务不符合冻结版演示契约");
+        }
     }
 }

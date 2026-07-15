@@ -34,6 +34,7 @@ public class SoapXmlParser {
             DocumentBuilder builder = factory.newDocumentBuilder();
             builder.setErrorHandler(throwingErrorHandler());
             Document document = builder.parse(new InputSource(new StringReader(xml)));
+            requireSingleGrowthRecord(document);
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("code", text(document, "code"));
             result.put("message", text(document, "message"));
@@ -44,8 +45,20 @@ public class SoapXmlParser {
             result.put("collectedAt", text(document, "collectedAt"));
             result.put("sourceType", text(document, "sourceType"));
             return result;
+        } catch (SoapExchangeException exception) {
+            throw exception;
         } catch (Exception exception) {
             throw new SoapExchangeException("SOAP XML 解析失败", exception);
+        }
+    }
+
+    private void requireSingleGrowthRecord(Document document) {
+        NodeList records = document.getElementsByTagNameNS("*", "record");
+        if (records.getLength() == 0) {
+            records = document.getElementsByTagName("record");
+        }
+        if (records.getLength() > 1) {
+            throw new SoapExchangeException("冻结版 SOAP 响应仅支持一条生长采集记录");
         }
     }
 
