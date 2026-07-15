@@ -162,15 +162,14 @@ test('关键页面使用高优先级绿色按钮和稳定的移动端排版', as
     'system-card',
     'logout-card',
     '我的任务',
-    '采集批次',
-    'AI 小助手',
-    '使用帮助'
+    '采集批次'
   ]) {
     assert.match(mine, new RegExp(token))
   }
-  assert.match(mine, /<AssistantFloat\s+ref="assistantRef"/)
-  assert.match(mine, /assistantRef\.value\?\.open\(\)/)
-  assert.match(assistant, /const FLOAT_SIZE = 48/)
+  assert.match(mine, /<AssistantFloat\s*\/>/)
+  assert.doesNotMatch(mine, /consult|openAssistant|showHelp|使用帮助|咨询采集流程与规范|查看移动采集流程/)
+  assert.doesNotMatch(home, /openAssistant|咨询流程与规范/)
+  assert.match(assistant, /const FLOAT_SIZE = 52/)
   assert.match(assistant, /const TAB_BAR_BOTTOM_GAP = 80/)
   assert.match(assistant, /const DEFAULT_BOTTOM_GAP = 85/)
   assert.match(assistant, /isSafeCachedPosition/)
