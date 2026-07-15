@@ -91,7 +91,7 @@ const GROWTH_CONTEXT: PageContext = {
 };
 
 const WELCOME_MESSAGE =
-  "你好，我是本草 AI 小助手，可以帮助你理解采集任务、生长记录、图谱识别、审核流程和溯源管理。";
+  "你好，我是本草 AI 小助手。可以帮助你查询采集任务、解释图谱识别结果，并了解生长记录、审核与溯源流程。";
 
 export function AssistantFloat() {
   const pathname = usePathname();
@@ -102,10 +102,12 @@ export function AssistantFloat() {
   const [sessionId, setSessionId] = useState("");
   const [floatPosition, setFloatPosition] = useState<FloatPosition | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [quickExpanded, setQuickExpanded] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: WELCOME_MESSAGE },
   ]);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const floatDragRef = useRef<FloatDragState | null>(null);
   const floatAnchorRef = useRef<FloatAnchor>({ side: "right", top: 0 });
   const suppressFloatClickRef = useRef(false);
@@ -169,6 +171,12 @@ export function AssistantFloat() {
     });
   }, [messages, loading, open]);
 
+  useEffect(() => {
+    if (open && !isCoarsePointer()) {
+      window.setTimeout(() => inputRef.current?.focus(), 120);
+    }
+  }, [open]);
+
   const hidden = useMemo(() => {
     if (!mounted) {
       return true;
@@ -191,6 +199,7 @@ export function AssistantFloat() {
       return;
     }
     setInput("");
+    setQuickExpanded(false);
     setMessages((current) => [...current, { role: "user", content: message }]);
     setLoading(true);
 
@@ -377,22 +386,45 @@ export function AssistantFloat() {
         </header>
 
         <section className={styles.contextBox} aria-label="当前页面上下文">
-          <p className={styles.contextTitle}>{pageContext.title}</p>
-          <p className={styles.contextText}>{pageContext.description}</p>
+          <p className={styles.contextTitle}>
+            <span>当前页面</span>
+            <strong>{pageContext.title.replace(/^当前页面：/, "")}</strong>
+          </p>
+          <p className={styles.contextText}>可问：采集任务、图谱识别、审核流程、溯源管理</p>
         </section>
 
         <section className={styles.quickArea} aria-label="快捷问题">
-          {pageContext.quickQuestions.map((question) => (
+          <div className={styles.quickHeader}>
             <button
-              className={styles.quickButton}
-              disabled={loading}
-              key={question}
+              className={styles.quickTitleButton}
               type="button"
-              onClick={() => void sendMessage(question)}
+              onClick={() => setQuickExpanded((current) => !current)}
             >
-              {question}
+              推荐问题
             </button>
-          ))}
+            <button
+              className={styles.quickToggle}
+              type="button"
+              onClick={() => setQuickExpanded((current) => !current)}
+            >
+              {quickExpanded ? "收起" : "展开"}
+            </button>
+          </div>
+          {quickExpanded ? (
+            <div className={styles.quickScroller}>
+              {pageContext.quickQuestions.map((question) => (
+                <button
+                  className={styles.quickButton}
+                  disabled={loading}
+                  key={question}
+                  type="button"
+                  onClick={() => void sendMessage(question)}
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <div className={styles.messages} ref={messagesRef}>
@@ -403,6 +435,15 @@ export function AssistantFloat() {
               }`}
               key={`${message.role}-${index}`}
             >
+              {message.role === "assistant" ? (
+                <Image
+                  className={styles.messageAvatar}
+                  src={ICON_SRC}
+                  alt=""
+                  width={32}
+                  height={32}
+                />
+              ) : null}
               <div
                 className={`${styles.bubble} ${
                   message.role === "user" ? styles.userBubble : styles.assistantBubble
@@ -416,33 +457,43 @@ export function AssistantFloat() {
           ))}
           {loading ? (
             <div className={`${styles.messageRow} ${styles.assistantRow}`}>
+              <Image
+                className={styles.messageAvatar}
+                src={ICON_SRC}
+                alt=""
+                width={32}
+                height={32}
+              />
               <div className={`${styles.bubble} ${styles.assistantBubble} ${styles.loadingBubble}`}>
-                <Loader2 className={styles.spin} size={16} />
-                正在思考...
+                <span className={styles.typingDots} aria-hidden="true"><i /><i /><i /></span>
+                正在整理回答
               </div>
             </div>
           ) : null}
         </div>
 
         <div className={styles.inputArea}>
-          <textarea
-            className={styles.input}
-            disabled={loading}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入你的问题"
-            rows={2}
-            value={input}
-          />
-          <button
-            className={styles.sendButton}
-            disabled={loading || !input.trim()}
-            type="button"
-            aria-label="发送"
-            onClick={() => void sendMessage()}
-          >
-            {loading ? <Loader2 className={styles.spin} size={18} /> : <SendHorizontal size={18} />}
-          </button>
+          <div className={styles.composer}>
+            <textarea
+              ref={inputRef}
+              className={styles.input}
+              disabled={loading}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="输入你的问题"
+              rows={1}
+              value={input}
+            />
+            <button
+              className={styles.sendButton}
+              disabled={loading || !input.trim()}
+              type="button"
+              aria-label="发送"
+              onClick={() => void sendMessage()}
+            >
+              {loading ? <Loader2 className={styles.spin} size={18} /> : <SendHorizontal size={18} />}
+            </button>
+          </div>
         </div>
       </aside>
     </>
@@ -578,6 +629,10 @@ function resolveSessionId() {
   const next = `web_assistant_${Date.now()}_${random}`;
   window.localStorage.setItem(SESSION_KEY, next);
   return next;
+}
+
+function isCoarsePointer() {
+  return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 }
 
 function resolveAnswer(response: unknown) {

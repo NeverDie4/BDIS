@@ -1220,7 +1220,7 @@ export function HerbDistributionMap() {
                 </div>
               </div>
 
-              <div className={styles.detailSection}>
+              <div className={styles.detailSection} hidden>
                 <div className={styles.sectionTitleRow}>
                   <h4>最近采集记录</h4>
                   <Tag>{growthRecords.length} 次</Tag>

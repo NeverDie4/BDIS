@@ -3,14 +3,14 @@
 import { Tooltip } from "antd";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { abstractChongqingRegions, type AbstractRegion } from "./abstractChongqingMapData";
+import type { AbstractRegion } from "./abstractChongqingMapData";
 import styles from "./AbstractChongqingMap.module.css";
 
 const legendItems = [
   { label: "资源丰富", color: "#5f8f55" },
   { label: "资源较多", color: "#8fac78" },
   { label: "资源一般", color: "#c8d6ad" },
-  { label: "资源不足", color: "#e7ecda" },
+  { label: "资源较少", color: "#e7ecda" },
 ];
 
 const MIN_ZOOM = 0.8;
@@ -25,14 +25,15 @@ export function getRegionColor(count: number) {
 }
 
 type AbstractChongqingMapProps = {
-  regions?: AbstractRegion[];
+  regions: AbstractRegion[];
 };
 
-export function AbstractChongqingMap({ regions = abstractChongqingRegions }: AbstractChongqingMapProps) {
+export function AbstractChongqingMap({ regions }: AbstractChongqingMapProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({ active: false, x: 0, y: 0, startX: 0, startY: 0 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const hasRealRegions = regions.length > 0;
 
   const getDefaultZoom = useCallback(() => {
     const width = viewportRef.current?.clientWidth ?? 640;
@@ -131,29 +132,36 @@ export function AbstractChongqingMap({ regions = abstractChongqingRegions }: Abs
             ))}
           </div>
 
-          <div className={styles.mapGrid}>
-            {regions.map((region) => (
-              <Tooltip key={region.name} title={`${region.name}：${region.count} 处资源点`}>
-                <button
-                  aria-label={`${region.name}：${region.count} 处资源点`}
-                  className={styles.regionCell}
-                  style={{
-                    backgroundColor: getRegionColor(region.count),
-                    gridColumn: `${region.col} / span ${region.colSpan ?? 1}`,
-                    gridRow: region.row,
-                  }}
-                  type="button"
-                >
-                  <span className={styles.regionName}>{region.shortName}</span>
-                  <span className={styles.regionCount}>{region.count}</span>
-                </button>
-              </Tooltip>
-            ))}
-          </div>
+          {hasRealRegions ? (
+            <div className={styles.mapGrid}>
+              {regions.map((region) => (
+                <Tooltip key={region.name} title={`${region.name}，${region.count} 处已登记点位`}>
+                  <button
+                    aria-label={`${region.name}，${region.count} 处已登记点位`}
+                    className={styles.regionCell}
+                    style={{
+                      backgroundColor: getRegionColor(region.count),
+                      gridColumn: `${region.col} / span ${region.colSpan ?? 1}`,
+                      gridRow: region.row,
+                    }}
+                    type="button"
+                  >
+                    <span className={styles.regionName}>{region.shortName}</span>
+                    <span className={styles.regionCount}>{region.count}</span>
+                  </button>
+                </Tooltip>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.mapEmpty}>
+              <strong>暂无已登记分布点位</strong>
+              <span>维护药材分布数据后将在此按区县汇总展示</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <p className={styles.mapNote}>重庆市中药材资源分布（示意）</p>
+      <p className={styles.mapNote}>按已登记分布点位统计</p>
     </div>
   );
 }

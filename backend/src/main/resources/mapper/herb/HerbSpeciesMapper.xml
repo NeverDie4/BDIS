@@ -18,6 +18,7 @@
         <result column="origin_area" property="originArea"/>
         <result column="growth_cycle" property="growthCycle"/>
         <result column="description" property="description"/>
+        <result column="cover_image_url" property="coverImageUrl"/>
         <result column="knowledge_entity_id" property="knowledgeEntityId"/>
         <result column="distribution_region_text" property="distributionRegionText"/>
         <result column="status" property="status"/>
@@ -40,6 +41,7 @@
         origin_area,
         growth_cycle,
         description,
+        cover_image_url,
         knowledge_entity_id,
         status,
         created_at,
@@ -62,6 +64,7 @@
         s.origin_area,
         s.growth_cycle,
         s.description,
+        s.cover_image_url,
         s.knowledge_entity_id,
         regions.distribution_region_text,
         s.status,
@@ -108,6 +111,7 @@
             origin_area,
             growth_cycle,
             description,
+            cover_image_url,
             knowledge_entity_id,
             status,
             created_at,
@@ -126,6 +130,7 @@
             #{originArea},
             #{growthCycle},
             #{description},
+            #{coverImageUrl},
             #{knowledgeEntityId},
             #{status},
             #{createdAt},
@@ -148,6 +153,7 @@
             origin_area = #{originArea},
             growth_cycle = #{growthCycle},
             description = #{description},
+            cover_image_url = #{coverImageUrl},
             knowledge_entity_id = #{knowledgeEntityId},
             status = #{status},
             updated_at = #{updatedAt}

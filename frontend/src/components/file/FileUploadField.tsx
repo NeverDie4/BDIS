@@ -22,6 +22,7 @@ interface FileUploadFieldProps {
   fileUsage?: string;
   accessLevel?: "private" | "public";
   buttonText?: string;
+  cleanupUnboundOnUnmount?: boolean;
   onUploaded?: (file: FileResource) => void;
 }
 
@@ -35,6 +36,7 @@ export function FileUploadField({
   fileUsage,
   accessLevel,
   buttonText = "上传文件",
+  cleanupUnboundOnUnmount = true,
   onUploaded,
 }: FileUploadFieldProps) {
   const { message } = App.useApp();
@@ -53,7 +55,7 @@ export function FileUploadField({
       if (localPreviewUrlRef.current) {
         URL.revokeObjectURL(localPreviewUrlRef.current);
       }
-      if (pendingFileIdRef.current) {
+      if (cleanupUnboundOnUnmount && pendingFileIdRef.current) {
         void deleteOwnUnboundUpload(pendingFileIdRef.current).catch(() => undefined);
       }
     },
@@ -87,7 +89,7 @@ export function FileUploadField({
       const uploaded = await uploadFile(file, { bizType, bizId, fileUsage, accessLevel });
       const previousPendingFileId = pendingFileIdRef.current;
       pendingFileIdRef.current = bizId ? undefined : uploaded.id;
-      if (previousPendingFileId && previousPendingFileId !== uploaded.id) {
+      if (cleanupUnboundOnUnmount && previousPendingFileId && previousPendingFileId !== uploaded.id) {
         void deleteOwnUnboundUpload(previousPendingFileId).catch(() => undefined);
       }
       replaceLocalPreview(nextPreviewUrl);
@@ -117,7 +119,7 @@ export function FileUploadField({
             onClick={() => {
               const pendingFileId = pendingFileIdRef.current;
               pendingFileIdRef.current = undefined;
-              if (pendingFileId) {
+              if (cleanupUnboundOnUnmount && pendingFileId) {
                 void deleteOwnUnboundUpload(pendingFileId).catch(() => undefined);
               }
               replaceLocalPreview(undefined);

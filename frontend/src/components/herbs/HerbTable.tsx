@@ -1,4 +1,4 @@
-import { Button, Space, Table } from "antd";
+import { Button, Image, Space, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import type { Key } from "react";
 import type { HerbTableRecord } from "./types";
@@ -19,6 +19,10 @@ type HerbTableProps = {
   onView: (record: HerbTableRecord) => void;
   onEdit: (record: HerbTableRecord) => void;
 };
+
+function getPlaceholderCharacter(name?: string) {
+  return name?.match(/[\u4e00-\u9fff]/)?.[0] ?? "药";
+}
 
 export function HerbTable({
   canEdit = false,
@@ -41,10 +45,29 @@ export function HerbTable({
       width: "5%",
     },
     {
+      title: "图片",
+      dataIndex: "coverImageUrl",
+      key: "coverImageUrl",
+      width: "8%",
+      render: (value: string | undefined, record) =>
+        value ? (
+          <Image
+            alt={record.herbName}
+            className={styles.tableThumb}
+            preview={false}
+            src={value}
+          />
+        ) : (
+          <span className={styles.tableThumbPlaceholder}>
+            {getPlaceholderCharacter(record.herbName)}
+          </span>
+        ),
+    },
+    {
       title: "药材编号",
       dataIndex: "herbCode",
       key: "herbCode",
-      width: "14%",
+      width: "12%",
     },
     {
       title: "药材名称",
@@ -57,7 +80,7 @@ export function HerbTable({
       dataIndex: "aliasName",
       key: "aliasName",
       ellipsis: true,
-      width: "11%",
+      width: "10%",
       render: (value?: string) => value || "-",
     },
     {
@@ -79,14 +102,14 @@ export function HerbTable({
       dataIndex: "distributionRegionText",
       key: "distributionRegionText",
       ellipsis: true,
-      width: "21%",
+      width: "18%",
       render: (value?: string) => value || "-",
     },
     {
       title: "操作",
       key: "actions",
       fixed: "right",
-      width: "14%",
+      width: "12%",
       render: (_value, record) => (
         <Space size={4}>
           <Button type="link" onClick={() => onView(record)}>
@@ -118,7 +141,7 @@ export function HerbTable({
       }}
       rowKey="id"
       rowSelection={{ columnWidth: "4%", selectedRowKeys, onChange: onSelectionChange }}
-      scroll={{ x: 1080 }}
+      scroll={{ x: 1120 }}
       size="middle"
       sticky
       tableLayout="fixed"

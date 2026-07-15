@@ -64,3 +64,32 @@ test("生长观测动态使用紧凑摘要、真实字段和中文状态", async
   assert.match(styles, /\.growthStatusSubmitted[\s\S]*?background:/);
   assert.match(styles, /\.growthStatusRejected[\s\S]*?background:/);
 });
+
+test("药材分布概览使用真实区县点位而不是静态示意数据", async () => {
+  const panel = await readSource("components/home/MapOverviewPanel.tsx");
+  const map = await readSource("components/home/AbstractChongqingMap.tsx");
+  const styles = await readSource("components/home/AbstractChongqingMap.module.css");
+
+  assert.match(panel, /buildRealRegions/);
+  assert.match(panel, /districtStatistics/);
+  assert.match(panel, /district_name/);
+  assert.match(panel, /point_count/);
+  assert.match(panel, /if \(counts\.size === 0\)/);
+  assert.match(panel, /normalizeDistrictName/);
+  assert.match(panel, /<AbstractChongqingMap regions=\{realRegions\}/);
+  assert.doesNotMatch(map, /regions = abstractChongqingRegions/);
+  assert.match(map, /暂无已登记分布点位/);
+  assert.match(map, /按已登记分布点位统计/);
+  assert.doesNotMatch(map, /示意/);
+  assert.match(styles, /\.mapEmpty/);
+});
+
+test("道地药材精选优先展示药材封面图片", async () => {
+  const panel = await readSource("components/home/FeaturedHerbsPanel.tsx");
+  const styles = await readSource("components/home/FeaturedHerbsPanel.module.css");
+
+  assert.match(panel, /herb\.coverImageUrl/);
+  assert.match(panel, /className=\{styles\.herbImage\}/);
+  assert.match(styles, /\.herbImage/);
+  assert.match(styles, /object-fit:\s*cover/);
+});
