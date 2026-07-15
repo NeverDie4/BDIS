@@ -15,6 +15,7 @@ import com.bdis.common.security.TokenBlacklistService;
 import com.bdis.modules.settings.entity.UserSessionEntity;
 import com.bdis.modules.settings.mapper.UserSessionMapper;
 import com.bdis.modules.settings.service.impl.UserSessionServiceImpl;
+import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -59,7 +60,9 @@ class UserSessionServiceImplTest {
         IssuedToken token =
                 new IssuedToken("token", "new-jti", issuedAt, issuedAt.plusSeconds(3600));
 
-        service.create(7L, token, request);
+        Instant refreshExpiresAt = issuedAt.plusSeconds(86400);
+
+        service.create(7L, token, "refresh-hash", refreshExpiresAt, request);
 
         assertThat(previous.getSessionStatus()).isEqualTo("revoked");
         assertThat(previous.getRevokeReason()).isEqualTo("replaced_by_new_login");
@@ -71,7 +74,43 @@ class UserSessionServiceImplTest {
         assertThat(inserted.getValue().getDeviceId())
                 .isEqualTo("bdis_0123456789abcdef0123456789abcdef");
         assertThat(inserted.getValue().getTokenJti()).isEqualTo("new-jti");
+        assertThat(inserted.getValue().getRefreshTokenHash()).isEqualTo("refresh-hash");
+        assertThat(inserted.getValue().getRefreshExpiresAt())
+                .isEqualTo(LocalDateTime.ofInstant(refreshExpiresAt, java.time.ZoneId.systemDefault()));
         verify(sessionMapper).update(eq(null), any(LambdaUpdateWrapper.class));
+    }
+
+    @Test
+    void activeRefreshTokenCanBeValidatedAndRotated() {
+        initializeTableMetadata();
+        UserSessionServiceImpl service =
+                new UserSessionServiceImpl(sessionMapper, userMapper, tokenBlacklistService);
+        UserSessionEntity session = new UserSessionEntity();
+        session.setId(2L);
+        session.setUserId(7L);
+        session.setTokenJti("old-jti");
+        session.setRefreshTokenHash("old-refresh-hash");
+        session.setSessionStatus("active");
+        session.setRefreshExpiresAt(LocalDateTime.now().plusDays(1));
+        UserEntity user = new UserEntity();
+        user.setId(7L);
+        user.setStatus(1);
+        when(sessionMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(session);
+        when(userMapper.selectById(7L)).thenReturn(user);
+
+        UserSessionEntity validated = service.validateRefreshToken("old-refresh-hash");
+        Instant issuedAt = Instant.now();
+        Instant refreshExpiresAt = issuedAt.plusSeconds(86400);
+        IssuedToken token =
+                new IssuedToken("token", "new-jti", issuedAt, issuedAt.plusSeconds(3600));
+        service.rotateRefreshToken(validated, token, "new-refresh-hash", refreshExpiresAt);
+
+        assertThat(validated).isSameAs(session);
+        assertThat(session.getTokenJti()).isEqualTo("new-jti");
+        assertThat(session.getRefreshTokenHash()).isEqualTo("new-refresh-hash");
+        assertThat(session.getRefreshExpiresAt())
+                .isEqualTo(LocalDateTime.ofInstant(refreshExpiresAt, java.time.ZoneId.systemDefault()));
+        verify(sessionMapper).updateById(session);
     }
 
     private void initializeTableMetadata() {

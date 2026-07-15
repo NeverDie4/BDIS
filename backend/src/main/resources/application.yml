@@ -52,7 +52,8 @@ bdis:
   security:
     jwt:
       secret: ${BDIS_JWT_SECRET:bdis-development-secret-change-me}
-      access-token-ttl-minutes: ${BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES:120}
+      access-token-ttl-minutes: ${BDIS_JWT_ACCESS_TOKEN_TTL_MINUTES:1440}
+      refresh-token-ttl-days: ${BDIS_JWT_REFRESH_TOKEN_TTL_DAYS:7}
       issuer: bdis-api
   bootstrap:
     token: ${BDIS_BOOTSTRAP_TOKEN:}

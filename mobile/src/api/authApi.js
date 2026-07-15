@@ -17,6 +17,15 @@ export function getCurrentUser(options = {}) {
   })
 }
 
+export function refreshSession(refreshToken) {
+  return request({
+    url: '/api/auth/sessions/refresh',
+    method: 'POST',
+    data: { refreshToken },
+    skipAuthRedirect: true
+  })
+}
+
 export function logout() {
   return request({
     url: '/api/auth/sessions/current',
