@@ -1,5 +1,6 @@
 package com.bdis.soap.service.impl;
 
+import com.bdis.common.exception.SoapExchangeException;
 import com.bdis.soap.component.SoapXmlParser;
 import com.bdis.soap.integration.SoapBusinessImportContext;
 import com.bdis.soap.integration.SoapBusinessImportHandler;
@@ -9,6 +10,7 @@ import com.bdis.soap.vo.SoapImportResultVO;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class SoapImportServiceImpl implements SoapImportService {
@@ -25,6 +27,12 @@ public class SoapImportServiceImpl implements SoapImportService {
     @Override
     public SoapImportResultVO parseAndPrepareImport(String resourceType, String responseXml) {
         Map<String, Object> parsedData = soapXmlParser.parseGrowthRecord(responseXml);
+        String responseCode = text(parsedData, "code");
+        if (StringUtils.hasText(responseCode) && !"SUCCESS".equalsIgnoreCase(responseCode)) {
+            String message = text(parsedData, "message");
+            throw new SoapExchangeException(
+                    "校内 SOAP 服务返回失败：" + (StringUtils.hasText(message) ? message : responseCode));
+        }
         SoapBusinessImportResult importResult =
                 importHandlers.stream()
                         .filter(handler -> handler.supports(resourceType))
@@ -62,6 +70,6 @@ public class SoapImportServiceImpl implements SoapImportService {
 
     private String text(Map<String, Object> parsedData, String key) {
         Object value = parsedData.get(key);
-        return value == null ? null : value.toString();
+        return value == null ? null : value.toString().trim();
     }
 }

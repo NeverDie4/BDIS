@@ -76,6 +76,26 @@ class SecurityConfigTest {
     }
 
     @Test
+    void mockSoapEndpointOnlyAllowsLoopbackRequests() throws Exception {
+        mockMvc.perform(
+                        get("/services/campus-growth")
+                                .with(
+                                        request -> {
+                                            request.setRemoteAddr("203.0.113.10");
+                                            return request;
+                                        }))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                        get("/services/campus-growth")
+                                .with(
+                                        request -> {
+                                            request.setRemoteAddr("127.0.0.1");
+                                            return request;
+                                        }))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void digitalLifeTraceEndpointAllowsAnonymousRequests() throws Exception {
         mockMvc.perform(get("/trace/digital-life/missing")).andExpect(status().isNotFound());
     }
