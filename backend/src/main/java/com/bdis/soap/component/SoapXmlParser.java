@@ -21,6 +21,7 @@ public class SoapXmlParser {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setNamespaceAware(true);
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
             factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
@@ -33,7 +34,10 @@ public class SoapXmlParser {
             DocumentBuilder builder = factory.newDocumentBuilder();
             builder.setErrorHandler(throwingErrorHandler());
             Document document = builder.parse(new InputSource(new StringReader(xml)));
+            requireSingleGrowthRecord(document);
             Map<String, Object> result = new LinkedHashMap<>();
+            result.put("code", text(document, "code"));
+            result.put("message", text(document, "message"));
             result.put("externalNo", text(document, "externalNo"));
             result.put("herbName", text(document, "herbName"));
             result.put("baseName", text(document, "baseName"));
@@ -41,13 +45,35 @@ public class SoapXmlParser {
             result.put("collectedAt", text(document, "collectedAt"));
             result.put("sourceType", text(document, "sourceType"));
             return result;
+        } catch (SoapExchangeException exception) {
+            throw exception;
         } catch (Exception exception) {
             throw new SoapExchangeException("SOAP XML 解析失败", exception);
         }
     }
 
+    private void requireSingleGrowthRecord(Document document) {
+        int recordCount =
+                countElements(document, "record") + countElements(document, "GrowthRecord");
+        if (recordCount > 1) {
+            throw new SoapExchangeException("冻结版 SOAP 响应仅支持一条生长采集记录");
+        }
+    }
+
+    private int countElements(Document document, String tagName) {
+        NodeList namespacedNodes = document.getElementsByTagNameNS("*", tagName);
+        if (namespacedNodes.getLength() > 0) {
+            return namespacedNodes.getLength();
+        }
+        return document.getElementsByTagName(tagName).getLength();
+    }
+
     private String text(Document document, String tagName) {
-        NodeList nodes = document.getElementsByTagName(tagName);
+        NodeList nodes = document.getElementsByTagNameNS("*", tagName);
+        if (nodes.getLength() > 0) {
+            return nodes.item(0).getTextContent();
+        }
+        nodes = document.getElementsByTagName(tagName);
         if (nodes.getLength() == 0) {
             return null;
         }

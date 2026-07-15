@@ -6,6 +6,8 @@ import com.bdis.common.security.BootstrapProperties;
 import com.bdis.common.security.JwtAuthenticationFilter;
 import com.bdis.common.security.JwtProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -17,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -82,6 +85,14 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.GET, "/trace/growth/**")
                                         .permitAll()
+                                        .requestMatchers("/services/**")
+                                        .access(
+                                                (authentication, context) ->
+                                                        new AuthorizationDecision(
+                                                                isLoopbackAddress(
+                                                                        context
+                                                                                .getRequest()
+                                                                                .getRemoteAddr())))
                                         .requestMatchers(HttpMethod.GET, "/trace/digital-life/**")
                                         .permitAll()
                                         .requestMatchers("/files/uploads/**")
@@ -133,5 +144,13 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private boolean isLoopbackAddress(String remoteAddress) {
+        try {
+            return InetAddress.getByName(remoteAddress).isLoopbackAddress();
+        } catch (UnknownHostException exception) {
+            return false;
+        }
     }
 }
