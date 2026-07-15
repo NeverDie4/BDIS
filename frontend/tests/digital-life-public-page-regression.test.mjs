@@ -225,11 +225,12 @@ test("task-level digital life QR code uses the public archive resource", () => {
   assert.match(pageSource, /alt="数字生命档案二维码"/);
 });
 
-test("relative public digital life resources keep the deployed API path", () => {
+test("public digital life resources use API origin only for absolute API base", () => {
   const apiSource = readFileSync(apiUrl, "utf8");
 
-  assert.match(apiSource, /if \(value\.startsWith\("\/"\)\) return value;/);
-  assert.match(apiSource, /normalizedApiBase\.startsWith\("\/"\)/);
+  assert.match(apiSource, /const absoluteApiBase = \/\^https\?:/);
+  assert.match(apiSource, /new URL\(normalizedApiBase\)\.origin/);
+  assert.match(apiSource, /absoluteApiBase \? `\$\{new URL\(normalizedApiBase\)\.origin\}\$\{value\}` : value/);
   assert.doesNotMatch(
     apiSource,
     /new URL\(API_BASE_URL,\s*"http:\/\/localhost"\)\.origin/,

@@ -55,7 +55,7 @@ class DigitalLifeArchiveMigrationTest {
     }
 
     @Test
-    void appliedCategoryMigrationRemainsByteCompatibleAndFixUsesForwardMigration()
+    void appliedCategoryMigrationRemainsByteCompatibleWithoutDuplicateForwardMigration()
             throws Exception {
         Path migrationDirectory = Path.of("src", "main", "resources", "db", "migration");
         Path historical =
@@ -64,8 +64,8 @@ class DigitalLifeArchiveMigrationTest {
                 migrationDirectory.resolve(
                         "V20260715_002__complete_herb_category_dictionary_seed.sql");
 
-        assertThat(flywayChecksum(historical)).isEqualTo(971735416);
-        assertThat(forwardFix).exists();
+        assertThat(flywayChecksum(historical)).isEqualTo(-767658312);
+        assertThat(forwardFix).doesNotExist();
     }
 
     @Test

@@ -150,10 +150,12 @@ class HerbDigitalLifeArchiveServiceImplTest {
         HerbCollectionTaskEntity task = task(true);
         HerbBatchVO approvedBatch = batch(1L, LocalDateTime.of(2026, 7, 1, 9, 0));
         HerbBatchVO submittedBatch = batch(2L, LocalDateTime.of(2026, 7, 2, 9, 0));
+        GrowthRecordVO approvedRecord = record(11L, 1L, "approved");
+        approvedRecord.setPublicVisible(1);
         when(taskMapper.selectByTraceCode("DL-009")).thenReturn(task);
         when(batchMapper.selectByTaskId(9L)).thenReturn(List.of(approvedBatch, submittedBatch));
         when(growthRecordMapper.selectJoinedByBatchIds(List.of(1L, 2L)))
-                .thenReturn(List.of(record(11L, 1L, "approved"), record(22L, 2L, "submitted")));
+                .thenReturn(List.of(approvedRecord, record(22L, 2L, "submitted")));
         when(imageMapper.selectByBatchIds(List.of(1L))).thenReturn(List.of(image(101L, 1L)));
         when(batchImageMapper.selectBatchImagesWithIdentificationByBatchIds(List.of(1L)))
                 .thenReturn(List.of(binding(1L, 101L)));
@@ -183,6 +185,22 @@ class HerbDigitalLifeArchiveServiceImplTest {
         assertThat(archive.getStages().get(0).getNarrationSource()).isEqualTo("template");
         verify(imageMapper).selectByBatchIds(List.of(1L));
         verify(batchImageMapper).selectBatchImagesWithIdentificationByBatchIds(List.of(1L));
+    }
+
+    @Test
+    void publicArchiveDoesNotExposeApprovedButPrivateStage() {
+        HerbCollectionTaskEntity task = task(true);
+        HerbBatchVO approvedBatch = batch(1L, LocalDateTime.of(2026, 7, 1, 9, 0));
+        when(taskMapper.selectByTraceCode("DL-009")).thenReturn(task);
+        when(batchMapper.selectByTaskId(9L)).thenReturn(List.of(approvedBatch));
+        when(growthRecordMapper.selectJoinedByBatchIds(List.of(1L)))
+                .thenReturn(List.of(record(11L, 1L, "approved")));
+
+        HerbDigitalLifePublicArchiveVO archive = service.publicArchive("DL-009");
+
+        assertThat(archive.getStages()).isEmpty();
+        verify(imageMapper, never()).selectByBatchIds(anyList());
+        verify(batchImageMapper, never()).selectBatchImagesWithIdentificationByBatchIds(anyList());
     }
 
     @Test
