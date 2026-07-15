@@ -9,6 +9,7 @@ export interface HerbTableRecord {
   medicinalPart?: string;
   efficacy?: string;
   description?: string;
+  coverImageUrl?: string;
   distributionRegions?: string[];
   distributionRegionText?: string;
   createTime?: string;

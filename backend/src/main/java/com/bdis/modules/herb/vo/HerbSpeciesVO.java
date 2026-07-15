@@ -28,6 +28,8 @@ public class HerbSpeciesVO {
 
     private String description;
 
+    private String coverImageUrl;
+
     private Integer status;
 
     private String statusText;

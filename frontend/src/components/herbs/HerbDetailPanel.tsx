@@ -1,4 +1,5 @@
-import { Button, Descriptions, Tabs } from "antd";
+import { Button, Empty, Image } from "antd";
+import { Image as ImageIcon, X } from "lucide-react";
 import type { HerbTableRecord } from "./types";
 import styles from "./herbs.module.css";
 
@@ -7,103 +8,121 @@ type HerbDetailPanelProps = {
   onClose: () => void;
 };
 
+type InfoItem = {
+  label: string;
+  value?: string | number;
+  wide?: boolean;
+};
+
+function hasValue(value?: string | number) {
+  return value != null && String(value).trim() !== "";
+}
+
 function valueOrDash(value?: string | number) {
-  return value == null || value === "" ? "-" : value;
+  return hasValue(value) ? value : "-";
+}
+
+function getGalleryTitle(herb: HerbTableRecord) {
+  if (herb.medicinalPart) {
+    return `${herb.medicinalPart}图像`;
+  }
+  return "药材图片";
 }
 
 export function HerbDetailPanel({ herb, onClose }: HerbDetailPanelProps) {
+  const category = herb.categoryName || herb.category;
+  const galleryItems = herb.coverImageUrl
+    ? [{ url: herb.coverImageUrl, title: getGalleryTitle(herb), description: herb.herbName }]
+    : [];
+  const infoItems: InfoItem[] = [
+    { label: "药材编号", value: herb.herbCode },
+    { label: "药材名称", value: herb.herbName },
+    { label: "拉丁名", value: herb.latinName },
+    { label: "别名", value: herb.aliasName },
+    { label: "所属分类", value: category },
+    { label: "药用部位", value: herb.medicinalPart },
+    { label: "分布地区", value: herb.distributionRegionText },
+    { label: "功效", value: herb.efficacy, wide: true },
+    { label: "描述", value: herb.description, wide: true },
+  ];
+
   return (
     <aside className={styles.detailPanel}>
-      <div className={styles.detailHeader}>
-        <div className={styles.detailTitleGroup}>
-          <h2>{herb.herbName}</h2>
-          <p>{herb.aliasName || herb.herbCode}</p>
-        </div>
-        <Button type="text" aria-label="关闭药材详情" onClick={onClose}>
-          ×
-        </Button>
-      </div>
+      <div className={styles.detailScroll}>
+        <section className={styles.detailHero}>
+          <Button
+            type="text"
+            aria-label="关闭药材详情"
+            className={styles.detailCloseButton}
+            icon={<X size={17} />}
+            onClick={onClose}
+          />
+          <div className={styles.detailHeroText}>
+            <h2>{valueOrDash(herb.herbName)}</h2>
+            {hasValue(herb.latinName) ? <p>{herb.latinName}</p> : null}
+            {hasValue(herb.aliasName) ? <span>别名：{herb.aliasName}</span> : null}
+          </div>
+          <div className={styles.detailHeroMeta}>
+            {hasValue(category) ? <span className={styles.detailTag}>{category}</span> : null}
+            {hasValue(herb.medicinalPart) ? (
+              <span className={styles.detailTag}>{herb.medicinalPart}</span>
+            ) : null}
+          </div>
+          {hasValue(herb.efficacy) ? (
+            <p className={styles.detailHeroSummary}>{herb.efficacy}</p>
+          ) : null}
+        </section>
 
-      <Tabs
-        className={styles.detailTabs}
-        items={[
-          {
-            key: "basic",
-            label: "基本信息",
-            children: (
-              <div className={styles.detailContent}>
-                <Descriptions
-                  colon
-                  column={1}
-                  size="small"
-                  items={[
-                    {
-                      key: "code",
-                      label: "药材编号",
-                      children: valueOrDash(herb.herbCode),
-                    },
-                    {
-                      key: "name",
-                      label: "药材名称",
-                      children: valueOrDash(herb.herbName),
-                    },
-                    {
-                      key: "latin",
-                      label: "拉丁名",
-                      children: valueOrDash(herb.latinName),
-                    },
-                    {
-                      key: "alias",
-                      label: "别名",
-                      children: valueOrDash(herb.aliasName),
-                    },
-                    {
-                      key: "category",
-                      label: "所属分类",
-                      children: valueOrDash(herb.categoryName || herb.category),
-                    },
-                    {
-                      key: "part",
-                      label: "药用部位",
-                      children: valueOrDash(herb.medicinalPart),
-                    },
-                    {
-                      key: "efficacy",
-                      label: "功效",
-                      children: valueOrDash(herb.efficacy),
-                    },
-                    {
-                      key: "region",
-                      label: "分布地区",
-                      children: valueOrDash(herb.distributionRegionText),
-                    },
-                    {
-                      key: "description",
-                      label: "描述",
-                      children: valueOrDash(herb.description),
-                    },
-                  ]}
-                />
-              </div>
-            ),
-          },
-          {
-            key: "images",
-            label: "图片图鉴",
-            children: <div className={styles.detailContent} />,
-          },
-          {
-            key: "relations",
-            label: "关联数据",
-            children: <div className={styles.detailContent} />,
-          },
-          {
-            key: "attachments",
-            label: "附件资料",
-            children: <div className={styles.detailContent} />,
-          },
-        ]}
-      />
+        <section className={styles.archiveSection}>
+          <div className={styles.sectionHeading}>
+            <h3>基本档案</h3>
+            <p>药材基础信息与药性说明</p>
+          </div>
+          <div className={styles.archiveGrid}>
+            {infoItems.map((item) => (
+              <article
+                className={`${styles.archiveItem} ${item.wide ? styles.archiveItemWide : ""}`}
+                key={item.label}
+              >
+                <span>{item.label}</span>
+                <strong>{valueOrDash(item.value)}</strong>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.archiveSection}>
+          <div className={styles.sectionHeading}>
+            <h3>图片图鉴</h3>
+            <p>展示该药材的相关图谱与样图</p>
+          </div>
+          {galleryItems.length > 0 ? (
+            <div className={`${styles.galleryGrid} ${galleryItems.length === 1 ? styles.galleryGridSingle : ""}`}>
+              {galleryItems.map((item) => (
+                <article className={styles.galleryCard} key={item.url}>
+                  <Image
+                    className={styles.galleryImage}
+                    src={item.url}
+                    alt={item.title}
+                    preview={{ mask: "预览图片" }}
+                  />
+                  <div className={styles.galleryCaption}>
+                    <strong>{item.title}</strong>
+                    <span>{item.description || "药材图片"}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.galleryEmpty}>
+              <Empty
+                image={<ImageIcon size={36} />}
+                description="暂无药材图鉴图片"
+              />
+            </div>
+          )}
+        </section>
+      </div>
     </aside>
   );
 }

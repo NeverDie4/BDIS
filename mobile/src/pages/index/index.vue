@@ -19,11 +19,6 @@
           <text class="action-name">采集批次</text>
           <text class="action-tip">管理现场批次</text>
         </button>
-        <button class="action-item" @click="openAssistant">
-          <text class="action-mark">AI</text>
-          <text class="action-name">AI 小助手</text>
-          <text class="action-tip">咨询流程与规范</text>
-        </button>
       </view>
     </view>
 
@@ -37,18 +32,16 @@
       </view>
     </view>
     <view class="bottom-breathing-space" />
-    <AssistantFloat ref="assistantRef" />
+    <AssistantFloat />
     <AppTabBar />
   </view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import AppTabBar from '../../components/AppTabBar.vue'
 import { requireLogin } from '../../utils/auth'
 
-const assistantRef = ref(null)
 const processSteps = ['查看任务', '新建批次', '上传图片', '识别汇总', '提交批次']
 
 onShow(() => {
@@ -75,9 +68,6 @@ function goBatchList() {
   })
 }
 
-function openAssistant() {
-  assistantRef.value?.open()
-}
 </script>
 
 <style scoped>

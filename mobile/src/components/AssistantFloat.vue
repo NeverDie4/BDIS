@@ -109,7 +109,7 @@ import {
 import { isLoggedIn } from '../utils/auth'
 import { getStorage, setStorage } from '../utils/storage'
 
-const FLOAT_SIZE = 48
+const FLOAT_SIZE = 52
 const EDGE_GAP = 16
 const TOP_GAP = 64
 const TAB_BAR_BOTTOM_GAP = 80
@@ -682,8 +682,8 @@ defineExpose({
   position: fixed;
   z-index: 7900;
   display: flex;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -706,18 +706,19 @@ defineExpose({
 
 .assistant-float-fallback {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
 }
 
 .assistant-float-icon {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   max-width: none;
+  border-radius: 50%;
   flex-shrink: 0;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .assistant-float-fallback {
@@ -777,7 +778,9 @@ defineExpose({
   width: 34px;
   height: 34px;
   flex-shrink: 0;
+  border: 1px solid rgba(228, 216, 198, 0.72);
   border-radius: 50%;
+  object-fit: cover;
 }
 
 .assistant-title {

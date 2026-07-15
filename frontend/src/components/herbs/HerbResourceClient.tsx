@@ -4,6 +4,7 @@ import { App, Button, Form, Input, InputNumber, Modal, Select, Table } from "ant
 import type { TableColumnsType } from "antd";
 import type { Key } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FileUploadField } from "@/components/file/FileUploadField";
 import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { escapeCsvCell } from "@/lib/csv";
 import {
@@ -367,6 +368,7 @@ export function HerbResourceClient({ initialKeyword }: HerbResourceClientProps) 
           medicinalPart: values.medicinalPart,
           efficacy: values.efficacy,
           description: values.description,
+          coverImageUrl: values.coverImageUrl,
         });
         if (modalMode === "edit" && editingRecord) await updateHerbSpecies(editingRecord.id, payload);
         else await createHerbSpecies({ ...payload, herbCode: values.herbCode });
@@ -501,6 +503,15 @@ export function HerbResourceClient({ initialKeyword }: HerbResourceClientProps) 
         <Form.Item name="medicinalPart" label={T.medicinalPart}><Input maxLength={100} /></Form.Item>
         <Form.Item name="efficacy" label={T.efficacy}><Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /></Form.Item>
         <Form.Item name="description" label={T.description}><Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} /></Form.Item>
+        <Form.Item name="coverImageUrl" label="封面图片">
+          <FileUploadField
+            accept="image/*"
+            accessLevel="private"
+            buttonText="上传药材图片"
+            fileUsage="cover"
+            maxSizeMB={10}
+          />
+        </Form.Item>
       </>;
     }
     if (activeTab === "categories") {

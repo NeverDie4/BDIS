@@ -45,3 +45,21 @@ test("AI 悬浮球吸边时有动画而拖动时关闭动画", () => {
   );
   assert.match(cssSource, /\.floatButtonDragging\s*\{[^}]*transition:\s*none;/s);
 });
+
+test("Web AI 侧边栏使用紧凑顶部、横向快捷问题和一体式输入栏", () => {
+  assert.match(componentSource, /quickExpanded/);
+  assert.match(componentSource, /setQuickExpanded\(false\)/);
+  assert.match(componentSource, /className=\{styles\.quickScroller\}/);
+  assert.match(componentSource, /className=\{styles\.composer\}/);
+  assert.match(componentSource, /className=\{styles\.messageAvatar\}/);
+  assert.match(componentSource, /正在整理回答/);
+  assert.match(cssSource, /\.header\s*\{[^}]*min-height:\s*74px;/s);
+  assert.match(cssSource, /\.headerIcon\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s);
+  assert.match(cssSource, /\.contextBox\s*\{[^}]*margin:\s*12px 18px 10px;[^}]*min-height:\s*72px;[^}]*padding:\s*12px 16px 13px;/s);
+  assert.match(cssSource, /\.quickArea\s*\{[^}]*margin:\s*6px 18px 10px;/s);
+  assert.match(cssSource, /\.quickButton\s*\{[^}]*height:\s*33px;/s);
+  assert.match(cssSource, /\.quickScroller\s*\{[^}]*overflow-x:\s*auto;/s);
+  assert.match(cssSource, /\.messages\s*\{[^}]*flex:\s*1;/s);
+  assert.match(cssSource, /\.composer\s*\{[^}]*display:\s*flex;/s);
+  assert.match(cssSource, /\.assistantBubble\s*\{[^}]*border-radius:\s*4px 16px 16px;/s);
+});
