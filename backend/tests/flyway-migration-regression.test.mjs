@@ -103,6 +103,7 @@ test("迁移版本唯一且 PR 迁移晚于 dev 基线", async () => {
   for (const name of expected)
     assert.ok(files.includes(name), `missing migration ${name}`);
 });
+
 test("药材分类字典类型由独立前向迁移初始化", async () => {
   const migration = await readMigration(
     "V20260714_017__seed_herb_category_dictionary.sql",
@@ -128,4 +129,13 @@ test("药材分类字典类型由独立前向迁移初始化", async () => {
     /ON\s+DUPLICATE\s+KEY\s+UPDATE[\s\S]*is_deleted\s*=\s*0/i,
   );
   assert.doesNotMatch(migration, /ALTER\s+TABLE|DROP\s+COLUMN/i);
+});
+
+test("药材分类字典迁移不得复制到新的重复版本", async () => {
+  const files = await readdir(migrations);
+
+  assert.equal(
+    files.includes("V20260715_002__complete_herb_category_dictionary_seed.sql"),
+    false,
+  );
 });

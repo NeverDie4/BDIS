@@ -5,6 +5,32 @@
       <text class="page-subtitle">每个采集批次仅保存一条结构化生长记录</text>
     </view>
 
+    <view class="herb-card form-card location-card">
+      <text class="section-title">采集位置</text>
+      <view v-if="hasLocation" class="location-summary">
+        <view>
+          <text class="location-label">经度</text>
+          <text class="location-value">{{ form.longitude }}</text>
+        </view>
+        <view>
+          <text class="location-label">纬度</text>
+          <text class="location-value">{{ form.latitude }}</text>
+        </view>
+      </view>
+      <text v-else class="location-empty">尚未获取当前位置，保存后地图将不会生成阶段标记。</text>
+      <text v-if="locationAccuracy" class="location-accuracy">定位精度约 {{ locationAccuracy }} 米</text>
+      <button
+        v-if="!readOnly"
+        class="secondary-btn location-btn"
+        :loading="locating"
+        :disabled="locating"
+        @click="captureLocation"
+      >
+        {{ hasLocation ? '重新定位' : '获取当前位置' }}
+      </button>
+      <text class="location-help">使用 WGS84 坐标，仅用于本次生长观测的地图归档。</text>
+    </view>
+
     <view class="herb-card form-card">
       <text class="section-title">基础信息</text>
       <label class="field">
@@ -109,12 +135,16 @@ const batchId = ref('')
 const recordId = ref('')
 const readOnly = ref(false)
 const submitting = ref(false)
+const locating = ref(false)
+const locationAccuracy = ref('')
 const collectDate = ref('')
 const collectTime = ref('')
 
 const form = reactive({
   growthStage: '',
   collectedAt: '',
+  longitude: '',
+  latitude: '',
   plantHeight: '',
   leafColor: '',
   stemDiameter: '',
@@ -145,6 +175,7 @@ const pageTitle = computed(() => {
   if (readOnly.value) return '查看生长记录'
   return recordId.value ? '编辑生长记录' : '填写生长记录'
 })
+const hasLocation = computed(() => form.longitude !== '' && form.latitude !== '')
 
 onLoad(async (options) => {
   batchId.value = options.batchId || ''
@@ -222,6 +253,35 @@ function syncCollectedAt() {
   form.collectedAt = `${collectDate.value}T${collectTime.value}:00`
 }
 
+function captureLocation() {
+  locating.value = true
+  uni.getLocation({
+    type: 'wgs84',
+    isHighAccuracy: true,
+    highAccuracyExpireTime: 5000,
+    success(result) {
+      const longitude = Number(result.longitude)
+      const latitude = Number(result.latitude)
+      if (!isValidCoordinate(longitude, latitude)) {
+        showToast('定位结果无效，请移动到开阔区域后重试')
+        return
+      }
+      form.longitude = longitude.toFixed(7)
+      form.latitude = latitude.toFixed(7)
+      locationAccuracy.value = Number.isFinite(Number(result.accuracy))
+        ? String(Math.round(Number(result.accuracy)))
+        : ''
+      showToast('定位成功', 'success')
+    },
+    fail(error) {
+      showToast(getErrorMessage(error, '定位失败，请检查定位权限后重试'))
+    },
+    complete() {
+      locating.value = false
+    }
+  })
+}
+
 async function submitForm() {
   if (!validateForm()) return
   submitting.value = true
@@ -253,6 +313,12 @@ function validateForm() {
   if (!batchId.value) return showValidation('批次 ID 不存在')
   if (!form.growthStage) return showValidation('请填写生长阶段')
   if (!form.collectedAt) return showValidation('请选择采集时间')
+  if ((form.longitude === '') !== (form.latitude === '')) {
+    return showValidation('经纬度必须同时填写')
+  }
+  if (hasLocation.value && !isValidCoordinate(Number(form.longitude), Number(form.latitude))) {
+    return showValidation('经纬度数值不正确')
+  }
 
   const validations = [
     ['plantHeight', 0, null, '株高'],
@@ -288,7 +354,16 @@ function buildPayload() {
   for (const key of ['plantHeight', 'stemDiameter', 'temperature', 'humidity', 'soilMoisture', 'soilPh', 'light']) {
     payload[key] = form[key] === '' ? undefined : Number(form[key])
   }
+  if (hasLocation.value) {
+    payload.longitude = Number(form.longitude)
+    payload.latitude = Number(form.latitude)
+  }
   return payload
+}
+
+function isValidCoordinate(longitude, latitude) {
+  return Number.isFinite(longitude) && Number.isFinite(latitude) &&
+    longitude >= -180 && longitude <= 180 && latitude >= -90 && latitude <= 90
 }
 
 function emptyToUndefined(value) {
@@ -467,6 +542,66 @@ function formatDate(date) {
 
 .remark-input {
   margin-bottom: 0;
+}
+
+.location-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.location-summary > view {
+  min-width: 0;
+  padding: 20rpx;
+  border: 1rpx solid #d9e4d8;
+  border-radius: 14rpx;
+  background: #f3f8f1;
+}
+
+.location-label,
+.location-value,
+.location-empty,
+.location-accuracy,
+.location-help {
+  display: block;
+}
+
+.location-label {
+  color: #728074;
+  font-size: 23rpx;
+}
+
+.location-value {
+  margin-top: 8rpx;
+  color: #174b33;
+  font-size: 27rpx;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.location-empty,
+.location-help,
+.location-accuracy {
+  color: #756b5c;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.location-accuracy {
+  margin-top: 14rpx;
+  color: #4f6f58;
+}
+
+.location-btn {
+  height: 78rpx;
+  margin: 20rpx 0 0;
+  border-radius: 14rpx;
+  font-size: 27rpx;
+  line-height: 78rpx;
+}
+
+.location-help {
+  margin-top: 14rpx;
 }
 
 .bottom-actions {
