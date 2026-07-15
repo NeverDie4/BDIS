@@ -34,6 +34,8 @@ public interface HerbBatchMapper {
             @Param("query") HerbBatchQueryRequest query,
             @Param("scope") CollectionAccessScope scope);
 
+    List<HerbBatchVO> selectByTaskId(@Param("taskId") Long taskId);
+
     int logicDeleteById(@Param("id") Long id);
 
     int updateStatisticsById(HerbBatchEntity batch);

@@ -2,7 +2,7 @@
 
 import axios from "axios";
 import { App, Button, Image } from "antd";
-import { Copy, Download, FileSearch, Printer, QrCode } from "lucide-react";
+import { ArrowLeft, CirclePlay, Copy, Download, FileSearch, Printer, QrCode } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -90,6 +90,17 @@ function isArchiveComplete(archive: GrowthPublicTraceArchiveApi) {
       archive.latestAuditTime &&
       archive.reviewerName,
   );
+}
+
+function handleBackNavigation() {
+  if (document.referrer) {
+    const previousPage = new URL(document.referrer);
+    if (previousPage.origin === window.location.origin && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+  }
+  window.location.assign("/");
 }
 
 function Metric({ label, value, unit }: { label: string; value?: number | string; unit?: string }) {
@@ -207,6 +218,15 @@ export default function PublicGrowthTracePage() {
   return (
     <main className={styles.page}>
       <header className={styles.brandBar}>
+        <button
+          type="button"
+          className={`${styles.backButton} ${styles.noPrint}`}
+          onClick={handleBackNavigation}
+          aria-label="返回上一页"
+        >
+          <ArrowLeft size={17} />
+          <span>返回</span>
+        </button>
         <div className={styles.brandMark}>本草</div>
         <div>
           <strong>本草研究院标本馆</strong>
@@ -254,6 +274,14 @@ export default function PublicGrowthTracePage() {
           <Button icon={<Copy size={16} />} onClick={() => void copyLink()}>
             复制溯源链接
           </Button>
+          {archive.taskTraceCode ? (
+            <Button
+              icon={<CirclePlay size={16} />}
+              href={`/trace/digital-life/${encodeURIComponent(archive.taskTraceCode)}`}
+            >
+              查看完整数字生命档案
+            </Button>
+          ) : null}
           {archive.qrCodeUrl ? (
             <Button icon={<Download size={16} />} onClick={() => void downloadQrCode()}>
               下载二维码

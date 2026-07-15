@@ -17,6 +17,43 @@
   background: rgba(255, 250, 242, 0.94);
 }
 
+.backButton {
+  display: inline-flex;
+  height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px 0 10px;
+  border: 1px solid #d9cbb7;
+  border-radius: 8px;
+  background: #fffaf2;
+  color: #315742;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.backButton:hover {
+  border-color: #9db5a2;
+  box-shadow: 0 5px 14px rgba(49, 87, 66, 0.1);
+  transform: translateX(-2px);
+}
+
+.backButton:focus-visible {
+  outline: 2px solid rgba(15, 81, 50, 0.3);
+  outline-offset: 2px;
+}
+
+.backButton span {
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
 .brandMark {
   display: grid;
   width: 48px;
@@ -29,9 +66,9 @@
   font-weight: 800;
 }
 
-.brandBar > div:nth-child(2) { display: grid; gap: 2px; }
+.brandBar > div:nth-child(3) { display: grid; gap: 2px; }
 .brandBar strong { color: #0f3d2e; font-size: 18px; }
-.brandBar span { color: #6f7f72; font-family: Georgia, serif; font-size: 11px; letter-spacing: 0.08em; }
+.brandBar > div:nth-child(3) span { color: #6f7f72; font-family: Georgia, serif; font-size: 11px; letter-spacing: 0.08em; }
 .brandBar > p { margin: 0 0 0 auto; color: #476251; font-size: 14px; font-weight: 650; }
 
 .content { width: min(1280px, calc(100vw - 64px)); margin: 0 auto; padding: 28px 0 44px; }
@@ -127,6 +164,21 @@
   .metricSections { grid-template-columns: 1fr; }
   .imageGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .brandBar { padding-inline: 18px; }
+}
+
+@media (max-width: 600px) {
+  .brandBar > p {
+    display: none;
+  }
+
+  .backButton {
+    width: 38px;
+    padding: 0;
+  }
+
+  .backButton span {
+    display: none;
+  }
 }
 
 @media print {

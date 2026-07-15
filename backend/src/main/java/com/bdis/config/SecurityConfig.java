@@ -93,6 +93,8 @@ public class SecurityConfig {
                                                                         context
                                                                                 .getRequest()
                                                                                 .getRemoteAddr())))
+                                        .requestMatchers(HttpMethod.GET, "/trace/digital-life/**")
+                                        .permitAll()
                                         .requestMatchers("/files/uploads/**")
                                         .denyAll()
                                         .requestMatchers(

@@ -26,6 +26,11 @@ public interface HerbImageMapper extends BaseMapper<HerbImageEntity> {
 
     List<HerbImageVO> selectByBatchId(@Param("batchId") Long batchId);
 
+    List<HerbImageVO> selectByBatchIds(@Param("batchIds") List<Long> batchIds);
+
+    HerbImageVO selectPublicByTraceCodeAndImageId(
+            @Param("traceCode") String traceCode, @Param("imageId") Long imageId);
+
     Long countPage(
             @Param("query") HerbImageQueryRequest query,
             @Param("scope") CollectionAccessScope scope);

@@ -94,4 +94,9 @@ class SecurityConfigTest {
                                         }))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void digitalLifeTraceEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(get("/trace/digital-life/missing")).andExpect(status().isNotFound());
+    }
 }

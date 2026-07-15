@@ -34,6 +34,9 @@ public interface HerbBatchImageMapper {
     List<HerbBatchImageVO> selectBatchImagesWithIdentification(
             @Param("batchId") Long batchId, @Param("query") HerbBatchImageQueryRequest query);
 
+    List<HerbBatchImageVO> selectBatchImagesWithIdentificationByBatchIds(
+            @Param("batchIds") List<Long> batchIds);
+
     int logicDeleteById(@Param("id") Long id);
 
     int logicDeleteByBatchIdAndImageId(

@@ -334,6 +334,21 @@ test("growth 溯源 API 与右侧二维码卡使用后端真实契约", () => {
   assert.doesNotMatch(pageSource, /fetch\(resolveGrowthResourceUrl\(traceQrCode\.qrCodeUrl\)\)/);
 });
 
+test("管理端可生成并查看任务级哈希证据链", () => {
+  assert.match(dataSource, /export type DigitalLifeIntegrityApi/);
+  assert.match(dataSource, /getDigitalLifeIntegrity/);
+  assert.match(dataSource, /\/herb\/digital-life\/task\/\$\{taskId\}\/integrity\/verify/);
+  assert.match(dataSource, /generateDigitalLifeIntegrity/);
+  assert.match(dataSource, /\/herb\/digital-life\/task\/\$\{taskId\}\/integrity\/generate/);
+  assert.match(pageSource, /const \[integrityData, setIntegrityData\]/);
+  assert.match(pageSource, /async function performIntegrityGeneration/);
+  assert.match(pageSource, /selectedRecord\.taskId/);
+  assert.match(pageSource, /生成证据链/);
+  assert.match(pageSource, /重新生成证据链/);
+  assert.match(pageSource, /关键事件/);
+  assert.match(pageSource, /根哈希/);
+});
+
 test("管理员打开未公开溯源前必须先开启公开查询", () => {
   assert.match(pageSource, /async function openPublicTracePage\(\)/);
   assert.match(pageSource, /okText:\s*"开启并打开"/);
@@ -370,11 +385,13 @@ test("公开生长溯源页统一空值、中文状态和可信档案条件", ()
   assert.match(publicTracePageSource, /showTrustedStamp \?/);
 });
 
-test("公开生长溯源页不暴露后端契约和目标路由均不存在的完整历程入口", () => {
-  assert.doesNotMatch(dataSource, /taskTraceCode|validGrowthStageCount/);
-  assert.doesNotMatch(publicTraceArchiveVoSource, /taskTraceCode|validGrowthStageCount/);
-  assert.doesNotMatch(publicTracePageSource, /taskTraceCode|validGrowthStageCount|digital-life/);
-  assert.equal(existsSync(digitalLifeRouteUrl), false);
+test("公开生长溯源页可进入所属任务的完整数字生命档案", () => {
+  assert.match(dataSource, /taskTraceCode\?: string/);
+  assert.match(publicTraceArchiveVoSource, /taskTraceCode/);
+  assert.match(publicTracePageSource, /archive\.taskTraceCode/);
+  assert.match(publicTracePageSource, /\/trace\/digital-life\//);
+  assert.match(publicTracePageSource, /查看完整数字生命档案/);
+  assert.equal(existsSync(digitalLifeRouteUrl), true);
 });
 
 test("公开生长溯源页现场图片区按实际内容自适应", () => {

@@ -18,6 +18,9 @@
         <result column="collector_name" property="collectorName"/>
         <result column="task_status" property="taskStatus"/>
         <result column="description" property="description"/>
+        <result column="trace_code" property="traceCode"/>
+        <result column="public_visible" property="publicVisible"/>
+        <result column="status" property="status"/>
         <result column="remark" property="remark"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
@@ -41,6 +44,8 @@
         <result column="collector_name" property="collectorName"/>
         <result column="task_status" property="taskStatus"/>
         <result column="description" property="description"/>
+        <result column="trace_code" property="traceCode"/>
+        <result column="public_visible" property="publicVisible"/>
         <result column="remark" property="remark"/>
         <result column="batch_count" property="batchCount"/>
         <result column="created_at" property="createTime"/>
@@ -73,6 +78,9 @@
         collector_name,
         task_status,
         description,
+        trace_code,
+        public_visible,
+        status,
         remark,
         created_at,
         updated_at,
@@ -96,6 +104,8 @@
         t.collector_name,
         t.task_status,
         t.description,
+        t.trace_code,
+        t.public_visible,
         t.remark,
         COUNT(b.id) AS batch_count,
         t.created_at,
@@ -293,11 +303,29 @@
           AND is_deleted = 0
     </select>
 
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_collection_task
+        WHERE id = #{id}
+          AND is_deleted = 0
+        FOR UPDATE
+    </select>
+
     <select id="selectByTaskCode" resultMap="BaseResultMap">
         SELECT
         <include refid="BaseColumns"/>
         FROM herb_collection_task
         WHERE task_code = #{taskCode}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByTraceCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_collection_task
+        WHERE trace_code = #{traceCode}
           AND is_deleted = 0
         LIMIT 1
     </select>

@@ -6,7 +6,7 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { init, use as registerECharts, type EChartsCoreOption } from "echarts/core";
 import axios from "axios";
 import { App, Button, Empty, Form, Input, Modal, Select, Spin } from "antd";
-import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, ExternalLink, Eye, Filter, Layers, MapPin, Plus, QrCode, RefreshCw, Send, X } from "lucide-react";
+import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, ExternalLink, Eye, Filter, Layers, MapPin, Plus, QrCode, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SecureImageThumb } from "@/components/common/SecureImageThumb";
 import { SiteLayout } from "@/components/layout/SiteLayout";
@@ -25,8 +25,10 @@ import {
   fetchGrowthRecordDetail,
   fetchGrowthTasks,
   fetchGrowthTrace,
+  generateDigitalLifeIntegrity,
   generateGrowthTraceCode,
   generateGrowthTraceQrCode,
+  getDigitalLifeIntegrity,
   getGrowthTraceQrCode,
   publishGrowthTask,
   rejectGrowthRecord,
@@ -42,6 +44,7 @@ import {
   type GrowthTaskApi,
   type GrowthTraceEventApi,
   type GrowthTraceQrCodeApi,
+  type DigitalLifeIntegrityApi,
 } from "@/lib/growth-records";
 import { fetchEnabledHerbs, fetchHerbBases, type HerbBaseApi, type HerbSpeciesApi } from "@/lib/herbs";
 import { getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
@@ -108,6 +111,10 @@ const EMPTY_REASON_LABELS: Record<GrowthChartEmptyReason, string> = {
 
 function formatTime(value?: string) {
   return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "-";
+}
+
+function shortHash(value?: string | null) {
+  return value ? `${value.slice(0, 12)}…${value.slice(-8)}` : "-";
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -475,6 +482,8 @@ export default function GrowthPage() {
   const [traceEvents, setTraceEvents] = useState<GrowthTraceEventApi[]>([]);
   const [traceQrCode, setTraceQrCode] = useState<GrowthTraceQrCodeApi>();
   const [traceOperating, setTraceOperating] = useState<string>();
+  const [integrityData, setIntegrityData] = useState<DigitalLifeIntegrityApi>();
+  const [integrityOperating, setIntegrityOperating] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingChart, setLoadingChart] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -739,17 +748,21 @@ export default function GrowthPage() {
   const refreshSelected = useCallback(
     async (recordId: number) => {
       const detail = await fetchGrowthRecordDetail(recordId);
-      const [history, trace, images, qrCode] = await Promise.all([
+      const [history, trace, images, qrCode, integrity] = await Promise.all([
         showReviewWorkspace ? fetchGrowthAuditHistory(recordId) : Promise.resolve([]),
         fetchGrowthTrace(recordId),
         detail.batchId ? fetchGrowthBatchImages(detail.batchId) : Promise.resolve([]),
         getGrowthTraceQrCode(recordId).catch(() => undefined),
+        showReviewWorkspace && detail.taskId
+          ? getDigitalLifeIntegrity(detail.taskId).catch(() => undefined)
+          : Promise.resolve(undefined),
       ]);
       setSelectedRecord(detail);
       setBatchImages(images);
       setAuditHistory(history);
       setTraceEvents(trace);
       setTraceQrCode(qrCode);
+      setIntegrityData(integrity);
     },
     [showReviewWorkspace],
   );
@@ -763,6 +776,7 @@ export default function GrowthPage() {
       setAuditHistory([]);
       setTraceEvents([]);
       setTraceQrCode(undefined);
+      setIntegrityData(undefined);
       try {
         await refreshSelected(recordId);
       } catch (error) {
@@ -813,6 +827,37 @@ export default function GrowthPage() {
     } finally {
       setTraceOperating(undefined);
     }
+  }
+
+  async function performIntegrityGeneration() {
+    if (!selectedRecord?.taskId) {
+      message.warning("当前记录未关联采集任务，无法生成任务级证据链");
+      return;
+    }
+    setIntegrityOperating(true);
+    try {
+      const result = await generateDigitalLifeIntegrity(selectedRecord.taskId);
+      setIntegrityData(result);
+      message.success(`证据链生成成功，已纳入 ${result.eventCount} 个关键事件`);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "证据链生成失败，请确认任务阶段均已审核通过"));
+    } finally {
+      setIntegrityOperating(false);
+    }
+  }
+
+  function confirmIntegrityGeneration() {
+    if (!integrityData?.rootHash) {
+      void performIntegrityGeneration();
+      return;
+    }
+    modal.confirm({
+      title: "重新生成哈希证据链",
+      content: "系统将基于当前档案生成新的证据链版本，历史版本会保留。是否继续？",
+      okText: "生成新版本",
+      cancelText: "取消",
+      onOk: performIntegrityGeneration,
+    });
   }
 
   async function copyTraceLink() {
@@ -1451,13 +1496,14 @@ export default function GrowthPage() {
               <button
                 type="button"
                 aria-label="关闭详情"
-                onClick={() => {
-                  setSelectedRecord(null);
+                  onClick={() => {
+                    setSelectedRecord(null);
                   setBatchImages([]);
                   setAuditHistory([]);
-                  setTraceEvents([]);
-                  setTraceQrCode(undefined);
-                }}
+                    setTraceEvents([]);
+                    setTraceQrCode(undefined);
+                    setIntegrityData(undefined);
+                  }}
               ><X size={18} /></button>
             ) : null}
           </div>
@@ -1689,6 +1735,47 @@ export default function GrowthPage() {
                   </div>
                 </div>
               </section>
+              {showReviewWorkspace ? (
+                <section className={`${styles.detailSection} ${detailTab !== "trace" ? styles.hiddenTab : ""}`}>
+                  <header className={styles.detailSectionHeader}>
+                    <h3>数字生命证据链</h3>
+                    <p>对当前任务的已审核阶段和关键业务事件生成防篡改快照</p>
+                  </header>
+                  <div className={styles.traceQrCard}>
+                    <div className={styles.traceQrStatusRow}>
+                      <span className={integrityData?.verified ? styles.tracePublic : styles.tracePrivate}>
+                        {integrityData?.verified ? "校验通过" : integrityData?.rootHash ? "校验异常" : "尚未生成"}
+                      </span>
+                      <small>{integrityData?.message || "当前任务尚无哈希证据链快照"}</small>
+                    </div>
+                    {integrityData?.rootHash ? (
+                      <dl className={styles.traceQrMeta}>
+                        <div><dt>哈希版本</dt><dd>{integrityData.hashVersion || "-"}</dd></div>
+                        <div><dt>关键事件</dt><dd>{integrityData.eventCount} 个</dd></div>
+                        <div><dt>生成时间</dt><dd>{formatTime(integrityData.generatedTime || undefined)}</dd></div>
+                        <div title={integrityData.rootHash}><dt>根哈希</dt><dd>{shortHash(integrityData.rootHash)}</dd></div>
+                      </dl>
+                    ) : (
+                      <div className={styles.traceQrEmpty}>
+                        <ShieldCheck size={30} />
+                        <strong>尚未生成任务级哈希证据链</strong>
+                        <p>生成后，公开数字生命档案将显示事件数量、根哈希和校验结果。</p>
+                      </div>
+                    )}
+                    <div className={styles.traceQrActions}>
+                      <Button
+                        type="primary"
+                        icon={<ShieldCheck size={15} />}
+                        loading={integrityOperating}
+                        disabled={!selectedRecord.taskId}
+                        onClick={confirmIntegrityGeneration}
+                      >
+                        {integrityData?.rootHash ? "重新生成证据链" : "生成证据链"}
+                      </Button>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
               {showReviewWorkspace ? (
                 <section className={`${styles.detailSection} ${detailTab !== "trace" ? styles.hiddenTab : ""}`}>
                   <header className={styles.detailSectionHeader}>

@@ -188,6 +188,17 @@ export type GrowthTraceQrCodeApi = {
   traceGeneratedTime?: string;
 };
 
+export type DigitalLifeIntegrityApi = {
+  verified: boolean;
+  eventCount: number;
+  rootHash?: string | null;
+  hashVersion?: string | null;
+  generatedTime?: string | null;
+  failedSequence?: number | null;
+  failedEventType?: string | null;
+  message: string;
+};
+
 export type GrowthPublicTraceImageApi = {
   imageUrl: string;
   imageType?: string;
@@ -206,6 +217,7 @@ export type GrowthPublicTraceArchiveApi = {
   herbName?: string;
   taskId?: number;
   taskName?: string;
+  taskTraceCode?: string;
   batchId?: number;
   batchName?: string;
   baseName?: string;
@@ -398,6 +410,18 @@ export function enableGrowthPublicTrace(recordId: number) {
 
 export function disableGrowthPublicTrace(recordId: number) {
   return apiPut<GrowthTraceQrCodeApi>(`/growth-records/${recordId}/trace/public-disable`);
+}
+
+export function getDigitalLifeIntegrity(taskId: number) {
+  return apiGet<DigitalLifeIntegrityApi>(
+    `/herb/digital-life/task/${taskId}/integrity/verify`,
+  );
+}
+
+export function generateDigitalLifeIntegrity(taskId: number) {
+  return apiPost<DigitalLifeIntegrityApi>(
+    `/herb/digital-life/task/${taskId}/integrity/generate`,
+  );
 }
 
 export async function getPublicGrowthTrace(traceCode: string) {
