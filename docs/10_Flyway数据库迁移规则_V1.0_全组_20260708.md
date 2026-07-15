@@ -192,6 +192,8 @@ V20260708_002__init_dictionary_data.sql
 7. 启动后端确认数据库连接正常。
 8. 提交 migration、相关代码和文档。
 
+`backend/src/test/resources/flyway-dev-migration-baseline.txt` 保存已在 `dev` 基线发布的 migration 文件名及原始字节 SHA-256。自动化测试会校验这些脚本仍存在且内容完全一致，并要求非基线迁移版本晚于基线最高版本。基线随 `dev` 正式新增 migration 更新，不得通过改写哈希掩盖历史脚本变更。
+
 命令使用说明见 [10_脚本命令使用指南_V1.1_全组_20260710.md](10_脚本命令使用指南_V1.1_全组_20260710.md)。
 
 ## 13. 错误处理规则

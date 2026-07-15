@@ -1,6 +1,7 @@
 package com.bdis.modules.performance.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.bdis.audit.annotation.AuditLogAnnotation;
 import com.bdis.common.core.Result;
 import com.bdis.modules.performance.dto.PerformanceStandardRequest;
 import com.bdis.modules.performance.entity.PerformanceStandardEntity;
@@ -29,14 +30,50 @@ public class PerformanceStandardController {
     }
 
     @PostMapping
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "CREATE_STANDARD",
+            bizType = "perf_standard")
     public Result<PerformanceStandardEntity> createStandard(
             @Valid @RequestBody PerformanceStandardRequest request) {
         return Result.success(performanceStandardService.createStandard(request));
     }
 
     @PutMapping("/{standardId}")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "UPDATE_STANDARD",
+            bizType = "perf_standard")
     public Result<PerformanceStandardEntity> updateStandard(
             @PathVariable Long standardId, @Valid @RequestBody PerformanceStandardRequest request) {
         return Result.success(performanceStandardService.updateStandard(standardId, request));
+    }
+
+    @PostMapping("/{standardId}/versions")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "CREATE_STANDARD_VERSION",
+            bizType = "perf_standard")
+    public Result<PerformanceStandardEntity> createVersion(
+            @PathVariable Long standardId, @Valid @RequestBody PerformanceStandardRequest request) {
+        return Result.success(performanceStandardService.createVersion(standardId, request));
+    }
+
+    @PostMapping("/{standardId}/publish")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "PUBLISH_STANDARD",
+            bizType = "perf_standard")
+    public Result<PerformanceStandardEntity> publish(@PathVariable Long standardId) {
+        return Result.success(performanceStandardService.publishStandard(standardId));
+    }
+
+    @PostMapping("/{standardId}/disable")
+    @AuditLogAnnotation(
+            module = "M18_PERFORMANCE",
+            operationType = "DISABLE_STANDARD",
+            bizType = "perf_standard")
+    public Result<PerformanceStandardEntity> disable(@PathVariable Long standardId) {
+        return Result.success(performanceStandardService.disableStandard(standardId));
     }
 }
