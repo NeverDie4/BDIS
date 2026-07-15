@@ -8,9 +8,13 @@ public class HerbImageVO {
 
     private Long id;
 
+    private Long batchId;
+
     private String imageCode;
 
     private String imageUrl;
+
+    private String thumbnailUrl;
 
     private String imageName;
 

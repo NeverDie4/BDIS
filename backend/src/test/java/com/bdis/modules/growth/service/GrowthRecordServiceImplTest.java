@@ -129,6 +129,33 @@ class GrowthRecordServiceImplTest {
     }
 
     @Test
+    void coordinatesMustBeProvidedAsPair() {
+        GrowthRecordUpsertRequest request = new GrowthRecordUpsertRequest();
+        request.setLongitude(new BigDecimal("108.1234567"));
+
+        assertThatThrownBy(
+                        () ->
+                                ReflectionTestUtils.invokeMethod(
+                                        service, "validateCoordinates", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("经纬度必须同时填写");
+    }
+
+    @Test
+    void coordinatesMustStayWithinGeographicRange() {
+        GrowthRecordUpsertRequest request = new GrowthRecordUpsertRequest();
+        request.setLongitude(new BigDecimal("181"));
+        request.setLatitude(new BigDecimal("30"));
+
+        assertThatThrownBy(
+                        () ->
+                                ReflectionTestUtils.invokeMethod(
+                                        service, "validateCoordinates", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("经度范围");
+    }
+
+    @Test
     void createForBatchRejectsSecondGrowthRecord() {
         HerbBatchEntity batch = writableBatch();
         when(herbBatchMapper.selectById(20L)).thenReturn(batch);
@@ -471,6 +498,27 @@ class GrowthRecordServiceImplTest {
     }
 
     @Test
+    void enablingSecondPublicStagePublishesTaskDigitalLifeArchive() {
+        login(3L, "ADMIN");
+        GrowthRecordEntity record = record("approved", 1L);
+        record.setTaskId(30L);
+        record.setTraceCode("TRACE_GROWTH_EXISTING");
+        record.setTracePublicUrl("/trace/growth/TRACE_GROWTH_EXISTING");
+        when(growthRecordMapper.selectById(100L)).thenReturn(record);
+        when(growthRecordMapper.selectCount(any())).thenReturn(2L);
+        HerbCollectionTaskEntity task = activeTask();
+        task.setStatus(1);
+        task.setPublicVisible(0);
+        when(herbCollectionTaskMapper.selectById(30L)).thenReturn(task);
+
+        service.enablePublicTrace(100L);
+
+        assertThat(task.getTraceCode()).isEqualTo("DL-TASK-00000030");
+        assertThat(task.getPublicVisible()).isEqualTo(1);
+        verify(herbCollectionTaskMapper).updateById(task);
+    }
+
+    @Test
     void publicTraceRejectsHiddenRecord() {
         GrowthRecordEntity record = record("approved", 1L);
         record.setTraceCode("TRACE_GROWTH_EXISTING");
@@ -502,6 +550,9 @@ class GrowthRecordServiceImplTest {
         task.setId(30L);
         task.setTaskName("采集任务A");
         task.setCollectPlace("标本园");
+        task.setTraceCode("DL-TASK-030");
+        task.setPublicVisible(1);
+        task.setStatus(1);
         when(herbCollectionTaskMapper.selectById(30L)).thenReturn(task);
         HerbImageVO image = new HerbImageVO();
         image.setId(1L);
@@ -531,6 +582,7 @@ class GrowthRecordServiceImplTest {
         assertThat(archive.getPublicVisible()).isEqualTo(1);
         assertThat(archive.getBatchName()).isEqualTo("采集批次A");
         assertThat(archive.getTaskName()).isEqualTo("采集任务A");
+        assertThat(archive.getTaskTraceCode()).isEqualTo("DL-TASK-030");
         assertThat(archive.getImages()).hasSize(1);
         assertThat(archive.getImages().getFirst().getImageUrl())
                 .isEqualTo("/api/trace/growth/TRACE_GROWTH_EXISTING/images/1");

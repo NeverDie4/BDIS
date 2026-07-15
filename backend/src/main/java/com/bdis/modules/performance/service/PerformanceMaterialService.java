@@ -9,4 +9,6 @@ public interface PerformanceMaterialService {
     PerformanceMaterialVO addMaterial(Long performanceId, PerformanceMaterialRequest request);
 
     List<PerformanceMaterialVO> listMaterials(Long performanceId);
+
+    void removeMaterial(Long performanceId, Long relationId);
 }

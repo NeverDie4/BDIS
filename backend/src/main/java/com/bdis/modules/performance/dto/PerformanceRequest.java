@@ -1,6 +1,7 @@
 package com.bdis.modules.performance.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +15,8 @@ public class PerformanceRequest {
     private String performanceTitle;
 
     private String performanceType;
+    private String performanceLevel;
+    private LocalDateTime occurredAt;
     private Long standardId;
     private String sourceType;
     private Long sourceId;

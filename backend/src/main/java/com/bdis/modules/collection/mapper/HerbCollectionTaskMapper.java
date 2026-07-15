@@ -17,9 +17,13 @@ public interface HerbCollectionTaskMapper {
 
     HerbCollectionTaskEntity selectById(@Param("id") Long id);
 
+    HerbCollectionTaskEntity selectByIdForUpdate(@Param("id") Long id);
+
     HerbCollectionTaskVO selectDetailById(@Param("id") Long id);
 
     HerbCollectionTaskEntity selectByTaskCode(@Param("taskCode") String taskCode);
+
+    HerbCollectionTaskEntity selectByTraceCode(@Param("traceCode") String traceCode);
 
     Long countPage(
             @Param("query") HerbCollectionTaskQueryRequest query,

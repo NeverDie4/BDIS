@@ -37,6 +37,10 @@ public class HerbCollectionTaskVO {
 
     private String description;
 
+    private String traceCode;
+
+    private Integer publicVisible;
+
     private String remark;
 
     private Long batchCount;

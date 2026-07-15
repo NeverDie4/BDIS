@@ -36,7 +36,7 @@ export function HomeOverviewGrid() {
         setSummary(nextSummary);
         setMap(nextMap);
         setRecentGrowth(growth);
-        setHerbs(species.slice(0, 4));
+        setHerbs(species.slice(0, 3));
       })
       .catch((error) => {
         if (!isAuthRedirectError(error)) message.error(getApiErrorMessage(error, "首页数据加载失败"));

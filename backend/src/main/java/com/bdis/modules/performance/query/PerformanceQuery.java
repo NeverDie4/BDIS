@@ -1,5 +1,6 @@
 package com.bdis.modules.performance.query;
 
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,9 +18,15 @@ public class PerformanceQuery {
 
     private String performanceType;
 
+    private String performanceLevel;
+
     private String identifyStatus;
 
     private Long standardId;
 
     private String sourceType;
+
+    private LocalDateTime occurredFrom;
+
+    private LocalDateTime occurredTo;
 }

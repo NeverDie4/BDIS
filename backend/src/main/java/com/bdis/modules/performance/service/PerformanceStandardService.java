@@ -12,4 +12,10 @@ public interface PerformanceStandardService {
     PerformanceStandardEntity createStandard(PerformanceStandardRequest request);
 
     PerformanceStandardEntity updateStandard(Long standardId, PerformanceStandardRequest request);
+
+    PerformanceStandardEntity createVersion(Long standardId, PerformanceStandardRequest request);
+
+    PerformanceStandardEntity publishStandard(Long standardId);
+
+    PerformanceStandardEntity disableStandard(Long standardId);
 }

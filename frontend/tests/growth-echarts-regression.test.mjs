@@ -16,6 +16,18 @@ const publicTraceCssSource = readFileSync(
   new URL("../src/app/trace/growth/[traceCode]/page.module.css", import.meta.url),
   "utf8",
 );
+const publicRoutesSource = readFileSync(
+  new URL("../src/config/routes/public.ts", import.meta.url),
+  "utf8",
+);
+const publicTraceArchiveVoSource = readFileSync(
+  new URL(
+    "../../backend/src/main/java/com/bdis/modules/growth/vo/GrowthPublicTraceArchiveVO.java",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const digitalLifeRouteUrl = new URL("../src/app/trace/digital-life", import.meta.url);
 const reviewerScopeMigrationUrl = new URL(
   "../../backend/src/main/resources/db/migration/V20260714_006__grant_growth_reviewer_data_scope.sql",
   import.meta.url,
@@ -322,6 +334,21 @@ test("growth 溯源 API 与右侧二维码卡使用后端真实契约", () => {
   assert.doesNotMatch(pageSource, /fetch\(resolveGrowthResourceUrl\(traceQrCode\.qrCodeUrl\)\)/);
 });
 
+test("管理端可生成并查看任务级哈希证据链", () => {
+  assert.match(dataSource, /export type DigitalLifeIntegrityApi/);
+  assert.match(dataSource, /getDigitalLifeIntegrity/);
+  assert.match(dataSource, /\/herb\/digital-life\/task\/\$\{taskId\}\/integrity\/verify/);
+  assert.match(dataSource, /generateDigitalLifeIntegrity/);
+  assert.match(dataSource, /\/herb\/digital-life\/task\/\$\{taskId\}\/integrity\/generate/);
+  assert.match(pageSource, /const \[integrityData, setIntegrityData\]/);
+  assert.match(pageSource, /async function performIntegrityGeneration/);
+  assert.match(pageSource, /selectedRecord\.taskId/);
+  assert.match(pageSource, /生成证据链/);
+  assert.match(pageSource, /重新生成证据链/);
+  assert.match(pageSource, /关键事件/);
+  assert.match(pageSource, /根哈希/);
+});
+
 test("管理员打开未公开溯源前必须先开启公开查询", () => {
   assert.match(pageSource, /async function openPublicTracePage\(\)/);
   assert.match(pageSource, /okText:\s*"开启并打开"/);
@@ -347,6 +374,33 @@ test("公开生长溯源页提供档案、错误状态、盖章和打印能力",
   assert.match(publicTraceCssSource, /@media print/);
   assert.match(publicTraceCssSource, /@page\s*\{\s*size:\s*A4/);
   assert.match(publicTraceCssSource, /\.noPrint\s*\{\s*display:\s*none\s*!important/);
+});
+
+test("公开生长溯源页统一空值、中文状态和可信档案条件", () => {
+  assert.match(publicTracePageSource, /const EMPTY_VALUE = "—"/);
+  assert.match(publicTracePageSource, /statusLabel\(archive\.latestAuditResult\)/);
+  assert.doesNotMatch(publicTracePageSource, /archive\.latestAuditResult \|\| "-"/);
+  assert.match(publicTracePageSource, /const showTrustedStamp =/);
+  assert.match(publicTracePageSource, /archive\.auditStatus === "approved" && isArchiveComplete\(archive\)/);
+  assert.match(publicTracePageSource, /showTrustedStamp \?/);
+});
+
+test("公开生长溯源页可进入所属任务的完整数字生命档案", () => {
+  assert.match(dataSource, /taskTraceCode\?: string/);
+  assert.match(publicTraceArchiveVoSource, /taskTraceCode/);
+  assert.match(publicTracePageSource, /archive\.taskTraceCode/);
+  assert.match(publicTracePageSource, /\/trace\/digital-life\//);
+  assert.match(publicTracePageSource, /查看完整数字生命档案/);
+  assert.equal(existsSync(digitalLifeRouteUrl), true);
+});
+
+test("公开生长溯源页现场图片区按实际内容自适应", () => {
+  assert.match(publicTracePageSource, /styles\.imageSection/);
+  assert.match(publicTraceCssSource, /\.imageSection\s*\{[^}]*height:\s*fit-content;[^}]*min-height:\s*0;/s);
+});
+
+test("公开生长溯源页面必须注册为免登录路由", () => {
+  assert.match(publicRoutesSource, /path:\s*"\/trace\/growth\/\[traceCode\]"[\s\S]*public:\s*true/);
 });
 
 test("growth 筛选任务框不越界且审核操作栏位于详情末尾", () => {

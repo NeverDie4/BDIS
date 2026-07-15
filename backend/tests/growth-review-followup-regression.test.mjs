@@ -81,6 +81,26 @@ test("docker deployment requires an externally reachable public Web base URL", (
   );
 });
 
+test("anonymous digital life archive only exposes public approved records and images", () => {
+  const service = read(
+    "backend/src/main/java/com/bdis/modules/growth/service/impl/HerbDigitalLifeArchiveServiceImpl.java",
+  );
+  const imageMapper = read(
+    "backend/src/main/resources/mapper/herb/HerbImageMapper.xml",
+  );
+
+  assert.match(service, /private boolean isPublicApproved\(GrowthRecordVO record\)/);
+  assert.match(service, /APPROVED\.equals\(record\.getReviewStatus\(\)\)/);
+  assert.match(
+    service,
+    /Integer\.valueOf\(1\)\.equals\(record\.getPublicVisible\(\)\)/,
+  );
+  assert.match(
+    imageMapper,
+    /gr\.review_status\s*=\s*'approved'[\s\S]*gr\.public_visible\s*=\s*1/i,
+  );
+});
+
 test("collection task creation requires a scoped collector selection", () => {
   const controller = read(
     "backend/src/main/java/com/bdis/modules/collection/controller/HerbCollectionTaskController.java",

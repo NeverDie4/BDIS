@@ -1,45 +1,66 @@
 import {
-  CheckCircleOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
   PlusOutlined,
   ReloadOutlined,
-  StopOutlined,
-  TableOutlined,
 } from "@ant-design/icons";
 import { Button, Space } from "antd";
 import styles from "./herbs.module.css";
 
-export function HerbActionToolbar() {
+type HerbActionToolbarProps = {
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  selectedCount?: number;
+  createLabel?: string;
+  onCreate: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onExport: () => void;
+  onRefresh: () => void;
+};
+
+export function HerbActionToolbar({
+  canCreate = false,
+  canEdit = false,
+  canDelete = false,
+  selectedCount = 0,
+  createLabel = "新增",
+  onCreate,
+  onEdit,
+  onDelete,
+  onExport,
+  onRefresh,
+}: HerbActionToolbarProps) {
+  const hasSingleSelection = selectedCount === 1;
+  const hasSelection = selectedCount > 0;
+
   return (
     <div className={styles.toolbar}>
       <Space className={styles.toolbarLeft} size={8} wrap>
-        <Button disabled icon={<PlusOutlined />} title="功能开发中" type="primary">
-          新增
-        </Button>
-        <Button disabled icon={<EditOutlined />} onClick={() => undefined}>
-          编辑
-        </Button>
-        <Button disabled icon={<CheckCircleOutlined />} onClick={() => undefined}>
-          启用
-        </Button>
-        <Button disabled icon={<StopOutlined />} onClick={() => undefined}>
-          停用
-        </Button>
-        <Button danger disabled icon={<DeleteOutlined />} onClick={() => undefined}>
-          删除
-        </Button>
-        <Button icon={<DownloadOutlined />} onClick={() => undefined}>
+        {canCreate ? (
+          <Button icon={<PlusOutlined />} onClick={onCreate} type="primary">
+            {createLabel}
+          </Button>
+        ) : null}
+        {canEdit ? (
+          <Button disabled={!hasSingleSelection} icon={<EditOutlined />} onClick={onEdit}>
+            编辑
+          </Button>
+        ) : null}
+        {canDelete ? (
+          <Button danger disabled={!hasSelection} icon={<DeleteOutlined />} onClick={onDelete}>
+            删除
+          </Button>
+        ) : null}
+        <Button icon={<DownloadOutlined />} onClick={onExport}>
           导出
         </Button>
       </Space>
       <Space className={styles.toolbarRight} size={8} wrap>
-        <Button icon={<ReloadOutlined />} onClick={() => undefined}>
+        <Button icon={<ReloadOutlined />} onClick={onRefresh}>
           刷新
-        </Button>
-        <Button icon={<TableOutlined />} onClick={() => undefined}>
-          表格视图
         </Button>
       </Space>
     </div>

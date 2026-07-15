@@ -3,6 +3,9 @@ server:
   servlet:
     context-path: /api
 
+cxf:
+  path: /services
+
 spring:
   application:
     name: bdis-api
@@ -57,6 +60,11 @@ bdis:
     storage-path: ${BDIS_FILE_STORAGE_PATH:./storage}
   trace:
     public-web-base-url: ${BDIS_PUBLIC_WEB_BASE_URL:http://localhost:3000}
+  soap:
+    mode: ${BDIS_SOAP_MODE:disabled}
+    campus-endpoint: ${BDIS_SOAP_CAMPUS_ENDPOINT:http://localhost:${server.port}/api/services/campus-growth}
+    connect-timeout-ms: ${BDIS_SOAP_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${BDIS_SOAP_READ_TIMEOUT_MS:5000}
 
 file:
   atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}

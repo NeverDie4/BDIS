@@ -2,7 +2,14 @@ import type { CurrentUser } from "@/types/api";
 
 export type AuthStatus = "unknown" | "anonymous" | "authenticated";
 
-export type RouteOwner = "platform" | "auth" | "herb" | "teaching" | "evaluation" | "mobile";
+export type RouteOwner =
+  | "platform"
+  | "auth"
+  | "herb"
+  | "teaching"
+  | "evaluation"
+  | "performance"
+  | "mobile";
 
 export type RouteMeta = {
   path: string;

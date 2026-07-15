@@ -47,4 +47,16 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getCode())
                 .isEqualTo(ResultCodeEnum.RESOURCE_CONFLICT.getCode());
     }
+
+    @Test
+    void illegalArgumentShouldReturnValidationErrorMessage() {
+        ResponseEntity<Result<Void>> response =
+                exceptionHandler.handleIllegalArgument(new IllegalArgumentException("来源类型和来源 ID 必须同时提供"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode())
+                .isEqualTo(ResultCodeEnum.VALIDATION_ERROR.getCode());
+        assertThat(response.getBody().getMessage()).isEqualTo("来源类型和来源 ID 必须同时提供");
+    }
 }
