@@ -3,7 +3,6 @@ import { CourseDetailPanel } from "./CourseDetailPanel";
 import { CourseManagementPanel } from "./CourseManagementPanel";
 import { ResearchProjectPanel } from "./ResearchProjectPanel";
 import { ResearchDetailPanel } from "./ResearchDetailPanel";
-import { TrainingManagementPanel } from "./TrainingManagementPanel";
 import { TrainingOverviewPanel } from "./TrainingOverviewPanel";
 import type { CourseRecord, ResearchRecord, TeachingTabKey } from "./types";
 import styles from "./teaching.module.css";
@@ -31,7 +30,6 @@ type TeachingWorkspaceProps = {
   canResearchAdd?: boolean;
   canResearchEdit?: boolean;
   canResearchStatus?: boolean;
-  canTrainingManage?: boolean;
   currentUserId?: number;
   canManageAll?: boolean;
   selectedCourse: CourseRecord | null;
@@ -93,7 +91,6 @@ export function TeachingWorkspace({
   canResearchAdd,
   canResearchEdit,
   canResearchStatus,
-  canTrainingManage,
   currentUserId,
   canManageAll,
   onAddResearch,
@@ -146,10 +143,10 @@ export function TeachingWorkspace({
               onReload={onReloadResearch}
             />
           ) : activeTab === "training" ? (
-            <TrainingManagementPanel canManage={canTrainingManage} currentUserId={currentUserId} />
+            <TrainingOverviewPanel canManage={canManageAll} currentUserId={currentUserId} />
           ) : null}
         </div>
-        {activeTab !== "training" ? <TrainingOverviewPanel /> : null}
+        {activeTab !== "training" ? <TrainingOverviewPanel canManage={canManageAll} currentUserId={currentUserId} /> : null}
       </section>
 
       {selectedCourse ? (
@@ -163,8 +160,6 @@ export function TeachingWorkspace({
           canRecordArchive={canRecordArchive}
           canRecordDelete={canRecordDelete}
           canGrade={canGrade}
-          canEnroll={canEnroll && selectedCourse?.status === "published"}
-          onEnroll={() => selectedCourse && onEnrollCourse?.(selectedCourse)}
         />
       ) : null}
       {selectedResearch ? <ResearchDetailPanel project={selectedResearch} canEdit={canResearchEdit} onEdit={onEditResearch} onClose={onCloseResearch} /> : null}

@@ -221,7 +221,7 @@ export function CourseTable({
     { title: "学科方向", dataIndex: "subject", key: "subject", ellipsis: true, width: 110 },
     { title: "负责人", dataIndex: "teacher", key: "teacher", width: 90 },
     { title: "发布人", dataIndex: "publisher", key: "publisher", width: 90, render: (value: string) => value || "—" },
-    ...(viewMode === "mine" ? [{
+    ...(canEnroll && viewMode === "mine" ? [{
       title: "我的成绩",
       dataIndex: "score",
       key: "score",

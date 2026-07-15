@@ -8,6 +8,7 @@ import lombok.Data;
 public class TrainingRecordListVO {
     private Long id;
     private Long planId;
+    private String attendanceNo;
     private String planNo;
     private String planName;
     private Long userId;

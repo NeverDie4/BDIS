@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.GlobalExceptionHandler;
+import com.bdis.modules.course.service.CourseLearningProgressService;
 import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.vo.CourseDetailVO;
 import com.bdis.modules.course.vo.CourseListVO;
@@ -32,13 +33,18 @@ class CourseControllerTest {
 
     @Mock private CourseService courseService;
 
+    @Mock private CourseLearningProgressService courseLearningProgressService;
+
     @Mock private AuthorizationService authorizationService;
 
     @BeforeEach
     void setUp() {
         mockMvc =
                 MockMvcBuilders.standaloneSetup(
-                                new CourseController(courseService, authorizationService))
+                                new CourseController(
+                                        courseService,
+                                        authorizationService,
+                                        courseLearningProgressService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
     }

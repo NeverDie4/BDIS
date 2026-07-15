@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/request";
+import { apiDelete, apiGet, apiPost, apiPut, request } from "@/lib/request";
 import type { PageResult } from "@/types/api";
 
 export type TrainingPlanStatus = "draft" | "published" | "closed";
@@ -25,6 +25,20 @@ export type TrainingPlan = {
   updatedAt?: string;
 };
 
+export type TrainingPlanItem = {
+  id: number;
+  planId: number;
+  attendanceNo?: string;
+  itemType: string;
+  itemTitle: string;
+  description?: string;
+  courseId?: number;
+  projectId?: number;
+  baseId?: number;
+  speciesId?: number;
+  sortOrder?: number;
+};
+
 export type TrainingMaterial = {
   id: number;
   materialNo: string;
@@ -48,6 +62,7 @@ export type TrainingPlanMaterial = TrainingMaterial & {
 export type TrainingRecord = {
   id: number;
   planId: number;
+  planName?: string;
   userId: number;
   userName?: string;
   realName?: string;
@@ -58,12 +73,15 @@ export type TrainingRecord = {
   score?: number;
   startedAt?: string;
   completedAt?: string;
+  createdAt?: string;
   resultComment?: string;
 };
 
 export type TrainingFeedback = {
   id: number;
   trainingRecordId: number;
+  planId?: number;
+  planName?: string;
   userId: number;
   userName?: string;
   rating: number;
@@ -112,6 +130,14 @@ export function listTrainingPlans(params?: Record<string, unknown>) {
 
 export function getTrainingPlan(id: number) {
   return apiGet<TrainingPlan & { materials: TrainingPlanMaterial[] }>(`/training-plans/${id}`);
+}
+
+export function listTrainingPlanItems(planId: number) {
+  return apiGet<TrainingPlanItem[]>(`/training-plans/${planId}/items`);
+}
+
+export function createTrainingPlanItem(planId: number, payload: Omit<TrainingPlanItem, "id" | "planId">) {
+  return apiPost<number>(`/training-plans/${planId}/items`, payload);
 }
 
 export function createTrainingPlan(payload: TrainingPlanPayload) {
@@ -166,11 +192,25 @@ export function listTrainingRecords(params?: Record<string, unknown>) {
   return apiGet<PageResult<TrainingRecord>>("/training-records", { pageNo: 1, pageSize: 100, ...params });
 }
 
+export async function exportTrainingRecords(params?: Record<string, unknown>) {
+  const response = await request.get<Blob>("/training-records/export", { params, responseType: "blob" });
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "training-attendance.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function addTrainingParticipants(planId: number, userIds: number[]) {
   return apiPost<{ successCount: number; duplicateCount: number; failureCount: number }>(
     `/training-plans/${planId}/participants/batch`,
     { userIds },
   );
+}
+
+export function joinTrainingPlan(planId: number) {
+  return apiPost<TrainingRecord>(`/training-plans/${planId}/participants/me`, {});
 }
 
 export function updateTrainingRecord(id: number, payload: Partial<TrainingRecord>) {

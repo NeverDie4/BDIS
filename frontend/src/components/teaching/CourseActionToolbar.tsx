@@ -34,6 +34,7 @@ export function CourseActionToolbar({
   canPublish,
   canOffline,
   canDelete,
+  canEnroll,
   onAdd,
   onEdit,
   onPublish,
@@ -46,13 +47,13 @@ export function CourseActionToolbar({
     <div className={styles.sectionToolbar}>
       <strong>实验课程管理</strong>
       <Space size={8} wrap>
-        <Button
+        {canEnroll ? <Button
           icon={<BookOutlined />}
           type={viewMode === "mine" ? "primary" : "default"}
           onClick={() => onViewModeChange?.(viewMode === "mine" ? "all" : "mine")}
         >
           我的课程
-        </Button>
+        </Button> : null}
         <Button disabled={!canAdd} icon={<PlusOutlined />} type="primary" onClick={onAdd}>
           新增课程
         </Button>

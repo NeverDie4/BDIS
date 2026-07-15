@@ -14,6 +14,7 @@ import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
+import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
@@ -142,6 +143,34 @@ class ResearchProjectServiceTest {
         verify(projectMapper).insert(any(ResearchProjectEntity.class));
         verify(memberMapper).insert(any(ProjectMemberEntity.class));
         verify(auditLogService).record(any());
+    }
+
+    @Test
+    void createProjectPersistsSelectedHerbSpecies() {
+        UserEntity leader = user(7L, "teacher");
+        HerbEntity herb = new HerbEntity();
+        herb.setId(3L);
+        herb.setStatus(1);
+        herb.setIsDeleted(0);
+        when(projectMapper.selectByProjectNoIncludingDeleted("P-002")).thenReturn(null);
+        when(userMapper.selectById(7L)).thenReturn(leader);
+        when(herbSpeciesMapper.selectActiveById(3L)).thenReturn(herb);
+        when(projectMapper.insert(any(ResearchProjectEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            invocation.getArgument(0, ResearchProjectEntity.class).setId(101L);
+                            return 1;
+                        });
+        when(memberMapper.insert(any(ProjectMemberEntity.class))).thenReturn(1);
+
+        ResearchProjectCreateRequest request = createRequest("P-002", 7L);
+        request.setSpeciesId(3L);
+        service.create(request);
+
+        ArgumentCaptor<ResearchProjectEntity> captor =
+                ArgumentCaptor.forClass(ResearchProjectEntity.class);
+        verify(projectMapper).insert(captor.capture());
+        assertThat(captor.getValue().getSpeciesId()).isEqualTo(3L);
     }
 
     @Test

@@ -12,12 +12,16 @@ import com.bdis.modules.training.vo.TrainingRecordListVO;
 public interface TrainingRecordService {
     PageResult<TrainingRecordListVO> page(TrainingRecordQuery query);
 
+    String exportCsv(TrainingRecordQuery query);
+
     TrainingRecordDetailVO getDetail(Long id);
 
     Long create(TrainingRecordCreateRequest request);
 
     TrainingParticipantBatchResultVO batchCreate(
             Long planId, TrainingParticipantBatchRequest request);
+
+    TrainingRecordDetailVO join(Long planId);
 
     void update(Long id, TrainingRecordUpdateRequest request);
 

@@ -14,6 +14,7 @@ type TrainingSummaryCardProps = {
   description: string;
   metrics: TrainingMetric[];
   actionText?: string;
+  onClick?: () => void;
 };
 
 export function TrainingSummaryCard({
@@ -21,6 +22,7 @@ export function TrainingSummaryCard({
   title,
   description,
   metrics,
+  onClick,
   actionText = "查看全部",
 }: TrainingSummaryCardProps) {
   return (
@@ -38,7 +40,7 @@ export function TrainingSummaryCard({
           </div>
         ))}
       </div>
-      <Button className={styles.trainingAction} type="link" onClick={() => undefined}>
+      <Button className={styles.trainingAction} type="link" onClick={onClick}>
         {actionText} &gt;
       </Button>
     </article>

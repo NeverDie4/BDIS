@@ -18,6 +18,8 @@ public class TrainingRecordEntity extends BasicEntity {
 
     private Long planId;
 
+    private String attendanceNo;
+
     private BigDecimal progress;
 
     private String trainingStatus;

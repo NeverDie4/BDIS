@@ -93,9 +93,17 @@ export function TeachingPageClient() {
   }, [reloadCourses]);
 
   useEffect(() => {
-    if (!canEnrollCourse) return;
-    void listMyCourseEnrollments().then((items) => setEnrolledCourseIds(items.map((item) => String(item.courseId)))).catch(() => undefined);
-  }, [canEnrollCourse]);
+    if (!canEnrollCourse) {
+      setCourseViewMode("all");
+      return;
+    }
+    void listMyCourseEnrollments()
+      .then((items) => setEnrolledCourseIds(items.map((item) => String(item.courseId))))
+      .catch((error) => {
+        setEnrolledCourseIds([]);
+        message.error(getApiErrorMessage(error, "我的课程加载失败"));
+      });
+  }, [canEnrollCourse, message]);
 
   const reloadResearch = useCallback(async () => {
     if (activeTab !== "research" || !hasPermission("research:project:list")) return;
@@ -257,7 +265,6 @@ export function TeachingPageClient() {
         canResearchAdd={hasPermission("research:project:add")}
         canResearchEdit={hasPermission("research:project:update")}
         canResearchStatus={hasPermission("research:project:status")}
-        canTrainingManage={hasPermission("edu:training-plan:add")}
         currentUserId={user?.userId}
         canManageAll={user?.roleCodes.some((role) => role.toUpperCase() === "ADMIN") === true}
         onAddResearch={() => { setResearchEditorProject(null); setResearchEditorOpen(true); }}

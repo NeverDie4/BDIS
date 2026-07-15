@@ -6,6 +6,7 @@ import com.bdis.modules.permission.service.AuthorizationService;
 import com.bdis.modules.training.request.TrainingParticipantBatchRequest;
 import com.bdis.modules.training.service.TrainingRecordService;
 import com.bdis.modules.training.vo.TrainingParticipantBatchResultVO;
+import com.bdis.modules.training.vo.TrainingRecordDetailVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
@@ -37,5 +38,14 @@ public class TrainingParticipantController {
         }
         authorizationService.requirePermission("edu:training-record:add");
         return Result.success(recordService.batchCreate(planId, request));
+    }
+
+    @PostMapping("/me")
+    public Result<TrainingRecordDetailVO> join(@PathVariable @Positive Long planId) {
+        if (planId == null || planId <= 0) {
+            throw new BusinessException("Training plan id must be positive");
+        }
+        authorizationService.requirePermission("edu:training-record:join");
+        return Result.success(recordService.join(planId));
     }
 }

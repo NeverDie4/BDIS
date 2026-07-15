@@ -14,7 +14,7 @@ import java.util.zip.CRC32;
 
 class DigitalLifeArchiveMigrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "20260715_006";
+    private static final String LATEST_MIGRATION_VERSION = "20260715_029";
     private static final Pattern VERSION_PATTERN = Pattern.compile("^V(\\d{8}_\\d{3})__.+\\.sql$");
 
     @Test

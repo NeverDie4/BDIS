@@ -11,7 +11,7 @@ import {
   PlusOutlined,
   RollbackOutlined,
 } from "@ant-design/icons";
-import { App, Button, Empty, Input, InputNumber, Modal, Tag, Tabs } from "antd";
+import { App, Button, Empty, Input, InputNumber, Modal, Select, Tag, Tabs } from "antd";
 import type { TabsProps } from "antd";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -41,8 +41,6 @@ type CourseDetailPanelProps = {
   canRecordArchive?: boolean;
   canRecordDelete?: boolean;
   canGrade?: boolean;
-  canEnroll?: boolean;
-  onEnroll?: () => void;
 };
 
 export function CourseDetailPanel({
@@ -55,8 +53,6 @@ export function CourseDetailPanel({
   canRecordArchive,
   canRecordDelete,
   canGrade,
-  canEnroll,
-  onEnroll,
 }: CourseDetailPanelProps) {
   const { message, modal } = App.useApp();
   const [records, setRecords] = useState<ExperimentRecordListApi[]>([]);
@@ -64,6 +60,7 @@ export function CourseDetailPanel({
   const [recordEditorOpen, setRecordEditorOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ExperimentRecordDetailApi | null>(null);
   const [gradingRecord, setGradingRecord] = useState<ExperimentRecordListApi | null>(null);
+  const [gradingRecordId, setGradingRecordId] = useState<number | null>(null);
   const [gradeValue, setGradeValue] = useState<number | null>(null);
   const [gradeComment, setGradeComment] = useState("");
 
@@ -153,6 +150,13 @@ export function CourseDetailPanel({
     archived: "已归档",
   };
 
+  function openGradingRecord(record: ExperimentRecordListApi) {
+    setGradingRecord(record);
+    setGradingRecordId(record.id);
+    setGradeValue(record.score ?? null);
+    setGradeComment(record.gradeComment ?? "");
+  }
+
   const detailItems: TabsProps["items"] = [
     {
       key: "basic",
@@ -208,13 +212,13 @@ export function CourseDetailPanel({
 
   return (
     <aside className={styles.detailPanel} aria-label="课程详情">
-      <div className={styles.detailHeader}><h2>课程详情</h2><div className={styles.detailHeaderActions}><Button icon={<EyeOutlined />} size="small">学生预览</Button>{canGrade ? <Button size="small" onClick={() => { const record = records.find((item) => item.archiveStatus === "submitted"); if (record) { setGradingRecord(record); setGradeValue(record.score ?? null); setGradeComment(record.gradeComment ?? ""); } else message.info("暂无待批阅的实验报告"); }}>批阅报告</Button> : null}<Button aria-label="关闭课程详情" icon={<CloseOutlined />} size="small" type="text" onClick={onClose} /></div></div>
+      <div className={styles.detailHeader}><h2>课程详情</h2><div className={styles.detailHeaderActions}><Button icon={<EyeOutlined />} size="small">学生预览</Button>{canGrade ? <Button size="small" onClick={() => { const record = records.find((item) => item.archiveStatus === "submitted"); if (record) { openGradingRecord(record); } else message.info("暂无待批阅的实验报告"); }}>批阅报告</Button> : null}<Button aria-label="关闭课程详情" icon={<CloseOutlined />} size="small" type="text" onClick={onClose} /></div></div>
       <section className={styles.courseSummary}><Image alt={`${course.courseName}课程封面`} className={styles.detailCover} height={78} src={course.thumbnail} width={104} /><div className={styles.courseSummaryBody}><div className={styles.courseSummaryTitle}><h3>{course.courseName}</h3><TeachingStatusTag status={course.status} /></div><dl className={styles.courseSummaryMeta}><div><dt>课程编号</dt><dd>{course.courseNo}</dd></div><div><dt>学科方向</dt><dd>{course.subject}</dd></div><div><dt>负责人</dt><dd>{course.teacher}</dd></div><div><dt>更新时间</dt><dd>{course.updatedAt}</dd></div></dl></div></section>
-      {canEnroll && course.status === "published" ? <div style={{ padding: "8px 16px" }}><Button type="primary" onClick={onEnroll}>加入我的课程</Button></div> : null}
       <Tabs className={styles.detailTabs} items={detailItems} size="small" tabBarGutter={16} />
       <ExperimentRecordEditorModal open={recordEditorOpen} courseId={Number(course.id)} record={editingRecord} onCancel={() => setRecordEditorOpen(false)} onSaved={async () => { setRecordEditorOpen(false); await reloadRecords(); }} />
       <Modal open={Boolean(gradingRecord)} title="批阅实验报告" okText="保存评分" cancelText="取消" onCancel={() => setGradingRecord(null)} onOk={async () => { if (!gradingRecord || gradeValue == null) return; try { const detail = await getExperimentRecord(gradingRecord.id); await gradeExperimentRecord(gradingRecord.id, { version: detail.version, score: gradeValue, gradeComment: gradeComment.trim() || undefined }); message.success("评分已保存"); setGradingRecord(null); await reloadRecords(); } catch (error) { message.error(getApiErrorMessage(error, "评分保存失败")); } }}>
         <p>{gradingRecord?.experimentTitle} · {gradingRecord?.recorderName ?? "学生"}</p>
+        <Select value={gradingRecordId ?? undefined} placeholder="选择要批阅的学生报告" style={{ width: "100%", marginBottom: 12 }} options={records.filter((record) => record.archiveStatus === "submitted").map((record) => ({ value: record.id, label: `${record.experimentTitle} · ${record.recorderName ?? "学生"}` }))} onChange={(value) => { const record = records.find((item) => item.id === value); if (record) openGradingRecord(record); }} />
         <InputNumber min={0} max={100} precision={1} value={gradeValue} onChange={(value) => setGradeValue(value)} addonAfter="分" style={{ width: "100%" }} />
         <Input.TextArea value={gradeComment} onChange={(event) => setGradeComment(event.target.value)} maxLength={1000} rows={4} placeholder="填写批阅意见（可选）" style={{ marginTop: 12 }} />
       </Modal>

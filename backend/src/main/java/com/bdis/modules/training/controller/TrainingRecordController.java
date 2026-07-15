@@ -12,6 +12,8 @@ import com.bdis.modules.training.vo.TrainingRecordDetailVO;
 import com.bdis.modules.training.vo.TrainingRecordListVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +43,15 @@ public class TrainingRecordController {
             @Valid @ModelAttribute TrainingRecordQuery query) {
         authorizationService.requirePermission("edu:training-record:list");
         return Result.success(recordService.page(query));
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv;charset=UTF-8")
+    public void export(@Valid @ModelAttribute TrainingRecordQuery query, HttpServletResponse response)
+            throws IOException {
+        authorizationService.requirePermission("edu:training-record:list");
+        response.setContentType("text/csv;charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=training-attendance.csv");
+        response.getWriter().write(recordService.exportCsv(query));
     }
 
     @GetMapping("/{id}")
