@@ -8,10 +8,15 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 public interface NotificationMapper extends BaseMapper<NotificationEntity> {
-    @Select("SELECT * FROM sys_notification WHERE recipient_id=#{userId} ORDER BY created_at DESC, id DESC LIMIT #{limit}")
+    @Select(
+            "SELECT * FROM sys_notification WHERE recipient_id=#{userId} ORDER BY created_at DESC, id DESC LIMIT #{limit}")
     List<NotificationEntity> selectMine(@Param("userId") Long userId, @Param("limit") int limit);
-    @Update("UPDATE sys_notification SET read_status=1, read_at=NOW(), updated_at=NOW(), version=version+1 WHERE id=#{id} AND recipient_id=#{userId} AND read_status=0")
+
+    @Update(
+            "UPDATE sys_notification SET read_status=1, read_at=NOW(), updated_at=NOW(), version=version+1 WHERE id=#{id} AND recipient_id=#{userId} AND read_status=0")
     int markRead(@Param("id") Long id, @Param("userId") Long userId);
-    @Update("UPDATE sys_notification SET read_status=1, read_at=NOW(), updated_at=NOW(), version=version+1 WHERE recipient_id=#{userId} AND read_status=0")
+
+    @Update(
+            "UPDATE sys_notification SET read_status=1, read_at=NOW(), updated_at=NOW(), version=version+1 WHERE recipient_id=#{userId} AND read_status=0")
     int markAllRead(@Param("userId") Long userId);
 }

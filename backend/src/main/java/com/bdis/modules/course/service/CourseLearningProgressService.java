@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface CourseLearningProgressService {
     List<CourseLearningProgressVO> list(Long courseId);
+
     CourseLearningProgressVO save(Long courseId, CourseLearningProgressRequest request);
+
     CourseLearningSummaryVO summary(Long courseId);
 }

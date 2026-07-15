@@ -30,18 +30,56 @@ class TrainingRecordItemProgressServiceTest {
     @Mock private TrainingRecordItemMapper progressMapper;
     private TrainingRecordItemProgressService service;
 
-    @BeforeEach void setUp() { service = new TrainingRecordItemProgressServiceImpl(recordMapper, itemMapper, progressMapper); }
-    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+    @BeforeEach
+    void setUp() {
+        service =
+                new TrainingRecordItemProgressServiceImpl(recordMapper, itemMapper, progressMapper);
+    }
+
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void participantCanCompleteAssignedTrainingItem() {
-        CurrentUser user = new CurrentUser(8L, "student", "Student", null, null, Set.of("STUDENT"), Set.of(), Set.of());
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
-        TrainingRecordEntity record = new TrainingRecordEntity(); record.setId(10L); record.setUserId(8L); record.setPlanId(20L); record.setProgress(BigDecimal.ZERO);
-        TrainingPlanItemEntity item = new TrainingPlanItemEntity(); item.setId(30L); item.setPlanId(20L); item.setIsDeleted(0); item.setStatus(1);
-        when(recordMapper.selectById(10L)).thenReturn(record); when(itemMapper.selectActiveById(30L)).thenReturn(item);
-        when(progressMapper.selectActive(10L, 30L)).thenReturn(null); when(progressMapper.insert(any(com.bdis.modules.training.entity.TrainingRecordItemEntity.class))).thenAnswer(invocation -> { ((com.bdis.modules.training.entity.TrainingRecordItemEntity) invocation.getArgument(0)).setId(40L); return 1; });
-        TrainingRecordItemProgressRequest request = new TrainingRecordItemProgressRequest(); request.setProgress(BigDecimal.valueOf(100)); request.setCompleted(true);
+        CurrentUser user =
+                new CurrentUser(
+                        8L,
+                        "student",
+                        "Student",
+                        null,
+                        null,
+                        Set.of("STUDENT"),
+                        Set.of(),
+                        Set.of());
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
+        TrainingRecordEntity record = new TrainingRecordEntity();
+        record.setId(10L);
+        record.setUserId(8L);
+        record.setPlanId(20L);
+        record.setProgress(BigDecimal.ZERO);
+        TrainingPlanItemEntity item = new TrainingPlanItemEntity();
+        item.setId(30L);
+        item.setPlanId(20L);
+        item.setIsDeleted(0);
+        item.setStatus(1);
+        when(recordMapper.selectById(10L)).thenReturn(record);
+        when(itemMapper.selectActiveById(30L)).thenReturn(item);
+        when(progressMapper.selectActive(10L, 30L)).thenReturn(null);
+        when(progressMapper.insert(
+                        any(com.bdis.modules.training.entity.TrainingRecordItemEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            ((com.bdis.modules.training.entity.TrainingRecordItemEntity)
+                                            invocation.getArgument(0))
+                                    .setId(40L);
+                            return 1;
+                        });
+        TrainingRecordItemProgressRequest request = new TrainingRecordItemProgressRequest();
+        request.setProgress(BigDecimal.valueOf(100));
+        request.setCompleted(true);
         assertThat(service.save(10L, 30L, request).getId()).isEqualTo(40L);
     }
 }

@@ -10,9 +10,9 @@ import com.bdis.modules.training.request.TrainingRecordUpdateRequest;
 import com.bdis.modules.training.service.TrainingRecordService;
 import com.bdis.modules.training.vo.TrainingRecordDetailVO;
 import com.bdis.modules.training.vo.TrainingRecordListVO;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,7 +46,8 @@ public class TrainingRecordController {
     }
 
     @GetMapping(value = "/export", produces = "text/csv;charset=UTF-8")
-    public void export(@Valid @ModelAttribute TrainingRecordQuery query, HttpServletResponse response)
+    public void export(
+            @Valid @ModelAttribute TrainingRecordQuery query, HttpServletResponse response)
             throws IOException {
         authorizationService.requirePermission("edu:training-record:list");
         response.setContentType("text/csv;charset=UTF-8");

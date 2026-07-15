@@ -23,9 +23,9 @@ import com.bdis.modules.research.mapper.ResearchProjectReviewMapper;
 import com.bdis.modules.research.query.ResearchProjectQuery;
 import com.bdis.modules.research.request.ResearchProjectCreateRequest;
 import com.bdis.modules.research.request.ResearchProjectLeaderChangeRequest;
+import com.bdis.modules.research.request.ResearchProjectReviewRequest;
 import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
-import com.bdis.modules.research.request.ResearchProjectReviewRequest;
 import com.bdis.modules.research.service.ProjectMaterialService;
 import com.bdis.modules.research.service.ProjectMemberService;
 import com.bdis.modules.research.service.ResearchAchievementService;
@@ -164,7 +164,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
                                             return role == null ? null : role.toLowerCase();
                                         },
                                         (left, right) -> left));
-        return userMapper.selectList(
+        return userMapper
+                .selectList(
                         new LambdaQueryWrapper<UserEntity>()
                                 .eq(UserEntity::getStatus, 1)
                                 .eq(UserEntity::getIsDeleted, 0)
@@ -387,12 +388,18 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             validateBeforeComplete(project);
         }
         project.setProjectStatus(target);
-        project.setReviewStatus(ResearchProjectStatus.ONGOING.equals(target) ? "approved" :
-                ResearchProjectStatus.COMPLETED.equals(target) ? "archived" : project.getReviewStatus());
+        project.setReviewStatus(
+                ResearchProjectStatus.ONGOING.equals(target)
+                        ? "approved"
+                        : ResearchProjectStatus.COMPLETED.equals(target)
+                                ? "archived"
+                                : project.getReviewStatus());
         project.setReviewComment(request.getReason());
         project.setReviewedBy(CurrentUserUtils.currentUserId());
         project.setReviewedAt(LocalDateTime.now());
-        if (ResearchProjectStatus.COMPLETED.equals(target)) project.setArchivedAt(LocalDateTime.now());
+        if (ResearchProjectStatus.COMPLETED.equals(target)) {
+            project.setArchivedAt(LocalDateTime.now());
+        }
         project.setUpdatedAt(LocalDateTime.now());
         project.setUpdatedBy(CurrentUserUtils.currentUserId());
         if (projectMapper.updateById(project) == 0) {
@@ -401,49 +408,81 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         recordAudit("CHANGE_STATUS", id);
     }
 
-    @Override @Transactional
+    @Override
+    @Transactional
     public void submitReview(Long id) {
         ResearchProjectEntity project = requireActive(id);
         requireProjectAccess(project, true);
-        if (!"draft".equals(project.getReviewStatus()) && !"rejected".equals(project.getReviewStatus())) {
+        if (!"draft".equals(project.getReviewStatus())
+                && !"rejected".equals(project.getReviewStatus())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Project is not ready for review");
         }
         writeReview(project, "submit", "pending", null);
     }
 
-    @Override @Transactional
+    @Override
+    @Transactional
     public void review(Long id, ResearchProjectReviewRequest request) {
         ResearchProjectEntity project = requireActive(id);
-        if (!isAdmin() && !CurrentUserUtils.currentRoleCodes().stream().anyMatch(r -> "REVIEWER".equalsIgnoreCase(r))) {
+        if (!isAdmin()
+                && !CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(r -> "REVIEWER".equalsIgnoreCase(r))) {
             throw new ForbiddenException("Only reviewer or administrator can review project");
         }
-        if (request == null || !Set.of("approve", "reject", "archive").contains(request.getAction())) {
+        if (request == null
+                || !Set.of("approve", "reject", "archive").contains(request.getAction())) {
             throw new BusinessException("Invalid project review action");
         }
-        String target = "approve".equals(request.getAction()) ? "approved" : "reject".equals(request.getAction()) ? "rejected" : "archived";
+        String target =
+                "approve".equals(request.getAction())
+                        ? "approved"
+                        : "reject".equals(request.getAction()) ? "rejected" : "archived";
         writeReview(project, request.getAction(), target, request.getComment());
     }
 
-    @Override @Transactional(readOnly = true)
+    @Override
+    @Transactional(readOnly = true)
     public List<ResearchProjectReviewEntity> reviewHistory(Long id) {
-        requireActive(id);
-        if (reviewMapper == null) return List.of();
+        ResearchProjectEntity project = requireActive(id);
+        requireProjectAccess(project, false);
+        if (reviewMapper == null) {
+            return List.of();
+        }
         return reviewMapper.selectByProjectId(id);
     }
 
-    private void writeReview(ResearchProjectEntity project, String action, String target, String comment) {
+    private void writeReview(
+            ResearchProjectEntity project, String action, String target, String comment) {
         Long operator = CurrentUserUtils.currentUserId();
         String from = project.getReviewStatus();
         project.setReviewStatus(target);
         project.setReviewComment(comment);
-        project.setReviewedBy(operator); project.setReviewedAt(LocalDateTime.now());
-        if ("approved".equals(target)) project.setProjectStatus(ResearchProjectStatus.ONGOING);
-        if ("archived".equals(target)) { project.setProjectStatus(ResearchProjectStatus.COMPLETED); project.setArchivedAt(LocalDateTime.now()); }
-        project.setUpdatedAt(LocalDateTime.now()); project.setUpdatedBy(operator);
-        if (projectMapper.updateById(project) == 0) throw new BusinessException(ResultCodeEnum.CONFLICT, "Project review conflict");
+        project.setReviewedBy(operator);
+        project.setReviewedAt(LocalDateTime.now());
+        if ("approved".equals(target)) {
+            project.setProjectStatus(ResearchProjectStatus.ONGOING);
+        }
+        if ("archived".equals(target)) {
+            project.setProjectStatus(ResearchProjectStatus.COMPLETED);
+            project.setArchivedAt(LocalDateTime.now());
+        }
+        project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(operator);
+        if (projectMapper.updateById(project) == 0) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project review conflict");
+        }
         if (reviewMapper != null) {
             ResearchProjectReviewEntity history = new ResearchProjectReviewEntity();
-            history.setProjectId(project.getId()); history.setReviewAction(action); history.setFromStatus(from); history.setToStatus(target); history.setReviewComment(comment); history.setOperatorId(operator); history.setOperatedAt(LocalDateTime.now()); history.setCreatedAt(LocalDateTime.now()); history.setUpdatedAt(LocalDateTime.now()); reviewMapper.insert(history);
+            history.setProjectId(project.getId());
+            history.setReviewAction(action);
+            history.setFromStatus(from);
+            history.setToStatus(target);
+            history.setReviewComment(comment);
+            history.setOperatorId(operator);
+            history.setOperatedAt(LocalDateTime.now());
+            history.setCreatedAt(LocalDateTime.now());
+            history.setUpdatedAt(LocalDateTime.now());
+            reviewMapper.insert(history);
         }
     }
 

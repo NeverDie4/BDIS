@@ -13,8 +13,7 @@ class MapPointMapperSqlTest {
     void mapPointListUsesSpeciesCoverWhenPointCoverIsEmpty() throws Exception {
         String mapper =
                 Files.readString(
-                        Path.of(
-                                "src/main/java/com/bdis/modules/map/mapper/MapPointMapper.java"),
+                        Path.of("src/main/java/com/bdis/modules/map/mapper/MapPointMapper.java"),
                         StandardCharsets.UTF_8);
 
         assertThat(mapper)

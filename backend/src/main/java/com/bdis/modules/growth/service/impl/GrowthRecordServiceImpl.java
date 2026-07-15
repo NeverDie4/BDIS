@@ -819,21 +819,18 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         boolean hasLongitude = request.getLongitude() != null;
         boolean hasLatitude = request.getLatitude() != null;
         if (hasLongitude != hasLatitude) {
-            throw new BusinessException(
-                    ResultCodeEnum.VALIDATION_ERROR, "经纬度必须同时填写");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "经纬度必须同时填写");
         }
         if (!hasLongitude) {
             return;
         }
         if (request.getLongitude().compareTo(new BigDecimal("-180")) < 0
                 || request.getLongitude().compareTo(new BigDecimal("180")) > 0) {
-            throw new BusinessException(
-                    ResultCodeEnum.VALIDATION_ERROR, "经度范围必须在 -180 到 180 之间");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "经度范围必须在 -180 到 180 之间");
         }
         if (request.getLatitude().compareTo(new BigDecimal("-90")) < 0
                 || request.getLatitude().compareTo(new BigDecimal("90")) > 0) {
-            throw new BusinessException(
-                    ResultCodeEnum.VALIDATION_ERROR, "纬度范围必须在 -90 到 90 之间");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "纬度范围必须在 -90 到 90 之间");
         }
     }
 

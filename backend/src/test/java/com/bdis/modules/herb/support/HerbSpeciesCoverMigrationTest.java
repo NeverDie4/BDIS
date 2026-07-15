@@ -21,7 +21,9 @@ class HerbSpeciesCoverMigrationTest {
                                 "V20260715_008__repair_and_publish_herb_species_cover_images.sql"));
 
         assertThat(sql).contains("herb_species_cover_migration_review");
-        assertThat(sql).contains("species.`cover_image_url` = CONCAT('/api/files/', file_resource.`id`, '/content')");
+        assertThat(sql)
+                .contains(
+                        "species.`cover_image_url` = CONCAT('/api/files/', file_resource.`id`, '/content')");
         assertThat(sql).contains("COALESCE(species.`created_by`, file_resource.`uploader_id`)");
         assertThat(sql).contains("binding.`biz_type` = 'herb_species'");
         assertThat(sql).contains("binding.`file_usage` = 'cover'");

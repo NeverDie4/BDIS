@@ -9,8 +9,15 @@ import lombok.Data;
 public class ResearchProjectSubmissionCreateRequest {
     private Long taskId;
     private Long recordId;
-    @NotBlank @Size(max = 50) private String submissionType;
-    @NotBlank @Size(max = 200) private String submissionTitle;
+
+    @NotBlank
+    @Size(max = 50)
+    private String submissionType;
+
+    @NotBlank
+    @Size(max = 200)
+    private String submissionTitle;
+
     private String content;
     @Positive private Long fileId;
 }

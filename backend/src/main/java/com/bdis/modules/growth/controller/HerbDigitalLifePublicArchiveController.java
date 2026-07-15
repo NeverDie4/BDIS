@@ -6,7 +6,7 @@ import com.bdis.modules.growth.service.DigitalLifeIntegrityService;
 import com.bdis.modules.growth.service.HerbDigitalLifeArchiveService;
 import com.bdis.modules.growth.vo.DigitalLifeIntegrityVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifePublicArchiveVO;
-
+import java.nio.charset.StandardCharsets;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -16,8 +16,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/trace/digital-life")

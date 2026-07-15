@@ -96,6 +96,18 @@ class ResearchProjectServiceTest {
     }
 
     @Test
+    void nonMemberCannotReadProjectReviewHistory() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setLeaderId(7L);
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(8L, "STUDENT");
+        when(memberMapper.selectByProjectIdAndUserId(100L, 8L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.reviewHistory(100L))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
     void projectListBuildsLeaderOrActiveMemberScope() {
         setUser(8L, "TEACHER");
         when(projectMapper.selectPage(any(), any()))

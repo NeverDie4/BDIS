@@ -16,9 +16,32 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/notifications")
 public class NotificationController {
-    private final NotificationService service; private final AuthorizationService authorizationService;
-    public NotificationController(NotificationService service, AuthorizationService authorizationService) { this.service = service; this.authorizationService = authorizationService; }
-    @GetMapping public Result<List<NotificationEntity>> list(@RequestParam(required=false) Integer limit) { authorizationService.requirePermission("sys:notification:list"); return Result.success(service.listMine(limit)); }
-    @PostMapping("/{id}/read") public Result<Void> read(@PathVariable @Positive Long id) { authorizationService.requirePermission("sys:notification:read"); service.read(id); return Result.success(); }
-    @PostMapping("/read-all") public Result<Void> readAll() { authorizationService.requirePermission("sys:notification:read"); service.readAll(); return Result.success(); }
+    private final NotificationService service;
+    private final AuthorizationService authorizationService;
+
+    public NotificationController(
+            NotificationService service, AuthorizationService authorizationService) {
+        this.service = service;
+        this.authorizationService = authorizationService;
+    }
+
+    @GetMapping
+    public Result<List<NotificationEntity>> list(@RequestParam(required = false) Integer limit) {
+        authorizationService.requirePermission("sys:notification:list");
+        return Result.success(service.listMine(limit));
+    }
+
+    @PostMapping("/{id}/read")
+    public Result<Void> read(@PathVariable @Positive Long id) {
+        authorizationService.requirePermission("sys:notification:read");
+        service.read(id);
+        return Result.success();
+    }
+
+    @PostMapping("/read-all")
+    public Result<Void> readAll() {
+        authorizationService.requirePermission("sys:notification:read");
+        service.readAll();
+        return Result.success();
+    }
 }

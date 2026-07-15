@@ -225,7 +225,10 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
             CourseEntity course = courseMapper.selectById(entity.getCourseId());
             validCourse = course != null && Objects.equals(course.getStatus(), 1);
         }
-        if (!validCourse && !planMaterialService.hasValidMaterial(id) && (planMapper.countValidStructuredBindings(id) == null || planMapper.countValidStructuredBindings(id) == 0)) {
+        if (!validCourse
+                && !planMaterialService.hasValidMaterial(id)
+                && (planMapper.countValidStructuredBindings(id) == null
+                        || planMapper.countValidStructuredBindings(id) == 0)) {
             throw conflict(
                     "Training plan requires a course or at least one material before publishing");
         }

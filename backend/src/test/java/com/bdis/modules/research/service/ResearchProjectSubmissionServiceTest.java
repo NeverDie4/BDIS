@@ -1,9 +1,11 @@
 package com.bdis.modules.research.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.research.entity.ResearchProjectSubmissionEntity;
@@ -29,26 +31,63 @@ class ResearchProjectSubmissionServiceTest {
     @Mock private ResearchProjectSubmissionMapper submissionMapper;
     private ResearchProjectSubmissionService service;
 
-    @BeforeEach void setUp() { service = new ResearchProjectSubmissionServiceImpl(projectMapper, memberMapper, submissionMapper); }
-    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+    @BeforeEach
+    void setUp() {
+        service =
+                new ResearchProjectSubmissionServiceImpl(
+                        projectMapper, memberMapper, submissionMapper);
+    }
+
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void acceptedMemberCanSubmitStageReport() {
         setUser(8L, "STUDENT");
         ResearchProjectEntity project = new ResearchProjectEntity();
-        project.setId(11L); project.setLeaderId(3L); project.setProjectStatus("ongoing"); project.setStatus(1); project.setIsDeleted(0);
+        project.setId(11L);
+        project.setLeaderId(3L);
+        project.setProjectStatus("ongoing");
+        project.setStatus(1);
+        project.setIsDeleted(0);
         when(projectMapper.selectById(11L)).thenReturn(project);
         when(projectMapper.existsActiveMember(11L, 8L)).thenReturn(true);
-        when(submissionMapper.insert(any(ResearchProjectSubmissionEntity.class))).thenAnswer(invocation -> {
-            ((ResearchProjectSubmissionEntity) invocation.getArgument(0)).setId(41L); return 1;
-        });
-        ResearchProjectSubmissionCreateRequest request = new ResearchProjectSubmissionCreateRequest();
-        request.setSubmissionType("stage_report"); request.setSubmissionTitle("阶段报告"); request.setContent("result");
+        when(submissionMapper.insert(any(ResearchProjectSubmissionEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            ((ResearchProjectSubmissionEntity) invocation.getArgument(0))
+                                    .setId(41L);
+                            return 1;
+                        });
+        ResearchProjectSubmissionCreateRequest request =
+                new ResearchProjectSubmissionCreateRequest();
+        request.setSubmissionType("stage_report");
+        request.setSubmissionTitle("阶段报告");
+        request.setContent("result");
         assertThat(service.submit(11L, request)).isEqualTo(41L);
     }
 
+    @Test
+    void nonMemberCannotListProjectSubmissions() {
+        setUser(8L, "STUDENT");
+        ResearchProjectEntity project = new ResearchProjectEntity();
+        project.setId(11L);
+        project.setLeaderId(3L);
+        project.setStatus(1);
+        project.setIsDeleted(0);
+        when(projectMapper.selectById(11L)).thenReturn(project);
+        when(projectMapper.existsActiveMember(11L, 8L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.list(11L)).isInstanceOf(ForbiddenException.class);
+    }
+
     private void setUser(Long id, String role) {
-        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null, Set.of(role), Set.of(), Set.of());
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
+        CurrentUser user =
+                new CurrentUser(
+                        id, "user-" + id, "User", null, null, Set.of(role), Set.of(), Set.of());
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 }

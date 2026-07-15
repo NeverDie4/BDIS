@@ -37,8 +37,8 @@ import com.bdis.modules.experiment.vo.ExperimentRecordListVO;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
-import java.time.LocalDateTime;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
@@ -499,6 +499,21 @@ class ExperimentRecordServiceTest {
     }
 
     @Test
+    void returnedRecordCanBeSubmittedAgain() {
+        ExperimentRecordEntity entity = completeDraftRecord();
+        entity.setArchiveStatus(ExperimentArchiveStatus.RETURNED);
+        when(recordMapper.selectById(1L)).thenReturn(entity);
+        when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(activeCourse(2L));
+        when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
+        when(recordMapper.submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class)))
+                .thenReturn(1);
+
+        service.submit(1L, submitRequest(0));
+
+        verify(recordMapper).submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class));
+    }
+
+    @Test
     void submitRejectsSubmittedArchivedAndVersionConflict() {
         ExperimentRecordEntity submitted = completeDraftRecord();
         submitted.setArchiveStatus(ExperimentArchiveStatus.SUBMITTED);
@@ -762,7 +777,8 @@ class ExperimentRecordServiceTest {
         request.setScore(BigDecimal.TEN);
 
         assertThrows(BusinessException.class, () -> service.grade(1L, request));
-        verify(recordMapper, never()).gradeByIdAndVersion(anyLong(), any(), anyLong(), any(), any(), any());
+        verify(recordMapper, never())
+                .gradeByIdAndVersion(anyLong(), any(), anyLong(), any(), any(), any());
     }
 
     private ExperimentRecordCreateRequest validCreate() {

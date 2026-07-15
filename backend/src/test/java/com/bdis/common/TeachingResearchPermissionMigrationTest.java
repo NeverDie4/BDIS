@@ -10,7 +10,8 @@ import org.junit.jupiter.api.Test;
 class TeachingResearchPermissionMigrationTest {
 
     private static final Path MIGRATION =
-            Path.of("src/main/resources/db/migration/V20260715_032__grant_teaching_research_scope_permissions.sql");
+            Path.of(
+                    "src/main/resources/db/migration/V20260715_032__grant_teaching_research_scope_permissions.sql");
 
     @Test
     void grantsCurrentUserTeachingAndResearchReadPermissions() throws IOException {

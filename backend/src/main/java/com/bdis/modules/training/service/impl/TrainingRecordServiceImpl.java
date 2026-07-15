@@ -86,14 +86,26 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         applyScope(safe);
         StringBuilder csv = new StringBuilder("培训计划,参加人,参加编号,参加时间,出勤状态,培训状态,进度,成绩\n");
         for (TrainingRecordListVO record : recordMapper.selectAllVO(safe)) {
-            csv.append(csvCell(record.getPlanName())).append(',')
-                    .append(csvCell(record.getRealName() == null ? record.getUsername() : record.getRealName())).append(',')
-                    .append(csvCell(record.getAttendanceNo())).append(',')
-                    .append(csvCell(record.getCreatedAt())).append(',')
-                    .append(csvCell(record.getAttendanceStatus())).append(',')
-                    .append(csvCell(record.getTrainingStatus())).append(',')
-                    .append(csvCell(record.getProgress())).append(',')
-                    .append(csvCell(record.getScore())).append('\n');
+            csv.append(csvCell(record.getPlanName()))
+                    .append(',')
+                    .append(
+                            csvCell(
+                                    record.getRealName() == null
+                                            ? record.getUsername()
+                                            : record.getRealName()))
+                    .append(',')
+                    .append(csvCell(record.getAttendanceNo()))
+                    .append(',')
+                    .append(csvCell(record.getCreatedAt()))
+                    .append(',')
+                    .append(csvCell(record.getAttendanceStatus()))
+                    .append(',')
+                    .append(csvCell(record.getTrainingStatus()))
+                    .append(',')
+                    .append(csvCell(record.getProgress()))
+                    .append(',')
+                    .append(csvCell(record.getScore()))
+                    .append('\n');
         }
         return "\uFEFF" + csv;
     }
@@ -262,15 +274,15 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
         LocalDateTime now = LocalDateTime.now();
         TrainingRecordEntity record = newDefaultRecord(plan, currentUserId, null, now);
-            record.setProgress(HUNDRED);
-            record.setTrainingStatus(TrainingStatus.COMPLETED);
-            record.setAttendanceStatus(AttendanceStatus.PRESENT);
-            record.setStartedAt(now);
-            record.setCheckedInAt(now);
-            record.setCompletedAt(now);
-            if (recordMapper.insert(record) == 0) {
-                throw conflict("Training participation submission failed");
-            }
+        record.setProgress(HUNDRED);
+        record.setTrainingStatus(TrainingStatus.COMPLETED);
+        record.setAttendanceStatus(AttendanceStatus.PRESENT);
+        record.setStartedAt(now);
+        record.setCheckedInAt(now);
+        record.setCompletedAt(now);
+        if (recordMapper.insert(record) == 0) {
+            throw conflict("Training participation submission failed");
+        }
         recordAudit("JOIN", record.getId());
         return getDetail(record.getId());
     }
@@ -545,7 +557,9 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
     }
 
     private static String csvCell(Object value) {
-        if (value == null) return "";
+        if (value == null) {
+            return "";
+        }
         return "\"" + String.valueOf(value).replace("\"", "\"\"") + "\"";
     }
 }

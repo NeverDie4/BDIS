@@ -20,8 +20,8 @@ public class CourseEnrollmentController {
     private final CourseEnrollmentService enrollmentService;
     private final AuthorizationService authorizationService;
 
-    public CourseEnrollmentController(CourseEnrollmentService enrollmentService,
-            AuthorizationService authorizationService) {
+    public CourseEnrollmentController(
+            CourseEnrollmentService enrollmentService, AuthorizationService authorizationService) {
         this.enrollmentService = enrollmentService;
         this.authorizationService = authorizationService;
     }

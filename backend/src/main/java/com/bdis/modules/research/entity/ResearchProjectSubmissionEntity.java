@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter @Setter
+@Getter
+@Setter
 @TableName("research_project_submission")
 public class ResearchProjectSubmissionEntity extends BaseEntity {
     private Long projectId;

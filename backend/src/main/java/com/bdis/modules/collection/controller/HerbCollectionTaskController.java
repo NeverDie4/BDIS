@@ -134,6 +134,7 @@ public class HerbCollectionTaskController {
             throw new ForbiddenException("只有管理员或教师可以管理采集任务");
         }
     }
+
     @GetMapping("/{taskId}/growth-records/chart")
     public Result<List<GrowthChartPointVO>> growthChart(
             @PathVariable Long taskId, @RequestParam(defaultValue = "plantHeight") String metric) {

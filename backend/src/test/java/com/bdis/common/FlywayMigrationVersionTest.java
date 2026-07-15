@@ -11,15 +11,14 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class FlywayMigrationVersionTest {
 
-    private static final Pattern MIGRATION_FILE =
-            Pattern.compile("V(\\d{8})_(\\d{3})__.+\\.sql");
+    private static final Pattern MIGRATION_FILE = Pattern.compile("V(\\d{8})_(\\d{3})__.+\\.sql");
     private static final Pattern SHA_256 = Pattern.compile("[a-f0-9]{64}");
     private static final Path MIGRATION_DIRECTORY = Path.of("src/main/resources/db/migration");
     private static final Path DEV_BASELINE_MANIFEST =
@@ -45,7 +44,8 @@ class FlywayMigrationVersionTest {
         assertThat(migrations).extracting(MigrationFile::version).doesNotHaveDuplicates();
         assertThat(migrations).extracting(MigrationFile::filename).containsAll(baselineNames);
         for (BaselineMigration baselineMigration : baseline) {
-            Path migrationPath = MIGRATION_DIRECTORY.resolve(baselineMigration.migration().filename());
+            Path migrationPath =
+                    MIGRATION_DIRECTORY.resolve(baselineMigration.migration().filename());
             assertThat(sha256(migrationPath))
                     .as("dev baseline migration %s", baselineMigration.migration().filename())
                     .isEqualTo(baselineMigration.sha256());
@@ -90,7 +90,9 @@ class FlywayMigrationVersionTest {
     private String sha256(Path migrationPath) throws IOException {
         try {
             return HexFormat.of()
-                    .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(migrationPath)));
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(Files.readAllBytes(migrationPath)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 must be available in the JDK", exception);
         }
@@ -109,7 +111,8 @@ class FlywayMigrationVersionTest {
 
     private record BaselineMigration(MigrationFile migration, String sha256) {}
 
-    private record MigrationVersion(int date, int sequence) implements Comparable<MigrationVersion> {
+    private record MigrationVersion(int date, int sequence)
+            implements Comparable<MigrationVersion> {
 
         @Override
         public int compareTo(MigrationVersion other) {

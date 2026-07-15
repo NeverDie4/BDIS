@@ -184,7 +184,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         ResearchProjectStatus.assertMutable(project);
         validateRole(request == null ? null : request.getMemberRole());
         UserEntity user = requireUser(request.getUserId());
-        ProjectMemberEntity member = memberMapper.selectByProjectIdAndUserId(projectId, user.getId());
+        ProjectMemberEntity member =
+                memberMapper.selectByProjectIdAndUserId(projectId, user.getId());
         if (member != null && "active".equals(member.getMemberStatus())) {
             throw new BusinessException("Member is already active");
         }
@@ -204,7 +205,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         member.setAcceptedAt(null);
         member.setRejectedAt(null);
         member.setRemark(request.getRemark());
-        if (member.getId() == null) memberMapper.insert(member); else memberMapper.updateById(member);
+        if (member.getId() == null) {
+            memberMapper.insert(member);
+        } else {
+            memberMapper.updateById(member);
+        }
         return member.getId();
     }
 
@@ -212,7 +217,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     @Transactional
     public void respond(Long projectId, String response) {
         Long userId = CurrentUserUtils.currentUserId();
-        if (userId == null) throw new ForbiddenException("Authentication is required");
+        if (userId == null) {
+            throw new ForbiddenException("Authentication is required");
+        }
         if (!"accept".equals(response) && !"reject".equals(response)) {
             throw new BusinessException("Invalid invitation response");
         }
@@ -227,7 +234,9 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         member.setJoinedAt(accepted ? now : null);
         member.setAcceptedAt(accepted ? now : null);
         member.setRejectedAt(accepted ? null : now);
-        if (memberMapper.updateById(member) == 0) throw new BusinessException("Invitation response failed");
+        if (memberMapper.updateById(member) == 0) {
+            throw new BusinessException("Invitation response failed");
+        }
     }
 
     private ResearchProjectEntity requireProject(Long projectId) {

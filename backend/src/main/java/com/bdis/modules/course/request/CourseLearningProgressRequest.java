@@ -11,7 +11,11 @@ import lombok.Data;
 public class CourseLearningProgressRequest {
     @NotBlank private String itemType;
     @NotNull @Positive private Long itemId;
-    @DecimalMin("0") @DecimalMax("100") private java.math.BigDecimal progressValue;
+
+    @DecimalMin("0")
+    @DecimalMax("100")
+    private java.math.BigDecimal progressValue;
+
     private Integer progressSeconds;
     private Integer totalSeconds;
     @NotNull private Boolean completed;

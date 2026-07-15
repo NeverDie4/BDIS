@@ -2,8 +2,6 @@ package com.bdis.modules.growth.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,14 +9,15 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32;
+import org.junit.jupiter.api.Test;
 
 class DigitalLifeArchiveMigrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "20260716_004";
+    private static final String DIGITAL_LIFE_MIGRATION_VERSION = "20260716_004";
     private static final Pattern VERSION_PATTERN = Pattern.compile("^V(\\d{8}_\\d{3})__.+\\.sql$");
 
     @Test
-    void digitalLifeMigrationVersionIsUniqueAndLatest() throws Exception {
+    void digitalLifeMigrationVersionIsUnique() throws Exception {
         Path migrationDirectory = Path.of("src", "main", "resources", "db", "migration");
         List<String> versions;
         try (var paths = Files.list(migrationDirectory)) {
@@ -31,9 +30,8 @@ class DigitalLifeArchiveMigrationTest {
         }
 
         assertThat(versions).doesNotHaveDuplicates();
-        assertThat(versions).contains("20260715_001", "20260715_006", LATEST_MIGRATION_VERSION);
-        assertThat(versions.stream().filter(version -> !LATEST_MIGRATION_VERSION.equals(version)))
-                .allMatch(version -> version.compareTo(LATEST_MIGRATION_VERSION) < 0);
+        assertThat(versions)
+                .contains("20260715_001", "20260715_006", DIGITAL_LIFE_MIGRATION_VERSION);
     }
 
     @Test

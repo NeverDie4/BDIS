@@ -6,10 +6,10 @@ import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
 import com.bdis.modules.course.request.CourseStatusChangeRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
-import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.service.CourseLearningProgressService;
-import com.bdis.modules.course.vo.CourseLearningSummaryVO;
+import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.vo.CourseDetailVO;
+import com.bdis.modules.course.vo.CourseLearningSummaryVO;
 import com.bdis.modules.course.vo.CourseListVO;
 import com.bdis.modules.permission.service.AuthorizationService;
 import jakarta.validation.Valid;
@@ -35,7 +35,8 @@ public class CourseController {
     private final CourseLearningProgressService learningProgressService;
 
     public CourseController(
-            CourseService courseService, AuthorizationService authorizationService,
+            CourseService courseService,
+            AuthorizationService authorizationService,
             CourseLearningProgressService learningProgressService) {
         this.courseService = courseService;
         this.authorizationService = authorizationService;

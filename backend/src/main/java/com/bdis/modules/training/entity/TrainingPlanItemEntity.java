@@ -6,7 +6,8 @@ import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter @Setter
+@Getter
+@Setter
 @TableName("edu_training_plan_item")
 public class TrainingPlanItemEntity extends BaseEntity {
     private Long planId;

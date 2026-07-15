@@ -24,7 +24,9 @@ public class CourseLearningProgressController {
     private final CourseLearningProgressService progressService;
     private final AuthorizationService authorizationService;
 
-    public CourseLearningProgressController(CourseLearningProgressService progressService, AuthorizationService authorizationService) {
+    public CourseLearningProgressController(
+            CourseLearningProgressService progressService,
+            AuthorizationService authorizationService) {
         this.progressService = progressService;
         this.authorizationService = authorizationService;
     }
@@ -36,7 +38,9 @@ public class CourseLearningProgressController {
     }
 
     @PutMapping
-    public Result<CourseLearningProgressVO> save(@PathVariable @Positive Long courseId, @Valid @RequestBody CourseLearningProgressRequest request) {
+    public Result<CourseLearningProgressVO> save(
+            @PathVariable @Positive Long courseId,
+            @Valid @RequestBody CourseLearningProgressRequest request) {
         authorizationService.requirePermission("edu:course-learning:save");
         return Result.success(progressService.save(courseId, request));
     }

@@ -274,7 +274,8 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
             throw new BusinessException(
                     ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 操作固定为 queryGrowthRecords");
         }
-        if (StringUtils.hasText(dto.getDirection()) && !INBOUND_DIRECTION.equals(dto.getDirection())) {
+        if (StringUtils.hasText(dto.getDirection())
+                && !INBOUND_DIRECTION.equals(dto.getDirection())) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "冻结版 SOAP 仅支持入站同步");
         }
         if (Boolean.FALSE.equals(dto.getMock())) {

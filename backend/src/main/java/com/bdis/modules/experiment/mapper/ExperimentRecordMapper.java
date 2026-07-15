@@ -222,8 +222,14 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
             @Param("gradedAt") LocalDateTime gradedAt,
             @Param("gradeComment") String gradeComment);
 
-    @Update("UPDATE edu_experiment_record SET archive_status='returned', archive_comment=#{comment}, updated_at=#{operatedAt}, updated_by=#{operatorId}, version=version+1 WHERE id=#{id} AND is_deleted=0 AND archive_status='submitted' AND version=#{version}")
-    int returnByIdAndVersion(@Param("id") Long id, @Param("version") Integer version, @Param("operatorId") Long operatorId, @Param("operatedAt") LocalDateTime operatedAt, @Param("comment") String comment);
+    @Update(
+            "UPDATE edu_experiment_record SET archive_status='returned', archive_comment=#{comment}, updated_at=#{operatedAt}, updated_by=#{operatorId}, version=version+1 WHERE id=#{id} AND is_deleted=0 AND archive_status='submitted' AND version=#{version}")
+    int returnByIdAndVersion(
+            @Param("id") Long id,
+            @Param("version") Integer version,
+            @Param("operatorId") Long operatorId,
+            @Param("operatedAt") LocalDateTime operatedAt,
+            @Param("comment") String comment);
 
     @Update(
             """

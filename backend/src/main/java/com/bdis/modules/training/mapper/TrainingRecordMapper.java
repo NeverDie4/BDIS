@@ -14,6 +14,9 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
+    @Select("SELECT * FROM edu_training_record WHERE id=#{id} AND is_deleted=0 LIMIT 1")
+    TrainingRecordEntity selectActiveById(@Param("id") Long id);
+
     @Select(
             """
             <script>
@@ -47,7 +50,8 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
     TrainingRecordEntity selectByPlanAndUser(
             @Param("planId") Long planId, @Param("userId") Long userId);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT r.id, r.plan_id, p.plan_no, p.plan_name, r.user_id,
                    u.username, u.real_name, r.course_id, r.attendance_no, r.progress,

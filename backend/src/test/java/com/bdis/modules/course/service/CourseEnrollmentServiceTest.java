@@ -1,15 +1,15 @@
 package com.bdis.modules.course.service;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.CurrentUser;
-import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.entity.CourseEnrollmentEntity;
+import com.bdis.modules.course.entity.CourseEntity;
 import com.bdis.modules.course.mapper.CourseEnrollmentMapper;
 import com.bdis.modules.course.mapper.CourseMapper;
 import com.bdis.modules.course.service.impl.CourseEnrollmentServiceImpl;
@@ -48,10 +48,14 @@ class CourseEnrollmentServiceTest {
         CourseEntity course = course("published");
         when(courseMapper.selectById(11L)).thenReturn(course);
         when(enrollmentMapper.selectActiveByCourseAndUser(11L, 8L)).thenReturn(null);
-        when(enrollmentMapper.insert(any(CourseEnrollmentEntity.class))).thenAnswer(invocation -> {
-            ((com.bdis.modules.course.entity.CourseEnrollmentEntity) invocation.getArgument(0)).setId(41L);
-            return 1;
-        });
+        when(enrollmentMapper.insert(any(CourseEnrollmentEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            ((com.bdis.modules.course.entity.CourseEnrollmentEntity)
+                                            invocation.getArgument(0))
+                                    .setId(41L);
+                            return 1;
+                        });
 
         CourseEnrollmentVO result = service.enroll(11L);
 
@@ -65,8 +69,7 @@ class CourseEnrollmentServiceTest {
         setUser(8L, "STUDENT");
         when(courseMapper.selectById(11L)).thenReturn(course("draft"));
 
-        assertThatThrownBy(() -> service.enroll(11L))
-                .isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> service.enroll(11L)).isInstanceOf(ForbiddenException.class);
     }
 
     @Test
@@ -82,10 +85,18 @@ class CourseEnrollmentServiceTest {
     }
 
     private void setUser(Long id, String role) {
-        CurrentUser user = new CurrentUser(id, "user-" + id, "User", null, null,
-                Set.of(role), Set.of(), Set.of("edu:course:enroll"));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(user, "n/a"));
+        CurrentUser user =
+                new CurrentUser(
+                        id,
+                        "user-" + id,
+                        "User",
+                        null,
+                        null,
+                        Set.of(role),
+                        Set.of(),
+                        Set.of("edu:course:enroll"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
     }
 
     private CourseEntity course(String status) {

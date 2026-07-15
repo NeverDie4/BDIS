@@ -102,11 +102,12 @@ class TrainingRecordServiceTest {
         when(userMapper.selectById(7L)).thenReturn(user(7L));
         when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
         when(recordMapper.insert(any(TrainingRecordEntity.class)))
-                .thenAnswer(invocation -> {
-                    TrainingRecordEntity record = invocation.getArgument(0);
-                    record.setId(record.getAttendanceNo().endsWith("0") ? 10L : 11L);
-                    return 1;
-                });
+                .thenAnswer(
+                        invocation -> {
+                            TrainingRecordEntity record = invocation.getArgument(0);
+                            record.setId(record.getAttendanceNo().endsWith("0") ? 10L : 11L);
+                            return 1;
+                        });
         TrainingRecordDetailVO detail = new TrainingRecordDetailVO();
         detail.setUserId(7L);
         detail.setPlanId(1L);

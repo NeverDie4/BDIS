@@ -1,8 +1,8 @@
 package com.bdis.modules.course.vo;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.math.BigDecimal;
 import lombok.Data;
 
 @Data

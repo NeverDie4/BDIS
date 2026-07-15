@@ -20,9 +20,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class TrainingRecordItemProgressController {
     private final TrainingRecordItemProgressService service;
     private final AuthorizationService authorizationService;
-    public TrainingRecordItemProgressController(TrainingRecordItemProgressService service, AuthorizationService authorizationService) { this.service = service; this.authorizationService = authorizationService; }
+
+    public TrainingRecordItemProgressController(
+            TrainingRecordItemProgressService service, AuthorizationService authorizationService) {
+        this.service = service;
+        this.authorizationService = authorizationService;
+    }
+
     @PutMapping("/{itemId}")
-    public Result<TrainingRecordItemEntity> save(@PathVariable @Positive Long recordId, @PathVariable @Positive Long itemId, @Valid @RequestBody TrainingRecordItemProgressRequest request) {
-        authorizationService.requirePermission("edu:training-record:item-progress"); return Result.success(service.save(recordId, itemId, request));
+    public Result<TrainingRecordItemEntity> save(
+            @PathVariable @Positive Long recordId,
+            @PathVariable @Positive Long itemId,
+            @Valid @RequestBody TrainingRecordItemProgressRequest request) {
+        authorizationService.requirePermission("edu:training-record:item-progress");
+        return Result.success(service.save(recordId, itemId, request));
     }
 }
