@@ -27,7 +27,7 @@ BDIS 管理接口创建同步任务
 | 资源类型  | 仅 `GROWTH_RECORD`。                                                |
 | SOAP 版本 | SOAP 1.1，HTTP，Document/Literal。                                  |
 | 调用方式  | 同步调用；不做定时调度、消息队列和异步回调。                        |
-| 校内系统  | 后端同一进程内发布的本地模拟 SOAP 服务。                            |
+| 校内系统  | 后端同一进程内发布的本地模拟 SOAP 服务，端点为 `/api/services/campus-growth`。 |
 | 认证      | 本地 mock 不启用真实凭据；真实环境的认证方式待校方提供。            |
 | 前端      | 不新增独立管理页面；通过既有 REST 任务接口和 Swagger/Postman 演示。 |
 
@@ -143,11 +143,13 @@ scripts/dev-soap-seed.sql
 | 配置                           | 本地演示值                          | 说明                  |
 | ------------------------------ | ----------------------------------- | --------------------- |
 | `BDIS_SOAP_MODE`               | `mock`                              | 冻结版仅允许 `mock`。 |
-| `BDIS_SOAP_CAMPUS_ENDPOINT`    | 本地 `/services/campus-growth` 地址 | SOAP 服务端点。       |
+| `BDIS_SOAP_CAMPUS_ENDPOINT`    | 本地 `/api/services/campus-growth` 地址 | SOAP 服务端点。    |
 | `BDIS_SOAP_CONNECT_TIMEOUT_MS` | `3000`                              | 连接超时。            |
 | `BDIS_SOAP_READ_TIMEOUT_MS`    | `5000`                              | 响应超时。            |
 
 请求、响应和错误摘要可写入现有交换记录以便演示追溯；真实环境接入前必须另行确认账号认证、脱敏字段、日志保留期和访问权限。不得提交真实校内地址、账号、密码、证书或 Token。
+
+本地 mock 服务仅允许回环地址访问，避免无认证的演示端点暴露到局域网；BDIS 自身通过 `localhost` 调用该端点。
 
 ## 6. 实施顺序与验收
 
@@ -161,7 +163,7 @@ scripts/dev-soap-seed.sql
 
 冻结前的验收标准：
 
-1. 可访问本地模拟服务的 WSDL。
+1. 可访问本地模拟服务的 WSDL：`/api/services/campus-growth?wsdl`。
 2. 创建 `GROWTH_RECORD` 同步任务后，交换记录中能看到真实 SOAP 请求和响应。
 3. 成功结果能生成一条来源为 `SOAP` 的生长采集记录。
 4. SOAP Fault 与本地导入失败均能留下失败原因；失败任务可重试。

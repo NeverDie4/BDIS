@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
@@ -61,6 +62,10 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
 
     @Override
     public SoapExchangeRecordVO createAndExecute(SoapSyncTaskDTO dto) {
+        if (StringUtils.hasText(dto.getRequestXml())) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "requestXml 不支持手工注入，系统会生成 SOAP 请求");
+        }
         SoapSyncTaskEntity task = new SoapSyncTaskEntity();
         task.setTaskNo("SOAP-" + UUID.randomUUID());
         task.setTaskName(dto.getResourceType());
@@ -80,7 +85,7 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         task.setVersion(0);
         taskMapper.insert(task);
         recordAudit("CREATE", task.getId());
-        return execute(task, dto.getRequestXml());
+        return execute(task);
     }
 
     @Override
@@ -134,22 +139,26 @@ public class SoapSyncTaskServiceImpl implements SoapSyncTaskService {
         task.setRemark(dto == null ? task.getRemark() : dto.getReason());
         taskMapper.updateById(task);
         recordAudit("RETRY", task.getId());
-        return execute(task, null);
+        return execute(task);
     }
 
-    private SoapExchangeRecordVO execute(SoapSyncTaskEntity task, String requestXml) {
+    private SoapExchangeRecordVO execute(SoapSyncTaskEntity task) {
         task.setSyncStatus("PROCESSING");
         taskMapper.updateById(task);
+        String requestXml = null;
         String responseXml = null;
         String parsedPayload = null;
         String status = "FAILED";
         String errorMessage = null;
         SoapImportResultVO importResult = null;
         try {
-            responseXml =
-                    requestXml != null && !requestXml.isBlank()
-                            ? requestXml
-                            : soapClient.mockResponse(task.getResourceType());
+            if (!Boolean.TRUE.equals(task.getIsMock())) {
+                throw new BusinessException(
+                        ResultCodeEnum.VALIDATION_ERROR, "当前仅支持本地 mock SOAP 任务");
+            }
+            requestXml =
+                    soapClient.createGrowthQueryRequest(task.getTaskNo(), task.getLastSyncAt());
+            responseXml = soapClient.invoke(requestXml);
             importResult =
                     soapImportService.parseAndPrepareImport(task.getResourceType(), responseXml);
             parsedPayload = objectMapper.writeValueAsString(importResult.getParsedData());

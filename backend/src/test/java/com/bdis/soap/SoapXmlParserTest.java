@@ -48,6 +48,35 @@ class SoapXmlParserTest {
     }
 
     @Test
+    void parseGrowthRecordShouldSupportNamespacedSoapResponse() {
+        String xml =
+                """
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                  xmlns:camp="https://bdis.local/ws/campus-growth/v1">
+                  <soapenv:Body>
+                    <camp:queryGrowthRecordsResponse>
+                      <camp:code>SUCCESS</camp:code>
+                      <camp:message>ok</camp:message>
+                      <camp:records><camp:record>
+                        <camp:externalNo>CAMPUS-001</camp:externalNo>
+                        <camp:herbName>SOAP演示黄连</camp:herbName>
+                        <camp:baseName>SOAP演示重庆基地</camp:baseName>
+                      </camp:record></camp:records>
+                    </camp:queryGrowthRecordsResponse>
+                  </soapenv:Body>
+                </soapenv:Envelope>
+                """;
+
+        Map<String, Object> result = soapXmlParser.parseGrowthRecord(xml);
+
+        assertThat(result)
+                .containsEntry("code", "SUCCESS")
+                .containsEntry("message", "ok")
+                .containsEntry("externalNo", "CAMPUS-001")
+                .containsEntry("herbName", "SOAP演示黄连");
+    }
+
+    @Test
     void parseGrowthRecordShouldRejectDoctype() {
         String xml =
                 """

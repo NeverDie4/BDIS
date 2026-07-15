@@ -55,6 +55,7 @@ public class GrowthRecordSoapImportHandler implements SoapBusinessImportHandler 
         Map<String, Object> data = context.getParsedData();
         String externalNo = requiredText(data, "externalNo", "SOAP 外部编号不能为空");
         String herbName = requiredText(data, "herbName", "SOAP 药材名称不能为空");
+        String baseName = requiredText(data, "baseName", "SOAP 基地名称不能为空");
         HerbEntity herb = herbMapper.selectByHerbName(herbName);
         if (herb == null) {
             throw new ResourceNotFoundException("SOAP 药材名称未匹配到品种：" + herbName);
@@ -63,10 +64,10 @@ public class GrowthRecordSoapImportHandler implements SoapBusinessImportHandler 
         GrowthRecordUpsertRequest request = new GrowthRecordUpsertRequest();
         request.setSpeciesId(herb.getId());
         request.setDeviceType("soap");
-        request.setDataSource(defaultText(text(data, "sourceType"), "SOAP"));
+        request.setDataSource("SOAP");
         request.setCollectedAt(parseTime(text(data, "collectedAt")));
         request.setRemark("SOAP 导入，外部编号：" + externalNo);
-        applyBaseAndPoint(request, herb.getId(), text(data, "baseName"));
+        applyBaseAndPoint(request, herb.getId(), baseName);
 
         GrowthRecordVO record =
                 growthRecordService.importFromSoap(
@@ -76,9 +77,6 @@ public class GrowthRecordSoapImportHandler implements SoapBusinessImportHandler 
 
     private void applyBaseAndPoint(
             GrowthRecordUpsertRequest request, Long speciesId, String baseName) {
-        if (!StringUtils.hasText(baseName)) {
-            return;
-        }
         HerbBaseEntity herbBase =
                 herbBaseMapper.selectOne(
                         new LambdaQueryWrapper<HerbBaseEntity>()
@@ -125,9 +123,5 @@ public class GrowthRecordSoapImportHandler implements SoapBusinessImportHandler 
     private String text(Map<String, Object> data, String key) {
         Object value = data.get(key);
         return value == null ? null : value.toString().trim();
-    }
-
-    private String defaultText(String value, String defaultValue) {
-        return StringUtils.hasText(value) ? value : defaultValue;
     }
 }

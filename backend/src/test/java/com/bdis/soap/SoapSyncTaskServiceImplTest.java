@@ -66,7 +66,10 @@ class SoapSyncTaskServiceImplTest {
                         })
                 .when(exchangeRecordMapper)
                 .insert(any(SoapExchangeRecordEntity.class));
-        when(soapClient.mockResponse("GROWTH_RECORD")).thenReturn("<Envelope/>");
+        when(soapClient.createGrowthQueryRequest(
+                        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn("<request/>");
+        when(soapClient.invoke("<request/>")).thenReturn("<Envelope/>");
         SoapImportResultVO importResult = new SoapImportResultVO();
         importResult.setStatus("SUCCESS");
         importResult.setBusinessType("herb_growth_record");
