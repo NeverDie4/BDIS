@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { CurrentUser, LoginResult } from "@/types/api";
 import { LockKeyhole, UserRound } from "lucide-react";
 import { App, Button, Form, Input, Tabs, Typography } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -23,6 +24,7 @@ type BootstrapForm = LoginForm & {
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { message } = App.useApp();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
@@ -33,6 +35,7 @@ export default function LoginPage() {
     setLoginSubmitting(true);
     try {
       const result = await apiPost<LoginResult>("/auth/sessions", values);
+      queryClient.clear();
       setAuth(result.accessToken, result.refreshToken, result.user);
       message.success("登录成功");
       if (result.mustChangePassword || result.user.mustChangePassword) {

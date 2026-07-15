@@ -28,6 +28,7 @@ class PerformanceStandardServiceTest {
         source.setId(1L);
         source.setStandardNo("PSTD-1");
         source.setStandardVersion(1);
+        source.setLifecycleStatus("published");
         when(standardMapper.selectById(1L)).thenReturn(source);
         when(standardMapper.selectList(any())).thenReturn(List.of(source));
         when(standardMapper.insert(any(PerformanceStandardEntity.class)))
@@ -41,5 +42,24 @@ class PerformanceStandardServiceTest {
                                 new PerformanceStandardServiceImpl(standardMapper, accessService)
                                         .createVersion(1L, request))
                 .hasMessage("标准版本已被其他请求创建，请刷新后重试");
+    }
+
+    @Test
+    void draftStandardMustBeEditedInsteadOfCreatingAnotherDraftVersion() {
+        PerformanceStandardEntity source = new PerformanceStandardEntity();
+        source.setId(1L);
+        source.setStandardNo("PSTD-1");
+        source.setStandardVersion(1);
+        source.setLifecycleStatus("draft");
+        when(standardMapper.selectById(1L)).thenReturn(source);
+        PerformanceStandardRequest request = new PerformanceStandardRequest();
+        request.setStandardName("新版本");
+        request.setPerformanceType("RESEARCH");
+
+        assertThatThrownBy(
+                        () ->
+                                new PerformanceStandardServiceImpl(standardMapper, accessService)
+                                        .createVersion(1L, request))
+                .hasMessage("草稿标准应直接编辑，发布或停用后才能创建新版本");
     }
 }

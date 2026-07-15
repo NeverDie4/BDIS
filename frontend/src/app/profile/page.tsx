@@ -112,14 +112,14 @@ export default function ProfilePage() {
                 <Button icon={<Settings size={16} />}>个人设置</Button>
               </Link>
             </div>
-            <Descriptions bordered column={{ xs: 1, md: 2 }} size="small">
+            <Descriptions bordered column={1} size="small">
               <Descriptions.Item label="组织 ID">
                 {currentUser?.organizationId || "-"}
               </Descriptions.Item>
               <Descriptions.Item label="部门 ID">
                 {currentUser?.departmentId || "-"}
               </Descriptions.Item>
-              <Descriptions.Item label="角色" span={{ xs: 1, md: 2 }}>
+              <Descriptions.Item label="角色">
                 {currentUser?.roleCodes.length
                   ? currentUser.roleCodes.map((role) => <Tag key={role}>{role}</Tag>)
                   : "-"}

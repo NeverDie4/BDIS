@@ -22,7 +22,10 @@ import com.bdis.modules.performance.query.PerformanceStatisticsQuery;
 import com.bdis.modules.performance.service.PerformanceMaterialService;
 import com.bdis.modules.performance.service.PerformanceService;
 import com.bdis.modules.performance.vo.PerformanceDetailVO;
+import com.bdis.modules.performance.vo.PerformanceParticipantVO;
 import com.bdis.modules.performance.vo.PerformanceStatisticsVO;
+import com.bdis.modules.user.entity.UserEntity;
+import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -30,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -40,6 +45,8 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class PerformanceServiceImpl implements PerformanceService {
 
+    private static final long MAX_PAGE_SIZE = 100L;
+
     private static final DateTimeFormatter NO_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final Set<String> IDENTIFY_STATUSES =
@@ -48,6 +55,7 @@ public class PerformanceServiceImpl implements PerformanceService {
     private final PerformanceMapper performanceMapper;
     private final PerformanceStandardMapper standardMapper;
     private final PerformanceParticipantMapper participantMapper;
+    private final UserMapper userMapper;
     private final PerformanceAuditMapper auditMapper;
     private final PerformanceMaterialService materialService;
     private final BusinessAccessService accessService;
@@ -105,13 +113,32 @@ public class PerformanceServiceImpl implements PerformanceService {
                         ? null
                         : standardMapper.selectById(performance.getStandardId()));
         detail.setMaterials(materialService.listMaterials(performanceId));
-        detail.setParticipants(
+        List<PerformanceParticipantEntity> participants =
                 participantMapper.selectList(
                         new LambdaQueryWrapper<PerformanceParticipantEntity>()
                                 .eq(PerformanceParticipantEntity::getPerformanceId, performanceId)
                                 .orderByDesc(PerformanceParticipantEntity::getIsPrimary)
                                 .orderByAsc(PerformanceParticipantEntity::getSortOrder)
-                                .orderByAsc(PerformanceParticipantEntity::getId)));
+                                .orderByAsc(PerformanceParticipantEntity::getId));
+        Map<Long, UserEntity> usersById =
+                participants.isEmpty()
+                        ? Map.of()
+                        : userMapper
+                                .selectBatchIds(
+                                        participants.stream()
+                                                .map(PerformanceParticipantEntity::getUserId)
+                                                .distinct()
+                                                .toList())
+                                .stream()
+                                .collect(Collectors.toMap(UserEntity::getId, Function.identity()));
+        detail.setParticipants(
+                participants.stream()
+                        .map(
+                                participant ->
+                                        PerformanceParticipantVO.from(
+                                                participant,
+                                                usersById.get(participant.getUserId())))
+                        .toList());
         detail.setAuditRecords(
                 auditMapper.selectList(
                         new LambdaQueryWrapper<PerformanceAuditEntity>()
@@ -351,13 +378,17 @@ public class PerformanceServiceImpl implements PerformanceService {
         performance.setStandardNoSnapshot(standard.getStandardNo());
         performance.setStandardVersionSnapshot(standard.getStandardVersion());
         performance.setStandardNameSnapshot(standard.getStandardName());
+        boolean materialRequired = Integer.valueOf(1).equals(standard.getMaterialRequired());
+        int minMaterialCount =
+                standard.getMinMaterialCount() == null ? 0 : standard.getMinMaterialCount();
         performance.setStandardRuleSnapshot(
                 String.format(
-                        "scoreRule: %s%nlevelRule: %s%nmaterialRequired: %s%nminMaterialCount: %s",
+                        "认定规则：%s%n等级规则：%s%n佐证材料：%s",
                         defaultText(standard.getScoreRule(), ""),
                         defaultText(standard.getLevelRule(), ""),
-                        standard.getMaterialRequired(),
-                        standard.getMinMaterialCount()));
+                        materialRequired
+                                ? "至少需要 " + Math.max(1, minMaterialCount) + " 份材料"
+                                : "无需提供材料"));
     }
 
     private void createOwnerParticipant(PerformanceEntity performance, Long userId) {
@@ -389,7 +420,7 @@ public class PerformanceServiceImpl implements PerformanceService {
                 .contains(sourceType)) {
             throw new IllegalArgumentException("业绩不支持该来源类型");
         }
-        referenceAccessService.validate(sourceType, sourceId);
+        referenceAccessService.validatePerformanceSource(sourceType, sourceId);
     }
 
     private String resolveSourceName(String sourceType, Long sourceId) {
@@ -435,7 +466,7 @@ public class PerformanceServiceImpl implements PerformanceService {
     private Page<PerformanceEntity> page(Long pageNum, Long pageSize) {
         return new Page<>(
                 pageNum == null || pageNum < 1 ? 1 : pageNum,
-                pageSize == null || pageSize < 1 ? 10 : pageSize);
+                pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, MAX_PAGE_SIZE));
     }
 
     private String defaultText(String value, String defaultValue) {
