@@ -163,7 +163,7 @@ test("药材新增编辑支持封面图片并在资源表格显示缩略图", as
   assert.match(clientSource, /<FileUploadField/);
   assert.match(clientSource, /accessLevel="private"/);
   assert.doesNotMatch(clientSource, /accessLevel="public"[\s\S]*?fileUsage="cover"/);
-  assert.match(clientSource, /cleanupUnboundOnUnmount=\{false\}/);
+  assert.doesNotMatch(clientSource, /cleanupUnboundOnUnmount=\{false\}/);
   assert.match(tableSource, /dataIndex: "coverImageUrl"/);
   assert.match(tableSource, /className=\{styles\.tableThumb\}/);
 });

@@ -93,19 +93,19 @@ function getRegionNameFromPoint(point: Record<string, unknown>) {
 function buildRealRegions(map: DashboardMap | null): AbstractRegion[] {
   const counts = new Map<string, number>();
 
-  if (map?.points?.length) {
-    for (const point of map.points) {
+  for (const stat of map?.districtStatistics ?? []) {
+    const districtName = getDistrictName(stat);
+    const count = getPointCount(stat);
+    const normalizedName = normalizeDistrictName(districtName);
+    if (normalizedName && count > 0 && isKnownRegionName(normalizedName)) {
+      counts.set(normalizedName, (counts.get(normalizedName) ?? 0) + count);
+    }
+  }
+
+  if (counts.size === 0) {
+    for (const point of map?.points ?? []) {
       const regionName = getRegionNameFromPoint(point);
       if (regionName) counts.set(regionName, (counts.get(regionName) ?? 0) + 1);
-    }
-  } else {
-    for (const stat of map?.districtStatistics ?? []) {
-      const districtName = getDistrictName(stat);
-      const count = getPointCount(stat);
-      const normalizedName = normalizeDistrictName(districtName);
-      if (normalizedName && count > 0 && isKnownRegionName(normalizedName)) {
-        counts.set(normalizedName, (counts.get(normalizedName) ?? 0) + count);
-      }
     }
   }
 

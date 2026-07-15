@@ -74,6 +74,7 @@ test("药材分布概览使用真实区县点位而不是静态示意数据", as
   assert.match(panel, /districtStatistics/);
   assert.match(panel, /district_name/);
   assert.match(panel, /point_count/);
+  assert.match(panel, /if \(counts\.size === 0\)/);
   assert.match(panel, /normalizeDistrictName/);
   assert.match(panel, /<AbstractChongqingMap regions=\{realRegions\}/);
   assert.doesNotMatch(map, /regions = abstractChongqingRegions/);

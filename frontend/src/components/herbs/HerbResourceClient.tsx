@@ -508,7 +508,6 @@ export function HerbResourceClient({ initialKeyword }: HerbResourceClientProps) 
             accept="image/*"
             accessLevel="private"
             buttonText="上传药材图片"
-            cleanupUnboundOnUnmount={false}
             fileUsage="cover"
             maxSizeMB={10}
           />

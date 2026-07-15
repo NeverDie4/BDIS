@@ -24,7 +24,7 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
   flyway:
-    enabled: ${FLYWAY_ENABLED:true}
+    enabled: ${FLYWAY_ENABLED:false}
     locations: classpath:db/migration
     baseline-on-migrate: false
   servlet:
