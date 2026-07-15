@@ -53,13 +53,19 @@ public class SoapXmlParser {
     }
 
     private void requireSingleGrowthRecord(Document document) {
-        NodeList records = document.getElementsByTagNameNS("*", "record");
-        if (records.getLength() == 0) {
-            records = document.getElementsByTagName("record");
-        }
-        if (records.getLength() > 1) {
+        int recordCount =
+                countElements(document, "record") + countElements(document, "GrowthRecord");
+        if (recordCount > 1) {
             throw new SoapExchangeException("冻结版 SOAP 响应仅支持一条生长采集记录");
         }
+    }
+
+    private int countElements(Document document, String tagName) {
+        NodeList namespacedNodes = document.getElementsByTagNameNS("*", tagName);
+        if (namespacedNodes.getLength() > 0) {
+            return namespacedNodes.getLength();
+        }
+        return document.getElementsByTagName(tagName).getLength();
     }
 
     private String text(Document document, String tagName) {

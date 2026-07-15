@@ -82,6 +82,7 @@ class SoapClientIntegrationTest {
 
     private SoapIntegrationProperties properties(int port) {
         SoapIntegrationProperties properties = new SoapIntegrationProperties();
+        properties.setMode("mock");
         properties.setCampusEndpoint("http://127.0.0.1:" + port + "/campus-growth");
         return properties;
     }

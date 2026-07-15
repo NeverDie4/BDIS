@@ -92,6 +92,19 @@ class SoapXmlParserTest {
     }
 
     @Test
+    void parseGrowthRecordShouldRejectMultipleLegacyGrowthRecordsInsteadOfDroppingThem() {
+        String xml =
+                """
+                <Envelope><Body>
+                  <GrowthRecord><externalNo>LEGACY-001</externalNo></GrowthRecord>
+                  <GrowthRecord><externalNo>LEGACY-002</externalNo></GrowthRecord>
+                </Body></Envelope>
+                """;
+
+        assertThrows(SoapExchangeException.class, () -> soapXmlParser.parseGrowthRecord(xml));
+    }
+
+    @Test
     void parseGrowthRecordShouldRejectDoctype() {
         String xml =
                 """

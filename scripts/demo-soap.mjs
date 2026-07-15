@@ -175,8 +175,10 @@ async function main() {
     args["base-url"] || env.BDIS_API_BASE_URL || "http://localhost:8080/api",
     "BDIS_API_BASE_URL",
   );
-  if (envValue(env, "BDIS_SOAP_MODE", "mock").toLowerCase() !== "mock") {
-    throw new Error("BDIS_SOAP_MODE 必须为 mock，演示脚本不会连接真实校内系统");
+  if (envValue(env, "BDIS_SOAP_MODE", "").toLowerCase() !== "mock") {
+    throw new Error(
+      "必须显式设置 BDIS_SOAP_MODE=mock，演示脚本不会连接真实校内系统",
+    );
   }
   const expectedEndpoint = `${apiUrl.origin}${apiUrl.pathname.replace(/\/$/, "")}/services/campus-growth`;
   const campusEndpoint = requireLocalHttpUrl(

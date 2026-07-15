@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "bdis.soap")
 public class SoapIntegrationProperties {
 
-    private String mode = "mock";
+    private String mode = "disabled";
     private String campusEndpoint = "http://localhost:8080/api/services/campus-growth";
     private long connectTimeoutMs = 3000;
     private long readTimeoutMs = 5000;

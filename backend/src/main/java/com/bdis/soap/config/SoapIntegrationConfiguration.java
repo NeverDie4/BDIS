@@ -14,11 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class SoapIntegrationConfiguration {
 
     @Bean
-    @ConditionalOnProperty(
-            prefix = "bdis.soap",
-            name = "mode",
-            havingValue = "mock",
-            matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "bdis.soap", name = "mode", havingValue = "mock")
     public Endpoint campusGrowthMockEndpoint(
             Bus bus, CampusGrowthMockService campusGrowthMockService) {
         EndpointImpl endpoint = new EndpointImpl(bus, campusGrowthMockService);
