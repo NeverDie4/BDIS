@@ -77,8 +77,10 @@ function shouldRefreshAccessToken(config: RetryableRequestConfig | undefined) {
     return false;
   }
   const url = String(config.url ?? "");
+  const method = String(config.method ?? "get").toLowerCase();
   return !(
-    url.includes("/auth/sessions") ||
+    (method === "post" && url.includes("/auth/sessions")) ||
+    url.includes("/auth/sessions/refresh") ||
     url.includes("/auth/bootstrap-admin")
   );
 }

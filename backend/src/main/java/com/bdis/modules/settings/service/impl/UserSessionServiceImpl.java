@@ -151,15 +151,36 @@ public class UserSessionServiceImpl implements UserSessionService {
     public void rotateRefreshToken(
             UserSessionEntity session,
             IssuedToken token,
+            String previousRefreshTokenHash,
             String refreshTokenHash,
             Instant refreshExpiresAt) {
+        LocalDateTime issuedAt = toLocalDateTime(token.issuedAt());
+        LocalDateTime accessExpiresAt = toLocalDateTime(token.expiresAt());
+        LocalDateTime refreshExpiresAtValue = toLocalDateTime(refreshExpiresAt);
+        int updated =
+                sessionMapper.update(
+                        null,
+                        new LambdaUpdateWrapper<UserSessionEntity>()
+                                .eq(UserSessionEntity::getId, session.getId())
+                                .eq(
+                                        UserSessionEntity::getRefreshTokenHash,
+                                        previousRefreshTokenHash)
+                                .eq(UserSessionEntity::getSessionStatus, ACTIVE)
+                                .set(UserSessionEntity::getTokenJti, token.jti())
+                                .set(UserSessionEntity::getRefreshTokenHash, refreshTokenHash)
+                                .set(UserSessionEntity::getIssuedAt, issuedAt)
+                                .set(UserSessionEntity::getLastActiveAt, issuedAt)
+                                .set(UserSessionEntity::getExpiresAt, accessExpiresAt)
+                                .set(UserSessionEntity::getRefreshExpiresAt, refreshExpiresAtValue));
+        if (updated != 1) {
+            throw new UnauthorizedException("Refresh Token 已失效，请重新登录");
+        }
         session.setTokenJti(token.jti());
         session.setRefreshTokenHash(refreshTokenHash);
-        session.setIssuedAt(toLocalDateTime(token.issuedAt()));
-        session.setLastActiveAt(toLocalDateTime(token.issuedAt()));
-        session.setExpiresAt(toLocalDateTime(token.expiresAt()));
-        session.setRefreshExpiresAt(toLocalDateTime(refreshExpiresAt));
-        sessionMapper.updateById(session);
+        session.setIssuedAt(issuedAt);
+        session.setLastActiveAt(issuedAt);
+        session.setExpiresAt(accessExpiresAt);
+        session.setRefreshExpiresAt(refreshExpiresAtValue);
     }
 
     @Override
@@ -258,7 +279,21 @@ public class UserSessionServiceImpl implements UserSessionService {
                 new LambdaUpdateWrapper<UserSessionEntity>()
                         .eq(UserSessionEntity::getUserId, userId)
                         .eq(UserSessionEntity::getSessionStatus, ACTIVE)
-                        .le(UserSessionEntity::getExpiresAt, LocalDateTime.now())
+                        .and(
+                                wrapper ->
+                                        wrapper.le(
+                                                        UserSessionEntity::getRefreshExpiresAt,
+                                                        LocalDateTime.now())
+                                                .or(
+                                                        nested ->
+                                                                nested.isNull(
+                                                                                UserSessionEntity
+                                                                                        ::getRefreshExpiresAt)
+                                                                        .le(
+                                                                                UserSessionEntity
+                                                                                        ::getExpiresAt,
+                                                                                LocalDateTime
+                                                                                        .now())))
                         .set(UserSessionEntity::getSessionStatus, "expired"));
     }
 

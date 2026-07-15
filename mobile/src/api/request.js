@@ -145,7 +145,12 @@ function rejectUnauthorized(error, skipAuthRedirect, reject) {
 
 function shouldRefreshAccessToken(options) {
   const url = String(options.url || '')
-  return !url.includes('/auth/sessions') && !url.includes('/auth/bootstrap-admin')
+  const method = String(options.method || 'GET').toUpperCase()
+  return !(
+    (method === 'POST' && url.includes('/auth/sessions')) ||
+    url.includes('/auth/sessions/refresh') ||
+    url.includes('/auth/bootstrap-admin')
+  )
 }
 
 function handleUnauthorized(options, retry, fallbackError, resolve, reject) {

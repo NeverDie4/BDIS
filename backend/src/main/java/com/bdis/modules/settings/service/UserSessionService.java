@@ -25,6 +25,7 @@ public interface UserSessionService {
     void rotateRefreshToken(
             UserSessionEntity session,
             IssuedToken token,
+            String previousRefreshTokenHash,
             String refreshTokenHash,
             Instant refreshExpiresAt);
 

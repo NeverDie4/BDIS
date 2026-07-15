@@ -171,7 +171,11 @@ public class AuthServiceImpl implements AuthService {
         Instant refreshExpiresAt =
                 issuedToken.issuedAt().plusSeconds(jwtProperties.getRefreshTokenTtlDays() * 86400);
         userSessionService.rotateRefreshToken(
-                session, issuedToken, hashRefreshToken(refreshToken), refreshExpiresAt);
+                session,
+                issuedToken,
+                hashRefreshToken(dto.getRefreshToken()),
+                hashRefreshToken(refreshToken),
+                refreshExpiresAt);
         return buildLoginVO(currentUser, issuedToken, refreshToken);
     }
 
