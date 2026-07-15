@@ -43,6 +43,11 @@ export function FileUploadField({
   const [previewUrl, setPreviewUrl] = useState(value);
   const localPreviewUrlRef = useRef<string | undefined>(undefined);
   const pendingFileIdRef = useRef<number | undefined>(undefined);
+  const cleanupUnboundOnUnmountRef = useRef(cleanupUnboundOnUnmount);
+
+  useEffect(() => {
+    cleanupUnboundOnUnmountRef.current = cleanupUnboundOnUnmount;
+  }, [cleanupUnboundOnUnmount]);
 
   useEffect(() => {
     if (!localPreviewUrlRef.current) {
@@ -55,7 +60,7 @@ export function FileUploadField({
       if (localPreviewUrlRef.current) {
         URL.revokeObjectURL(localPreviewUrlRef.current);
       }
-      if (cleanupUnboundOnUnmount && pendingFileIdRef.current) {
+      if (cleanupUnboundOnUnmountRef.current && pendingFileIdRef.current) {
         void deleteOwnUnboundUpload(pendingFileIdRef.current).catch(() => undefined);
       }
     },
