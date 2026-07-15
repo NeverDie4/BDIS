@@ -148,7 +148,7 @@ public class HerbDigitalLifeArchiveServiceImpl implements HerbDigitalLifeArchive
         List<HerbBatchVO> visibleBatches =
                 publicOnly
                         ? batches.stream()
-                                .filter(batch -> isApproved(growthRecords.get(batch.getId())))
+                                .filter(batch -> isPublicApproved(growthRecords.get(batch.getId())))
                                 .toList()
                         : batches;
         List<Long> visibleBatchIds =
@@ -235,8 +235,10 @@ public class HerbDigitalLifeArchiveServiceImpl implements HerbDigitalLifeArchive
         return task;
     }
 
-    private boolean isApproved(GrowthRecordVO record) {
-        return record != null && APPROVED.equals(record.getReviewStatus());
+    private boolean isPublicApproved(GrowthRecordVO record) {
+        return record != null
+                && APPROVED.equals(record.getReviewStatus())
+                && Integer.valueOf(1).equals(record.getPublicVisible());
     }
 
     private HerbDigitalLifeArchiveVO decorateArchive(

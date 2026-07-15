@@ -37,6 +37,13 @@ test("已发布的历史迁移保持 dev 原始校验和", async () => {
     sha256(fileAccess),
     "84eedde669a9b58d0be90fedbaf5dd58d35997e158e86a34253f80164fe220c8",
   );
+  const herbCategory = await readMigration(
+    "V20260714_017__seed_herb_category_dictionary.sql",
+  );
+  assert.equal(
+    sha256(herbCategory),
+    "f65ba00285067a2c139e9a776c43cf2e5cf046fd1f507fc4a72380278e142047",
+  );
 });
 
 test("AI 表结构调整通过独立前向迁移完成", async () => {
@@ -122,4 +129,13 @@ test("药材分类字典类型由独立前向迁移初始化", async () => {
   assert.match(migration, /UPDATE\s+herb_species[\s\S]*SET\s+s\.category_id\s*=\s*item\.id/i);
   assert.match(migration, /ON\s+DUPLICATE\s+KEY\s+UPDATE[\s\S]*is_deleted\s*=\s*0/i);
   assert.doesNotMatch(migration, /ALTER\s+TABLE|DROP\s+COLUMN/i);
+});
+
+test("药材分类字典迁移不得复制到新的重复版本", async () => {
+  const files = await readdir(migrations);
+
+  assert.equal(
+    files.includes("V20260715_002__complete_herb_category_dictionary_seed.sql"),
+    false,
+  );
 });

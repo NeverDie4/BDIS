@@ -326,6 +326,7 @@
           ON gr.batch_id = b.id
          AND gr.is_deleted = 0
          AND gr.review_status = 'approved'
+         AND gr.public_visible = 1
         INNER JOIN herb_batch_image bi
           ON bi.batch_id = b.id
          AND bi.is_deleted = 0

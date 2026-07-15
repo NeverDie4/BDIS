@@ -102,6 +102,15 @@ export async function getPublicDigitalLifeIntegrity(traceCode: string) {
 
 export function resolveDigitalLifeResourceUrl(value?: string) {
   if (!value || /^https?:\/\//i.test(value)) return value || "";
-  const origin = new URL(API_BASE_URL, "http://localhost").origin;
-  return `${origin}${value.startsWith("/") ? value : `/${value}`}`;
+  if (value.startsWith("/")) return value;
+  const normalizedApiBase = API_BASE_URL.replace(/\/+$/, "");
+  const resourcePath = value.startsWith("/") ? value : `/${value}`;
+  if (normalizedApiBase.startsWith("/")) {
+    return `${normalizedApiBase}${resourcePath}`;
+  }
+  const origin =
+    typeof window === "undefined"
+      ? new URL(normalizedApiBase).origin
+      : window.location.origin;
+  return `${origin}${resourcePath}`;
 }

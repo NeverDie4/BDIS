@@ -225,6 +225,17 @@ test("task-level digital life QR code uses the public archive resource", () => {
   assert.match(pageSource, /alt="数字生命档案二维码"/);
 });
 
+test("relative public digital life resources keep the deployed API path", () => {
+  const apiSource = readFileSync(apiUrl, "utf8");
+
+  assert.match(apiSource, /if \(value\.startsWith\("\/"\)\) return value;/);
+  assert.match(apiSource, /normalizedApiBase\.startsWith\("\/"\)/);
+  assert.doesNotMatch(
+    apiSource,
+    /new URL\(API_BASE_URL,\s*"http:\/\/localhost"\)\.origin/,
+  );
+});
+
 test("both public archive pages provide a safe back action", () => {
   for (const sourceUrl of [pageUrl, growthTracePageUrl]) {
     const source = readFileSync(sourceUrl, "utf8");
