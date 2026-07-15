@@ -4,6 +4,7 @@ import com.bdis.common.constants.SecurityConstants;
 import com.bdis.common.core.Result;
 import com.bdis.modules.auth.dto.BootstrapAdminDTO;
 import com.bdis.modules.auth.dto.LoginDTO;
+import com.bdis.modules.auth.dto.RefreshSessionDTO;
 import com.bdis.modules.auth.service.AuthService;
 import com.bdis.modules.auth.vo.CurrentUserVO;
 import com.bdis.modules.auth.vo.LoginVO;
@@ -36,6 +37,12 @@ public class AuthController {
     @PostMapping("/sessions")
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO dto, HttpServletRequest request) {
         return Result.success(authService.login(dto, request));
+    }
+
+    @PostMapping("/sessions/refresh")
+    public Result<LoginVO> refresh(
+            @Valid @RequestBody RefreshSessionDTO dto, HttpServletRequest request) {
+        return Result.success(authService.refresh(dto, request));
     }
 
     @DeleteMapping("/sessions/current")
