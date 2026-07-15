@@ -21,15 +21,15 @@ BDIS 管理接口创建同步任务
 
 范围固定如下：
 
-| 项目      | 本次范围                                                            |
-| --------- | ------------------------------------------------------------------- |
-| 数据方向  | 校内系统到 BDIS 的入站同步，由 BDIS 主动拉取。                      |
-| 资源类型  | 仅 `GROWTH_RECORD`。                                                |
-| SOAP 版本 | SOAP 1.1，HTTP，Document/Literal。                                  |
-| 调用方式  | 同步调用；不做定时调度、消息队列和异步回调。                        |
+| 项目      | 本次范围                                                                       |
+| --------- | ------------------------------------------------------------------------------ |
+| 数据方向  | 校内系统到 BDIS 的入站同步，由 BDIS 主动拉取。                                 |
+| 资源类型  | 仅 `GROWTH_RECORD`。                                                           |
+| SOAP 版本 | SOAP 1.1，HTTP，Document/Literal。                                             |
+| 调用方式  | 同步调用；不做定时调度、消息队列和异步回调。                                   |
 | 校内系统  | 后端同一进程内发布的本地模拟 SOAP 服务，端点为 `/api/services/campus-growth`。 |
-| 认证      | 本地 mock 不启用真实凭据；真实环境的认证方式待校方提供。            |
-| 前端      | 不新增独立管理页面；通过既有 REST 任务接口和 Swagger/Postman 演示。 |
+| 认证      | 本地 mock 不启用真实凭据；真实环境的认证方式待校方提供。                       |
+| 前端      | 不新增独立管理页面；通过既有 REST 任务接口和 Swagger/Postman 演示。            |
 
 明确不做用户、课程、业绩等其他资源同步，不做双向同步、WS-Security、真实校内地址接入、批量分页、定时补偿或复杂重试策略。
 
@@ -141,12 +141,12 @@ scripts/dev-soap-seed.sql
 
 本地 mock 使用以下配置名；冻结版端点必须是回环 HTTP 地址，不读取或接入真实校内地址及凭据：
 
-| 配置                           | 本地演示值                          | 说明                  |
-| ------------------------------ | ----------------------------------- | --------------------- |
-| `BDIS_SOAP_MODE`               | `mock`                              | 冻结版仅允许 `mock`。 |
-| `BDIS_SOAP_CAMPUS_ENDPOINT`    | 本地 `/api/services/campus-growth` 地址 | SOAP 服务端点。    |
-| `BDIS_SOAP_CONNECT_TIMEOUT_MS` | `3000`                              | 连接超时。            |
-| `BDIS_SOAP_READ_TIMEOUT_MS`    | `5000`                              | 响应超时。            |
+| 配置                           | 本地演示值                              | 说明                  |
+| ------------------------------ | --------------------------------------- | --------------------- |
+| `BDIS_SOAP_MODE`               | `mock`                                  | 冻结版仅允许 `mock`。 |
+| `BDIS_SOAP_CAMPUS_ENDPOINT`    | 本地 `/api/services/campus-growth` 地址 | SOAP 服务端点。       |
+| `BDIS_SOAP_CONNECT_TIMEOUT_MS` | `3000`                                  | 连接超时。            |
+| `BDIS_SOAP_READ_TIMEOUT_MS`    | `5000`                                  | 响应超时。            |
 
 请求、响应和错误摘要可写入现有交换记录以便演示追溯；真实环境接入前必须另行确认账号认证、脱敏字段、日志保留期和访问权限。不得提交真实校内地址、账号、密码、证书或 Token。
 
@@ -161,6 +161,17 @@ scripts/dev-soap-seed.sql
 3. 让 `mock` 模式显式选择本地模拟端点；非 mock 模式明确拒绝，不能静默回退为假数据。
 4. 接入 `scripts/dev-soap-seed.sql` 中的前置数据，覆盖成功、SOAP Fault、导入匹配失败、重复 `externalNo`、多记录拒绝和失败游标保持等测试。
 5. 同步更新 REST 接口文档、WSDL 地址、演示步骤和已知限制。
+
+### 6.1 一键本地演示
+
+后端、本地 MySQL 和 Redis 启动后，提供具备 `soap:exchange:view`、`soap:exchange:execute` 权限的本地访问令牌，或提供本地演示账号：
+
+```bash
+export BDIS_DEMO_TOKEN='本地访问令牌'
+pnpm demo:soap
+```
+
+也可设置 `BDIS_DEMO_USERNAME`、`BDIS_DEMO_PASSWORD` 由脚本登录。脚本会校验 API 与 SOAP 端点均为本机 HTTP 地址、`BDIS_SOAP_MODE=mock`，仅允许对名称以 `_dev` 结尾的本地数据库执行 [scripts/dev-soap-seed.sql](../scripts/dev-soap-seed.sql)。默认种子步骤需要本机可用的 MySQL/MariaDB 客户端；若已手工执行演示数据脚本，可使用 `pnpm demo:soap -- --skip-seed` 跳过数据准备。它不会启动服务、创建账号、连接真实校内地址或共享数据库。
 
 冻结前的验收标准：
 
