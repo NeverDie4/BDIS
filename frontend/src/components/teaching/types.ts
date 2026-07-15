@@ -75,6 +75,8 @@ export interface CourseRecord {
   thumbnail: string;
   description: string;
   version?: number;
+  createdBy?: number;
+  publisher?: string;
   detail: CourseDetailData;
   enrollmentStatus?: "enrolled" | "available" | "closed";
   score?: number;

@@ -61,6 +61,7 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                    er.graded_by,
                    er.graded_at,
                    er.grade_comment,
+                   er.report_file_id,
                    er.status,
                    er.created_at,
                    er.updated_at
@@ -126,6 +127,7 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                    er.graded_at,
                    grader.real_name AS graded_by_name,
                    er.grade_comment,
+                   er.report_file_id,
                    er.submitted_at,
                    er.submitted_by,
                    submitter.real_name AS submitted_by_name,
@@ -166,7 +168,7 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                 version = version + 1
             WHERE id = #{id}
               AND is_deleted = 0
-              AND archive_status = 'draft'
+              AND archive_status IN ('draft', 'returned')
               AND version = #{version}
             """)
     int submitByIdAndVersion(
@@ -219,6 +221,9 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
             @Param("score") java.math.BigDecimal score,
             @Param("gradedAt") LocalDateTime gradedAt,
             @Param("gradeComment") String gradeComment);
+
+    @Update("UPDATE edu_experiment_record SET archive_status='returned', archive_comment=#{comment}, updated_at=#{operatedAt}, updated_by=#{operatorId}, version=version+1 WHERE id=#{id} AND is_deleted=0 AND archive_status='submitted' AND version=#{version}")
+    int returnByIdAndVersion(@Param("id") Long id, @Param("version") Integer version, @Param("operatorId") Long operatorId, @Param("operatedAt") LocalDateTime operatedAt, @Param("comment") String comment);
 
     @Update(
             """

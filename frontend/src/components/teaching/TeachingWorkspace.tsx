@@ -2,6 +2,7 @@ import type { Key } from "react";
 import { CourseDetailPanel } from "./CourseDetailPanel";
 import { CourseManagementPanel } from "./CourseManagementPanel";
 import { ResearchProjectPanel } from "./ResearchProjectPanel";
+import { ResearchDetailPanel } from "./ResearchDetailPanel";
 import { TrainingManagementPanel } from "./TrainingManagementPanel";
 import { TrainingOverviewPanel } from "./TrainingOverviewPanel";
 import type { CourseRecord, ResearchRecord, TeachingTabKey } from "./types";
@@ -32,11 +33,14 @@ type TeachingWorkspaceProps = {
   canResearchStatus?: boolean;
   canTrainingManage?: boolean;
   currentUserId?: number;
+  canManageAll?: boolean;
   selectedCourse: CourseRecord | null;
+  selectedResearch: ResearchRecord | null;
   selectedCourseRowKeys: Key[];
   selectedResearchRowKeys: Key[];
   onViewCourse: (course: CourseRecord) => void;
   onCloseCourse: () => void;
+  onCloseResearch: () => void;
   onCourseSelectionChange: (keys: Key[]) => void;
   onResearchSelectionChange: (keys: Key[]) => void;
   onAddCourse: () => void;
@@ -44,12 +48,12 @@ type TeachingWorkspaceProps = {
   onPublishCourse: (course: CourseRecord) => void;
   onOfflineCourse: (course: CourseRecord) => void;
   onDeleteCourse: (course: CourseRecord) => void;
-  onEnrollCourse?: (course: CourseRecord) => void;
   onAddResearch: () => void;
   onEditResearch: (project: ResearchRecord) => void;
   onViewResearch: (project: ResearchRecord) => void;
   onChangeResearchStatus: (project: ResearchRecord, status: string) => void;
   onReloadResearch: () => void;
+  onEnrollCourse?: (course: CourseRecord) => void;
 };
 
 export function TeachingWorkspace({
@@ -71,10 +75,12 @@ export function TeachingWorkspace({
   canRecordDelete,
   canGrade,
   selectedCourse,
+  selectedResearch,
   selectedCourseRowKeys,
   selectedResearchRowKeys,
   onViewCourse,
   onCloseCourse,
+  onCloseResearch,
   onCourseSelectionChange,
   onResearchSelectionChange,
   onAddCourse,
@@ -82,7 +88,6 @@ export function TeachingWorkspace({
   onPublishCourse,
   onOfflineCourse,
   onDeleteCourse,
-  onEnrollCourse,
   researchProjects,
   researchLoading,
   canResearchAdd,
@@ -90,14 +95,16 @@ export function TeachingWorkspace({
   canResearchStatus,
   canTrainingManage,
   currentUserId,
+  canManageAll,
   onAddResearch,
   onEditResearch,
   onViewResearch,
   onChangeResearchStatus,
   onReloadResearch,
+  onEnrollCourse,
 }: TeachingWorkspaceProps) {
   return (
-    <div className={`${styles.workspace} ${selectedCourse ? styles.workspaceWithDetail : ""}`}>
+    <div className={`${styles.workspace} ${selectedCourse || selectedResearch ? styles.workspaceWithDetail : ""}`}>
       <section className={styles.mainContent}>
         <div className={styles.managementGrid}>
           {activeTab === "course" ? (
@@ -108,6 +115,8 @@ export function TeachingWorkspace({
               canEdit={canEdit}
               canPublish={canPublish}
               canDelete={canDelete}
+              currentUserId={currentUserId}
+              canManageAll={canManageAll}
               canEnroll={canEnroll}
               viewMode={courseViewMode}
               onViewModeChange={onCourseViewModeChange}
@@ -154,8 +163,11 @@ export function TeachingWorkspace({
           canRecordArchive={canRecordArchive}
           canRecordDelete={canRecordDelete}
           canGrade={canGrade}
+          canEnroll={canEnroll && selectedCourse?.status === "published"}
+          onEnroll={() => selectedCourse && onEnrollCourse?.(selectedCourse)}
         />
       ) : null}
+      {selectedResearch ? <ResearchDetailPanel project={selectedResearch} canEdit={canResearchEdit} onEdit={onEditResearch} onClose={onCloseResearch} /> : null}
     </div>
   );
 }

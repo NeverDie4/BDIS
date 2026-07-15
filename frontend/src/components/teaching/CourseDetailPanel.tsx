@@ -41,6 +41,8 @@ type CourseDetailPanelProps = {
   canRecordArchive?: boolean;
   canRecordDelete?: boolean;
   canGrade?: boolean;
+  canEnroll?: boolean;
+  onEnroll?: () => void;
 };
 
 export function CourseDetailPanel({
@@ -53,6 +55,8 @@ export function CourseDetailPanel({
   canRecordArchive,
   canRecordDelete,
   canGrade,
+  canEnroll,
+  onEnroll,
 }: CourseDetailPanelProps) {
   const { message, modal } = App.useApp();
   const [records, setRecords] = useState<ExperimentRecordListApi[]>([]);
@@ -206,6 +210,7 @@ export function CourseDetailPanel({
     <aside className={styles.detailPanel} aria-label="课程详情">
       <div className={styles.detailHeader}><h2>课程详情</h2><div className={styles.detailHeaderActions}><Button icon={<EyeOutlined />} size="small">学生预览</Button>{canGrade ? <Button size="small" onClick={() => { const record = records.find((item) => item.archiveStatus === "submitted"); if (record) { setGradingRecord(record); setGradeValue(record.score ?? null); setGradeComment(record.gradeComment ?? ""); } else message.info("暂无待批阅的实验报告"); }}>批阅报告</Button> : null}<Button aria-label="关闭课程详情" icon={<CloseOutlined />} size="small" type="text" onClick={onClose} /></div></div>
       <section className={styles.courseSummary}><Image alt={`${course.courseName}课程封面`} className={styles.detailCover} height={78} src={course.thumbnail} width={104} /><div className={styles.courseSummaryBody}><div className={styles.courseSummaryTitle}><h3>{course.courseName}</h3><TeachingStatusTag status={course.status} /></div><dl className={styles.courseSummaryMeta}><div><dt>课程编号</dt><dd>{course.courseNo}</dd></div><div><dt>学科方向</dt><dd>{course.subject}</dd></div><div><dt>负责人</dt><dd>{course.teacher}</dd></div><div><dt>更新时间</dt><dd>{course.updatedAt}</dd></div></dl></div></section>
+      {canEnroll && course.status === "published" ? <div style={{ padding: "8px 16px" }}><Button type="primary" onClick={onEnroll}>加入我的课程</Button></div> : null}
       <Tabs className={styles.detailTabs} items={detailItems} size="small" tabBarGutter={16} />
       <ExperimentRecordEditorModal open={recordEditorOpen} courseId={Number(course.id)} record={editingRecord} onCancel={() => setRecordEditorOpen(false)} onSaved={async () => { setRecordEditorOpen(false); await reloadRecords(); }} />
       <Modal open={Boolean(gradingRecord)} title="批阅实验报告" okText="保存评分" cancelText="取消" onCancel={() => setGradingRecord(null)} onOk={async () => { if (!gradingRecord || gradeValue == null) return; try { const detail = await getExperimentRecord(gradingRecord.id); await gradeExperimentRecord(gradingRecord.id, { version: detail.version, score: gradeValue, gradeComment: gradeComment.trim() || undefined }); message.success("评分已保存"); setGradingRecord(null); await reloadRecords(); } catch (error) { message.error(getApiErrorMessage(error, "评分保存失败")); } }}>

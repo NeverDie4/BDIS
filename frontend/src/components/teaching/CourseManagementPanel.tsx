@@ -11,6 +11,8 @@ type CourseManagementPanelProps = {
   canEdit?: boolean;
   canPublish?: boolean;
   canDelete?: boolean;
+  currentUserId?: number;
+  canManageAll?: boolean;
   canEnroll?: boolean;
   viewMode?: "all" | "mine";
   onViewModeChange?: (mode: "all" | "mine") => void;
@@ -32,6 +34,8 @@ export function CourseManagementPanel({
   canEdit,
   canPublish,
   canDelete,
+  currentUserId,
+  canManageAll,
   canEnroll,
   viewMode,
   onViewModeChange,
@@ -45,22 +49,25 @@ export function CourseManagementPanel({
   onDeleteCourse,
   onEnrollCourse,
 }: CourseManagementPanelProps) {
+  const selectedCourse = courses.find((course) => String(course.id) === String(selectedRowKeys[0]));
+  const canManageSelected = Boolean(selectedCourse && (canManageAll || selectedCourse.createdBy === currentUserId || selectedCourse.teacherId === currentUserId));
   return (
     <section className={styles.managementSection}>
       <CourseActionToolbar
         canAdd={canAdd}
-        canDelete={canDelete}
-        canEdit={canEdit}
-        canPublish={canPublish}
+        canDelete={canDelete && canManageSelected}
+        canEdit={canEdit && canManageSelected}
+        canPublish={canPublish && canManageSelected}
+        canOffline={canPublish && canManageSelected && selectedCourse?.status === "published"}
         canEnroll={canEnroll}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         hasSelection={selectedRowKeys.length > 0}
         onAdd={onAddCourse}
-        onDelete={() => onDeleteCourse(courses.find((course) => String(course.id) === String(selectedRowKeys[0]))!)}
-        onEdit={() => onEditCourse(courses.find((course) => String(course.id) === String(selectedRowKeys[0]))!)}
-        onOffline={() => onOfflineCourse(courses.find((course) => String(course.id) === String(selectedRowKeys[0]))!)}
-        onPublish={() => onPublishCourse(courses.find((course) => String(course.id) === String(selectedRowKeys[0]))!)}
+        onDelete={() => selectedCourse && onDeleteCourse(selectedCourse)}
+        onEdit={() => selectedCourse && onEditCourse(selectedCourse)}
+        onOffline={() => selectedCourse && onOfflineCourse(selectedCourse)}
+        onPublish={() => selectedCourse && onPublishCourse(selectedCourse)}
       />
       <div className={styles.tableContainer}>
         <CourseTable
@@ -70,6 +77,8 @@ export function CourseManagementPanel({
           canEdit={canEdit}
           canPublish={canPublish}
           canDelete={canDelete}
+          currentUserId={currentUserId}
+          canManageAll={canManageAll}
           canEnroll={canEnroll}
           viewMode={viewMode}
           onEnrollCourse={onEnrollCourse}

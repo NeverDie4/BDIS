@@ -37,6 +37,11 @@
   padding: 14px 4px 12px;
 }
 
+/* 教学培训暂未开放，保留实现代码但隐藏入口。 */
+.moduleTabs :global(.ant-tabs-tab:nth-child(3)) {
+  display: none;
+}
+
 .moduleTabs :global(.ant-tabs-tab-active .ant-tabs-tab-btn) {
   color: var(--color-primary) !important;
   font-weight: 700;

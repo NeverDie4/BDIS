@@ -13,6 +13,8 @@ import {
   mapCourseList,
   offlineCourse,
   publishCourse,
+  enrollCourse,
+  listMyCourseEnrollments,
 } from "@/lib/courses";
 import { fetchEnabledHerbs } from "@/lib/herbs";
 import { listResearchProjects, mapResearchDetail, mapResearchProject, changeResearchStatus, getResearchProject, getApiErrorMessage as getResearchApiErrorMessage } from "@/lib/research";
@@ -49,8 +51,9 @@ export function TeachingPageClient() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseRecord | null>(null);
+  const [selectedResearch, setSelectedResearch] = useState<ResearchRecord | null>(null);
   const [courseViewMode, setCourseViewMode] = useState<"all" | "mine">("all");
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>(["1", "2"]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [editorCourse, setEditorCourse] = useState<CourseRecord | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedCourseRowKeys, setSelectedCourseRowKeys] = useState<Key[]>([]);
@@ -69,7 +72,7 @@ export function TeachingPageClient() {
     hasPermission("edu:experiment-record:archive") ||
     user?.roleCodes.some((role) => ["TEACHER", "REVIEWER"].includes(role.toUpperCase())) === true;
   const visibleCourses = courses
-    .map((course) => ({ ...course, enrollmentStatus: enrolledCourseIds.includes(String(course.id)) ? "enrolled" as const : "available" as const, score: String(course.id) === "1" ? 92 : String(course.id) === "2" ? 86 : undefined }))
+    .map((course) => ({ ...course, enrollmentStatus: enrolledCourseIds.includes(String(course.id)) ? "enrolled" as const : "available" as const }))
     .filter((course) => courseViewMode !== "mine" || (canEnrollCourse ? course.enrollmentStatus === "enrolled" : course.teacherId === user?.userId));
 
   const reloadCourses = useCallback(async () => {
@@ -88,6 +91,11 @@ export function TeachingPageClient() {
   useEffect(() => {
     void reloadCourses();
   }, [reloadCourses]);
+
+  useEffect(() => {
+    if (!canEnrollCourse) return;
+    void listMyCourseEnrollments().then((items) => setEnrolledCourseIds(items.map((item) => String(item.courseId)))).catch(() => undefined);
+  }, [canEnrollCourse]);
 
   const reloadResearch = useCallback(async () => {
     if (activeTab !== "research" || !hasPermission("research:project:list")) return;
@@ -176,6 +184,16 @@ export function TeachingPageClient() {
     catch (error) { message.error(getResearchApiErrorMessage(error, "课题详情加载失败")); }
   }
 
+  async function handleResearchView(project: ResearchRecord) {
+    try {
+      const detail = await getResearchProject(Number(project.id));
+      setSelectedResearch(mapResearchDetail(detail));
+      setSelectedCourse(null);
+    } catch (error) {
+      message.error(getResearchApiErrorMessage(error, "课题详情加载失败"));
+    }
+  }
+
   async function handleChangeResearchStatus(project: ResearchRecord, status: string) {
     try { const detail = await getResearchProject(Number(project.id)); await changeResearchStatus(detail.id, { targetStatus: status, version: detail.version, reason: "前端课题状态操作" }); message.success("课题状态已更新"); await reloadResearch(); }
     catch (error) { message.error(getResearchApiErrorMessage(error, "课题状态更新失败")); }
@@ -195,6 +213,7 @@ export function TeachingPageClient() {
         onTabChange={(tab) => {
           setActiveTab(tab);
           setSelectedCourse(null);
+          setSelectedResearch(null);
         }}
       />
       <TeachingFilterPanel />
@@ -217,9 +236,11 @@ export function TeachingPageClient() {
         canRecordDelete={hasPermission("edu:experiment-record:delete")}
         canGrade={canReviewExperiment}
         selectedCourse={selectedCourse}
+        selectedResearch={selectedResearch}
         selectedCourseRowKeys={selectedCourseRowKeys}
         selectedResearchRowKeys={selectedResearchRowKeys}
         onCloseCourse={() => setSelectedCourse(null)}
+        onCloseResearch={() => setSelectedResearch(null)}
         onCourseSelectionChange={setSelectedCourseRowKeys}
         onResearchSelectionChange={setSelectedResearchRowKeys}
         onViewCourse={handleViewCourse}
@@ -231,10 +252,6 @@ export function TeachingPageClient() {
         onPublishCourse={handlePublish}
         onOfflineCourse={handleOffline}
         onDeleteCourse={handleDelete}
-        onEnrollCourse={(course) => {
-          setEnrolledCourseIds((ids) => ids.includes(String(course.id)) ? ids : [...ids, String(course.id)]);
-          message.success("已选修该课程，可在“我的课程”中查看");
-        }}
         researchProjects={researchProjects}
         researchLoading={researchLoading}
         canResearchAdd={hasPermission("research:project:add")}
@@ -242,11 +259,13 @@ export function TeachingPageClient() {
         canResearchStatus={hasPermission("research:project:status")}
         canTrainingManage={hasPermission("edu:training-plan:add")}
         currentUserId={user?.userId}
+        canManageAll={user?.roleCodes.some((role) => role.toUpperCase() === "ADMIN") === true}
         onAddResearch={() => { setResearchEditorProject(null); setResearchEditorOpen(true); }}
         onEditResearch={handleViewResearch}
-        onViewResearch={handleViewResearch}
+        onViewResearch={handleResearchView}
         onChangeResearchStatus={handleChangeResearchStatus}
         onReloadResearch={() => void reloadResearch()}
+        onEnrollCourse={(course) => { void enrollCourse(Number(course.id)).then(() => { setEnrolledCourseIds((ids) => ids.includes(String(course.id)) ? ids : [...ids, String(course.id)]); message.success("已加入我的课程"); }).catch((error) => message.error(getApiErrorMessage(error, "选课失败"))); }}
       />
       <CourseEditorModal
         open={editorOpen}

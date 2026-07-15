@@ -47,4 +47,6 @@ public class ExperimentRecordEntity extends BaseEntity {
     private LocalDateTime gradedAt;
 
     private String gradeComment;
+
+    private Long reportFileId;
 }

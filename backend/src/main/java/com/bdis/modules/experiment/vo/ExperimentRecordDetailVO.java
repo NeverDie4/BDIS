@@ -28,6 +28,7 @@ public class ExperimentRecordDetailVO {
     private LocalDateTime gradedAt;
     private String gradedByName;
     private String gradeComment;
+    private Long reportFileId;
     private LocalDateTime submittedAt;
     private Long submittedBy;
     private String submittedByName;

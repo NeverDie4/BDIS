@@ -8,18 +8,19 @@ public final class ExperimentArchiveStatus {
     public static final String DRAFT = "draft";
     public static final String SUBMITTED = "submitted";
     public static final String ARCHIVED = "archived";
+    public static final String RETURNED = "returned";
 
     private ExperimentArchiveStatus() {}
 
     public static void assertMutable(String status) {
-        if (!DRAFT.equals(status)) {
+        if (!DRAFT.equals(status) && !RETURNED.equals(status)) {
             throw new BusinessException(
                     ResultCodeEnum.CONFLICT, "Only draft experiment records can be modified");
         }
     }
 
     public static void assertDeletable(String status) {
-        if (!DRAFT.equals(status)) {
+        if (!DRAFT.equals(status) && !RETURNED.equals(status)) {
             throw new BusinessException(
                     ResultCodeEnum.CONFLICT, "Only draft experiment records can be deleted");
         }

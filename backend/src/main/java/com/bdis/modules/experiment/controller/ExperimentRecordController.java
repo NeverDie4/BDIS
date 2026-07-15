@@ -11,6 +11,10 @@ import com.bdis.modules.experiment.request.ExperimentRecordCreateRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordGradeRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordSubmitRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordUpdateRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordReturnRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordVersionRequest;
+import com.bdis.modules.experiment.entity.ExperimentRecordVersionEntity;
+import com.bdis.modules.experiment.service.ExperimentRecordVersionService;
 import com.bdis.modules.experiment.service.ExperimentRecordService;
 import com.bdis.modules.experiment.vo.ExperimentRecordDetailVO;
 import com.bdis.modules.experiment.vo.ExperimentRecordListVO;
@@ -38,11 +42,18 @@ public class ExperimentRecordController {
 
     private final ExperimentRecordService recordService;
     private final AuthorizationService authorizationService;
+    private final ExperimentRecordVersionService versionService;
 
     public ExperimentRecordController(
             ExperimentRecordService recordService, AuthorizationService authorizationService) {
         this.recordService = recordService;
         this.authorizationService = authorizationService;
+        this.versionService = null;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ExperimentRecordController(ExperimentRecordService recordService, AuthorizationService authorizationService, ExperimentRecordVersionService versionService) {
+        this.recordService = recordService; this.authorizationService = authorizationService; this.versionService = versionService;
     }
 
     @GetMapping
@@ -113,6 +124,27 @@ public class ExperimentRecordController {
         authorizationService.requirePermission("edu:experiment-record:grade");
         recordService.grade(id, request);
         return Result.success(recordService.getDetail(id));
+    }
+
+    @PostMapping("/{id}/return")
+    public Result<ExperimentRecordDetailVO> returnForRevision(@PathVariable @Positive Long id,
+            @Valid @RequestBody ExperimentRecordReturnRequest request) {
+        requirePositiveId(id);
+        authorizationService.requirePermission("edu:experiment-record:return");
+        recordService.returnForRevision(id, request);
+        return Result.success(recordService.getDetail(id));
+    }
+
+    @PostMapping("/{id}/versions")
+    public Result<ExperimentRecordVersionEntity> createVersion(@PathVariable @Positive Long id, @Valid @RequestBody ExperimentRecordVersionRequest request) {
+        authorizationService.requirePermission("edu:experiment-record:version");
+        return Result.success(versionService.create(id, request));
+    }
+
+    @GetMapping("/{id}/versions")
+    public Result<List<ExperimentRecordVersionEntity>> versions(@PathVariable @Positive Long id) {
+        authorizationService.requirePermission("edu:experiment-record:detail");
+        return Result.success(versionService.list(id));
     }
 
     @GetMapping("/{id}/attachments")

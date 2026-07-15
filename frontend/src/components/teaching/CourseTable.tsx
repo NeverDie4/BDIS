@@ -13,6 +13,8 @@ type CourseTableProps = {
   canEdit?: boolean;
   canPublish?: boolean;
   canDelete?: boolean;
+  currentUserId?: number;
+  canManageAll?: boolean;
   canEnroll?: boolean;
   viewMode?: "all" | "mine";
   onEnrollCourse?: (course: CourseRecord) => void;
@@ -175,6 +177,8 @@ export function CourseTable({
   canEdit,
   canPublish,
   canDelete,
+  currentUserId,
+  canManageAll,
   canEnroll,
   viewMode,
   onEnrollCourse,
@@ -216,6 +220,7 @@ export function CourseTable({
     },
     { title: "学科方向", dataIndex: "subject", key: "subject", ellipsis: true, width: 110 },
     { title: "负责人", dataIndex: "teacher", key: "teacher", width: 90 },
+    { title: "发布人", dataIndex: "publisher", key: "publisher", width: 90, render: (value: string) => value || "—" },
     ...(viewMode === "mine" ? [{
       title: "我的成绩",
       dataIndex: "score",
@@ -236,17 +241,19 @@ export function CourseTable({
       key: "actions",
       fixed: "right",
       width: 176,
-      render: (_value, record) => (
+      render: (_value, record) => {
+        const canManage = Boolean(canManageAll || record.createdBy === currentUserId || record.teacherId === currentUserId);
+        return (
         <Space size={2}>
           <Button className={styles.actionLink} type="link" onClick={() => onViewCourse(record)}>查看</Button>
           {canEnroll && record.enrollmentStatus === "available" ? <Button className={styles.actionLink} type="link" onClick={() => onEnrollCourse?.(record)}>选课</Button> : null}
-          {canEdit ? <Button className={styles.actionLink} type="link" onClick={() => onEditCourse(record)}>编辑</Button> : null}
+          {canEdit && canManage ? <Button className={styles.actionLink} type="link" onClick={() => onEditCourse(record)}>编辑</Button> : null}
           <Dropdown
             menu={{
               items: [
-                record.status === "published" && canPublish ? { key: "offline", label: "下线" } : null,
-                record.status !== "published" && canPublish ? { key: "publish", label: "发布" } : null,
-                canDelete ? { key: "delete", label: "删除", danger: true } : null,
+                record.status === "published" && canPublish && canManage ? { key: "offline", label: "下线" } : null,
+                record.status !== "published" && canPublish && canManage ? { key: "publish", label: "发布" } : null,
+                canDelete && canManage ? { key: "delete", label: "删除", danger: true } : null,
               ].filter(Boolean) as MenuProps["items"],
               onClick: ({ key }) => {
                 if (key === "publish") onPublishCourse(record);
@@ -261,7 +268,8 @@ export function CourseTable({
             </Button>
           </Dropdown>
         </Space>
-      ),
+        );
+      },
     },
   ];
 

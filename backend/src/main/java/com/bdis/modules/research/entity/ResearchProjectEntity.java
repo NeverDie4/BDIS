@@ -23,9 +23,23 @@ public class ResearchProjectEntity extends BaseEntity {
 
     private String description;
 
+    private String researchObjective;
+
+    private String researchContent;
+
     private LocalDateTime startedAt;
 
     private LocalDateTime endedAt;
 
     private String projectStatus;
+
+    private String reviewStatus;
+
+    private String reviewComment;
+
+    private Long reviewedBy;
+
+    private LocalDateTime reviewedAt;
+
+    private LocalDateTime archivedAt;
 }

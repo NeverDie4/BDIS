@@ -203,8 +203,10 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
         teachingMethods: toList(values.teachingMethods),
         tags: toList(values.tags),
       };
+      const current = course ? await getCourse(Number(course.id)) : null;
+      const currentStepVersions = new Map((current?.steps ?? []).map((step) => [step.id, step.version]));
       const saved = course
-        ? await updateCourse(Number(course.id), { ...payload, version: course.version ?? 0 })
+        ? await updateCourse(Number(course.id), { ...payload, version: current?.version ?? course.version ?? 0 })
         : await createCourse(payload);
       const courseId = saved.id;
 
@@ -218,7 +220,7 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
         latest = await updateCourse(courseId, {
           ...payload,
           videoUrl: uploaded.fileUrl,
-          version: saved.version,
+          version: latest.version,
         });
       }
 
@@ -231,7 +233,7 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
           sortOrder: index,
         };
         if (step.id) {
-          await updateCourseStep(courseId, step.id, { ...stepPayload, version: step.version ?? 0 });
+           await updateCourseStep(courseId, step.id, { ...stepPayload, version: currentStepVersions.get(step.id) ?? step.version ?? 0 });
         } else {
           await createCourseStep(courseId, stepPayload);
         }

@@ -26,6 +26,7 @@ public class CourseDetailVO {
     private String publishStatus;
     private LocalDateTime publishedAt;
     private Long publishedBy;
+    private String publisherName;
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
     private Integer status;

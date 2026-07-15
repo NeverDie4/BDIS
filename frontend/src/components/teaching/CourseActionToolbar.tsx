@@ -15,6 +15,7 @@ type CourseActionToolbarProps = {
   canAdd?: boolean;
   canEdit?: boolean;
   canPublish?: boolean;
+  canOffline?: boolean;
   canDelete?: boolean;
   canEnroll?: boolean;
   viewMode?: "all" | "mine";
@@ -31,6 +32,7 @@ export function CourseActionToolbar({
   canAdd,
   canEdit,
   canPublish,
+  canOffline,
   canDelete,
   onAdd,
   onEdit,
@@ -60,7 +62,7 @@ export function CourseActionToolbar({
         <Button disabled={!hasSelection || !canPublish} icon={<CheckCircleOutlined />} onClick={onPublish}>
           发布
         </Button>
-        <Button disabled={!hasSelection || !canPublish} icon={<MinusCircleOutlined />} onClick={onOffline}>
+        <Button disabled={!hasSelection || !canOffline} icon={<MinusCircleOutlined />} onClick={onOffline}>
           下架
         </Button>
         <Button danger disabled={!hasSelection || !canDelete} icon={<DeleteOutlined />} onClick={onDelete}>

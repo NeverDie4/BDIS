@@ -13,6 +13,11 @@ export type CourseListApi = {
   teacherId: number;
   teacherName?: string;
   publishStatus: CoursePublishStatus;
+  publishedAt?: string;
+  publishedBy?: number;
+  publisherName?: string;
+  createdBy?: number;
+  version?: number;
   startedAt?: string;
   endedAt?: string;
   status?: number;
@@ -134,6 +139,12 @@ export function offlineCourse(courseId: number, version: number) {
   return apiPost<void>(`/courses/${courseId}/offline`, { version });
 }
 
+export type CourseEnrollmentApi = { id: number; courseId: number; enrollmentStatus: string; progress: number; score?: number };
+export function enrollCourse(courseId: number) { return apiPost<CourseEnrollmentApi>(`/courses/${courseId}/enrollment`); }
+export function listMyCourseEnrollments() { return apiGet<CourseEnrollmentApi[]>('/courses/enrollments'); }
+export function saveCourseLearningProgress(courseId: number, payload: { itemType: 'step' | 'resource' | 'video'; itemId: number; progressValue?: number; progressSeconds?: number; totalSeconds?: number; completed: boolean }) { return apiPut(`/courses/${courseId}/learning`, payload); }
+export function getCourseLearningSummary(courseId: number) { return apiGet(`/courses/${courseId}/learning/summary`); }
+
 export function createCourseStep(courseId: number, payload: CourseStepPayload) {
   return apiPost<CourseStepApi>(`/courses/${courseId}/steps`, payload);
 }
@@ -174,7 +185,9 @@ export function mapCourseList(course: CourseListApi): CourseRecord {
     updatedAt: course.updatedAt ?? "",
     thumbnail: "/images/herbs/showcase/huangqi.png",
     description: "",
-    version: 0,
+    version: course.version ?? 0,
+    publisher: course.publisherName ?? (course.publishedBy ? String(course.publishedBy) : ""),
+    createdBy: course.createdBy,
     detail: {
       applicableMajors: [],
       hours: 0,

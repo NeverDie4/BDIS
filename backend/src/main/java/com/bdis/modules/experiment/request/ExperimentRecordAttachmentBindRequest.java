@@ -16,7 +16,7 @@ public class ExperimentRecordAttachmentBindRequest {
     private Long fileId;
 
     @NotBlank(message = "fileUsage is required")
-    @Pattern(regexp = "attachment|image", message = "fileUsage must be attachment or image")
+    @Pattern(regexp = "attachment|image|report", message = "fileUsage must be attachment, image or report")
     private String fileUsage;
 
     @Min(value = 0, message = "sortOrder must not be negative")

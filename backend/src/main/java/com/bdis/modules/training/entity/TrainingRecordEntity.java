@@ -33,4 +33,8 @@ public class TrainingRecordEntity extends BasicEntity {
     private LocalDateTime completedAt;
 
     private String resultComment;
+
+    private Long reportFileId;
+
+    private Long completionProofFileId;
 }

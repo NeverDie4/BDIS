@@ -23,6 +23,7 @@ import {
   deleteTrainingPlan,
   getTrainingSummary,
   getTrainingPlan,
+  getTrainingCompletionProof,
   listPlanMaterials,
   listTrainingFeedback,
   listTrainingMaterials,
@@ -205,7 +206,17 @@ export function TrainingManagementPanel({ canManage = false, currentUserId }: Tr
     { title: "操作", render: (_, record) => <Button type="link" className={styles.actionLink} onClick={() => { Modal.confirm({ title: `更新 ${displayName(record)} 的培训记录`, content: <RecordEditor record={record} onSave={(values) => void saveRecord(record, values)} />, icon: null, width: 520, okButtonProps: { style: { display: "none" } }, cancelButtonProps: { style: { display: "none" } } }); }}>编辑</Button> },
   ];
 
+  const ownCompletedRecord = records.find((record) => record.userId === currentUserId && record.trainingStatus === "completed");
+  const openCompletionProof = () => {
+    if (!ownCompletedRecord) return;
+    void getTrainingCompletionProof(ownCompletedRecord.id).then((proof) => {
+      if (!proof.completionProofFileId) { message.info(proof.message || "完成条件尚未满足"); return; }
+      window.open(`${window.location.origin}/api/files/${proof.completionProofFileId}/content?disposition=attachment`, "_blank", "noopener,noreferrer");
+    }).catch((error) => message.error(getApiErrorMessage(error, "完成证明生成失败")));
+  };
+
   return <section className={styles.trainingManagementPanel}>
+    {ownCompletedRecord ? <Button onClick={openCompletionProof}>查看完成证明</Button> : null}
     <div className={styles.sectionToolbar}>
       <strong>培训计划管理</strong>
       <Space><Button icon={<ReloadOutlined />} onClick={() => void reloadPlans()}>刷新</Button>{canManage ? <Button type="primary" icon={<PlusOutlined />} onClick={() => setPlanModalOpen(true)}>新建计划</Button> : null}</Space>

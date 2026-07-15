@@ -84,6 +84,14 @@ export type TrainingSummary = {
   averageRating?: number;
 };
 
+export type TrainingCompletionProof = {
+  trainingRecordId: number;
+  completed: boolean;
+  score?: number;
+  completionProofFileId?: number;
+  message?: string;
+};
+
 export type TrainingPlanPayload = {
   planNo: string;
   planName: string;
@@ -183,4 +191,16 @@ export function createTrainingFeedback(payload: {
 
 export function getTrainingSummary(planId: number) {
   return apiGet<TrainingSummary>(`/training-plans/${planId}/summary`);
+}
+
+export function submitTrainingReport(id: number, payload: { fileId?: number; content?: string }) {
+  return apiPost(`/training-records/${id}/submit`, payload);
+}
+
+export function reviewTrainingRecord(id: number, payload: { action: "return" | "complete" | "approve"; comment?: string }) {
+  return apiPost(`/training-records/${id}/review`, payload);
+}
+
+export function getTrainingCompletionProof(id: number) {
+  return apiGet<TrainingCompletionProof>(`/training-records/${id}/completion-proof`);
 }
