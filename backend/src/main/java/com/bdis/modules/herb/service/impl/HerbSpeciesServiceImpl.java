@@ -2,12 +2,14 @@ package com.bdis.modules.herb.service.impl;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.BusinessException;
+import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.modules.dictionary.support.DictionaryReferenceValidator;
 import com.bdis.modules.herb.dto.HerbSpeciesCreateRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesQueryRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesUpdateRequest;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.service.HerbSpeciesCoverFileService;
 import com.bdis.modules.herb.service.HerbSpeciesService;
 import com.bdis.modules.herb.vo.HerbSpeciesVO;
 import java.time.LocalDateTime;
@@ -22,12 +24,15 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
 
     private final HerbSpeciesMapper herbSpeciesMapper;
     private final DictionaryReferenceValidator dictionaryReferenceValidator;
+    private final HerbSpeciesCoverFileService coverFileService;
 
     public HerbSpeciesServiceImpl(
             HerbSpeciesMapper herbSpeciesMapper,
-            DictionaryReferenceValidator dictionaryReferenceValidator) {
+            DictionaryReferenceValidator dictionaryReferenceValidator,
+            HerbSpeciesCoverFileService coverFileService) {
         this.herbSpeciesMapper = herbSpeciesMapper;
         this.dictionaryReferenceValidator = dictionaryReferenceValidator;
+        this.coverFileService = coverFileService;
     }
 
     @Override
@@ -53,8 +58,16 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         entity.setStatus(request.getStatus() == null ? 1 : request.getStatus());
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
+        entity.setCreatedBy(CurrentUserUtils.currentUserId());
+        entity.setUpdatedBy(CurrentUserUtils.currentUserId());
         entity.setIsDeleted(0);
         herbSpeciesMapper.insertSpecies(entity);
+        if (StringUtils.hasText(request.getCoverImageUrl())) {
+            entity.setCoverImageUrl(
+                    coverFileService.replaceCover(entity.getId(), null, request.getCoverImageUrl()));
+            entity.setUpdatedAt(LocalDateTime.now());
+            herbSpeciesMapper.updateSpecies(entity);
+        }
         return toVO(entity);
     }
 
@@ -73,10 +86,14 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         existing.setMedicinalPart(request.getMedicinalPart());
         existing.setEfficacy(request.getEfficacy());
         existing.setDescription(request.getDescription());
+        existing.setCoverImageUrl(
+                coverFileService.replaceCover(
+                        id, existing.getCoverImageUrl(), request.getCoverImageUrl()));
         if (request.getStatus() != null) {
             existing.setStatus(request.getStatus());
         }
         existing.setUpdatedAt(LocalDateTime.now());
+        existing.setUpdatedBy(CurrentUserUtils.currentUserId());
         herbSpeciesMapper.updateSpecies(existing);
         return toVO(existing);
     }
@@ -85,7 +102,9 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
     @Transactional
     public void delete(Long id) {
         HerbEntity existing = getActiveEntity(id);
+        coverFileService.deleteCover(id, existing.getCoverImageUrl());
         existing.setUpdatedAt(LocalDateTime.now());
+        existing.setUpdatedBy(CurrentUserUtils.currentUserId());
         int affected = herbSpeciesMapper.logicalDeleteById(existing);
         if (affected == 0) {
             throw new BusinessException("Herb species not found or already deleted");
@@ -160,6 +179,7 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         vo.setMedicinalPart(entity.getMedicinalPart());
         vo.setEfficacy(entity.getEfficacy());
         vo.setDescription(entity.getDescription());
+        vo.setCoverImageUrl(entity.getCoverImageUrl());
         vo.setStatus(entity.getStatus());
         vo.setStatusText(statusText(entity.getStatus()));
         vo.setDistributionRegionText(entity.getDistributionRegionText());

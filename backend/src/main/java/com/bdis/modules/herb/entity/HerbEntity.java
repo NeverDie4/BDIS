@@ -35,6 +35,8 @@ public class HerbEntity extends BaseEntity {
 
     private String description;
 
+    private String coverImageUrl;
+
     private Long knowledgeEntityId;
 
     @TableField(exist = false)

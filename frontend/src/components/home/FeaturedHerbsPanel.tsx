@@ -33,7 +33,11 @@ export function FeaturedHerbsPanel({ herbs }: { herbs: HerbSpeciesApi[] }) {
           return (
             <Link className={styles.herbTile} href={getHerbHref(herb.herbName)} key={herb.id}>
               <div className={styles.herbImageBox}>
-                <div className={styles.imagePlaceholder}>{getPlaceholderCharacter(herb.herbName)}</div>
+                {herb.coverImageUrl ? (
+                  <img className={styles.herbImage} src={herb.coverImageUrl} alt={displayName} />
+                ) : (
+                  <div className={styles.imagePlaceholder}>{getPlaceholderCharacter(herb.herbName)}</div>
+                )}
               </div>
               <div className={styles.herbContent}>
                 <h3 className={styles.herbName} title={displayName}>{displayName}</h3>

@@ -99,17 +99,18 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 18px 18px 16px;
-  border-bottom: 1px solid #eadfcd;
-  background: linear-gradient(135deg, #eef7ef 0%, #fffaf2 58%, #f3ead9 100%);
+  min-height: 74px;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0e7d8;
+  background: #fffaf2;
 }
 
 .headerLeft {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .headerIcon {
@@ -117,7 +118,7 @@
   height: 44px;
   flex: 0 0 auto;
   border-radius: 50%;
-  box-shadow: 0 6px 16px rgba(15, 61, 46, 0.16);
+  box-shadow: 0 4px 10px rgba(15, 61, 46, 0.12);
 }
 
 .titleGroup {
@@ -127,16 +128,16 @@
 .title {
   margin: 0;
   color: #0f3d2e;
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1.35;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.16;
 }
 
 .subtitle {
   margin: 2px 0 0;
-  color: #6f7f72;
+  color: #728077;
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .closeButton {
@@ -146,56 +147,128 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(188, 213, 195, 0.9);
-  border-radius: 50%;
-  background: rgba(255, 250, 242, 0.78);
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   color: #355144;
   cursor: pointer;
 }
 
-.contextBox {
-  margin: 14px 16px 0;
-  flex: 0 0 auto;
-  border: 1px solid #d7e5d8;
-  border-radius: 16px;
+.closeButton:hover {
   background: #eef7ef;
-  padding: 12px 14px;
+}
+
+.contextBox {
+  margin: 12px 18px 10px;
+  flex: 0 0 auto;
+  min-height: 72px;
+  border: 1px solid #d5e6d7;
+  border-radius: 15px;
+  background: #eef7ef;
+  padding: 12px 16px 13px;
 }
 
 .contextTitle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   color: #0f5132;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.contextTitle span {
+  flex: 0 0 auto;
+  border: 1px solid #bdd6c2;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: rgba(255, 250, 242, 0.75);
+  color: #65776a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.contextTitle strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #0f3d2e;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contextText {
-  margin: 4px 0 0;
-  color: #536458;
-  font-size: 12px;
+  margin: 8px 0 0;
+  overflow: hidden;
+  color: #6f7f72;
+  font-size: 13px;
   line-height: 1.55;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quickArea {
-  display: flex;
+  display: block;
   flex: 0 0 auto;
-  flex-wrap: wrap;
+  margin: 6px 18px 10px;
+  padding: 0;
+}
+
+.quickHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 23px;
+}
+
+.quickTitleButton,
+.quickToggle {
+  border: 0;
+  background: transparent;
+  color: #245c42;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+.quickTitleButton {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.quickToggle {
+  padding: 0 0 0 8px;
+  color: #6f7f72;
+  font-size: 13px;
+}
+
+.quickScroller {
+  display: flex;
   gap: 8px;
-  padding: 12px 16px 10px;
+  overflow-x: auto;
+  padding: 8px 0 0;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.quickScroller::-webkit-scrollbar {
+  display: none;
 }
 
 .quickButton {
-  min-height: 30px;
-  border: 1px solid #b7d7c2;
+  height: 33px;
+  flex: 0 0 auto;
+  border: 1px solid #b9d8c0;
   border-radius: 999px;
-  background: #eef7ef;
-  color: #0f5132;
+  background: #f4faf4;
+  color: #245c42;
   cursor: pointer;
-  font-size: 12px;
-  line-height: 1.35;
-  padding: 6px 10px;
-  text-align: left;
+  font-size: 13px;
+  line-height: 31px;
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
 .quickButton:hover {
@@ -208,14 +281,27 @@
   flex: 1;
   overflow-y: auto;
   background:
-    linear-gradient(rgba(255, 250, 242, 0.72), rgba(255, 250, 242, 0.72)),
-    #f7f1e6;
-  padding: 14px 16px 12px;
+    linear-gradient(135deg, rgba(255, 250, 242, 0.92), rgba(248, 243, 233, 0.8)),
+    #fffaf4;
+  padding: 12px 20px 28px;
+  scrollbar-color: #d8cbb8 transparent;
+  scrollbar-width: thin;
+}
+
+.messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d8cbb8;
 }
 
 .messageRow {
   display: flex;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .assistantRow {
@@ -227,24 +313,34 @@
 }
 
 .bubble {
-  max-width: 82%;
-  border-radius: 16px;
+  max-width: 80%;
   font-size: 14px;
-  line-height: 1.62;
-  padding: 10px 12px;
+  line-height: 1.7;
+  padding: 12px 14px;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .assistantBubble {
-  border: 1px solid #eadfcd;
+  border: 1px solid #e5d8c5;
+  border-radius: 4px 16px 16px;
   background: #fffaf2;
-  color: #1f2933;
+  color: #0f3d2e;
 }
 
 .userBubble {
+  max-width: 78%;
+  border-radius: 16px 4px 16px 16px;
   background: #0f5132;
   color: #ffffff;
+}
+
+.messageAvatar {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #eef7ef;
 }
 
 .loadingBubble {
@@ -252,6 +348,27 @@
   align-items: center;
   gap: 8px;
   color: #6f7f72;
+}
+
+.typingDots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.typingDots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #728077;
+  animation: typingPulse 1s ease-in-out infinite;
+}
+
+.typingDots i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.typingDots i:nth-child(3) {
+  animation-delay: 0.32s;
 }
 
 .spin {
@@ -293,32 +410,40 @@
 }
 
 .inputArea {
-  display: flex;
+  position: sticky;
+  bottom: 0;
+  display: block;
   flex: 0 0 auto;
-  gap: 10px;
-  align-items: flex-end;
   border-top: 1px solid #eadfcd;
   background: #fffaf2;
-  padding: 14px 16px 16px;
+  padding: 14px 18px 16px;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  border: 1px solid #dbcdb9;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 8px 8px 8px 14px;
 }
 
 .input {
   min-width: 0;
+  min-height: 40px;
   max-height: 120px;
   flex: 1;
   resize: none;
-  border: 1px solid #d9cdbd;
-  border-radius: 14px;
-  background: #ffffff;
+  border: 0;
+  background: transparent;
   color: #1f2933;
   font-size: 14px;
-  line-height: 1.5;
-  padding: 10px 12px;
+  line-height: 1.6;
+  padding: 8px 0;
 }
 
 .input:focus {
-  border-color: #7db891;
-  box-shadow: 0 0 0 3px rgba(15, 95, 59, 0.1);
   outline: none;
 }
 
@@ -334,6 +459,20 @@
   background: #0f5132;
   color: #ffffff;
   cursor: pointer;
+}
+
+@keyframes typingPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }
 
 .sendButton:hover:not(:disabled) {
