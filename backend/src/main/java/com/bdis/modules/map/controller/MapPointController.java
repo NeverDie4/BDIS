@@ -6,10 +6,12 @@ import com.bdis.modules.growth.dto.GrowthRecordCreateRequest;
 import com.bdis.modules.growth.service.GrowthRecordService;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.map.dto.MapPointStatusRequest;
+import com.bdis.modules.map.dto.MapPointCollectionSummaryRequest;
 import com.bdis.modules.map.dto.MapPointUpsertRequest;
 import com.bdis.modules.map.query.MapPointQuery;
 import com.bdis.modules.map.service.MapPointService;
 import com.bdis.modules.map.vo.MapPointVO;
+import com.bdis.modules.map.vo.MapPointCollectionSummaryVO;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +72,12 @@ public class MapPointController {
     @GetMapping("/{pointId}/collections")
     public Result<List<GrowthRecordVO>> listCollectionRecords(@PathVariable Long pointId) {
         return Result.success(growthRecordService.listByPointId(pointId));
+    }
+
+    @PostMapping("/collection-summaries")
+    public Result<List<MapPointCollectionSummaryVO>> listCollectionSummaries(
+            @Valid @RequestBody MapPointCollectionSummaryRequest request) {
+        return Result.success(growthRecordService.listMapPointSummaries(request.getPointIds()));
     }
 
     @PostMapping("/{pointId}/collections")

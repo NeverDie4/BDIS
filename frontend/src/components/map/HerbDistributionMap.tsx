@@ -10,11 +10,13 @@ import {
   createMapPoint,
   createGrowthRecord,
   deleteMapPoint,
+  fetchMapPointCollectionSummaries,
   fetchMapPoints,
   fetchGrowthRecords,
   getMapPointRequestErrorMessage,
   type GrowthRecord,
   type GrowthRecordPayload,
+  type MapPointCollectionSummary,
   type MapPoint,
   type MapPointPayload,
   updateMapPoint,
@@ -70,11 +72,11 @@ interface NavigationPosition extends MeasurePoint {
   accuracy?: number;
 }
 
-type SuitabilityLevel = "high" | "medium" | "low";
+type SuitabilityLevel = "high" | "medium" | "low" | "insufficient";
 
 interface SuitabilitySnapshot {
   point: MapPoint;
-  score: number;
+  score?: number;
   level: SuitabilityLevel;
   altitude: number;
   altitudeEstimated: boolean;
@@ -217,6 +219,7 @@ function getSuitabilityLevel(score: number): SuitabilityLevel {
 function suitabilityColor(level: SuitabilityLevel) {
   if (level === "high") return "#16a34a";
   if (level === "medium") return "#eab308";
+  if (level === "insufficient") return "#94a3b8";
   return "#f97316";
 }
 
@@ -229,10 +232,35 @@ function stageSuitabilityScore(stage?: string) {
 }
 
 function median(values: number[]) {
-  if (values.length === 0) return 900;
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+function summariesToGrowthRecords(summaries: MapPointCollectionSummary[]) {
+  return Object.fromEntries(
+    summaries.map((summary) => {
+      const records = summary.monthlySnapshots.map((snapshot, index) => ({
+        id: summary.pointId * 1000 + index,
+        speciesId: 0,
+        distributionId: summary.pointId,
+        growthStage: snapshot.growthStage,
+        collectedAt: snapshot.collectedAt ?? `${snapshot.month}-01T00:00:00`,
+        recordCount: summary.recordCount,
+      }));
+      if (records.length === 0 && summary.latestCollectedAt) {
+        records.push({
+          id: summary.pointId * 1000,
+          speciesId: 0,
+          distributionId: summary.pointId,
+          growthStage: summary.latestGrowthStage,
+          collectedAt: summary.latestCollectedAt,
+          recordCount: summary.recordCount,
+        });
+      }
+      return [summary.pointId, records];
+    }),
+  ) as Record<number, GrowthRecord[]>;
 }
 
 function formatTemporalGrowthStage(stage?: string) {
@@ -333,14 +361,6 @@ function remainingRouteDistance(geometry: [number, number][], startIndex: number
       sum + pointDistance({ lat: coordinate[0], lng: coordinate[1] }, { lat: geometry[startIndex + index + 1][0], lng: geometry[startIndex + index + 1][1] }),
     0,
   );
-}
-
-function formatNavigationInstruction(type?: string, modifier?: string, roadName?: string) {
-  const direction = modifier === "left" ? "左转" : modifier === "right" ? "右转" : modifier === "straight" ? "直行" : "继续前行";
-  if (type === "depart") return "沿当前道路出发";
-  if (type === "arrive") return "到达采集点";
-  if (type === "roundabout") return "进入环岛";
-  return roadName ? `${direction}进入 ${roadName}` : direction;
 }
 
 function optimizeRouteOrder(points: MapPoint[], origin?: RouteOrigin) {
@@ -582,11 +602,12 @@ export function HerbDistributionMap() {
   const suitabilitySnapshots = useMemo<SuitabilitySnapshot[]>(() => {
     if (!suitabilityMode || suitabilityPoints.length === 0) return [];
 
-    const referenceAltitude = median(
+    const realAltitudes =
       suitabilityPoints
         .map((point) => point.altitude)
-        .filter((altitude): altitude is number => altitude != null && Number.isFinite(altitude)),
-    );
+        .filter((altitude): altitude is number => altitude != null && Number.isFinite(altitude));
+    const hasAltitudeReference = realAltitudes.length >= 2;
+    const referenceAltitude = hasAltitudeReference ? median(realAltitudes) : undefined;
     const radiusMeters = suitabilityRadius * 1000;
     const densityCounts = suitabilityPoints.map((point) =>
       suitabilityPoints.filter((candidate) =>
@@ -599,23 +620,30 @@ export function HerbDistributionMap() {
     const maxDensity = Math.max(...densityCounts, 1);
 
     return suitabilityPoints.map((point, index) => {
-      const altitudeEstimated = point.altitude == null || !Number.isFinite(point.altitude);
-      const altitude = altitudeEstimated ? referenceAltitude : point.altitude!;
-      const altitudeScore = Math.max(0, 1 - Math.abs(altitude - referenceAltitude) / 650) * 35;
-      const densityScore = (densityCounts[index] / maxDensity) * 35;
       const records = suitabilityRecordsByPoint[point.id] ?? [];
       const latestRecord = [...records].sort((left, right) =>
         (right.collectedAt ?? "").localeCompare(left.collectedAt ?? ""),
       )[0];
-      const score = Math.round(altitudeScore + densityScore + stageSuitabilityScore(latestRecord?.growthStage) * 0.3);
+      const recordCount = latestRecord?.recordCount ?? records.length;
+      const hasRealAltitude = point.altitude != null && Number.isFinite(point.altitude);
+      const hasGrowthRecord = recordCount > 0 && Boolean(latestRecord?.growthStage);
+      const sufficient = hasAltitudeReference && hasRealAltitude && suitabilityPoints.length >= 2 && hasGrowthRecord;
+      const altitude = point.altitude ?? 0;
+      const score = sufficient
+        ? Math.round(
+            Math.max(0, 1 - Math.abs(altitude - referenceAltitude!) / 650) * 35
+              + (densityCounts[index] / maxDensity) * 35
+              + stageSuitabilityScore(latestRecord?.growthStage) * 0.3,
+          )
+        : undefined;
       return {
         point,
         score,
-        level: getSuitabilityLevel(score),
+        level: score == null ? "insufficient" : getSuitabilityLevel(score),
         altitude: Math.round(altitude),
-        altitudeEstimated,
+        altitudeEstimated: !hasRealAltitude,
         nearbyPointCount: densityCounts[index],
-        recordCount: records.length,
+        recordCount,
         recentStage: latestRecord?.growthStage || "未记录",
       };
     });
@@ -625,6 +653,7 @@ export function HerbDistributionMap() {
     high: suitabilitySnapshots.filter((item) => item.level === "high").length,
     medium: suitabilitySnapshots.filter((item) => item.level === "medium").length,
     low: suitabilitySnapshots.filter((item) => item.level === "low").length,
+    insufficient: suitabilitySnapshots.filter((item) => item.level === "insufficient").length,
     records: suitabilitySnapshots.reduce((total, item) => total + item.recordCount, 0),
     estimatedAltitude: suitabilitySnapshots.filter((item) => item.altitudeEstimated).length,
   }), [suitabilitySnapshots]);
@@ -1253,25 +1282,17 @@ export function HerbDistributionMap() {
     }
 
     setTemporalLoading(true);
-    Promise.allSettled(
-      activePoints.map(async (point) => [point.id, await fetchGrowthRecords(point.id)] as const),
-    )
-      .then((results) => {
+    fetchMapPointCollectionSummaries(activePoints.map((point) => point.id))
+      .then((summaries) => {
         if (cancelled) {
           return;
         }
-        const nextRecords: Record<number, GrowthRecord[]> = {};
-        let failedCount = 0;
-        results.forEach((result) => {
-          if (result.status === "fulfilled") {
-            nextRecords[result.value[0]] = result.value[1];
-          } else {
-            failedCount += 1;
-          }
-        });
-        setTemporalRecordsByPoint(nextRecords);
-        if (failedCount > 0) {
-          messageRef.current.warning(`有 ${failedCount} 个点位的采集记录暂未加载，演变结果已展示可用数据`);
+        setTemporalRecordsByPoint(summariesToGrowthRecords(summaries));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTemporalRecordsByPoint({});
+          messageRef.current.warning("采集摘要加载失败，时空演变暂不展示采集记录");
         }
       })
       .finally(() => {
@@ -1294,23 +1315,15 @@ export function HerbDistributionMap() {
     }
     let cancelled = false;
     setSuitabilityLoading(true);
-    Promise.allSettled(
-      suitabilityPoints.map(async (point) => [point.id, await fetchGrowthRecords(point.id)] as const),
-    )
-      .then((results) => {
+    fetchMapPointCollectionSummaries(suitabilityPoints.map((point) => point.id))
+      .then((summaries) => {
         if (cancelled) return;
-        const nextRecords: Record<number, GrowthRecord[]> = {};
-        let failedCount = 0;
-        results.forEach((result) => {
-          if (result.status === "fulfilled") {
-            nextRecords[result.value[0]] = result.value[1];
-          } else {
-            failedCount += 1;
-          }
-        });
-        setSuitabilityRecordsByPoint(nextRecords);
-        if (failedCount > 0) {
-          messageRef.current.warning(`有 ${failedCount} 个点位的采集记录未加载，分析已基于可用数据完成`);
+        setSuitabilityRecordsByPoint(summariesToGrowthRecords(summaries));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSuitabilityRecordsByPoint({});
+          messageRef.current.warning("采集摘要加载失败，适生分析结果已标记为数据不足");
         }
       })
       .finally(() => {
@@ -1430,6 +1443,7 @@ export function HerbDistributionMap() {
     if (!suitabilityMode) return;
 
     suitabilitySnapshots.forEach((snapshot) => {
+      if (snapshot.level === "insufficient" || snapshot.score == null) return;
       const color = suitabilityColor(snapshot.level);
       const radius = Math.max(4500, suitabilityRadius * 1000 * (0.5 + snapshot.score / 200));
       L.circle([snapshot.point.latitude, snapshot.point.longitude], {
@@ -1725,71 +1739,19 @@ export function HerbDistributionMap() {
     );
 
     setRoutePlanningLoading(true);
-    try {
-      if (routeCoordinates.length < 2) {
-        const plan = { distanceMeters: 0, durationSeconds: 0, geometry: routeCoordinates, roadRoute: false, steps: [] };
-        setRoutePlan(plan);
-        return plan;
-      }
-      const coordinates = routeCoordinates.map(([lat, lng]) => `${lng},${lat}`).join(";");
-      const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`,
-      );
-      if (!response.ok) {
-        throw new Error("route service unavailable");
-      }
-      const result = (await response.json()) as {
-        code?: string;
-        routes?: Array<{
-          distance: number;
-          duration: number;
-          geometry?: { coordinates?: [number, number][] };
-          legs?: Array<{ steps?: Array<{ name?: string; maneuver?: { type?: string; modifier?: string; location?: [number, number] } }> }>;
-        }>;
-      };
-      const route = result.routes?.[0];
-      if (result.code !== "Ok" || !route?.geometry?.coordinates) {
-        throw new Error("route data unavailable");
-      }
-      const geometry = route.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]);
-      const steps = (route.legs ?? []).flatMap((leg) => leg.steps ?? []).flatMap((step) => {
-        const location = step.maneuver?.location;
-        if (!location) return [];
-        const coordinate: [number, number] = [location[1], location[0]];
-        return [{
-          instruction: formatNavigationInstruction(step.maneuver?.type, step.maneuver?.modifier, step.name),
-          location: coordinate,
-          routeIndex: closestRouteIndex(geometry, { lat: coordinate[0], lng: coordinate[1] }).index,
-        }];
-      });
-      const plan = {
-        distanceMeters: route.distance,
-        durationSeconds: route.duration,
-        geometry,
-        roadRoute: true,
-        steps,
-      };
-      setRoutePlan(plan);
-      if (!silent) {
-        message.success(`已生成 ${orderedPoints.length} 个采集点的最优路线`);
-      }
-      return plan;
-    } catch {
-      const plan = {
-        distanceMeters: fallbackDistance,
-        durationSeconds: Math.round(fallbackDistance / (35 * 1000 / 3600)),
-        geometry: routeCoordinates,
-        roadRoute: false,
-        steps: [],
-      };
-      setRoutePlan(plan);
-      if (!silent) {
-        message.warning("道路路线服务暂不可用，已使用直线估算路线");
-      }
-      return plan;
-    } finally {
-      setRoutePlanningLoading(false);
+    const plan = {
+      distanceMeters: fallbackDistance,
+      durationSeconds: Math.round(fallbackDistance / (35 * 1000 / 3600)),
+      geometry: routeCoordinates,
+      roadRoute: false,
+      steps: [],
+    };
+    setRoutePlan(plan);
+    setRoutePlanningLoading(false);
+    if (!silent) {
+      message.success(`已生成 ${orderedPoints.length} 个采集点的任务路线估算`);
     }
+    return plan;
   }
 
   routePlanGeneratorRef.current = generateRoutePlan;
@@ -1797,6 +1759,10 @@ export function HerbDistributionMap() {
   function startRouteNavigation() {
     if (routeSelectedPoints.length === 0) {
       message.warning("请先选择采集点");
+      return;
+    }
+    if (!routePlan?.roadRoute) {
+      message.warning("未配置受信任道路导航服务，当前仅可生成采集任务路线");
       return;
     }
     if (!navigator.geolocation) {
@@ -2039,7 +2005,7 @@ export function HerbDistributionMap() {
       <section
         className={`${styles.mapPanel} ${mapFullscreen ? styles.mapPanelFullscreen : ""} ${!mapFullscreen && sidePanelHeight ? styles.mapPanelSynced : ""}`}
         style={{
-          "--map-fullscreen-top": `${fullscreenTop}px`,
+          ...(mapFullscreen ? { top: fullscreenTop } : {}),
           ...(!mapFullscreen && sidePanelHeight ? { height: sidePanelHeight, minHeight: 0 } : {}),
         } as CSSProperties}
       >
@@ -2138,13 +2104,13 @@ export function HerbDistributionMap() {
                 <div className={styles.suitabilityResults}>
                   {suitabilitySnapshots
                     .slice()
-                    .sort((left, right) => right.score - left.score)
+                    .sort((left, right) => (right.score ?? -1) - (left.score ?? -1))
                     .slice(0, 4)
                     .map((item) => (
                       <button key={item.point.id} type="button" onClick={() => viewPoint(item.point)}>
                         <i style={{ backgroundColor: suitabilityColor(item.level) }} />
                         <span><strong>{item.point.locationName || item.point.district || "采集区域"}</strong><small>海拔 {item.altitude} m{item.altitudeEstimated ? "（估算）" : ""} · {item.nearbyPointCount} 个邻近点</small></span>
-                        <b>{item.score}</b>
+                        <b>{item.score == null ? "数据不足" : item.score}</b>
                       </button>
                     ))}
                 </div>
@@ -2283,7 +2249,7 @@ export function HerbDistributionMap() {
             <div className={styles.routePlannerFooter}>
               <Button
                 icon={<Navigation size={15} />}
-                disabled={routeSelectedPoints.length === 0 || !routePlan}
+                disabled={routeSelectedPoints.length === 0 || !routePlan || !routePlan.roadRoute}
                 onClick={routeNavigating ? stopRouteNavigation : startRouteNavigation}
               >
                 {routeNavigating ? "结束导航" : "开始导航"}

@@ -270,7 +270,7 @@
 
 .mapPanelFullscreen {
   position: fixed;
-  top: var(--map-fullscreen-top, 78px);
+  top: 78px;
   right: 0;
   bottom: 0;
   left: 0;
