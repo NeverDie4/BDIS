@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.BusinessException;
@@ -98,6 +99,29 @@ class BusinessReferenceValidatorTest {
         assertThatThrownBy(() -> validator().validate("research_project", 12L))
                 .isInstanceOf(com.bdis.common.exception.ForbiddenException.class)
                 .hasMessage("业务对象超出当前数据范围");
+    }
+
+    @Test
+    void performanceSourceAcceptsStudentProjectMembershipWithoutProjectDetailPermission() {
+        CurrentUser student =
+                new CurrentUser(
+                        5L,
+                        "student",
+                        "Student",
+                        1L,
+                        10L,
+                        Set.of("STUDENT"),
+                        Set.of(),
+                        Set.of());
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(student, null, List.of()));
+        when(jdbcTemplate.queryForObject(any(String.class), any(Class.class), any(Long.class)))
+                .thenReturn(1L);
+        when(jdbcTemplate.queryForList(contains("select leader_id"), eq(12L)))
+                .thenReturn(List.of(Map.of("leader_id", 5L)));
+
+        assertDoesNotThrow(() -> validator().validatePerformanceSource("research_project", 12L));
+        verifyNoInteractions(authorizationService);
     }
 
     @Test

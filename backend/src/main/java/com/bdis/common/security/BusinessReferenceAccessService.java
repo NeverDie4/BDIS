@@ -90,6 +90,21 @@ public class BusinessReferenceAccessService {
     }
 
     public void validate(String bizType, Long bizId) {
+        validateReference(bizType, bizId, true);
+    }
+
+    /**
+     * Validates a source selected while creating or editing a performance record.
+     *
+     * <p>The user must be able to access the referenced row, but is not required to hold the
+     * source module's detail permission. For example, a student can link a project they lead or
+     * participate in even when project-detail is not part of their role permissions.
+     */
+    public void validatePerformanceSource(String bizType, Long bizId) {
+        validateReference(bizType, bizId, false);
+    }
+
+    private void validateReference(String bizType, Long bizId, boolean requireReferencePermission) {
         if (bizType == null || bizType.isBlank()) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "业务类型不能为空");
         }
@@ -101,7 +116,7 @@ public class BusinessReferenceAccessService {
         if (reference == null) {
             throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "不支持的业务类型");
         }
-        if (!authorizationService.hasPermission(reference.permissionCode())) {
+        if (requireReferencePermission && !authorizationService.hasPermission(reference.permissionCode())) {
             throw new ForbiddenException("无权访问该业务对象");
         }
         Long count =

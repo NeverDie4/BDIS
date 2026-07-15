@@ -75,6 +75,29 @@ class PerformanceWorkflowServiceTest {
     }
 
     @Test
+    void creationValidatesLinkedSourcesWithPerformanceSpecificAccessRule() {
+        when(accessService.currentUserId()).thenReturn(5L);
+        when(performanceMapper.selectById(8L)).thenAnswer(invocation -> inserted);
+        PerformanceServiceImpl service = service();
+        PerformanceRequest request = new PerformanceRequest();
+        request.setPerformanceTitle("测试业绩");
+        request.setSourceType("research_project");
+        request.setSourceId(12L);
+        doAnswer(
+                        invocation -> {
+                            inserted = invocation.getArgument(0);
+                            inserted.setId(8L);
+                            return 1;
+                        })
+                .when(performanceMapper)
+                .insert(any(PerformanceEntity.class));
+
+        service.createPerformance(request);
+
+        verify(referenceAccessService).validatePerformanceSource("research_project", 12L);
+    }
+
+    @Test
     void rejectedOrDraftSubmissionDoesNotCreateAuditRecordWhenConcurrentUpdateWins() {
         when(accessService.currentUserId()).thenReturn(5L);
         PerformanceEntity existing = new PerformanceEntity();

@@ -420,7 +420,7 @@ public class PerformanceServiceImpl implements PerformanceService {
                 .contains(sourceType)) {
             throw new IllegalArgumentException("业绩不支持该来源类型");
         }
-        referenceAccessService.validate(sourceType, sourceId);
+        referenceAccessService.validatePerformanceSource(sourceType, sourceId);
     }
 
     private String resolveSourceName(String sourceType, Long sourceId) {
