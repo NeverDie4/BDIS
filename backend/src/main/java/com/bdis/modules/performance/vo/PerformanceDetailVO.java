@@ -2,7 +2,6 @@ package com.bdis.modules.performance.vo;
 
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
-import com.bdis.modules.performance.entity.PerformanceParticipantEntity;
 import com.bdis.modules.performance.entity.PerformanceStandardEntity;
 import java.util.List;
 import lombok.Getter;
@@ -18,7 +17,7 @@ public class PerformanceDetailVO {
 
     private List<PerformanceMaterialVO> materials;
 
-    private List<PerformanceParticipantEntity> participants;
+    private List<PerformanceParticipantVO> participants;
 
     private List<PerformanceAuditEntity> auditRecords;
 }

@@ -543,7 +543,7 @@ public class DashboardServiceImpl implements DashboardService {
         vo.setTitle("待认定业绩：" + rs.getString("performance_title"));
         vo.setStatus(rs.getString("identify_status"));
         vo.setSubmittedAt(firstLocalDateTime(rs, "submitted_at", "updated_at"));
-        vo.setRoute("/performances/" + rs.getLong("id"));
+        vo.setRoute("/performance?performanceId=" + rs.getLong("id"));
         return vo;
     }
 

@@ -11,22 +11,24 @@ import static org.mockito.Mockito.when;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.security.BusinessAccessService;
 import com.bdis.common.security.CurrentUser;
-import com.bdis.modules.permission.service.AuthorizationService;
-import com.bdis.modules.permission.service.DataScopeService;
-import com.bdis.modules.permission.vo.AuthorizationDecisionVO;
 import com.bdis.modules.performance.dto.PerformanceParticipantRequest;
 import com.bdis.modules.performance.entity.PerformanceEntity;
 import com.bdis.modules.performance.entity.PerformanceParticipantEntity;
 import com.bdis.modules.performance.mapper.PerformanceMapper;
 import com.bdis.modules.performance.mapper.PerformanceParticipantMapper;
 import com.bdis.modules.performance.service.impl.PerformanceParticipantServiceImpl;
+import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.permission.service.DataScopeService;
+import com.bdis.modules.permission.vo.AuthorizationDecisionVO;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.util.List;
 import java.util.Set;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +36,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -62,9 +63,11 @@ class PerformanceParticipantServiceTest {
                         Set.of(),
                         Set.of("performance:record:update"));
         SecurityContextHolder.getContext()
-                .setAuthentication(new UsernamePasswordAuthenticationToken(student, null, List.of()));
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken(student, null, List.of()));
         initializeUserTableMetadata();
-        accessService = new BusinessAccessService(authorizationService, dataScopeService, userMapper);
+        accessService =
+                new BusinessAccessService(authorizationService, dataScopeService, userMapper);
         AuthorizationDecisionVO allowed = new AuthorizationDecisionVO();
         allowed.setAllowed(true);
         when(authorizationService.decide(any())).thenReturn(allowed);
@@ -82,17 +85,24 @@ class PerformanceParticipantServiceTest {
         UserEntity peer = student(9L, 1L, 10L);
         when(userMapper.selectById(5L)).thenReturn(owner);
         when(userMapper.selectById(9L)).thenReturn(peer);
-        when(userMapper.selectList(any())).thenReturn(List.of(peer));
+        Page<UserEntity> candidates = new Page<>(1L, 50L, 1L);
+        candidates.setRecords(List.of(peer));
+        when(userMapper.selectPage(any(Page.class), any())).thenReturn(candidates);
 
-        assertThat(service().listParticipantUsers(8L))
+        assertThat(service().listParticipantUsers(8L, "participant", 0L, 500L).getRecords())
                 .extracting(candidate -> candidate.getId())
                 .containsExactly(9L);
+        ArgumentCaptor<Page<UserEntity>> pageCaptor = ArgumentCaptor.forClass(Page.class);
         ArgumentCaptor<LambdaQueryWrapper<UserEntity>> scopeCaptor =
                 ArgumentCaptor.forClass(LambdaQueryWrapper.class);
-        verify(userMapper).selectList(scopeCaptor.capture());
+        verify(userMapper).selectPage(pageCaptor.capture(), scopeCaptor.capture());
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(1L);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(50L);
         assertThat(scopeCaptor.getValue().getSqlSegment())
                 .contains("organization_id")
-                .contains("department_id");
+                .contains("department_id")
+                .contains("real_name")
+                .contains("username");
         assertThat(scopeCaptor.getValue().getParamNameValuePairs())
                 .containsValue(1L)
                 .containsValue(10L);
@@ -132,6 +142,19 @@ class PerformanceParticipantServiceTest {
         verify(participantMapper, never()).updateById(any(PerformanceParticipantEntity.class));
     }
 
+    @Test
+    void ordinaryParticipantCannotUseReservedOwnerRole() {
+        when(performanceMapper.selectById(8L)).thenReturn(editablePerformance());
+        when(userMapper.selectById(5L)).thenReturn(student(5L, 1L, 10L));
+        when(userMapper.selectById(9L)).thenReturn(student(9L, 1L, 10L));
+        PerformanceParticipantRequest request = requestFor(9L);
+        request.setParticipantRole("owner");
+
+        assertThatThrownBy(() -> service().addParticipant(8L, request))
+                .hasMessage("owner 是负责人保留角色，普通参与人不能使用");
+        verify(participantMapper, never()).insert(any(PerformanceParticipantEntity.class));
+    }
+
     private PerformanceParticipantServiceImpl service() {
         return new PerformanceParticipantServiceImpl(
                 performanceMapper, participantMapper, userMapper, accessService);
@@ -165,6 +188,7 @@ class PerformanceParticipantServiceTest {
         UserEntity user = new UserEntity();
         user.setId(userId);
         user.setUsername("participant-" + userId);
+        user.setRealName("参与人" + userId);
         user.setStatus(1);
         user.setUserType("student");
         user.setOrganizationId(organizationId);

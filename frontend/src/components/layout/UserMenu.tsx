@@ -2,6 +2,7 @@
 
 import { App, Dropdown } from "antd";
 import type { MenuProps } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Settings, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import styles from "./UserMenu.module.css";
 export function UserMenu() {
   const { message } = App.useApp();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const displayName = user?.realName || user?.username || "当前用户";
@@ -47,6 +49,7 @@ export function UserMenu() {
     } catch {
       message.warning("服务端会话注销失败，已清除本地登录状态");
     } finally {
+      queryClient.clear();
       clearAuth();
       router.push("/login");
     }

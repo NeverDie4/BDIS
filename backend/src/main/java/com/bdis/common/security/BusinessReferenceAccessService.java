@@ -61,7 +61,7 @@ public class BusinessReferenceAccessService {
                             new BusinessReference("perf_record", "performance:record:view")),
                     Map.entry(
                             "research_project",
-                            new BusinessReference("research_project", "file:resource:view")),
+                            new BusinessReference("research_project", "research:project:detail")),
                     Map.entry(
                             "edu_course", new BusinessReference("edu_course", "edu:course:detail")),
                     Map.entry(
@@ -70,7 +70,8 @@ public class BusinessReferenceAccessService {
                                     "edu_experiment_record", "edu:experiment-record:detail")),
                     Map.entry(
                             "edu_training_plan",
-                            new BusinessReference("edu_training_plan", "file:resource:view")),
+                            new BusinessReference(
+                                    "edu_training_plan", "edu:training-plan:detail")),
                     Map.entry(
                             "soap_sync_task",
                             new BusinessReference("soap_sync_task", "soap:exchange:view")));
@@ -126,7 +127,9 @@ public class BusinessReferenceAccessService {
     }
 
     private boolean hasRowAccess(String bizType, Long bizId) {
-        if (CurrentUserUtils.currentRoleCodes().stream().anyMatch("ADMIN"::equalsIgnoreCase)) {
+        if (CurrentUserUtils.currentRoleCodes().isEmpty()
+                || CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch("ADMIN"::equalsIgnoreCase)) {
             return true;
         }
         if ("herb_growth_record".equals(bizType)) {
@@ -210,7 +213,125 @@ public class BusinessReferenceAccessService {
             return canAccessOwner(
                     ownerId("select user_id from perf_record where id = ?", bizId), "perf_record");
         }
+        if ("research_project".equals(bizType)) {
+            return canAccessResearchProject(bizId);
+        }
+        if ("edu_course".equals(bizType)) {
+            return canAccessCourse(bizId);
+        }
+        if ("edu_experiment_record".equals(bizType)) {
+            return canAccessExperimentRecord(bizId);
+        }
+        if ("edu_training_plan".equals(bizType)) {
+            return canAccessTrainingPlan(bizId);
+        }
         return true;
+    }
+
+    private boolean canAccessResearchProject(Long projectId) {
+        List<Map<String, Object>> projects =
+                jdbcTemplate.queryForList(
+                        "select leader_id from research_project where id = ? and is_deleted = 0",
+                        projectId);
+        if (projects.isEmpty()) {
+            return false;
+        }
+        if (CurrentUserUtils.currentUserId().equals(number(projects.getFirst().get("leader_id")))) {
+            return true;
+        }
+        Long memberCount =
+                jdbcTemplate.queryForObject(
+                        """
+                        select count(*) from rel_project_member
+                        where project_id = ? and user_id = ? and member_status = 'active'
+                        """,
+                        Long.class,
+                        projectId,
+                        CurrentUserUtils.currentUserId());
+        return memberCount != null && memberCount > 0;
+    }
+
+    private boolean canAccessCourse(Long courseId) {
+        List<Map<String, Object>> courses =
+                jdbcTemplate.queryForList(
+                        """
+                        select teacher_id, created_by, publish_status
+                        from edu_course
+                        where id = ? and is_deleted = 0
+                        """,
+                        courseId);
+        if (courses.isEmpty()) {
+            return false;
+        }
+        Map<String, Object> course = courses.getFirst();
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (currentUserId.equals(number(course.get("teacher_id")))
+                || currentUserId.equals(number(course.get("created_by")))) {
+            return true;
+        }
+        return CurrentUserUtils.currentRoleCodes().stream().anyMatch("STUDENT"::equalsIgnoreCase)
+                && "published".equalsIgnoreCase(String.valueOf(course.get("publish_status")));
+    }
+
+    private boolean canAccessExperimentRecord(Long recordId) {
+        List<Map<String, Object>> records =
+                jdbcTemplate.queryForList(
+                        """
+                        select recorder_id, course_id, project_id
+                        from edu_experiment_record
+                        where id = ? and is_deleted = 0
+                        """,
+                        recordId);
+        if (records.isEmpty()) {
+            return false;
+        }
+        Map<String, Object> record = records.getFirst();
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (currentUserId.equals(number(record.get("recorder_id")))) {
+            return true;
+        }
+        Long courseId = number(record.get("course_id"));
+        if (courseId != null && isCourseTeacher(courseId, currentUserId)) {
+            return true;
+        }
+        Long projectId = number(record.get("project_id"));
+        return projectId != null && canAccessResearchProject(projectId);
+    }
+
+    private boolean canAccessTrainingPlan(Long planId) {
+        List<Map<String, Object>> plans =
+                jdbcTemplate.queryForList(
+                        """
+                        select owner_id, trainer_id
+                        from edu_training_plan
+                        where id = ? and is_deleted = 0
+                        """,
+                        planId);
+        if (plans.isEmpty()) {
+            return false;
+        }
+        Map<String, Object> plan = plans.getFirst();
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        if (currentUserId.equals(number(plan.get("owner_id")))
+                || currentUserId.equals(number(plan.get("trainer_id")))) {
+            return true;
+        }
+        Long participantCount =
+                jdbcTemplate.queryForObject(
+                        "select count(*) from edu_training_record where plan_id = ? and user_id = ?",
+                        Long.class,
+                        planId,
+                        currentUserId);
+        return participantCount != null && participantCount > 0;
+    }
+
+    private boolean isCourseTeacher(Long courseId, Long userId) {
+        List<Long> teacherIds =
+                jdbcTemplate.queryForList(
+                        "select teacher_id from edu_course where id = ? and is_deleted = 0",
+                        Long.class,
+                        courseId);
+        return !teacherIds.isEmpty() && userId.equals(teacherIds.getFirst());
     }
 
     private Long ownerId(String sql, Long bizId) {
