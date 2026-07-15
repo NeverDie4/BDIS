@@ -19,11 +19,25 @@ public class PerformanceEntity extends BaseEntity {
 
     private String performanceType;
 
+    private String performanceLevel;
+
+    private LocalDateTime occurredAt;
+
     private Long standardId;
 
     private String sourceType;
 
     private Long sourceId;
+
+    private String sourceNameSnapshot;
+
+    private String standardNoSnapshot;
+
+    private Integer standardVersionSnapshot;
+
+    private String standardNameSnapshot;
+
+    private String standardRuleSnapshot;
 
     private String identifyStatus;
 

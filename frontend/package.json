@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "node --test src/lib/*.test.mjs",
+    "test:csv": "node --test src/lib/csv.test.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

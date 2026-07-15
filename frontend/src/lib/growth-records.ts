@@ -96,6 +96,27 @@ export type GrowthTaskApi = {
   collectorName?: string;
   taskStatus?: string;
 };
+export type GrowthCollectorOptionApi = {
+  id: number;
+  name: string;
+};
+
+export type GrowthTaskCreatePayload = {
+  taskCode: string;
+  taskName: string;
+  speciesId?: number;
+  speciesName?: string;
+  baseId?: number;
+  baseName?: string;
+  collectPlace?: string;
+  plannedStartTime?: string;
+  plannedEndTime?: string;
+  collectorId: number;
+  collectorName: string;
+  taskStatus?: string;
+  description?: string;
+  remark?: string;
+};
 
 export type GrowthChartPointApi = {
   recordId: number;
@@ -167,6 +188,17 @@ export type GrowthTraceQrCodeApi = {
   traceGeneratedTime?: string;
 };
 
+export type DigitalLifeIntegrityApi = {
+  verified: boolean;
+  eventCount: number;
+  rootHash?: string | null;
+  hashVersion?: string | null;
+  generatedTime?: string | null;
+  failedSequence?: number | null;
+  failedEventType?: string | null;
+  message: string;
+};
+
 export type GrowthPublicTraceImageApi = {
   imageUrl: string;
   imageType?: string;
@@ -185,6 +217,7 @@ export type GrowthPublicTraceArchiveApi = {
   herbName?: string;
   taskId?: number;
   taskName?: string;
+  taskTraceCode?: string;
   batchId?: number;
   batchName?: string;
   baseName?: string;
@@ -274,6 +307,17 @@ export function fetchGrowthTasks() {
     pageNum: 1,
     pageSize: 200,
   });
+}
+
+export function fetchAssignableGrowthCollectors() {
+  return apiGet<GrowthCollectorOptionApi[]>("/herb/collection-task/assignable-collectors");
+}
+
+export function createGrowthTask(data: GrowthTaskCreatePayload) {
+  return apiPost<GrowthTaskApi>("/herb/collection-task", data);
+}
+export function publishGrowthTask(taskId: number) {
+  return apiPut<GrowthTaskApi>(`/herb/collection-task/${taskId}/publish`);
 }
 
 export function fetchMyGrowthTasks() {
@@ -366,6 +410,18 @@ export function enableGrowthPublicTrace(recordId: number) {
 
 export function disableGrowthPublicTrace(recordId: number) {
   return apiPut<GrowthTraceQrCodeApi>(`/growth-records/${recordId}/trace/public-disable`);
+}
+
+export function getDigitalLifeIntegrity(taskId: number) {
+  return apiGet<DigitalLifeIntegrityApi>(
+    `/herb/digital-life/task/${taskId}/integrity/verify`,
+  );
+}
+
+export function generateDigitalLifeIntegrity(taskId: number) {
+  return apiPost<DigitalLifeIntegrityApi>(
+    `/herb/digital-life/task/${taskId}/integrity/generate`,
+  );
 }
 
 export async function getPublicGrowthTrace(traceCode: string) {

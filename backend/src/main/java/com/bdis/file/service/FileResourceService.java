@@ -35,4 +35,8 @@ public interface FileResourceService {
     void makePrivateForBusiness(Long fileId, String bizType, Long bizId);
 
     void delete(Long fileId);
+
+    void deleteOwnUnboundUpload(Long fileId);
+
+    void deleteSystem(Long fileId);
 }

@@ -1,5 +1,6 @@
 package com.bdis.modules.declaration.query;
 
+import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,4 +19,8 @@ public class DeclarationQuery {
     private String status;
 
     private Long applicantId;
+
+    private LocalDate submittedStartDate;
+
+    private LocalDate submittedEndDate;
 }

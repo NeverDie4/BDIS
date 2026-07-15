@@ -36,4 +36,8 @@ public class HerbCollectionTaskEntity extends BaseEntity {
     private String taskStatus;
 
     private String description;
+
+    private String traceCode;
+
+    private Integer publicVisible;
 }

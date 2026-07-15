@@ -11,6 +11,7 @@ import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.herb.service.HerbSpeciesService;
 import com.bdis.modules.herb.vo.HerbSpeciesVO;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,7 +73,9 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         existing.setMedicinalPart(request.getMedicinalPart());
         existing.setEfficacy(request.getEfficacy());
         existing.setDescription(request.getDescription());
-        existing.setStatus(request.getStatus());
+        if (request.getStatus() != null) {
+            existing.setStatus(request.getStatus());
+        }
         existing.setUpdatedAt(LocalDateTime.now());
         herbSpeciesMapper.updateSpecies(existing);
         return toVO(existing);
@@ -153,12 +156,37 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         vo.setLatinName(entity.getLatinName());
         vo.setAliasName(entity.getAliasName());
         vo.setCategory(entity.getCategoryCode());
+        vo.setCategoryName(displayCategoryName(entity));
         vo.setMedicinalPart(entity.getMedicinalPart());
         vo.setEfficacy(entity.getEfficacy());
         vo.setDescription(entity.getDescription());
         vo.setStatus(entity.getStatus());
+        vo.setStatusText(statusText(entity.getStatus()));
+        vo.setDistributionRegionText(entity.getDistributionRegionText());
+        vo.setDistributionRegions(splitDistributionRegions(entity.getDistributionRegionText()));
         vo.setCreateTime(entity.getCreatedAt());
         vo.setUpdateTime(entity.getUpdatedAt());
         return vo;
+    }
+
+    private String displayCategoryName(HerbEntity entity) {
+        if (StringUtils.hasText(entity.getCategoryName())) {
+            return entity.getCategoryName();
+        }
+        return entity.getCategoryCode();
+    }
+
+    private String statusText(Integer status) {
+        return Integer.valueOf(1).equals(status) ? "启用" : "停用";
+    }
+
+    private List<String> splitDistributionRegions(String distributionRegionText) {
+        if (!StringUtils.hasText(distributionRegionText)) {
+            return List.of();
+        }
+        return Arrays.stream(distributionRegionText.split("、"))
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
     }
 }

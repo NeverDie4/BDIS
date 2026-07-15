@@ -6,16 +6,18 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { init, use as registerECharts, type EChartsCoreOption } from "echarts/core";
 import axios from "axios";
 import { App, Button, Empty, Form, Input, Modal, Select, Spin } from "antd";
-import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, ExternalLink, Eye, Filter, Layers, MapPin, Plus, QrCode, RefreshCw, Send, X } from "lucide-react";
+import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, ExternalLink, Eye, Filter, Layers, MapPin, Plus, QrCode, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SecureImageThumb } from "@/components/common/SecureImageThumb";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import {
   approveGrowthRecord,
   buildGrowthChartData,
+  createGrowthTask,
   disableGrowthPublicTrace,
   downloadGrowthTraceQrCode,
   enableGrowthPublicTrace,
+  fetchAssignableGrowthCollectors,
   fetchGrowthAuditHistory,
   fetchGrowthBatchImages,
   fetchGrowthChart,
@@ -23,22 +25,28 @@ import {
   fetchGrowthRecordDetail,
   fetchGrowthTasks,
   fetchGrowthTrace,
+  generateDigitalLifeIntegrity,
   generateGrowthTraceCode,
   generateGrowthTraceQrCode,
+  getDigitalLifeIntegrity,
   getGrowthTraceQrCode,
+  publishGrowthTask,
   rejectGrowthRecord,
   submitGrowthRecord,
   type GrowthAuditHistoryApi,
   type GrowthBatchImageApi,
   type GrowthChartDatum,
   type GrowthChartEmptyReason,
+  type GrowthCollectorOptionApi,
   type GrowthChartPointApi,
   type GrowthMetricKey,
   type GrowthRecordApi,
   type GrowthTaskApi,
   type GrowthTraceEventApi,
   type GrowthTraceQrCodeApi,
+  type DigitalLifeIntegrityApi,
 } from "@/lib/growth-records";
+import { fetchEnabledHerbs, fetchHerbBases, type HerbBaseApi, type HerbSpeciesApi } from "@/lib/herbs";
 import { getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import styles from "./page.module.css";
@@ -103,6 +111,10 @@ const EMPTY_REASON_LABELS: Record<GrowthChartEmptyReason, string> = {
 
 function formatTime(value?: string) {
   return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "-";
+}
+
+function shortHash(value?: string | null) {
+  return value ? `${value.slice(0, 12)}…${value.slice(-8)}` : "-";
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -418,6 +430,31 @@ function GrowthTrendChart({
   );
 }
 
+type GrowthTaskFormValues = {
+  taskCode: string;
+  taskName: string;
+  speciesId: number;
+  baseId?: number;
+  collectPlace?: string;
+  plannedStartTime?: string;
+  plannedEndTime?: string;
+  collectorId: number;
+  description?: string;
+  remark?: string;
+};
+
+function createTaskCode() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `TASK_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+function normalizeTaskDateTime(value?: string) {
+  if (!value) return undefined;
+  const normalized = value.replace("T", " ");
+  return normalized.length === 16 ? `${normalized}:00` : normalized;
+}
+
 export default function GrowthPage() {
   const { message, modal } = App.useApp();
   const user = useAuthStore((state) => state.user);
@@ -426,10 +463,12 @@ export default function GrowthPage() {
   const showReviewWorkspace = roleCodes.some((role) =>
     ["ADMIN", "TEACHER", "REVIEWER"].includes(role),
   );
+  const canCreateTask = roleCodes.some((role) => ["ADMIN", "TEACHER"].includes(role));
   const isCollectorOnly = roleCodes.includes("COLLECTOR") && !showReviewWorkspace;
   const canReview = showReviewWorkspace && hasPermission("growth:record:audit");
   const reviewerDefaultApplied = useRef(canReview);
   const [auditForm] = Form.useForm<{ comment?: string }>();
+  const [taskForm] = Form.useForm<GrowthTaskFormValues>();
   const [tasks, setTasks] = useState<GrowthTaskApi[]>([]);
   const [taskId, setTaskId] = useState<number>();
   const [herbId, setHerbId] = useState<number>();
@@ -443,6 +482,8 @@ export default function GrowthPage() {
   const [traceEvents, setTraceEvents] = useState<GrowthTraceEventApi[]>([]);
   const [traceQrCode, setTraceQrCode] = useState<GrowthTraceQrCodeApi>();
   const [traceOperating, setTraceOperating] = useState<string>();
+  const [integrityData, setIntegrityData] = useState<DigitalLifeIntegrityApi>();
+  const [integrityOperating, setIntegrityOperating] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingChart, setLoadingChart] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -458,6 +499,13 @@ export default function GrowthPage() {
   const [pageSize, setPageSize] = useState(10);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [trendOpen, setTrendOpen] = useState(false);
+  const [taskCreateOpen, setTaskCreateOpen] = useState(false);
+  const [taskCreating, setTaskCreating] = useState(false);
+  const [taskPublishing, setTaskPublishing] = useState(false);
+  const [taskOptionsLoading, setTaskOptionsLoading] = useState(false);
+  const [taskHerbs, setTaskHerbs] = useState<HerbSpeciesApi[]>([]);
+  const [taskBases, setTaskBases] = useState<HerbBaseApi[]>([]);
+  const [taskCollectors, setTaskCollectors] = useState<GrowthCollectorOptionApi[]>([]);
 
   useEffect(() => {
     if (canReview && !reviewerDefaultApplied.current) {
@@ -487,6 +535,84 @@ export default function GrowthPage() {
     void loadTasks();
   }, [loadTasks]);
 
+  async function openTaskCreate() {
+    taskForm.resetFields();
+    taskForm.setFieldsValue({ taskCode: createTaskCode() });
+    setTaskCreateOpen(true);
+    setTaskOptionsLoading(true);
+    try {
+      const [herbs, bases, collectors] = await Promise.all([
+        fetchEnabledHerbs(),
+        fetchHerbBases(),
+        fetchAssignableGrowthCollectors(),
+      ]);
+      setTaskHerbs(herbs);
+      setTaskBases(bases.records);
+      setTaskCollectors(collectors);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "任务创建选项加载失败"));
+    } finally {
+      setTaskOptionsLoading(false);
+    }
+  }
+
+  async function submitTaskCreate(values: GrowthTaskFormValues) {
+    const collector = taskCollectors.find((item) => item.id === values.collectorId);
+    if (!collector) {
+      message.warning("请选择有效采集员");
+      return;
+    }
+    if (values.plannedStartTime && values.plannedEndTime && values.plannedEndTime < values.plannedStartTime) {
+      message.warning("计划结束时间不能早于开始时间");
+      return;
+    }
+    const herb = taskHerbs.find((item) => item.id === values.speciesId);
+    const base = taskBases.find((item) => item.id === values.baseId);
+    setTaskCreating(true);
+    try {
+      const created = await createGrowthTask({
+        taskCode: values.taskCode.trim(),
+        taskName: values.taskName.trim(),
+        speciesId: values.speciesId,
+        speciesName: herb?.herbName,
+        baseId: values.baseId,
+        baseName: base?.baseName,
+        collectPlace: values.collectPlace?.trim() || undefined,
+        plannedStartTime: normalizeTaskDateTime(values.plannedStartTime),
+        plannedEndTime: normalizeTaskDateTime(values.plannedEndTime),
+        collectorId: values.collectorId,
+        collectorName: collector.name,
+        description: values.description?.trim() || undefined,
+        remark: values.remark?.trim() || undefined,
+      });
+      message.success("采集任务已创建为草稿，请发布后再由采集员在手机端查看");
+      setTaskCreateOpen(false);
+      taskForm.resetFields();
+      await loadTasks();
+      setTaskId(created.id);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "采集任务创建失败"));
+    } finally {
+      setTaskCreating(false);
+    }
+  }
+
+  async function publishSelectedTask() {
+    if (!selectedTask || selectedTask.taskStatus !== "draft") {
+      message.info("请选择一个草稿状态的采集任务");
+      return;
+    }
+    setTaskPublishing(true);
+    try {
+      await publishGrowthTask(selectedTask.id);
+      message.success("采集任务发布成功，指定采集员现在可在手机端查看");
+      await loadTasks();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "采集任务发布失败"));
+    } finally {
+      setTaskPublishing(false);
+    }
+  }
   const filteredTasks = useMemo(
     () =>
       tasks.filter(
@@ -622,17 +748,21 @@ export default function GrowthPage() {
   const refreshSelected = useCallback(
     async (recordId: number) => {
       const detail = await fetchGrowthRecordDetail(recordId);
-      const [history, trace, images, qrCode] = await Promise.all([
+      const [history, trace, images, qrCode, integrity] = await Promise.all([
         showReviewWorkspace ? fetchGrowthAuditHistory(recordId) : Promise.resolve([]),
         fetchGrowthTrace(recordId),
         detail.batchId ? fetchGrowthBatchImages(detail.batchId) : Promise.resolve([]),
         getGrowthTraceQrCode(recordId).catch(() => undefined),
+        showReviewWorkspace && detail.taskId
+          ? getDigitalLifeIntegrity(detail.taskId).catch(() => undefined)
+          : Promise.resolve(undefined),
       ]);
       setSelectedRecord(detail);
       setBatchImages(images);
       setAuditHistory(history);
       setTraceEvents(trace);
       setTraceQrCode(qrCode);
+      setIntegrityData(integrity);
     },
     [showReviewWorkspace],
   );
@@ -646,6 +776,7 @@ export default function GrowthPage() {
       setAuditHistory([]);
       setTraceEvents([]);
       setTraceQrCode(undefined);
+      setIntegrityData(undefined);
       try {
         await refreshSelected(recordId);
       } catch (error) {
@@ -696,6 +827,37 @@ export default function GrowthPage() {
     } finally {
       setTraceOperating(undefined);
     }
+  }
+
+  async function performIntegrityGeneration() {
+    if (!selectedRecord?.taskId) {
+      message.warning("当前记录未关联采集任务，无法生成任务级证据链");
+      return;
+    }
+    setIntegrityOperating(true);
+    try {
+      const result = await generateDigitalLifeIntegrity(selectedRecord.taskId);
+      setIntegrityData(result);
+      message.success(`证据链生成成功，已纳入 ${result.eventCount} 个关键事件`);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "证据链生成失败，请确认任务阶段均已审核通过"));
+    } finally {
+      setIntegrityOperating(false);
+    }
+  }
+
+  function confirmIntegrityGeneration() {
+    if (!integrityData?.rootHash) {
+      void performIntegrityGeneration();
+      return;
+    }
+    modal.confirm({
+      title: "重新生成哈希证据链",
+      content: "系统将基于当前档案生成新的证据链版本，历史版本会保留。是否继续？",
+      okText: "生成新版本",
+      cancelText: "取消",
+      onOk: performIntegrityGeneration,
+    });
   }
 
   async function copyTraceLink() {
@@ -1034,6 +1196,21 @@ export default function GrowthPage() {
         <section className={styles.recordWorkspace} aria-label="生长记录列表">
           <div className={styles.recordToolbar}>
             <div>
+              {canCreateTask ? (
+                <>
+                  <Button type="primary" icon={<Plus size={15} />} onClick={() => void openTaskCreate()}>
+                    创建采集任务
+                  </Button>
+                  <Button
+                    icon={<Send size={15} />}
+                    disabled={selectedTask?.taskStatus !== "draft" || taskPublishing}
+                    loading={taskPublishing}
+                    onClick={() => void publishSelectedTask()}
+                  >
+                    发布任务
+                  </Button>
+                </>
+              ) : null}
               {!showReviewWorkspace ? (
                 <Button type="primary" icon={<Plus size={15} />} disabled title="请在移动端批次详情中创建生长记录">
                   新增记录
@@ -1319,13 +1496,14 @@ export default function GrowthPage() {
               <button
                 type="button"
                 aria-label="关闭详情"
-                onClick={() => {
-                  setSelectedRecord(null);
+                  onClick={() => {
+                    setSelectedRecord(null);
                   setBatchImages([]);
                   setAuditHistory([]);
-                  setTraceEvents([]);
-                  setTraceQrCode(undefined);
-                }}
+                    setTraceEvents([]);
+                    setTraceQrCode(undefined);
+                    setIntegrityData(undefined);
+                  }}
               ><X size={18} /></button>
             ) : null}
           </div>
@@ -1560,6 +1738,47 @@ export default function GrowthPage() {
               {showReviewWorkspace ? (
                 <section className={`${styles.detailSection} ${detailTab !== "trace" ? styles.hiddenTab : ""}`}>
                   <header className={styles.detailSectionHeader}>
+                    <h3>数字生命证据链</h3>
+                    <p>对当前任务的已审核阶段和关键业务事件生成防篡改快照</p>
+                  </header>
+                  <div className={styles.traceQrCard}>
+                    <div className={styles.traceQrStatusRow}>
+                      <span className={integrityData?.verified ? styles.tracePublic : styles.tracePrivate}>
+                        {integrityData?.verified ? "校验通过" : integrityData?.rootHash ? "校验异常" : "尚未生成"}
+                      </span>
+                      <small>{integrityData?.message || "当前任务尚无哈希证据链快照"}</small>
+                    </div>
+                    {integrityData?.rootHash ? (
+                      <dl className={styles.traceQrMeta}>
+                        <div><dt>哈希版本</dt><dd>{integrityData.hashVersion || "-"}</dd></div>
+                        <div><dt>关键事件</dt><dd>{integrityData.eventCount} 个</dd></div>
+                        <div><dt>生成时间</dt><dd>{formatTime(integrityData.generatedTime || undefined)}</dd></div>
+                        <div title={integrityData.rootHash}><dt>根哈希</dt><dd>{shortHash(integrityData.rootHash)}</dd></div>
+                      </dl>
+                    ) : (
+                      <div className={styles.traceQrEmpty}>
+                        <ShieldCheck size={30} />
+                        <strong>尚未生成任务级哈希证据链</strong>
+                        <p>生成后，公开数字生命档案将显示事件数量、根哈希和校验结果。</p>
+                      </div>
+                    )}
+                    <div className={styles.traceQrActions}>
+                      <Button
+                        type="primary"
+                        icon={<ShieldCheck size={15} />}
+                        loading={integrityOperating}
+                        disabled={!selectedRecord.taskId}
+                        onClick={confirmIntegrityGeneration}
+                      >
+                        {integrityData?.rootHash ? "重新生成证据链" : "生成证据链"}
+                      </Button>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+              {showReviewWorkspace ? (
+                <section className={`${styles.detailSection} ${detailTab !== "trace" ? styles.hiddenTab : ""}`}>
+                  <header className={styles.detailSectionHeader}>
                     <h3>审核历史</h3>
                     <p>记录每次提交与审核处理结果</p>
                   </header>
@@ -1665,6 +1884,65 @@ export default function GrowthPage() {
       </aside>
         </div>
       </main>
+
+      <Modal
+        className={styles.taskCreateModal}
+        title="创建采集任务"
+        open={taskCreateOpen}
+        okText="创建任务"
+        cancelText="取消"
+        confirmLoading={taskCreating}
+        width={720}
+        destroyOnHidden
+        onCancel={() => {
+          setTaskCreateOpen(false);
+          taskForm.resetFields();
+        }}
+        onOk={() => taskForm.submit()}
+      >
+        <Spin spinning={taskOptionsLoading}>
+          <Form form={taskForm} layout="vertical" className={styles.taskCreateForm} onFinish={submitTaskCreate}>
+            <div className={styles.taskFormGrid}>
+              <Form.Item name="taskCode" label="任务编号" rules={[{ required: true, message: "请输入任务编号" }]}>
+                <Input placeholder="请输入唯一任务编号" />
+              </Form.Item>
+              <Form.Item name="taskName" label="任务名称" rules={[{ required: true, message: "请输入任务名称" }]}>
+                <Input placeholder="例如：岷县党参夏季连续观测" />
+              </Form.Item>
+              <Form.Item name="speciesId" label="药材" rules={[{ required: true, message: "请选择药材" }]}>
+                <Select showSearch optionFilterProp="label" placeholder="请选择药材" options={taskHerbs.map((item) => ({ label: item.herbName, value: item.id }))} />
+              </Form.Item>
+              <Form.Item name="collectorId" label="指定采集员" rules={[{ required: true, message: "请选择采集员" }]}>
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="请选择负责本任务的采集员"
+                  options={taskCollectors.map((item) => ({ label: item.name, value: item.id }))}
+                  notFoundContent={taskOptionsLoading ? "加载中" : "当前范围内暂无可分配采集员"}
+                />
+              </Form.Item>
+              <Form.Item name="baseId" label="采集基地">
+                <Select allowClear showSearch optionFilterProp="label" placeholder="请选择采集基地" options={taskBases.map((item) => ({ label: item.baseName, value: item.id }))} />
+              </Form.Item>
+              <Form.Item name="collectPlace" label="采集地点">
+                <Input placeholder="请输入详细采集地点" />
+              </Form.Item>
+              <Form.Item name="plannedStartTime" label="计划开始时间">
+                <Input type="datetime-local" />
+              </Form.Item>
+              <Form.Item name="plannedEndTime" label="计划结束时间">
+                <Input type="datetime-local" />
+              </Form.Item>
+              <Form.Item className={styles.taskFormWide} name="description" label="任务说明">
+                <Input.TextArea rows={3} placeholder="填写本次采集任务的目标与要求" />
+              </Form.Item>
+              <Form.Item className={styles.taskFormWide} name="remark" label="备注">
+                <Input.TextArea rows={2} placeholder="可选" />
+              </Form.Item>
+            </div>
+          </Form>
+        </Spin>
+      </Modal>
 
       <Modal
         title={auditAction === "approve" ? "审核通过" : "审核驳回"}

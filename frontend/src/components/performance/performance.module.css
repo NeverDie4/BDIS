@@ -1,0 +1,44 @@
+.page {
+  display: grid;
+  gap: 16px;
+  padding: 20px clamp(16px, 3vw, 36px) 36px;
+}
+
+.stats :global(.ant-card) {
+  height: 100%;
+  border-radius: 6px;
+}
+
+.workspace {
+  border-radius: 6px;
+}
+
+.filters,
+.tableActions {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.filters :global(.ant-input) {
+  width: min(320px, 72vw);
+}
+
+.typeCounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.participantSelect {
+  width: min(260px, 72vw);
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 12px;
+  }
+}

@@ -6,8 +6,6 @@
 }
 
 .moreButton {
-  height: auto;
-  padding: 0;
   color: var(--color-primary);
   font-family: var(--font-ui);
   font-size: 13px;
@@ -15,169 +13,169 @@
 }
 
 .moreButton:hover {
-  background: transparent !important;
-  color: var(--color-primary-hover) !important;
-}
-
-.moreButton a {
-  color: inherit;
+  color: var(--color-primary-hover);
 }
 
 .herbShelf {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  flex: 1;
-  gap: 10px;
-  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
 }
 
 .herbTile {
-  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
   min-width: 0;
-  height: 100%;
-  min-height: 248px;
-  padding: 9px 9px 10px;
-  box-sizing: border-box;
-  border: 1px solid rgba(138, 90, 43, 0.2);
-  border-radius: 2px;
-  background: rgba(255, 250, 242, 0.64);
-  box-shadow: none;
+  height: 320px;
+  padding: 18px;
+  border: 1px solid rgba(201, 176, 141, 0.52);
+  border-radius: 12px;
+  background: rgba(255, 250, 242, 0.76);
+  box-shadow: 0 5px 16px rgba(70, 63, 47, 0.04);
   color: inherit;
-  text-align: center;
   transition:
     border-color 160ms ease,
-    background-color 160ms ease;
-}
-
-.herbTile::before {
-  position: absolute;
-  inset: 2px;
-  border: 1px solid rgba(138, 90, 43, 0.1);
-  border-radius: 0;
-  pointer-events: none;
-  content: "";
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .herbTile:hover {
-  border-color: #c9b08d;
-  background: #fffaf2;
+  border-color: rgba(var(--color-primary-rgb), 0.34);
+  box-shadow: 0 10px 24px rgba(45, 82, 55, 0.11);
   color: inherit;
+  transform: translateY(-3px);
 }
 
 .herbImageBox {
   display: flex;
-  flex: 0 0 118px;
+  flex: 0 0 120px;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 118px;
+  height: 120px;
   overflow: hidden;
-  border-bottom: 1px solid rgba(201, 176, 141, 0.24);
-  background:
-    radial-gradient(circle at 50% 48%, rgba(201, 176, 141, 0.12), transparent 58%),
-    rgba(255, 250, 242, 0.42);
-}
-
-.herbImageBox :global(.ant-image) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100% !important;
-  height: 100%;
-}
-
-.herbImage {
-  width: 100% !important;
-  height: 112px !important;
-  object-fit: contain;
+  border-radius: 10px;
+  background: rgba(var(--color-primary-rgb), 0.065);
 }
 
 .imagePlaceholder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 58px;
-  height: 58px;
-  border: 1px solid rgba(201, 176, 141, 0.46);
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.18);
   border-radius: 50%;
-  background: rgba(251, 247, 239, 0.78);
-  color: rgba(var(--color-primary-rgb), 0.52);
+  background: rgba(224, 238, 220, 0.9);
+  color: var(--color-primary);
   font-family: var(--font-brand);
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 800;
 }
 
+.herbContent {
+  min-width: 0;
+}
+
 .herbName {
-  margin: 9px 0 3px !important;
-  color: var(--color-text) !important;
-  font-family: var(--font-brand) !important;
-  font-size: 19px !important;
-  line-height: 1.25 !important;
-}
-
-.herbOrigin {
-  display: block;
-  width: 100%;
-  color: var(--color-muted);
-  font-family: var(--font-data);
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.description {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 44px;
-  margin: 0;
-  color: var(--color-muted);
-  font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.55;
-  letter-spacing: 0.04em;
-}
-
-.description span {
-  display: block;
-  white-space: nowrap;
-}
-
-.herbOrigin {
+  margin: 12px 0 6px;
   overflow: hidden;
-  color: #7d705f;
+  color: var(--color-title);
+  font-family: var(--font-brand);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tagRow {
-  justify-content: center;
-  width: 100%;
+.medicinalPart {
+  margin: 0 0 5px;
+  overflow: hidden;
+  color: #6f7f72;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #6f7f72;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
   margin-top: auto;
-  padding-top: 7px;
 }
 
 .paperTag {
+  max-width: 58%;
   margin-inline-end: 0 !important;
-  padding: 0 7px;
-  border: 1px solid #d9c29d !important;
-  border-radius: 4px;
-  background: #f5e8cd !important;
-  color: #7b5430 !important;
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.16) !important;
+  border-radius: 999px;
+  background: rgba(var(--color-primary-rgb), 0.07) !important;
+  color: var(--color-primary) !important;
   font-family: var(--font-ui);
-  font-size: 11px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archiveLink {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.emptyState {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  min-height: 180px;
+  color: #6f7f72;
+  font-family: var(--font-ui);
+  line-height: 1.8;
+}
+
+.emptyState strong {
+  color: var(--color-title);
+  font-size: 16px;
 }
 
 @media (max-width: 1180px) {
   .herbShelf {
-    grid-template-columns: repeat(4, minmax(112px, 1fr));
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-color: rgba(138, 90, 43, 0.24) transparent;
-    scrollbar-width: thin;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .herbShelf {
+    grid-template-columns: 1fr;
+  }
+
+  .herbTile {
+    height: 310px;
   }
 }

@@ -17,6 +17,8 @@ import com.bdis.modules.collection.service.HerbBatchSummaryService;
 import com.bdis.modules.collection.vo.HerbBatchImageVO;
 import com.bdis.modules.collection.vo.HerbBatchSummaryVO;
 import com.bdis.modules.collection.vo.HerbBatchVO;
+import com.bdis.modules.growth.service.GrowthRecordService;
+import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.herb.dto.HerbImageUploadRequest;
 import com.bdis.modules.herb.service.HerbImageService;
 import com.bdis.modules.herb.vo.HerbImageVO;
@@ -59,6 +61,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
     private final HerbBatchSummaryService herbBatchSummaryService;
     private final HerbBatchStatusService herbBatchStatusService;
     private final MobileBatchAutoIdentificationExecutor autoIdentificationExecutor;
+    private final GrowthRecordService growthRecordService;
 
     public MobileHerbBatchServiceImpl(
             HerbBatchMapper herbBatchMapper,
@@ -69,7 +72,8 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
             HerbIdentificationService herbIdentificationService,
             HerbBatchSummaryService herbBatchSummaryService,
             HerbBatchStatusService herbBatchStatusService,
-            MobileBatchAutoIdentificationExecutor autoIdentificationExecutor) {
+            MobileBatchAutoIdentificationExecutor autoIdentificationExecutor,
+            GrowthRecordService growthRecordService) {
         this.herbBatchMapper = herbBatchMapper;
         this.herbBatchImageMapper = herbBatchImageMapper;
         this.herbCollectionTaskMapper = herbCollectionTaskMapper;
@@ -79,6 +83,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         this.herbBatchSummaryService = herbBatchSummaryService;
         this.herbBatchStatusService = herbBatchStatusService;
         this.autoIdentificationExecutor = autoIdentificationExecutor;
+        this.growthRecordService = growthRecordService;
     }
 
     @Override
@@ -203,6 +208,7 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
             throw new BusinessException(
                     "Only draft or collecting batch can be submitted by mobile");
         }
+        submitGrowthRecordForBatch(batchId);
         herbBatchStatusService.submit(batchId);
         HerbBatchEntity update = new HerbBatchEntity();
         update.setId(batchId);
@@ -215,6 +221,21 @@ public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
         update.setUpdatedAt(LocalDateTime.now());
         herbBatchMapper.updateMobileSubmitFields(update);
         return detail(batchId, request == null ? null : request.getCollectorId());
+    }
+
+    private void submitGrowthRecordForBatch(Long batchId) {
+        GrowthRecordVO growthRecord = growthRecordService.getByBatchId(batchId);
+        if (growthRecord == null) {
+            throw new BusinessException("请先填写本次生长记录后再提交审核");
+        }
+        String reviewStatus = growthRecord.getReviewStatus();
+        if ("draft".equals(reviewStatus) || "rejected".equals(reviewStatus)) {
+            growthRecordService.submit(growthRecord.getId());
+            return;
+        }
+        if (!"submitted".equals(reviewStatus) && !"approved".equals(reviewStatus)) {
+            throw new BusinessException("当前生长记录状态不允许提交审核");
+        }
     }
 
     @Override

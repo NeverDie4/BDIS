@@ -66,6 +66,25 @@ public interface GrowthRecordMapper extends BaseMapper<GrowthRecordEntity> {
     @Select(
             """
             <script>
+            SELECT gr.*, b.batch_name AS batchName, t.task_name AS taskName,
+                   t.collect_place AS collectPlace,
+                   gr.collector_name_snapshot AS collectorName
+            FROM herb_growth_record gr
+            LEFT JOIN herb_batch b ON b.id = gr.batch_id AND b.is_deleted = 0
+            LEFT JOIN herb_collection_task t ON t.id = gr.task_id AND t.is_deleted = 0
+            WHERE gr.batch_id IN
+            <foreach collection="batchIds" item="batchId" open="(" separator="," close=")">
+                #{batchId}
+            </foreach>
+              AND gr.is_deleted = 0
+            ORDER BY gr.batch_id, gr.collected_at, gr.id
+            </script>
+            """)
+    List<GrowthRecordVO> selectJoinedByBatchIds(@Param("batchIds") List<Long> batchIds);
+
+    @Select(
+            """
+            <script>
             SELECT gr.id AS recordId, gr.task_id AS taskId, gr.batch_id AS batchId,
                    b.batch_name AS batchName,
                    COALESCE(gr.collected_at, b.collect_start_time) AS collectTime,

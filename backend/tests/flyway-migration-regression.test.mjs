@@ -7,36 +7,33 @@ const migrations = new URL(
   "../src/main/resources/db/migration/",
   import.meta.url,
 );
+const devBaseline = new URL(
+  "../src/test/resources/flyway-dev-migration-baseline.txt",
+  import.meta.url,
+);
 
 async function readMigration(name) {
   return readFile(new URL(name, migrations), "utf8");
 }
 
 function sha256(content) {
-  return createHash("sha256")
-    .update(content.replace(/\r\n/g, "\n"))
-    .digest("hex");
+  return createHash("sha256").update(content).digest("hex");
 }
 
-test("已发布的历史迁移保持 dev 原始校验和", async () => {
-  const [chat, knowledge, fileAccess] = await Promise.all([
-    readMigration("V20260711_001__add_ai_chat_history_tables.sql"),
-    readMigration("V20260711_002__add_ai_knowledge_tables.sql"),
-    readMigration("V20260711_004__add_file_access_level.sql"),
-  ]);
+test("dev 基线迁移保持原始字节 SHA-256", async () => {
+  const entries = (await readFile(devBaseline, "utf8"))
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(/\s+/));
 
-  assert.equal(
-    sha256(chat),
-    "a7eab907ab7f2985f4fcf683e60ee2cf510eec96811eef881b244168c2588524",
-  );
-  assert.equal(
-    sha256(knowledge),
-    "eb5f78f09c82bf85cec91afbe0d6942b169bd986b8740debde4d82443de38a7e",
-  );
-  assert.equal(
-    sha256(fileAccess),
-    "84eedde669a9b58d0be90fedbaf5dd58d35997e158e86a34253f80164fe220c8",
-  );
+  for (const [name, expectedHash] of entries) {
+    assert.match(expectedHash, /^[a-f0-9]{64}$/);
+    assert.equal(
+      sha256(await readFile(new URL(name, migrations))),
+      expectedHash,
+      `checksum mismatch for ${name}`,
+    );
+  }
 });
 
 test("AI 表结构调整通过独立前向迁移完成", async () => {
@@ -105,4 +102,40 @@ test("迁移版本唯一且 PR 迁移晚于 dev 基线", async () => {
 
   for (const name of expected)
     assert.ok(files.includes(name), `missing migration ${name}`);
+});
+
+test("药材分类字典类型由独立前向迁移初始化", async () => {
+  const migration = await readMigration(
+    "V20260714_017__seed_herb_category_dictionary.sql",
+  );
+
+  assert.match(migration, /INSERT\s+(?:IGNORE\s+)?INTO\s+`dict_type`/i);
+  assert.match(migration, /'herb_category'/);
+  assert.match(migration, /中药材分类/);
+  assert.match(migration, /INSERT\s+(?:IGNORE\s+)?INTO\s+`dict_item`/i);
+  assert.match(migration, /HERB_CAT_QINGRE/);
+  assert.match(migration, /HERB_CAT_BUYI/);
+  assert.match(migration, /HERB_CAT_HUOXUE/);
+  assert.match(
+    migration,
+    /SELECT\s+DISTINCT\s+category_code[\s\S]*FROM\s+herb_species/i,
+  );
+  assert.match(
+    migration,
+    /UPDATE\s+herb_species[\s\S]*SET\s+s\.category_id\s*=\s*item\.id/i,
+  );
+  assert.match(
+    migration,
+    /ON\s+DUPLICATE\s+KEY\s+UPDATE[\s\S]*is_deleted\s*=\s*0/i,
+  );
+  assert.doesNotMatch(migration, /ALTER\s+TABLE|DROP\s+COLUMN/i);
+});
+
+test("药材分类字典迁移不得复制到新的重复版本", async () => {
+  const files = await readdir(migrations);
+
+  assert.equal(
+    files.includes("V20260715_002__complete_herb_category_dictionary_seed.sql"),
+    false,
+  );
 });

@@ -19,6 +19,7 @@ export interface FileResource {
   fileUrl: string;
   thumbnailUrl?: string;
   storageType?: string;
+  accessLevel?: "private" | "public";
   uploadedAt?: string;
 }
 
@@ -26,6 +27,7 @@ export interface UploadFileOptions {
   bizType?: string;
   bizId?: number;
   fileUsage?: string;
+  accessLevel?: "private" | "public";
 }
 
 export async function uploadFile(file: File, options?: UploadFileOptions) {
@@ -40,6 +42,9 @@ export async function uploadFile(file: File, options?: UploadFileOptions) {
   if (options?.fileUsage) {
     formData.append("fileUsage", options.fileUsage);
   }
+  if (options?.accessLevel) {
+    formData.append("accessLevel", options.accessLevel);
+  }
 
   const response = await request.post<ApiResult<FileResource>>("/files/upload", formData);
   return withBrowserFileUrl(response.data.data);
@@ -47,6 +52,10 @@ export async function uploadFile(file: File, options?: UploadFileOptions) {
 
 export async function deleteFileResource(fileId: number) {
   await request.delete(`/files/${fileId}`);
+}
+
+export async function deleteOwnUnboundUpload(fileId: number) {
+  await request.delete(`/files/${fileId}/unbound-upload`);
 }
 
 function withBrowserFileUrl(file: FileResource): FileResource {

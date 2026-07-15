@@ -12,6 +12,29 @@
     "title": "BDIS 手机端"
   },
   "app-plus": {
-    "usingComponents": true
+    "usingComponents": true,
+    "distribute": {
+      "android": {
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>"
+        ]
+      },
+      "ios": {
+        "privacyDescription": {
+          "NSLocationWhenInUseUsageDescription": "用于记录中药材生长观测阶段的采集位置"
+        }
+      }
+    }
+  },
+  "mp-weixin": {
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于记录中药材生长观测阶段的采集位置"
+      }
+    },
+    "requiredPrivateInfos": [
+      "getLocation"
+    ]
   }
 }

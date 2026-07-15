@@ -80,3 +80,48 @@ test("docker deployment requires an externally reachable public Web base URL", (
     /^BDIS_PUBLIC_WEB_BASE_URL=https?:\/\/(?!localhost\b).+/m,
   );
 });
+
+test("anonymous digital life archive only exposes public approved records and images", () => {
+  const service = read(
+    "backend/src/main/java/com/bdis/modules/growth/service/impl/HerbDigitalLifeArchiveServiceImpl.java",
+  );
+  const imageMapper = read(
+    "backend/src/main/resources/mapper/herb/HerbImageMapper.xml",
+  );
+
+  assert.match(service, /private boolean isPublicApproved\(GrowthRecordVO record\)/);
+  assert.match(service, /APPROVED\.equals\(record\.getReviewStatus\(\)\)/);
+  assert.match(
+    service,
+    /Integer\.valueOf\(1\)\.equals\(record\.getPublicVisible\(\)\)/,
+  );
+  assert.match(
+    imageMapper,
+    /gr\.review_status\s*=\s*'approved'[\s\S]*gr\.public_visible\s*=\s*1/i,
+  );
+});
+
+test("collection task creation requires a scoped collector selection", () => {
+  const controller = read(
+    "backend/src/main/java/com/bdis/modules/collection/controller/HerbCollectionTaskController.java",
+  );
+  const request = read(
+    "backend/src/main/java/com/bdis/modules/collection/dto/HerbCollectionTaskCreateRequest.java",
+  );
+  const access = read(
+    "backend/src/main/java/com/bdis/modules/collection/support/CollectionAccessService.java",
+  );
+
+  assert.match(request, /@NotNull\(message = "请选择采集员"\)\s*private Long collectorId;/);
+  assert.match(controller, /@GetMapping\("\/assignable-collectors"\)/);
+  assert.match(controller, /@RequirePermission\("growth:record:create"\)/);
+  assert.match(controller, /collectionAccessService\.listAssignableCollectors\(\)/);
+  assert.match(access, /listAssignableCollectors/);
+  assert.match(access, /RoleEntity::getRoleCode, "COLLECTOR"/);
+  assert.match(access, /CollectionAccessScope scope = currentScope\(\)/);
+  assert.match(access, /public String requireAssignableCollector\(Long collectorId\)/);
+  assert.match(access, /UserRoleEntity::getUserId, collectorId/);
+  const service = read("backend/src/main/java/com/bdis/modules/collection/service/impl/HerbCollectionTaskServiceImpl.java");
+  assert.match(service, /String collectorName =\s*collectionAccessService\.requireAssignableCollector/);
+  assert.match(service, /setCollectorName\(collectorName\)/);
+});

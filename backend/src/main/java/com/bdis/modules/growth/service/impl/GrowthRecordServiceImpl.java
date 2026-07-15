@@ -57,6 +57,7 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -153,6 +154,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         MapPointEntity point = mapPointMapper.selectById(pointId);
         if (point == null) {
             throw new ResourceNotFoundException("地图点位不存在");
+        }
+        if (!Integer.valueOf(1).equals(point.getStatus())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "停用的地图点位不能新增采集记录");
         }
         validateGrowthDictionaries(
                 request.getGrowthStage(), request.getSoilType(), request.getWeather());
@@ -584,6 +588,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                 "开启公开溯源",
                 "该生长记录已允许通过溯源码公开查询",
                 null);
+        synchronizeTaskDigitalLifeArchive(entity.getTaskId());
         return toTraceQrCodeVO(entity);
     }
 
@@ -603,13 +608,49 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                 "关闭公开溯源",
                 "该生长记录已关闭公开查询",
                 null);
+        synchronizeTaskDigitalLifeArchive(entity.getTaskId());
         return toTraceQrCodeVO(entity);
+    }
+
+    private void synchronizeTaskDigitalLifeArchive(Long taskId) {
+        if (taskId == null) {
+            return;
+        }
+        HerbCollectionTaskEntity task = herbCollectionTaskMapper.selectById(taskId);
+        if (task == null
+                || !Integer.valueOf(1).equals(task.getStatus())
+                || HerbCollectionTaskStatusConstants.CANCELLED.equals(task.getTaskStatus())) {
+            return;
+        }
+        long publicStageCount =
+                growthRecordMapper.selectCount(
+                        new LambdaQueryWrapper<GrowthRecordEntity>()
+                                .eq(GrowthRecordEntity::getTaskId, taskId)
+                                .eq(GrowthRecordEntity::getStatus, 1)
+                                .eq(GrowthRecordEntity::getReviewStatus, "approved")
+                                .eq(GrowthRecordEntity::getPublicVisible, 1));
+        boolean shouldPublish = publicStageCount >= 2;
+        boolean changed = false;
+        if (shouldPublish && !StringUtils.hasText(task.getTraceCode())) {
+            task.setTraceCode(String.format("DL-TASK-%08d", taskId));
+            changed = true;
+        }
+        int publicVisible = shouldPublish ? 1 : 0;
+        if (!Integer.valueOf(publicVisible).equals(task.getPublicVisible())) {
+            task.setPublicVisible(publicVisible);
+            changed = true;
+        }
+        if (changed) {
+            task.setUpdatedBy(SecurityUtils.currentUser().getUserId());
+            herbCollectionTaskMapper.updateById(task);
+        }
     }
 
     @Override
     public GrowthPublicTraceArchiveVO publicTrace(String traceCode) {
         GrowthRecordEntity entity = requirePublicTrace(traceCode);
         GrowthPublicTraceArchiveVO archive = toPublicTraceArchive(entity);
+        attachPublicDigitalLifeTrace(archive);
         archive.setImages(loadPublicImages(entity.getBatchId(), entity.getTraceCode()));
         archive.setAuditHistory(
                 loadAuditHistory(entity.getId()).stream().map(this::toPublicAudit).toList());
@@ -617,6 +658,21 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                 loadTraceEvents(entity.getId()).stream().map(this::toPublicTraceEvent).toList());
         applyLatestAudit(archive);
         return archive;
+    }
+
+    private void attachPublicDigitalLifeTrace(GrowthPublicTraceArchiveVO archive) {
+        if (archive.getTaskId() == null) {
+            return;
+        }
+        HerbCollectionTaskEntity task = herbCollectionTaskMapper.selectById(archive.getTaskId());
+        if (task == null
+                || !Integer.valueOf(1).equals(task.getStatus())
+                || !Integer.valueOf(1).equals(task.getPublicVisible())
+                || HerbCollectionTaskStatusConstants.CANCELLED.equals(task.getTaskStatus())
+                || !StringUtils.hasText(task.getTraceCode())) {
+            return;
+        }
+        archive.setTaskTraceCode(task.getTraceCode());
     }
 
     @Override
@@ -733,6 +789,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     }
 
     private void apply(GrowthRecordEntity entity, GrowthRecordUpsertRequest request) {
+        validateCoordinates(request);
         entity.setSpeciesId(request.getSpeciesId());
         entity.setDistributionId(request.getDistributionId());
         entity.setRegionId(request.getRegionId());
@@ -756,6 +813,28 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         entity.setDataSource(defaultText(request.getDataSource(), "manual"));
         entity.setCollectedAt(request.getCollectedAt());
         entity.setRemark(request.getRemark());
+    }
+
+    private void validateCoordinates(GrowthRecordUpsertRequest request) {
+        boolean hasLongitude = request.getLongitude() != null;
+        boolean hasLatitude = request.getLatitude() != null;
+        if (hasLongitude != hasLatitude) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "经纬度必须同时填写");
+        }
+        if (!hasLongitude) {
+            return;
+        }
+        if (request.getLongitude().compareTo(new BigDecimal("-180")) < 0
+                || request.getLongitude().compareTo(new BigDecimal("180")) > 0) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "经度范围必须在 -180 到 180 之间");
+        }
+        if (request.getLatitude().compareTo(new BigDecimal("-90")) < 0
+                || request.getLatitude().compareTo(new BigDecimal("90")) > 0) {
+            throw new BusinessException(
+                    ResultCodeEnum.VALIDATION_ERROR, "纬度范围必须在 -90 到 90 之间");
+        }
     }
 
     private void validateReferences(GrowthRecordUpsertRequest request) {

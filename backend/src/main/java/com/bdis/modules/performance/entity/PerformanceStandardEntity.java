@@ -12,6 +12,8 @@ public class PerformanceStandardEntity extends BaseEntity {
 
     private String standardNo;
 
+    private Integer standardVersion;
+
     private String standardName;
 
     private String performanceType;
@@ -19,6 +21,22 @@ public class PerformanceStandardEntity extends BaseEntity {
     private String standardDesc;
 
     private String scoreRule;
+
+    private String levelRule;
+
+    private java.time.LocalDateTime effectiveFrom;
+
+    private java.time.LocalDateTime effectiveTo;
+
+    private Integer materialRequired;
+
+    private Integer minMaterialCount;
+
+    private String lifecycleStatus;
+
+    private java.time.LocalDateTime publishedAt;
+
+    private Long publishedBy;
 
     private Integer sortOrder;
 }

@@ -21,10 +21,12 @@ import com.bdis.modules.dictionary.service.DictionaryService;
 import com.bdis.modules.dictionary.vo.DictItemVO;
 import com.bdis.modules.dictionary.vo.DictTypeVO;
 import com.bdis.modules.dictionary.vo.RegionVO;
+import com.bdis.modules.herb.mapper.HerbMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,14 +38,17 @@ public class DictionaryServiceImpl implements DictionaryService {
     private final DictTypeMapper dictTypeMapper;
     private final DictItemMapper dictItemMapper;
     private final RegionMapper regionMapper;
+    private final HerbMapper herbMapper;
 
     public DictionaryServiceImpl(
             DictTypeMapper dictTypeMapper,
             DictItemMapper dictItemMapper,
-            RegionMapper regionMapper) {
+            RegionMapper regionMapper,
+            HerbMapper herbMapper) {
         this.dictTypeMapper = dictTypeMapper;
         this.dictItemMapper = dictItemMapper;
         this.regionMapper = regionMapper;
+        this.herbMapper = herbMapper;
     }
 
     @Override
@@ -136,6 +141,11 @@ public class DictionaryServiceImpl implements DictionaryService {
         DictItemEntity entity = requireItem(type.getId(), itemId);
         ensureItemCodeAvailable(type.getId(), request.getItemCode(), itemId);
         validateItemParent(type.getId(), request.getParentId(), itemId);
+        if ("herb_category".equals(type.getTypeCode())
+                && !Objects.equals(entity.getItemCode(), request.getItemCode())
+                && herbMapper.countByCategoryReference(itemId, entity.getItemCode()) > 0) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "该分类仍被药材引用，不能修改分类编码");
+        }
         applyItem(entity, request);
         entity.setUpdatedBy(SecurityUtils.currentUser().getUserId());
         dictItemMapper.updateById(entity);
@@ -145,12 +155,16 @@ public class DictionaryServiceImpl implements DictionaryService {
     @Transactional
     public void deleteItem(String typeCode, Long itemId) {
         DictTypeEntity type = requireType(typeCode);
-        requireItem(type.getId(), itemId);
+        DictItemEntity item = requireItem(type.getId(), itemId);
         if (dictItemMapper.selectCount(
                         new LambdaQueryWrapper<DictItemEntity>()
                                 .eq(DictItemEntity::getParentId, itemId))
                 > 0) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "字典项仍有子项，不能删除");
+        }
+        if ("herb_category".equals(type.getTypeCode())
+                && herbMapper.countByCategoryReference(itemId, item.getItemCode()) > 0) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "该分类仍被药材引用，不能删除");
         }
         dictItemMapper.deleteById(itemId);
     }

@@ -47,4 +47,12 @@ export const businessRoutes: RouteMeta[] = [
     navLabel: "评价申报",
     navOrder: 60,
   },
+  {
+    path: "/performance",
+    title: "业绩认定",
+    owner: "performance",
+    permission: "performance:record:view",
+    navLabel: "业绩认定",
+    navOrder: 65,
+  },
 ];

@@ -74,15 +74,6 @@
           <view class="growth-actions">
             <button class="secondary-btn growth-btn" @click="viewGrowthRecord">查看详情</button>
             <button v-if="canEditGrowth" class="secondary-btn growth-btn" @click="editGrowthRecord">编辑</button>
-            <button
-              v-if="canEditGrowth"
-              class="primary-btn growth-btn"
-              :loading="growthSubmitting"
-              :disabled="growthSubmitting"
-              @click="handleSubmitGrowthRecord"
-            >
-              提交审核
-            </button>
           </view>
         </template>
         <view v-else class="growth-empty">
@@ -142,19 +133,11 @@
       <view class="herb-card action-card">
         <text class="section-title">批次操作</text>
         <view class="action-grid">
-          <button v-if="canUpload" class="primary-btn action-btn" @click="goUpload">上传图片</button>
+          <button v-if="canUpload" class="secondary-btn action-btn" @click="goUpload">上传图片</button>
           <button v-else-if="showUploadDisabled" class="secondary-btn action-btn" @click="showUploadDisabledTip">上传图片</button>
-          <button
-            v-if="canIdentifyBatch()"
-            class="secondary-btn action-btn"
-            :loading="identifyingMissing"
-            @click="handleIdentifyMissingImages"
-          >
-            识别未完成图片
-          </button>
           <button v-if="canRefreshSummary" class="secondary-btn action-btn" :loading="refreshing" @click="handleRefreshSummary">刷新汇总</button>
           <button class="secondary-btn action-btn" @click="handleExplainBatch">AI 解释批次</button>
-          <button v-if="canSubmit" class="secondary-btn action-btn" :loading="submitting" @click="handleSubmitBatch">提交批次</button>
+          <button v-if="canSubmit" class="primary-btn action-btn" :loading="submitting" @click="handleSubmitBatch">提交审核</button>
         </view>
       </view>
 
@@ -218,11 +201,10 @@ import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import {
   getBatchDetail,
   identifyBatchImage,
-  identifyMissingImages,
   refreshBatchSummary,
   submitBatch
 } from '../../api/mobileBatchApi'
-import { getBatchGrowthRecord, submitGrowthRecord } from '../../api/mobileGrowthRecordApi'
+import { getBatchGrowthRecord } from '../../api/mobileGrowthRecordApi'
 import {
   BATCH_STATUS_MAP,
   IMAGE_ROLE_MAP,
@@ -243,9 +225,7 @@ const loading = ref(false)
 const refreshing = ref(false)
 const submitting = ref(false)
 const growthLoading = ref(false)
-const growthSubmitting = ref(false)
 const identifyingImageId = ref(null)
-const identifyingMissing = ref(false)
 const assistantRef = ref(null)
 const errorText = ref('')
 const errorTip = ref('请检查网络或后端服务是否启动')
@@ -259,11 +239,6 @@ const canSubmit = computed(() => ['draft', 'collecting'].includes(detail.value.b
 const canEditGrowth = computed(() =>
   ['draft', 'rejected'].includes(growthRecord.value?.reviewStatus)
 )
-const hasMissingImages = computed(() => {
-  const imageCount = Number(detail.value.imageCount || images.value.length || 0)
-  const identifiedCount = Number(detail.value.identifiedCount || 0)
-  return imageCount > identifiedCount
-})
 
 onLoad((options) => {
   batchId.value = options.batchId || options.id || ''
@@ -360,28 +335,6 @@ function editGrowthRecord() {
   }
   uni.navigateTo({
     url: `/pages/growth/form?batchId=${batchId.value}&recordId=${growthRecord.value.id}`
-  })
-}
-
-function handleSubmitGrowthRecord() {
-  if (!canEditGrowth.value || growthSubmitting.value) return
-  uni.showModal({
-    title: '提交生长记录',
-    content: '提交后将进入审核，审核完成前不能继续编辑，确定提交吗？',
-    success: async (result) => {
-      if (!result.confirm) return
-      growthSubmitting.value = true
-      try {
-        await submitGrowthRecord(growthRecord.value.id)
-        showToast('生长记录已提交', 'success')
-        await loadGrowthRecord()
-      } catch (error) {
-        console.error('生长记录提交失败', error)
-        showToast(error?.message || error?.msg || '提交失败，请稍后重试')
-      } finally {
-        growthSubmitting.value = false
-      }
-    }
   })
 }
 
@@ -518,48 +471,44 @@ async function handleRefreshSummary() {
 }
 
 function handleSubmitBatch() {
-  if (!batchId.value || submitting.value) {
-    return
-  }
+  if (!batchId.value || submitting.value) return
 
   if (!canSubmit.value) {
-    showToast('当前批次状态不允许提交')
+    showToast('当前批次状态不允许提交审核')
     return
   }
-
+  if (!growthRecord.value) {
+    showToast('请先填写本次生长记录后再提交审核')
+    return
+  }
   if (Number(detail.value.imageCount || 0) <= 0) {
-    showToast('请至少上传一张图片后再提交批次')
+    showToast('请至少上传一张图片后再提交审核')
     return
   }
 
   uni.showModal({
-    title: '确认提交',
-    content: '提交后将进入后续识别和复核流程，确定提交该批次吗？',
+    title: '确认提交审核',
+    content: '提交后，当前批次和本次生长记录将一并进入审核，确定继续吗？',
     success: async (res) => {
-      if (!res.confirm) {
-        return
-      }
-
-      await submitCurrentBatch()
+      if (res.confirm) await submitCurrentBatch()
     }
   })
 }
 
 async function submitCurrentBatch() {
   submitting.value = true
-
   try {
     await submitBatch(batchId.value, {
-      remark: '手机端采集完成，提交批次'
+      remark: '手机端采集完成，提交审核'
     })
     uni.showToast({
-      title: '批次提交成功',
+      title: '提交审核成功',
       icon: 'success'
     })
     await loadDetail()
   } catch (error) {
-    console.error('批次提交失败', error)
-    showToast('批次提交失败，请稍后重试')
+    console.error('提交审核失败', error)
+    showToast(error?.message || error?.msg || '提交审核失败，请稍后重试')
   } finally {
     submitting.value = false
   }
@@ -623,59 +572,6 @@ async function identifyCurrentImage(imageId) {
   }
 }
 
-function handleIdentifyMissingImages() {
-  if (!batchId.value) {
-    showToast('批次ID为空，无法触发识别')
-    return
-  }
-
-  if (!canIdentifyBatch()) {
-    showToast('当前批次状态不允许触发识别')
-    return
-  }
-
-  if (identifyingMissing.value) {
-    return
-  }
-
-  const imageCount = Number(detail.value.imageCount || images.value.length || 0)
-  if (imageCount <= 0) {
-    showToast('请先上传图片')
-    return
-  }
-
-  if (!hasMissingImages.value) {
-    showToast('当前批次暂无未识别图片')
-    return
-  }
-
-  uni.showModal({
-    title: '批量识别',
-    content: '将对当前批次下未识别图片执行识别，识别可能需要一定时间，是否继续？',
-    success: async (res) => {
-      if (res.confirm) {
-        await identifyMissingImagesInBatch()
-      }
-    }
-  })
-}
-
-async function identifyMissingImagesInBatch() {
-  identifyingMissing.value = true
-
-  try {
-    const result = await identifyMissingImages(batchId.value)
-    showIdentifyBatchResult(result)
-    await refreshSummaryAfterIdentify()
-    await loadDetail()
-  } catch (error) {
-    console.error('identify missing images failed:', error)
-    showToast('批量识别失败，请稍后重试')
-  } finally {
-    identifyingMissing.value = false
-  }
-}
-
 async function refreshSummaryAfterIdentify() {
   try {
     await refreshBatchSummary(batchId.value)
@@ -683,19 +579,6 @@ async function refreshSummaryAfterIdentify() {
     console.error('refresh summary after identify failed:', error)
     showToast('识别已完成，但批次汇总刷新失败，请手动点击刷新汇总')
   }
-}
-
-function showIdentifyBatchResult(result = {}) {
-  const totalCount = result.totalCount ?? result.total ?? result.count ?? 0
-  const successCount = result.successCount ?? result.success ?? 0
-  const failCount = result.failCount ?? result.failedCount ?? result.fail ?? 0
-  const failTip = Number(failCount || 0) > 0 ? '\n部分图片识别失败，请稍后重试或联系管理员' : ''
-
-  uni.showModal({
-    title: '批量识别完成',
-    content: `共处理 ${totalCount} 张，成功 ${successCount} 张，失败 ${failCount} 张${failTip}`,
-    showCancel: false
-  })
 }
 
 function canIdentifyBatch() {
@@ -876,7 +759,7 @@ function showToast(title) {
 
 .growth-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12rpx;
   margin-top: 20rpx;
 }

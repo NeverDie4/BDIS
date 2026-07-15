@@ -74,4 +74,9 @@ class SecurityConfigTest {
     void publicFileEndpointAllowsAnonymousRequests() throws Exception {
         mockMvc.perform(get("/public-files/1/content")).andExpect(status().isNotFound());
     }
+
+    @Test
+    void digitalLifeTraceEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(get("/trace/digital-life/missing")).andExpect(status().isNotFound());
+    }
 }

@@ -1,5 +1,7 @@
 package com.bdis.modules.performance.service.impl;
 
+import com.bdis.common.enums.ResultCodeEnum;
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.performance.dto.PerformanceAuditRequest;
 import com.bdis.modules.performance.entity.PerformanceAuditEntity;
@@ -36,6 +38,9 @@ public class PerformanceAuditServiceImpl implements PerformanceAuditService {
         accessService.requireResourceAccess(
                 "perf_record", performanceId, "performance:record:audit", performance.getUserId());
         Long identifierId = accessService.currentUserId();
+        if (identifierId.equals(performance.getUserId())) {
+            throw new BusinessException(ResultCodeEnum.FORBIDDEN, "不能审核本人业绩");
+        }
         if (!"submitted".equals(performance.getIdentifyStatus())) {
             throw new IllegalArgumentException("只有已提交状态的业绩可以审核认定");
         }
@@ -46,10 +51,15 @@ public class PerformanceAuditServiceImpl implements PerformanceAuditService {
         if (!AUDIT_RESULTS.contains(result)) {
             throw new IllegalArgumentException("认定结果只能是 approved 或 rejected");
         }
+        if ("rejected".equals(result) && !StringUtils.hasText(request.resolvedComment())) {
+            throw new IllegalArgumentException("退回业绩时必须填写认定意见");
+        }
 
         performance.setIdentifyStatus(result);
         performance.setUpdatedBy(identifierId);
-        performanceMapper.updateById(performance);
+        if (performanceMapper.updateById(performance) != 1) {
+            throw new BusinessException(ResultCodeEnum.RESOURCE_CONFLICT, "业绩已被其他审核人处理");
+        }
 
         PerformanceAuditEntity audit = new PerformanceAuditEntity();
         audit.setPerformanceId(performanceId);
