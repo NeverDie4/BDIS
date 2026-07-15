@@ -14,7 +14,7 @@ import java.util.zip.CRC32;
 
 class DigitalLifeArchiveMigrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "20260715_029";
+    private static final String LATEST_MIGRATION_VERSION = "20260716_004";
     private static final Pattern VERSION_PATTERN = Pattern.compile("^V(\\d{8}_\\d{3})__.+\\.sql$");
 
     @Test
@@ -31,7 +31,7 @@ class DigitalLifeArchiveMigrationTest {
         }
 
         assertThat(versions).doesNotHaveDuplicates();
-        assertThat(versions).contains("20260715_001", LATEST_MIGRATION_VERSION);
+        assertThat(versions).contains("20260715_001", "20260715_006", LATEST_MIGRATION_VERSION);
         assertThat(versions.stream().filter(version -> !LATEST_MIGRATION_VERSION.equals(version)))
                 .allMatch(version -> version.compareTo(LATEST_MIGRATION_VERSION) < 0);
     }

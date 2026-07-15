@@ -20,5 +20,7 @@ public class HerbSpeciesUpdateRequest {
 
     private String description;
 
+    private String coverImageUrl;
+
     private Integer status;
 }

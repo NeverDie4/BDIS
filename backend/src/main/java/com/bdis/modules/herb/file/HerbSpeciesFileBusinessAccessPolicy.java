@@ -34,16 +34,26 @@ public class HerbSpeciesFileBusinessAccessPolicy implements FileBusinessAccessPo
 
     @Override
     public boolean canAttach(Long bizId) {
-        return authorizationService.hasPermission("herb:species:update");
+        return hasAnySpeciesMutationPermission("herb:species:create", "herb:species:update");
     }
 
     @Override
     public boolean canDetach(Long bizId) {
-        return canAttach(bizId);
+        return hasAnySpeciesMutationPermission("herb:species:update", "herb:species:delete");
     }
 
     @Override
     public boolean canPublish(Long bizId) {
-        return authorizationService.hasPermission("herb:species:update");
+        return hasAnySpeciesMutationPermission(
+                "herb:species:create", "herb:species:update", "herb:species:delete");
+    }
+
+    private boolean hasAnySpeciesMutationPermission(String... permissions) {
+        for (String permission : permissions) {
+            if (authorizationService.hasPermission(permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

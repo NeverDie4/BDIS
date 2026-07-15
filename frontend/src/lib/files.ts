@@ -47,7 +47,7 @@ export async function uploadFile(file: File, options?: UploadFileOptions) {
   }
 
   const response = await request.post<ApiResult<FileResource>>("/files/upload", formData);
-  return withBrowserFileUrl(response.data.data);
+  return response.data.data;
 }
 
 export async function deleteFileResource(fileId: number) {

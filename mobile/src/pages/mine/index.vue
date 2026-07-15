@@ -25,16 +25,6 @@
           <text class="action-title">采集批次</text>
           <text class="action-desc">管理现场采集批次</text>
         </button>
-        <button class="action-item" @click="openAssistant">
-          <text class="action-icon">AI</text>
-          <text class="action-title">AI 小助手</text>
-          <text class="action-desc">咨询采集流程与规范</text>
-        </button>
-        <button class="action-item" @click="showHelp">
-          <text class="action-icon">帮</text>
-          <text class="action-title">使用帮助</text>
-          <text class="action-desc">查看移动采集流程</text>
-        </button>
       </view>
     </view>
 
@@ -80,7 +70,7 @@
       <button v-else class="login-btn" @click="goLogin">登录账号</button>
     </view>
 
-    <AssistantFloat ref="assistantRef" />
+    <AssistantFloat />
     <AppTabBar />
   </view>
 </template>
@@ -100,7 +90,6 @@ import {
 const authUser = ref(getAuthUser())
 const loggedIn = ref(isLoggedIn())
 const loggingOut = ref(false)
-const assistantRef = ref(null)
 
 const userName = computed(() => authUser.value?.realName || authUser.value?.username || '未登录')
 const accountText = computed(() => authUser.value?.username || '-')
@@ -162,19 +151,6 @@ function goBatchList() {
   })
 }
 
-function openAssistant() {
-  if (!requireLogin()) {
-    return
-  }
-  assistantRef.value?.open()
-}
-
-function showHelp() {
-  uni.showToast({
-    title: '请通过 AI 小助手咨询使用流程',
-    icon: 'none'
-  })
-}
 </script>
 
 <style scoped>

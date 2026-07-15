@@ -40,7 +40,7 @@ public interface MapPointMapper extends BaseMapper<MapPointEntity> {
                 d.distribution_type AS distributionType,
                 d.distribution_level AS distributionLevel,
                 d.distribution_desc AS distributionDesc,
-                d.cover_image_url AS coverImageUrl,
+                COALESCE(d.cover_image_url, h.cover_image_url) AS coverImageUrl,
                 d.last_collected_at AS lastCollectedAt,
                 d.source_type AS sourceType,
                 d.data_source AS dataSource,

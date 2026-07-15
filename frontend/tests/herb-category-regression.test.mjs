@@ -77,7 +77,7 @@ test("药材资源三个页签均不展示或提交状态属性并重排剩余�
   );
   assert.match(regionColumn, /width:\s*"\d+%"/);
   assert.match(tableSource, /tableLayout="fixed"/);
-  assert.match(tableSource, /scroll=\{\{ x:\s*1080 \}\}/);
+  assert.match(tableSource, /scroll=\{\{ x:\s*1120 \}\}/);
   assert.ok((tableSource.match(/width:\s*"\d+%"/g) ?? []).length >= 8);
   assert.match(categoryTable, /tableLayout="fixed"/);
   assert.match(categoryTable, /scroll=\{\{ x:\s*900 \}\}/);
@@ -148,4 +148,43 @@ test("药材资源页接收首页链接携带的 keyword 查询参数", async ()
   assert.match(clientSource, /useState<HerbFilterValues>\(\(\) =>\s*initialKeyword/);
   assert.match(clientSource, /<HerbFilterBar[\s\S]*?initialKeyword=\{initialKeyword\}/);
   assert.match(filterSource, /form\.setFieldValue\("keyword", initialKeyword/);
+});
+
+test("药材新增编辑支持封面图片并在资源表格显示缩略图", async () => {
+  const clientSource = await readSource("components/herbs/HerbResourceClient.tsx");
+  const tableSource = await readSource("components/herbs/HerbTable.tsx");
+  const typeSource = await readSource("components/herbs/types.ts");
+  const apiSource = await readSource("lib/herbs.ts");
+
+  assert.match(apiSource, /coverImageUrl\?: string/);
+  assert.match(apiSource, /toBrowserFileUrl/);
+  assert.match(typeSource, /coverImageUrl\?: string/);
+  assert.match(clientSource, /name="coverImageUrl"/);
+  assert.match(clientSource, /<FileUploadField/);
+  assert.match(clientSource, /accessLevel="private"/);
+  assert.doesNotMatch(clientSource, /accessLevel="public"[\s\S]*?fileUsage="cover"/);
+  assert.doesNotMatch(clientSource, /cleanupUnboundOnUnmount=\{false\}/);
+  assert.match(tableSource, /dataIndex: "coverImageUrl"/);
+  assert.match(tableSource, /className=\{styles\.tableThumb\}/);
+});
+
+test("药材详情只保留基本档案和图片图鉴", async () => {
+  const detailSource = await readSource("components/herbs/HerbDetailPanel.tsx");
+  const cssSource = await readSource("components/herbs/herbs.module.css");
+
+  assert.doesNotMatch(detailSource, /Tabs|Descriptions/);
+  assert.doesNotMatch(detailSource, /关联数据|附件资料|relations|attachments/);
+  assert.match(detailSource, /styles\.detailHero/);
+  assert.match(detailSource, /基本档案/);
+  assert.match(detailSource, /图片图鉴/);
+  assert.match(detailSource, /herb\.coverImageUrl/);
+  assert.match(detailSource, /preview=\{\{ mask: "预览图片" \}\}/);
+  assert.match(
+    cssSource,
+    /\.archiveGrid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/s,
+  );
+  assert.match(
+    cssSource,
+    /\.galleryGrid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit, minmax\(180px, 1fr\)\);/s,
+  );
 });

@@ -5,7 +5,7 @@ import { BellOutlined, LoginOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getPortalNavigationRoutes } from "@/config/routes";
 import { useAuthStore } from "@/stores/auth-store";
 import { UserMenu } from "./UserMenu";
@@ -36,13 +36,37 @@ function isActivePath(pathname: string, href: string) {
 
 export function HeaderNav() {
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const visibleNavItems = getPortalNavigationRoutes(status, user);
 
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) {
+      return;
+    }
+
+    const updateHeaderHeight = () => {
+      document.documentElement.style.setProperty(
+        "--site-header-height",
+        `${Math.ceil(header.getBoundingClientRect().height)}px`,
+      );
+    };
+
+    updateHeaderHeight();
+    const observer = new ResizeObserver(updateHeaderHeight);
+    observer.observe(header);
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--site-header-height");
+    };
+  }, []);
+
   return (
-    <header className={styles.header}>
+    <header className={styles.header} ref={headerRef}>
       <Link href="/" className={styles.brand} aria-label="返回首页">
         <span className={styles.brandMark}>
           <Image

@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/request";
+import { toBrowserFileUrl } from "@/lib/files";
 import type { PageResult } from "@/types/api";
 
 export type HerbSpeciesApi = {
@@ -12,6 +13,7 @@ export type HerbSpeciesApi = {
   medicinalPart?: string;
   efficacy?: string;
   description?: string;
+  coverImageUrl?: string;
   distributionRegions?: string[];
   distributionRegionText?: string;
   createTime?: string;
@@ -57,6 +59,7 @@ export type HerbSpeciesPayload = {
   medicinalPart?: string;
   efficacy?: string;
   description?: string;
+  coverImageUrl?: string;
 };
 
 export type HerbSpeciesUpdatePayload = Omit<HerbSpeciesPayload, "herbCode">;
@@ -91,19 +94,24 @@ export function fetchHerbSpecies(params: {
   category?: string;
   medicinalPart?: string;
 }) {
-  return apiGet<PageResult<HerbSpeciesApi>>("/herb/species/page", params);
+  return apiGet<PageResult<HerbSpeciesApi>>("/herb/species/page", params).then((page) => ({
+    ...page,
+    records: page.records.map(withBrowserCoverUrl),
+  }));
 }
 
 export function fetchEnabledHerbs() {
-  return apiGet<HerbSpeciesApi[]>("/herb/species/list");
+  return apiGet<HerbSpeciesApi[]>("/herb/species/list").then((items) =>
+    items.map(withBrowserCoverUrl),
+  );
 }
 
 export function createHerbSpecies(payload: HerbSpeciesPayload) {
-  return apiPost<HerbSpeciesApi>("/herb/species", payload);
+  return apiPost<HerbSpeciesApi>("/herb/species", payload).then(withBrowserCoverUrl);
 }
 
 export function updateHerbSpecies(id: number, payload: HerbSpeciesUpdatePayload) {
-  return apiPut<HerbSpeciesApi>(`/herb/species/${id}`, payload);
+  return apiPut<HerbSpeciesApi>(`/herb/species/${id}`, payload).then(withBrowserCoverUrl);
 }
 
 export function deleteHerbSpecies(id: number) {
@@ -146,4 +154,13 @@ export function updateHerbBase(id: number, payload: HerbBasePayload) {
 
 export function deleteHerbBase(id: number) {
   return apiDelete<void>(`/herb-bases/${id}`);
+}
+
+function withBrowserCoverUrl(herb: HerbSpeciesApi): HerbSpeciesApi {
+  return {
+    ...herb,
+    coverImageUrl: herb.coverImageUrl
+      ? toBrowserFileUrl(herb.coverImageUrl)
+      : herb.coverImageUrl,
+  };
 }

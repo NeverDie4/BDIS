@@ -3,6 +3,7 @@ package com.bdis.modules.herb.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +15,7 @@ import com.bdis.modules.herb.dto.HerbSpeciesQueryRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesUpdateRequest;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.service.HerbSpeciesCoverFileService;
 import com.bdis.modules.herb.service.impl.HerbSpeciesServiceImpl;
 import com.bdis.modules.herb.vo.HerbSpeciesVO;
 import java.util.List;
@@ -31,12 +33,15 @@ class HerbSpeciesServiceTest {
 
     @Mock private DictionaryReferenceValidator dictionaryReferenceValidator;
 
+    @Mock private HerbSpeciesCoverFileService coverFileService;
+
     private HerbSpeciesService herbSpeciesService;
 
     @BeforeEach
     void setUp() {
         herbSpeciesService =
-                new HerbSpeciesServiceImpl(herbSpeciesMapper, dictionaryReferenceValidator);
+                new HerbSpeciesServiceImpl(
+                        herbSpeciesMapper, dictionaryReferenceValidator, coverFileService);
     }
 
     @Test
@@ -44,19 +49,36 @@ class HerbSpeciesServiceTest {
         HerbSpeciesCreateRequest request = new HerbSpeciesCreateRequest();
         request.setHerbCode("HERB_HUANGLIAN");
         request.setHerbName("Huanglian");
+        request.setCoverImageUrl("/api/files/10/content");
 
         when(herbSpeciesMapper.selectByHerbCode("HERB_HUANGLIAN")).thenReturn(null);
+        doAnswer(
+                        invocation -> {
+                            HerbEntity entity = invocation.getArgument(0);
+                            entity.setId(6L);
+                            return 1;
+                        })
+                .when(herbSpeciesMapper)
+                .insertSpecies(any(HerbEntity.class));
+        when(coverFileService.replaceCover(6L, null, "/api/files/10/content"))
+                .thenReturn("/api/public-files/10/content");
 
         HerbSpeciesVO result = herbSpeciesService.create(request);
 
-        ArgumentCaptor<HerbEntity> captor = ArgumentCaptor.forClass(HerbEntity.class);
-        verify(herbSpeciesMapper).insertSpecies(captor.capture());
-        HerbEntity inserted = captor.getValue();
+        ArgumentCaptor<HerbEntity> insertCaptor = ArgumentCaptor.forClass(HerbEntity.class);
+        verify(herbSpeciesMapper).insertSpecies(insertCaptor.capture());
+        HerbEntity inserted = insertCaptor.getValue();
         assertThat(inserted.getStatus()).isEqualTo(1);
         assertThat(inserted.getIsDeleted()).isZero();
+        assertThat(inserted.getCoverImageUrl()).isEqualTo("/api/public-files/10/content");
         assertThat(inserted.getCreatedAt()).isNotNull();
         assertThat(inserted.getUpdatedAt()).isNotNull();
+        ArgumentCaptor<HerbEntity> updateCaptor = ArgumentCaptor.forClass(HerbEntity.class);
+        verify(herbSpeciesMapper).updateSpecies(updateCaptor.capture());
+        assertThat(updateCaptor.getValue().getCoverImageUrl())
+                .isEqualTo("/api/public-files/10/content");
         assertThat(result.getHerbCode()).isEqualTo("HERB_HUANGLIAN");
+        assertThat(result.getCoverImageUrl()).isEqualTo("/api/public-files/10/content");
     }
 
     @Test
@@ -93,12 +115,16 @@ class HerbSpeciesServiceTest {
 
         HerbSpeciesUpdateRequest request = new HerbSpeciesUpdateRequest();
         request.setHerbName("Updated Huanglian");
+        request.setCoverImageUrl("/api/files/22/content");
+        when(coverFileService.replaceCover(1L, null, "/api/files/22/content"))
+                .thenReturn("/api/public-files/22/content");
 
         herbSpeciesService.update(1L, request);
 
         ArgumentCaptor<HerbEntity> captor = ArgumentCaptor.forClass(HerbEntity.class);
         verify(herbSpeciesMapper).updateSpecies(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(1);
+        assertThat(captor.getValue().getCoverImageUrl()).isEqualTo("/api/public-files/22/content");
     }
 
     @Test
@@ -133,6 +159,7 @@ class HerbSpeciesServiceTest {
         entity.setCategoryCode("root");
         entity.setCategoryName("根及根茎类");
         entity.setMedicinalPart("根茎");
+        entity.setCoverImageUrl("/api/files/7/content");
         entity.setStatus(1);
         entity.setDistributionRegionText("重庆南川、重庆石柱、重庆石柱");
 
@@ -147,6 +174,7 @@ class HerbSpeciesServiceTest {
         assertThat(vo.getCategoryName()).isEqualTo("根及根茎类");
         assertThat(vo.getMedicinalPart()).isEqualTo("根茎");
         assertThat(vo.getStatus()).isEqualTo(1);
+        assertThat(vo.getCoverImageUrl()).isEqualTo("/api/files/7/content");
         assertThat(vo.getStatusText()).isEqualTo("启用");
         assertThat(vo.getDistributionRegionText()).isEqualTo("重庆南川、重庆石柱、重庆石柱");
         assertThat(vo.getDistributionRegions()).containsExactly("重庆南川", "重庆石柱");
