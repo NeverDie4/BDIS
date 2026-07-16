@@ -40,7 +40,6 @@ import com.bdis.modules.growth.vo.GrowthPublicTraceImageVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
 import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
-import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.herb.vo.HerbImageVO;
@@ -1412,11 +1411,11 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         GrowthRecordVO vo = new GrowthRecordVO();
         BeanUtils.copyProperties(entity, vo);
         vo.setCollectorName(entity.getCollectorNameSnapshot());
-        HerbEntity species = herbMapper.selectById(entity.getSpeciesId());
-        vo.setSpeciesName(
-                StringUtils.hasText(entity.getSpeciesName())
-                        ? entity.getSpeciesName()
-                        : species == null ? null : species.getHerbName());
+        String speciesName = entity.getSpeciesName();
+        if (!StringUtils.hasText(speciesName) && entity.getSpeciesId() != null) {
+            speciesName = herbMapper.selectHerbNameById(entity.getSpeciesId());
+        }
+        vo.setSpeciesName(speciesName);
         if (entity.getBatchId() != null) {
             HerbBatchEntity batch = herbBatchMapper.selectById(entity.getBatchId());
             vo.setBatchName(batch == null ? null : batch.getBatchName());

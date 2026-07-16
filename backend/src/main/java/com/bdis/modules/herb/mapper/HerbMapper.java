@@ -21,6 +21,15 @@ public interface HerbMapper extends BaseMapper<HerbEntity> {
 
     @Select(
             """
+            SELECT herb_name
+            FROM herb_species
+            WHERE id = #{id}
+              AND is_deleted = 0
+            """)
+    String selectHerbNameById(@Param("id") Long id);
+
+    @Select(
+            """
             SELECT *
             FROM herb_species
             WHERE is_deleted = 0

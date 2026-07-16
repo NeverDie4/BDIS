@@ -114,6 +114,7 @@ class GrowthRecordServiceImplTest {
         herb.setId(10L);
         herb.setHerbName("黄连");
         lenient().when(herbMapper.selectById(10L)).thenReturn(herb);
+        lenient().when(herbMapper.selectHerbNameById(10L)).thenReturn("黄连");
     }
 
     @AfterEach

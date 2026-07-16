@@ -3,8 +3,9 @@
 import { DatePicker, Form, Input, InputNumber, Modal, Select } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FileUploadField } from "@/components/file/FileUploadField";
+import { fetchEnabledHerbBases, type HerbBaseApi } from "@/lib/herbs";
 import type { MapPoint, MapPointPayload } from "@/lib/map-points";
 
 const { TextArea } = Input;
@@ -32,6 +33,26 @@ export function HerbPointFormModal({
   onSubmit,
 }: HerbPointFormModalProps) {
   const [form] = Form.useForm<HerbPointFormValues>();
+  const [herbBases, setHerbBases] = useState<HerbBaseApi[]>([]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    let cancelled = false;
+    void fetchEnabledHerbBases().then((bases) => {
+      if (!cancelled) {
+        setHerbBases(bases);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setHerbBases([]);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -132,6 +153,19 @@ export function HerbPointFormModal({
             <Input placeholder="如：黄水药材基地" />
           </Form.Item>
         </div>
+
+        <Form.Item name="baseId" label="所属基地">
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="请选择所属基地"
+            options={herbBases.map((base) => ({
+              value: base.id,
+              label: [base.baseName, base.regionName].filter(Boolean).join(" · "),
+            }))}
+          />
+        </Form.Item>
 
         <Form.Item name="address" label="详细地址">
           <Input placeholder="地图点位对应的具体地址" />
