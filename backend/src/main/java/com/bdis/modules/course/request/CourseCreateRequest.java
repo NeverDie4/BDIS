@@ -39,6 +39,8 @@ public class CourseCreateRequest {
 
     private List<String> prerequisites;
 
+    private List<Long> prerequisiteCourseIds;
+
     private List<String> teachingObjectives;
 
     private List<String> teachingMethods;

@@ -58,6 +58,7 @@ export type CourseDetailApi = CourseListApi & {
   hours?: number;
   credits?: number;
   prerequisites?: string[];
+  prerequisiteCourseIds?: number[];
   teachingObjectives?: string[];
   teachingMethods?: string[];
   tags?: string[];
@@ -69,7 +70,12 @@ export type CourseDetailApi = CourseListApi & {
   version: number;
   steps: CourseStepApi[];
   resources: CourseResourceApi[];
+  relatedHerbs?: CourseRelationOptionApi[];
+  relatedProjects?: CourseRelationOptionApi[];
 };
+
+export type CourseRelationOptionApi = { id: number; code: string; name: string };
+export type CourseRelationOptionsApi = { herbs: CourseRelationOptionApi[]; projects: CourseRelationOptionApi[] };
 
 export type CoursePayload = {
   courseNo: string;
@@ -82,6 +88,7 @@ export type CoursePayload = {
   hours?: number;
   credits?: number;
   prerequisites?: string[];
+  prerequisiteCourseIds?: number[];
   teachingObjectives?: string[];
   teachingMethods?: string[];
   tags?: string[];
@@ -125,6 +132,14 @@ export function createCourse(payload: CoursePayload) {
 
 export function updateCourse(courseId: number, payload: CourseUpdatePayload) {
   return apiPut<CourseDetailApi>(`/courses/${courseId}`, payload);
+}
+
+export function getCourseRelationOptions(courseId: number) {
+  return apiGet<CourseRelationOptionsApi>(`/courses/${courseId}/relation-options`);
+}
+
+export function updateCourseRelations(courseId: number, payload: { version: number; speciesIds: number[]; projectIds: number[] }) {
+  return apiPut<CourseDetailApi>(`/courses/${courseId}/relations`, payload);
 }
 
 export function deleteCourse(courseId: number) {
@@ -193,6 +208,7 @@ export function mapCourseList(course: CourseListApi): CourseRecord {
       hours: 0,
       credits: 0,
       prerequisites: [],
+      prerequisiteCourseIds: [],
       teachingObjectives: [],
       teachingMethods: [],
       publishedAt: "",
@@ -202,6 +218,8 @@ export function mapCourseList(course: CourseListApi): CourseRecord {
       videos: [],
       relatedHerbs: [],
       relatedProjects: [],
+      relatedHerbItems: [],
+      relatedProjectItems: [],
       relatedCollections: [],
       experimentRecords: [],
       videoUrl: "",
@@ -221,6 +239,7 @@ export function mapCourseDetail(course: CourseDetailApi): CourseRecord {
       hours: course.hours ?? 0,
       credits: course.credits ?? 0,
       prerequisites: course.prerequisites ?? [],
+      prerequisiteCourseIds: course.prerequisiteCourseIds ?? [],
       teachingObjectives: course.teachingObjectives ?? [],
       teachingMethods: course.teachingMethods ?? [],
       tags: course.tags ?? [],
@@ -234,7 +253,7 @@ export function mapCourseDetail(course: CourseDetailApi): CourseRecord {
         expectedResult: step.expectedResult,
         version: step.version,
       })),
-      resources: course.resources.map((resource) => ({
+      resources: course.resources.filter((resource) => resource.resourceType !== "video").map((resource) => ({
         id: resource.id,
         fileId: resource.fileId,
         name: resource.resourceName,
@@ -242,6 +261,21 @@ export function mapCourseDetail(course: CourseDetailApi): CourseRecord {
         size: formatFileSize(resource.fileSize),
         url: resource.fileUrl,
       })),
+      videos: [
+        ...(course.videoUrl ? [{ title: "课程主视频", url: toBrowserFileUrl(course.videoUrl) }] : []),
+        ...course.resources.filter((resource) => resource.resourceType === "video").map((resource) => ({
+          id: resource.id,
+          title: resource.resourceName,
+          url: resource.fileUrl ? toBrowserFileUrl(resource.fileUrl) : undefined,
+          size: formatFileSize(resource.fileSize),
+          speaker: "课程视频",
+          duration: formatFileSize(resource.fileSize),
+        })),
+      ],
+      relatedHerbs: (course.relatedHerbs ?? []).map((item) => item.name),
+      relatedProjects: (course.relatedProjects ?? []).map((item) => `${item.code} · ${item.name}`),
+      relatedHerbItems: course.relatedHerbs ?? [],
+      relatedProjectItems: course.relatedProjects ?? [],
     },
   };
 }

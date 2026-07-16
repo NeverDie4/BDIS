@@ -143,6 +143,10 @@ class CourseServiceTest {
     @Test
     void createCourseUsesDraftStatusAndRecordsAudit() {
         CourseCreateRequest request = validCreateRequest();
+        request.setApplicableMajors(List.of("中药学"));
+        request.setTeachingObjectives(List.of("掌握标本采集"));
+        request.setTeachingMethods(List.of("现场教学"));
+        request.setTags(List.of("野外采集"));
         UserEntity teacher = new UserEntity();
         teacher.setId(7L);
         teacher.setStatus(1);
@@ -162,6 +166,10 @@ class CourseServiceTest {
         verify(courseMapper).insert(entityCaptor.capture());
         assertThat(entityCaptor.getValue().getPublishStatus()).isEqualTo("draft");
         assertThat(entityCaptor.getValue().getCourseNo()).isEqualTo("C-001");
+        assertThat(entityCaptor.getValue().getApplicableMajors()).contains("中药学");
+        assertThat(entityCaptor.getValue().getTeachingObjectives()).contains("掌握标本采集");
+        assertThat(entityCaptor.getValue().getTeachingMethods()).contains("现场教学");
+        assertThat(entityCaptor.getValue().getTags()).contains("野外采集");
         assertThat(result.getId()).isEqualTo(11L);
         ArgumentCaptor<AuditRecordDTO> auditCaptor = ArgumentCaptor.forClass(AuditRecordDTO.class);
         verify(auditLogService).record(auditCaptor.capture());

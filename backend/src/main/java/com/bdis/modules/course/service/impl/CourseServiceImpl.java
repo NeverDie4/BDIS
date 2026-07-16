@@ -18,17 +18,26 @@ import com.bdis.modules.course.mapper.CourseMapper;
 import com.bdis.modules.course.mapper.ExperimentStepMapper;
 import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
+import com.bdis.modules.course.request.CourseRelationUpdateRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
 import com.bdis.modules.course.service.CourseResourceService;
 import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.service.ExperimentStepService;
 import com.bdis.modules.course.vo.CourseDetailVO;
 import com.bdis.modules.course.vo.CourseListVO;
+import com.bdis.modules.course.vo.CourseRelationOptionVO;
+import com.bdis.modules.course.vo.CourseRelationOptionsVO;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,6 +50,9 @@ public class CourseServiceImpl implements CourseService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourseServiceImpl.class);
     private static final String BIZ_TYPE = "edu_course";
     private static final String AUDIT_MODULE = "M12_COURSE";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {};
+    private static final TypeReference<List<Long>> LONG_LIST = new TypeReference<>() {};
 
     private final CourseMapper courseMapper;
     private final ExperimentStepMapper experimentStepMapper;
@@ -83,6 +95,8 @@ public class CourseServiceImpl implements CourseService {
         CourseDetailVO vo = toDetailVO(course);
         vo.setSteps(experimentStepService.listByCourseId(id));
         vo.setResources(courseResourceService.listByCourseId(id, null));
+        vo.setRelatedHerbs(courseMapper.selectRelatedHerbs(id));
+        vo.setRelatedProjects(courseMapper.selectRelatedProjects(id));
         return vo;
     }
 
@@ -102,6 +116,14 @@ public class CourseServiceImpl implements CourseService {
         entity.setTeacherId(request.getTeacherId());
         entity.setDescription(request.getDescription());
         entity.setVideoUrl(request.getVideoUrl());
+        applyMetadata(
+                entity,
+                request.getApplicableMajors(),
+                request.getPrerequisiteCourseIds(),
+                request.getTeachingObjectives(),
+                request.getTeachingMethods(),
+                request.getTags(),
+                null);
         entity.setPublishStatus(CoursePublishStatus.DRAFT);
         entity.setStartedAt(request.getStartedAt());
         entity.setEndedAt(request.getEndedAt());
@@ -131,6 +153,7 @@ public class CourseServiceImpl implements CourseService {
         validateTimeRange(request.getStartedAt(), request.getEndedAt());
         ensureCourseNoAvailable(request.getCourseNo(), id);
         validateTeacher(request.getTeacherId());
+        validatePrerequisiteCourses(request.getPrerequisiteCourseIds(), id);
 
         existing.setCourseNo(request.getCourseNo().trim());
         existing.setCourseName(request.getCourseName().trim());
@@ -138,6 +161,14 @@ public class CourseServiceImpl implements CourseService {
         existing.setTeacherId(request.getTeacherId());
         existing.setDescription(request.getDescription());
         existing.setVideoUrl(request.getVideoUrl());
+        applyMetadata(
+                existing,
+                request.getApplicableMajors(),
+                request.getPrerequisiteCourseIds(),
+                request.getTeachingObjectives(),
+                request.getTeachingMethods(),
+                request.getTags(),
+                id);
         existing.setStartedAt(request.getStartedAt());
         existing.setEndedAt(request.getEndedAt());
         existing.setRemark(request.getRemark());
@@ -148,6 +179,42 @@ public class CourseServiceImpl implements CourseService {
         }
         recordAudit("UPDATE", id);
         return toDetailVO(existing);
+    }
+
+    @Override
+    public CourseRelationOptionsVO getRelationOptions(Long id) {
+        CourseEntity course = requireActive(id);
+        requireCourseAccess(course, true);
+        CourseRelationOptionsVO options = new CourseRelationOptionsVO();
+        options.setHerbs(courseMapper.selectHerbRelationOptions());
+        options.setProjects(courseMapper.selectProjectRelationOptions());
+        return options;
+    }
+
+    @Override
+    @Transactional
+    public CourseDetailVO updateRelations(Long id, CourseRelationUpdateRequest request) {
+        CourseEntity course = requireActive(id);
+        requireCourseAccess(course, true);
+        CoursePublishStatus.requireEditable(course.getPublishStatus());
+        if (!Objects.equals(request.getVersion(), course.getVersion())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Course version conflict");
+        }
+        validateRelationIds(request.getSpeciesIds(), request.getProjectIds());
+        LocalDateTime now = LocalDateTime.now();
+        Long userId = CurrentUserUtils.currentUserId();
+        courseMapper.deactivateHerbRelations(id, userId, now);
+        courseMapper.deactivateProjectRelations(id, userId, now);
+        int sortOrder = 0;
+        for (Long speciesId : distinctIds(request.getSpeciesIds())) {
+            courseMapper.insertHerbRelation(id, speciesId, sortOrder++, userId, now);
+        }
+        sortOrder = 0;
+        for (Long projectId : distinctIds(request.getProjectIds())) {
+            courseMapper.insertProjectRelation(id, projectId, sortOrder++, userId, now);
+        }
+        recordAudit("UPDATE_RELATIONS", id);
+        return getDetail(id);
     }
 
     @Override
@@ -262,6 +329,121 @@ public class CourseServiceImpl implements CourseService {
         UserEntity teacher = userMapper.selectById(teacherId);
         if (teacher == null || !Objects.equals(teacher.getStatus(), 1)) {
             throw new ResourceNotFoundException("Teacher not found or inactive");
+        }
+    }
+
+    private void applyMetadata(
+            CourseEntity entity,
+            List<String> applicableMajors,
+            List<Long> prerequisiteCourseIds,
+            List<String> teachingObjectives,
+            List<String> teachingMethods,
+            List<String> tags,
+            Long currentCourseId) {
+        validatePrerequisiteCourses(prerequisiteCourseIds, currentCourseId);
+        entity.setApplicableMajors(writeStringList(applicableMajors));
+        entity.setPrerequisites(writeLongList(prerequisiteCourseIds));
+        entity.setTeachingObjectives(writeStringList(teachingObjectives));
+        entity.setTeachingMethods(writeStringList(teachingMethods));
+        entity.setTags(writeStringList(tags));
+    }
+
+    private void validatePrerequisiteCourses(
+            List<Long> prerequisiteCourseIds, Long currentCourseId) {
+        List<Long> ids = distinctIds(prerequisiteCourseIds);
+        if (ids.isEmpty()) {
+            return;
+        }
+        if (currentCourseId != null && ids.contains(currentCourseId)) {
+            throw new BusinessException("A course cannot be its own prerequisite");
+        }
+        List<CourseEntity> courses = courseMapper.selectBatchIds(ids);
+        boolean allPublished =
+                courses.size() == ids.size()
+                        && courses.stream()
+                                .allMatch(
+                                        item ->
+                                                Objects.equals(item.getStatus(), 1)
+                                                        && Objects.equals(item.getIsDeleted(), 0)
+                                                        && CoursePublishStatus.PUBLISHED.equals(
+                                                                item.getPublishStatus()));
+        if (!allPublished) {
+            throw new BusinessException("Prerequisites must be active published courses");
+        }
+    }
+
+    private void validateRelationIds(List<Long> speciesIds, List<Long> projectIds) {
+        Set<Long> availableSpeciesIds =
+                courseMapper.selectHerbRelationOptions().stream()
+                        .map(CourseRelationOptionVO::getId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        if (!availableSpeciesIds.containsAll(distinctIds(speciesIds))) {
+            throw new BusinessException("Related herb is unavailable");
+        }
+        Set<Long> availableProjectIds =
+                courseMapper.selectProjectRelationOptions().stream()
+                        .map(CourseRelationOptionVO::getId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        if (!availableProjectIds.containsAll(distinctIds(projectIds))) {
+            throw new BusinessException("Related project is unavailable");
+        }
+    }
+
+    private List<Long> distinctIds(List<Long> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(Objects::nonNull)
+                .filter(value -> value > 0)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .toList();
+    }
+
+    private String writeStringList(List<String> values) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(
+                    values == null
+                            ? List.of()
+                            : values.stream()
+                                    .filter(StringUtils::hasText)
+                                    .map(String::trim)
+                                    .toList());
+        } catch (JsonProcessingException exception) {
+            throw new BusinessException("Course metadata serialization failed");
+        }
+    }
+
+    private String writeLongList(List<Long> values) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(distinctIds(values));
+        } catch (JsonProcessingException exception) {
+            throw new BusinessException("Course prerequisite serialization failed");
+        }
+    }
+
+    private List<String> readStringList(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        try {
+            return OBJECT_MAPPER.readValue(value, STRING_LIST);
+        } catch (JsonProcessingException exception) {
+            return List.of();
+        }
+    }
+
+    private List<Long> readLongList(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        try {
+            return distinctIds(OBJECT_MAPPER.readValue(value, LONG_LIST));
+        } catch (JsonProcessingException exception) {
+            return List.of();
         }
     }
 
@@ -397,6 +579,12 @@ public class CourseServiceImpl implements CourseService {
         }
         vo.setDescription(entity.getDescription());
         vo.setVideoUrl(entity.getVideoUrl());
+        vo.setApplicableMajors(readStringList(entity.getApplicableMajors()));
+        vo.setPrerequisiteCourseIds(readLongList(entity.getPrerequisites()));
+        vo.setPrerequisites(resolvePrerequisiteNames(vo.getPrerequisiteCourseIds()));
+        vo.setTeachingObjectives(readStringList(entity.getTeachingObjectives()));
+        vo.setTeachingMethods(readStringList(entity.getTeachingMethods()));
+        vo.setTags(readStringList(entity.getTags()));
         vo.setPublishStatus(entity.getPublishStatus());
         vo.setPublishedAt(entity.getPublishedAt());
         vo.setPublishedBy(entity.getPublishedBy());
@@ -411,6 +599,22 @@ public class CourseServiceImpl implements CourseService {
         vo.setUpdatedBy(entity.getUpdatedBy());
         vo.setVersion(entity.getVersion());
         return vo;
+    }
+
+    private List<String> resolvePrerequisiteNames(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        java.util.Map<Long, CourseEntity> courses =
+                courseMapper.selectBatchIds(ids).stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        CourseEntity::getId, item -> item));
+        return ids.stream()
+                .map(courses::get)
+                .filter(Objects::nonNull)
+                .map(CourseEntity::getCourseName)
+                .toList();
     }
 
     private String resolveUserName(Long userId) {
