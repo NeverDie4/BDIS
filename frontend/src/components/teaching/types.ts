@@ -30,9 +30,18 @@ export interface CourseResourceItem {
 }
 
 export interface CourseVideoItem {
+  id?: number;
   title: string;
-  duration: string;
-  speaker: string;
+  url?: string;
+  size?: string;
+  duration?: string;
+  speaker?: string;
+}
+
+export interface CourseRelationItem {
+  id: number;
+  code: string;
+  name: string;
 }
 
 export interface CourseExperimentRecord {
@@ -47,6 +56,7 @@ export interface CourseDetailData {
   hours: number;
   credits: number;
   prerequisites: string[];
+  prerequisiteCourseIds: number[];
   teachingObjectives: string[];
   teachingMethods: string[];
   publishedAt: string;
@@ -56,6 +66,8 @@ export interface CourseDetailData {
   videos: CourseVideoItem[];
   relatedHerbs: string[];
   relatedProjects: string[];
+  relatedHerbItems: CourseRelationItem[];
+  relatedProjectItems: CourseRelationItem[];
   relatedCollections: string[];
   experimentRecords: CourseExperimentRecord[];
   videoUrl?: string;

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { InfoCard } from "@/components/common/InfoCard";
 import { MetricCard } from "@/components/common/MetricCard";
 import { UserAvatar } from "@/components/common/UserAvatar";
-import { PageBanner } from "@/components/layout/PageBanner";
+import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { authAdminRoutes } from "@/config/routes/auth-admin";
 import { hasUserPermission } from "@/config/routes/types";
@@ -15,7 +15,6 @@ import { apiGet, getApiErrorMessage, isAuthRedirectError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CurrentUser } from "@/types/api";
 import pageStyles from "./profile.module.css";
-import styles from "@/styles/mockPages.module.css";
 
 const permissionAreas = [
   { prefixes: ["auth:"], label: "账号与权限" },
@@ -90,16 +89,16 @@ export default function ProfilePage() {
   );
 
   return (
-    <SiteLayout>
-      <div className={styles.pageStack}>
-        <PageBanner
+    <SiteLayout contentMode="fluid">
+      <div className={pageStyles.profilePage}>
+        <ModuleHeroBanner
           sealText="PERSONAL DESK"
           title="个人主页"
-          subtitle="查看当前账号身份、功能权限与可访问的管理入口。"
+          description="查看当前账号身份、功能权限与可访问的管理入口。"
         />
 
         <section className={pageStyles.overviewGrid}>
-          <Card className={styles.panel} variant="borderless">
+          <Card className={pageStyles.identityCard} variant="borderless">
             <div className={pageStyles.identityHeader}>
               <UserAvatar avatarUrl={currentUser?.avatarUrl} iconSize={30} size={72} />
               <div className={pageStyles.identityTitle}>

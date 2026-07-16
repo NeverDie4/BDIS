@@ -98,13 +98,13 @@ test("采集员使用个人任务接口并隐藏审核工作区", () => {
   assert.match(pageSource, /showReviewWorkspace\s*\?\s*\(/);
 });
 
-test("页面 Hero 使用紧凑的生长数据管理标题和可替换插画占位", () => {
-  assert.match(pageSource, />生长数据</);
+test("页面使用统一的紧凑生长数据标题栏", () => {
+  assert.match(pageSource, /import \{ ModuleHeroBanner \}/);
+  assert.match(pageSource, /<ModuleHeroBanner/);
+  assert.match(pageSource, /title="生长数据"/);
   assert.match(pageSource, /管理移动端采集的中药材生长记录，汇聚现场图片、审核状态与溯源轨迹/);
-  assert.match(pageSource, /const heroIllustrationUrl = ""/);
+  assert.doesNotMatch(pageSource, /heroIllustrationUrl/);
   assert.doesNotMatch(pageSource, /我的生长观测|GROWTH OBSERVATION|MY GROWTH/);
-  assert.match(cssSource, /\.growthHero\s*\{[^}]*min-height:\s*148px;/s);
-  assert.match(cssSource, /\.growthHero::after/);
 });
 
 test("任务概览去除重复药材基地并使用紧凑统计网格", () => {
@@ -242,7 +242,7 @@ test("顶部三区使用统一间距、轻量指标标签和同款 KPI 卡", () 
 });
 
 test("growth 页面重构为左侧记录工作台和右侧固定详情面板", () => {
-  assert.match(pageSource, /const heroIllustrationUrl = ""/);
+  assert.match(pageSource, /<ModuleHeroBanner/);
   assert.match(pageSource, /className=\{styles\.workspaceLayout\}/);
   assert.match(pageSource, /className=\{styles\.recordTable\}/);
   assert.match(pageSource, /className=\{styles\.detailPanel\}/);
@@ -253,10 +253,9 @@ test("growth 页面重构为左侧记录工作台和右侧固定详情面板", (
   assert.doesNotMatch(pageSource, /<DetailDrawer/);
   assert.match(
     cssSource,
-    /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+460px/s,
+    /\.workspaceLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*2\.55fr\)\s+minmax\(340px,\s*1fr\)/s,
   );
   assert.match(cssSource, /\.detailPanel\s*\{[^}]*position:\s*sticky/s);
-  assert.match(cssSource, /\.growthHero::after/);
 });
 
 test("工作台不伪造数据来源且采集员可按真实权限提交审核", () => {
