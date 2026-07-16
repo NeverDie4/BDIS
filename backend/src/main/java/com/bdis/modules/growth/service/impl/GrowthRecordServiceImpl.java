@@ -40,7 +40,6 @@ import com.bdis.modules.growth.vo.GrowthPublicTraceImageVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
 import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
-import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.herb.vo.HerbImageVO;

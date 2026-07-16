@@ -64,14 +64,13 @@ interface NavigationPosition extends MeasurePoint {
   accuracy?: number;
 }
 
-type SuitabilityLevel = "high" | "medium" | "low";
+type SuitabilityLevel = "high" | "medium" | "low" | "insufficient";
 
 interface SuitabilitySnapshot {
   point: MapPoint;
-  score: number;
+  score?: number;
   level: SuitabilityLevel;
-  altitude: number;
-  altitudeEstimated: boolean;
+  altitude?: number;
   nearbyPointCount: number;
   recordCount: number;
   recentStage: string;
@@ -199,6 +198,7 @@ function getSuitabilityLevel(score: number): SuitabilityLevel {
 function suitabilityColor(level: SuitabilityLevel) {
   if (level === "high") return "#16a34a";
   if (level === "medium") return "#eab308";
+  if (level === "insufficient") return "#94a3b8";
   return "#f97316";
 }
 
@@ -211,7 +211,6 @@ function stageSuitabilityScore(stage?: string) {
 }
 
 function median(values: number[]) {
-  if (values.length === 0) return 900;
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
@@ -288,14 +287,6 @@ function remainingRouteDistance(geometry: [number, number][], startIndex: number
       sum + pointDistance({ lat: coordinate[0], lng: coordinate[1] }, { lat: geometry[startIndex + index + 1][0], lng: geometry[startIndex + index + 1][1] }),
     0,
   );
-}
-
-function formatNavigationInstruction(type?: string, modifier?: string, roadName?: string) {
-  const direction = modifier === "left" ? "左转" : modifier === "right" ? "右转" : modifier === "straight" ? "直行" : "继续前行";
-  if (type === "depart") return "沿当前道路出发";
-  if (type === "arrive") return "到达采集点";
-  if (type === "roundabout") return "进入环岛";
-  return roadName ? `${direction}进入 ${roadName}` : direction;
 }
 
 function optimizeRouteOrder(points: MapPoint[], origin?: RouteOrigin) {
@@ -529,38 +520,44 @@ export function HerbDistributionMap() {
   const suitabilitySnapshots = useMemo<SuitabilitySnapshot[]>(() => {
     if (!suitabilityMode || suitabilityPoints.length === 0) return [];
 
-    const referenceAltitude = median(
-      suitabilityPoints
-        .map((point) => point.altitude)
-        .filter((altitude): altitude is number => altitude != null && Number.isFinite(altitude)),
-    );
+    const realAltitudes = suitabilityPoints
+      .map((point) => point.altitude)
+      .filter((altitude): altitude is number => altitude != null && Number.isFinite(altitude));
+    const hasAltitudeReference = realAltitudes.length >= 2;
+    const referenceAltitude = hasAltitudeReference ? median(realAltitudes) : undefined;
     const radiusMeters = suitabilityRadius * 1000;
     const densityCounts = suitabilityPoints.map((point) =>
-      suitabilityPoints.filter((candidate) =>
-        pointDistance(
-          { lat: point.latitude, lng: point.longitude },
-          { lat: candidate.latitude, lng: candidate.longitude },
-        ) <= radiusMeters,
+      suitabilityPoints.filter(
+        (candidate) =>
+          candidate.id !== point.id
+          && pointDistance(
+            { lat: point.latitude, lng: point.longitude },
+            { lat: candidate.latitude, lng: candidate.longitude },
+          ) <= radiusMeters,
       ).length,
     );
     const maxDensity = Math.max(...densityCounts, 1);
 
     return suitabilityPoints.map((point, index) => {
-      const altitudeEstimated = point.altitude == null || !Number.isFinite(point.altitude);
-      const altitude = altitudeEstimated ? referenceAltitude : point.altitude!;
-      const altitudeScore = Math.max(0, 1 - Math.abs(altitude - referenceAltitude) / 650) * 35;
-      const densityScore = (densityCounts[index] / maxDensity) * 35;
       const records = suitabilityRecordsByPoint[point.id] ?? [];
       const latestRecord = [...records].sort((left, right) =>
         (right.collectedAt ?? "").localeCompare(left.collectedAt ?? ""),
       )[0];
-      const score = Math.round(altitudeScore + densityScore + stageSuitabilityScore(latestRecord?.growthStage) * 0.3);
+      const hasRealAltitude = point.altitude != null && Number.isFinite(point.altitude);
+      const hasGrowthRecord = records.length > 0 && Boolean(latestRecord?.growthStage);
+      const sufficient = hasAltitudeReference && hasRealAltitude && suitabilityPoints.length >= 2 && hasGrowthRecord;
+      const score = sufficient
+        ? Math.round(
+            Math.max(0, 1 - Math.abs(point.altitude! - referenceAltitude!) / 650) * 35
+              + (densityCounts[index] / maxDensity) * 35
+              + stageSuitabilityScore(latestRecord?.growthStage) * 0.3,
+          )
+        : undefined;
       return {
         point,
         score,
-        level: getSuitabilityLevel(score),
-        altitude: Math.round(altitude),
-        altitudeEstimated,
+        level: score == null ? "insufficient" : getSuitabilityLevel(score),
+        altitude: hasRealAltitude ? Math.round(point.altitude!) : undefined,
         nearbyPointCount: densityCounts[index],
         recordCount: records.length,
         recentStage: latestRecord?.growthStage || "未记录",
@@ -572,8 +569,7 @@ export function HerbDistributionMap() {
     high: suitabilitySnapshots.filter((item) => item.level === "high").length,
     medium: suitabilitySnapshots.filter((item) => item.level === "medium").length,
     low: suitabilitySnapshots.filter((item) => item.level === "low").length,
-    records: suitabilitySnapshots.reduce((total, item) => total + item.recordCount, 0),
-    estimatedAltitude: suitabilitySnapshots.filter((item) => item.altitudeEstimated).length,
+    insufficient: suitabilitySnapshots.filter((item) => item.level === "insufficient").length,
   }), [suitabilitySnapshots]);
 
   const selectedPoint = useMemo(
@@ -1186,6 +1182,7 @@ export function HerbDistributionMap() {
     if (!suitabilityMode) return;
 
     suitabilitySnapshots.forEach((snapshot) => {
+      if (snapshot.level === "insufficient" || snapshot.score == null) return;
       const color = suitabilityColor(snapshot.level);
       const radius = Math.max(4500, suitabilityRadius * 1000 * (0.5 + snapshot.score / 200));
       L.circle([snapshot.point.latitude, snapshot.point.longitude], {
@@ -1479,71 +1476,19 @@ export function HerbDistributionMap() {
     );
 
     setRoutePlanningLoading(true);
-    try {
-      if (routeCoordinates.length < 2) {
-        const plan = { distanceMeters: 0, durationSeconds: 0, geometry: routeCoordinates, roadRoute: false, steps: [] };
-        setRoutePlan(plan);
-        return plan;
-      }
-      const coordinates = routeCoordinates.map(([lat, lng]) => `${lng},${lat}`).join(";");
-      const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`,
-      );
-      if (!response.ok) {
-        throw new Error("route service unavailable");
-      }
-      const result = (await response.json()) as {
-        code?: string;
-        routes?: Array<{
-          distance: number;
-          duration: number;
-          geometry?: { coordinates?: [number, number][] };
-          legs?: Array<{ steps?: Array<{ name?: string; maneuver?: { type?: string; modifier?: string; location?: [number, number] } }> }>;
-        }>;
-      };
-      const route = result.routes?.[0];
-      if (result.code !== "Ok" || !route?.geometry?.coordinates) {
-        throw new Error("route data unavailable");
-      }
-      const geometry = route.geometry.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]);
-      const steps = (route.legs ?? []).flatMap((leg) => leg.steps ?? []).flatMap((step) => {
-        const location = step.maneuver?.location;
-        if (!location) return [];
-        const coordinate: [number, number] = [location[1], location[0]];
-        return [{
-          instruction: formatNavigationInstruction(step.maneuver?.type, step.maneuver?.modifier, step.name),
-          location: coordinate,
-          routeIndex: closestRouteIndex(geometry, { lat: coordinate[0], lng: coordinate[1] }).index,
-        }];
-      });
-      const plan = {
-        distanceMeters: route.distance,
-        durationSeconds: route.duration,
-        geometry,
-        roadRoute: true,
-        steps,
-      };
-      setRoutePlan(plan);
-      if (!silent) {
-        message.success(`已生成 ${orderedPoints.length} 个采集点的最优路线`);
-      }
-      return plan;
-    } catch {
-      const plan = {
-        distanceMeters: fallbackDistance,
-        durationSeconds: Math.round(fallbackDistance / (35 * 1000 / 3600)),
-        geometry: routeCoordinates,
-        roadRoute: false,
-        steps: [],
-      };
-      setRoutePlan(plan);
-      if (!silent) {
-        message.warning("道路路线服务暂不可用，已使用直线估算路线");
-      }
-      return plan;
-    } finally {
-      setRoutePlanningLoading(false);
+    const plan = {
+      distanceMeters: fallbackDistance,
+      durationSeconds: Math.round(fallbackDistance / (35 * 1000 / 3600)),
+      geometry: routeCoordinates,
+      roadRoute: false,
+      steps: [],
+    };
+    setRoutePlan(plan);
+    setRoutePlanningLoading(false);
+    if (!silent) {
+      message.success(`已生成 ${orderedPoints.length} 个采集点的任务路线估算`);
     }
+    return plan;
   }
 
   routePlanGeneratorRef.current = generateRoutePlan;
@@ -1551,6 +1496,10 @@ export function HerbDistributionMap() {
   function startRouteNavigation() {
     if (routeSelectedPoints.length === 0) {
       message.warning("请先选择采集点");
+      return;
+    }
+    if (!routePlan?.roadRoute) {
+      message.warning("未配置受信任道路导航服务，当前路线仅可用于任务规划和导出");
       return;
     }
     if (!navigator.geolocation) {
@@ -1871,7 +1820,7 @@ export function HerbDistributionMap() {
               <div className={styles.suitabilityMetrics}>
                 <span><small>高适生区</small><strong>{suitabilityStatistics.high}</strong></span>
                 <span><small>中适生区</small><strong>{suitabilityStatistics.medium}</strong></span>
-                <span><small>采集记录</small><strong>{suitabilityStatistics.records}</strong></span>
+                <span><small>数据不足</small><strong>{suitabilityStatistics.insufficient}</strong></span>
               </div>
               <div className={styles.suitabilityLegend}>
                 <span><i className={styles.suitabilityLegendHigh} />高适生 75-100</span>
@@ -1886,13 +1835,13 @@ export function HerbDistributionMap() {
                 <div className={styles.suitabilityResults}>
                   {suitabilitySnapshots
                     .slice()
-                    .sort((left, right) => right.score - left.score)
+                    .sort((left, right) => (right.score ?? -1) - (left.score ?? -1))
                     .slice(0, 4)
                     .map((item) => (
                       <button key={item.point.id} type="button" onClick={() => viewPoint(item.point)}>
                         <i style={{ backgroundColor: suitabilityColor(item.level) }} />
-                        <span><strong>{item.point.locationName || item.point.district || "采集区域"}</strong><small>海拔 {item.altitude} m{item.altitudeEstimated ? "（估算）" : ""} · {item.nearbyPointCount} 个邻近点</small></span>
-                        <b>{item.score}</b>
+                        <span><strong>{item.point.locationName || item.point.district || "采集区域"}</strong><small>{item.altitude == null ? "海拔数据缺失" : `海拔 ${item.altitude} m`} · {item.nearbyPointCount} 个邻近点</small></span>
+                        <b>{item.score == null ? "数据不足" : item.score}</b>
                       </button>
                     ))}
                 </div>
@@ -1926,7 +1875,7 @@ export function HerbDistributionMap() {
                 <button type="button" aria-label="退出路线规划" title="退出路线规划" onClick={toggleRoutePlanning}><X size={16} /></button>
               </span>
             </div>
-            <p className={styles.routePlannerHint}>在地图标记或左侧列表中加入一个或多个采集点，再生成路线。</p>
+            <p className={styles.routePlannerHint}>在地图标记或左侧列表中加入一个或多个采集点，生成任务路线估算后可导出采集任务。</p>
             <div className={styles.routeOriginRow}>
               <span>{routeOrigin ? "起点：当前位置" : "起点：第一个采集点"}</span>
               <button type="button" onClick={locateRouteOrigin}><LocateFixed size={14} />定位起点</button>
@@ -1945,7 +1894,7 @@ export function HerbDistributionMap() {
             </div>
             <div className={styles.routePlannerMetrics}>
               <span><strong>{routeSelectedPoints.length}</strong> 个采集点</span>
-              <span><strong>{routePlan ? formatDistance(routePlan.distanceMeters) : "--"}</strong> 预计里程</span>
+              <span><strong>{routePlan ? formatDistance(routePlan.distanceMeters) : "--"}</strong> {routePlan?.roadRoute ? "道路里程" : "直线估算"}</span>
               <span><strong>{routePlan ? `${Math.max(1, Math.round(routePlan.durationSeconds / 60))} 分钟` : "--"}</strong> 预计时长</span>
             </div>
             <div className={styles.routeStopList}>
@@ -1961,7 +1910,8 @@ export function HerbDistributionMap() {
             <div className={styles.routePlannerFooter}>
               <Button
                 icon={<Navigation size={15} />}
-                disabled={routeSelectedPoints.length === 0 || !routePlan}
+                disabled={routeSelectedPoints.length === 0 || !routePlan || !routePlan.roadRoute}
+                title={routePlan?.roadRoute ? undefined : "道路导航需要配置受信任的路线服务"}
                 onClick={routeNavigating ? stopRouteNavigation : startRouteNavigation}
               >
                 {routeNavigating ? "结束导航" : "开始导航"}
