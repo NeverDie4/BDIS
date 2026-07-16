@@ -1,6 +1,7 @@
 package com.bdis.modules.training.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.bdis.common.core.BasicEntity;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -15,4 +16,5 @@ public class TrainingReportVersionEntity extends BasicEntity {
     private String reportStatus;
     private Long submittedBy;
     private LocalDateTime submittedAt;
+    @Version private Integer version;
 }

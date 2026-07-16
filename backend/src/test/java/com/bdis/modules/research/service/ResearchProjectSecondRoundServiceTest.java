@@ -102,6 +102,7 @@ class ResearchProjectSecondRoundServiceTest {
     @Test
     void planningCanBecomeOngoingWhenLeaderAndMemberAreValid() {
         ResearchProjectEntity project = project("planning");
+        project.setReviewStatus("approved");
         when(projectMapper.selectById(10L)).thenReturn(project);
         when(userMapper.selectById(7L)).thenReturn(leader(7L));
         when(memberMapper.selectByProjectIdAndUserId(10L, 7L))

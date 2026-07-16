@@ -7,9 +7,11 @@ import com.bdis.common.utils.CurrentUserUtils;
 import com.bdis.modules.notification.service.NotificationService;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.research.entity.ResearchProjectSubmissionEntity;
+import com.bdis.modules.research.entity.ResearchProjectSubmissionReviewEntity;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.mapper.ResearchProjectSubmissionMapper;
+import com.bdis.modules.research.mapper.ResearchProjectSubmissionReviewMapper;
 import com.bdis.modules.research.request.ResearchProjectSubmissionCreateRequest;
 import com.bdis.modules.research.request.ResearchProjectSubmissionReviewRequest;
 import com.bdis.modules.research.service.ResearchProjectSubmissionService;
@@ -34,6 +36,7 @@ public class ResearchProjectSubmissionServiceImpl implements ResearchProjectSubm
     private final ResearchProjectMapper projectMapper;
     private final ProjectMemberMapper memberMapper;
     private final ResearchProjectSubmissionMapper submissionMapper;
+    private final ResearchProjectSubmissionReviewMapper reviewMapper;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private NotificationService notificationService;
@@ -42,9 +45,19 @@ public class ResearchProjectSubmissionServiceImpl implements ResearchProjectSubm
             ResearchProjectMapper projectMapper,
             ProjectMemberMapper memberMapper,
             ResearchProjectSubmissionMapper submissionMapper) {
+        this(projectMapper, memberMapper, submissionMapper, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ResearchProjectSubmissionServiceImpl(
+            ResearchProjectMapper projectMapper,
+            ProjectMemberMapper memberMapper,
+            ResearchProjectSubmissionMapper submissionMapper,
+            ResearchProjectSubmissionReviewMapper reviewMapper) {
         this.projectMapper = projectMapper;
         this.memberMapper = memberMapper;
         this.submissionMapper = submissionMapper;
+        this.reviewMapper = reviewMapper;
     }
 
     @Override
@@ -124,6 +137,9 @@ public class ResearchProjectSubmissionServiceImpl implements ResearchProjectSubm
         if (!userId.equals(project.getLeaderId()) && !isReviewer()) {
             throw new ForbiddenException("Only project leader or reviewer can review");
         }
+        if (request == null || request.getVersion() == null) {
+            throw new BusinessException("Review action and version are required");
+        }
         String target =
                 "return".equals(request.getAction())
                         ? "returned"
@@ -133,17 +149,38 @@ public class ResearchProjectSubmissionServiceImpl implements ResearchProjectSubm
         if (target == null) {
             throw new BusinessException("Invalid review action");
         }
-        if ("return".equals(request.getAction())
-                && !"submitted".equals(submission.getSubmissionStatus())
-                && !"reviewing".equals(submission.getSubmissionStatus())) {
-            throw new BusinessException("Submission cannot be returned");
+        String current = submission.getSubmissionStatus();
+        if (("return".equals(request.getAction()) || "approve".equals(request.getAction()))
+                && !Set.of("submitted", "reviewing").contains(current)) {
+            throw new BusinessException(
+                    "Submission cannot be "
+                            + ("return".equals(request.getAction()) ? "returned" : "approved")
+                            + " from status "
+                            + current);
         }
-        submission.setSubmissionStatus(target);
-        submission.setReviewedAt(LocalDateTime.now());
-        submission.setUpdatedAt(LocalDateTime.now());
-        submission.setUpdatedBy(userId);
-        if (submissionMapper.updateById(submission) == 0) {
+        if ("archive".equals(request.getAction()) && !"approved".equals(current)) {
+            throw new BusinessException("Submission cannot be archived from status " + current);
+        }
+        LocalDateTime reviewedAt = LocalDateTime.now();
+        if (submissionMapper.reviewByIdAndVersion(
+                        submissionId, request.getVersion(), target, userId, reviewedAt)
+                == 0) {
             throw new BusinessException("Submission review conflict");
+        }
+        if (reviewMapper == null) {
+            throw new BusinessException("Submission review history service is unavailable");
+        }
+        ResearchProjectSubmissionReviewEntity history =
+                new ResearchProjectSubmissionReviewEntity();
+        history.setSubmissionId(submissionId);
+        history.setReviewAction(request.getAction());
+        history.setReviewComment(request.getComment());
+        history.setScore(request.getScore());
+        history.setReviewerId(userId);
+        history.setReviewedAt(reviewedAt);
+        history.setVersion(0);
+        if (reviewMapper.insert(history) == 0) {
+            throw new BusinessException("Submission review history creation failed");
         }
         if (notificationService != null) {
             notificationService.create(

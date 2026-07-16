@@ -69,6 +69,10 @@ public class TrainingWorkflowServiceImpl implements TrainingWorkflowService {
         if (!userId.equals(record.getUserId())) {
             throw new ForbiddenException("Only participant can submit training report");
         }
+        if (!Set.of("learning", "makeup").contains(record.getTrainingStatus())) {
+            throw new BusinessException(
+                    "Training report can only be submitted while learning or making up work");
+        }
         if (request == null || request.getContent() == null || request.getContent().isBlank()) {
             throw new BusinessException("Training report content is required");
         }
@@ -84,10 +88,15 @@ public class TrainingWorkflowServiceImpl implements TrainingWorkflowService {
         version.setSubmittedAt(now);
         version.setCreatedAt(now);
         version.setUpdatedAt(now);
-        reportMapper.insert(version);
-        record.setTrainingStatus("learning");
+        version.setVersion(0);
+        if (reportMapper.insert(version) == 0) {
+            throw new BusinessException("Training report submission failed");
+        }
+        record.setReportFileId(request.getFileId());
         record.setUpdatedAt(now);
-        recordMapper.updateById(record);
+        if (recordMapper.updateById(record) == 0) {
+            throw new BusinessException("Training report submission state conflict");
+        }
         TrainingPlanEntity plan = planMapper.selectById(record.getPlanId());
         if (notificationService != null && plan != null) {
             notificationService.create(
@@ -113,8 +122,33 @@ public class TrainingWorkflowServiceImpl implements TrainingWorkflowService {
                 || !Set.of("return", "complete", "approve").contains(request.getAction())) {
             throw new BusinessException("Invalid training review action");
         }
+        if (!Set.of("learning", "makeup").contains(record.getTrainingStatus())) {
+            throw new BusinessException("Training record is not awaiting report review");
+        }
+        TrainingReportVersionEntity report =
+                reportMapper.selectByRecordId(id).stream()
+                        .filter(item -> "submitted".equals(item.getReportStatus()))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                "A submitted training report is required before review"));
+        if (("complete".equals(request.getAction()) || "approve".equals(request.getAction()))
+                && (record.getProgress() == null
+                        || record.getProgress().compareTo(java.math.BigDecimal.valueOf(100)) < 0)) {
+            throw new BusinessException(
+                    "Training progress must reach 100 before completion approval");
+        }
+        LocalDateTime reviewedAt = LocalDateTime.now();
+        report.setReportStatus(
+                "return".equals(request.getAction()) ? "returned" : "approved");
+        report.setUpdatedAt(reviewedAt);
+        if (reportMapper.updateById(report) == 0) {
+            throw new BusinessException("Training report review conflict");
+        }
         if ("return".equals(request.getAction())) {
             record.setTrainingStatus("makeup");
+            record.setCompletedAt(null);
         } else {
             record.setTrainingStatus("completed");
         }
@@ -123,11 +157,13 @@ public class TrainingWorkflowServiceImpl implements TrainingWorkflowService {
         }
         record.setResultComment(request.getComment());
         if ("complete".equals(request.getAction()) || "approve".equals(request.getAction())) {
-            record.setCompletedAt(LocalDateTime.now());
+            record.setCompletedAt(reviewedAt);
             generateCompletionProof(record);
         }
-        record.setUpdatedAt(LocalDateTime.now());
-        recordMapper.updateById(record);
+        record.setUpdatedAt(reviewedAt);
+        if (recordMapper.updateById(record) == 0) {
+            throw new BusinessException("Training review state conflict");
+        }
     }
 
     @Override

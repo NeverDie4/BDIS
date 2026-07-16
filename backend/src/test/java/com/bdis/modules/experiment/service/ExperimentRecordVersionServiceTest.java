@@ -1,6 +1,7 @@
 package com.bdis.modules.experiment.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -66,14 +67,38 @@ class ExperimentRecordVersionServiceTest {
         when(recordMapper.selectById(1L)).thenReturn(record);
         when(versionMapper.selectByRecordId(1L)).thenReturn(List.of());
         when(versionMapper.insert(any(ExperimentRecordVersionEntity.class))).thenReturn(1);
-        when(recordMapper.submitByIdAndVersion(eq(1L), eq(4), eq(7L), any(LocalDateTime.class)))
+        when(recordMapper.resubmitVersionByIdAndVersion(
+                        eq(1L),
+                        eq(4),
+                        eq(7L),
+                        any(LocalDateTime.class),
+                        eq("Revised report"),
+                        eq("Revised process"),
+                        eq("Revised result"),
+                        eq(99L)))
                 .thenReturn(1);
         ExperimentRecordVersionRequest request = new ExperimentRecordVersionRequest();
         request.setExperimentTitle("Revised report");
+        request.setExperimentProcess("Revised process");
+        request.setExperimentResult("Revised result");
+        request.setReportFileId(99L);
 
         service.create(1L, request);
 
-        verify(recordMapper).submitByIdAndVersion(eq(1L), eq(4), eq(7L), any(LocalDateTime.class));
+        assertThat(record.getExperimentTitle()).isEqualTo("Revised report");
+        assertThat(record.getExperimentProcess()).isEqualTo("Revised process");
+        assertThat(record.getExperimentResult()).isEqualTo("Revised result");
+        assertThat(record.getReportFileId()).isEqualTo(99L);
+        verify(recordMapper)
+                .resubmitVersionByIdAndVersion(
+                        eq(1L),
+                        eq(4),
+                        eq(7L),
+                        any(LocalDateTime.class),
+                        eq("Revised report"),
+                        eq("Revised process"),
+                        eq("Revised result"),
+                        eq(99L));
     }
 
     @Test

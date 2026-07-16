@@ -180,6 +180,37 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
     @Update(
             """
             UPDATE edu_experiment_record
+            SET experiment_title = #{experimentTitle},
+                experiment_process = #{experimentProcess},
+                experiment_result = #{experimentResult},
+                report_file_id = #{reportFileId},
+                archive_status = 'submitted',
+                submitted_at = #{submittedAt},
+                submitted_by = #{submittedBy},
+                archived_at = NULL,
+                archived_by = NULL,
+                updated_at = #{submittedAt},
+                updated_by = #{submittedBy},
+                version = version + 1
+            WHERE id = #{id}
+              AND recorder_id = #{submittedBy}
+              AND is_deleted = 0
+              AND archive_status IN ('draft', 'returned')
+              AND version = #{version}
+            """)
+    int resubmitVersionByIdAndVersion(
+            @Param("id") Long id,
+            @Param("version") Integer version,
+            @Param("submittedBy") Long submittedBy,
+            @Param("submittedAt") LocalDateTime submittedAt,
+            @Param("experimentTitle") String experimentTitle,
+            @Param("experimentProcess") String experimentProcess,
+            @Param("experimentResult") String experimentResult,
+            @Param("reportFileId") Long reportFileId);
+
+    @Update(
+            """
+            UPDATE edu_experiment_record
             SET archive_status = 'archived',
                 archived_at = #{archivedAt},
                 archived_by = #{archivedBy},

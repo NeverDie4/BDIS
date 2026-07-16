@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.exception.ForbiddenException;
+import com.bdis.common.exception.BusinessException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.research.entity.ResearchProjectTaskEntity;
@@ -109,6 +110,55 @@ class ResearchProjectTaskServiceTest {
         verify(taskMapper).insertCourseRelation(21L, 2L, 0, 8L);
         verify(taskMapper).insertCourseRelation(21L, 3L, 1, 8L);
         verify(taskMapper).insertSpeciesRelation(21L, 4L, 0, 8L);
+    }
+
+    @Test
+    void activeProjectMemberCannotAcceptTaskWithoutAssignment() {
+        ResearchProjectTaskEntity task = pendingTask();
+        when(taskMapper.selectById(21L)).thenReturn(task);
+        when(memberMapper.exists(21L, 8L)).thenReturn(0);
+
+        assertThatThrownBy(() -> service.accept(21L)).isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void assignedMemberCannotReopenCompletedTask() {
+        ResearchProjectTaskEntity task = pendingTask();
+        task.setTaskStatus("completed");
+        when(taskMapper.selectById(21L)).thenReturn(task);
+        when(memberMapper.exists(21L, 8L)).thenReturn(1);
+
+        assertThatThrownBy(() -> service.accept(21L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("pending");
+    }
+
+    @Test
+    void taskAcceptUsesPendingStateAndVersionAsAtomicCondition() {
+        ResearchProjectTaskEntity task = pendingTask();
+        when(taskMapper.selectById(21L)).thenReturn(task);
+        when(memberMapper.exists(21L, 8L)).thenReturn(1);
+        when(taskMapper.acceptPendingByIdAndVersion(
+                        org.mockito.ArgumentMatchers.eq(21L),
+                        org.mockito.ArgumentMatchers.eq(0),
+                        org.mockito.ArgumentMatchers.eq(8L),
+                        any(java.time.LocalDateTime.class)))
+                .thenReturn(0);
+
+        assertThatThrownBy(() -> service.accept(21L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("conflict");
+    }
+
+    private ResearchProjectTaskEntity pendingTask() {
+        ResearchProjectTaskEntity task = new ResearchProjectTaskEntity();
+        task.setId(21L);
+        task.setProjectId(11L);
+        task.setTaskStatus("pending");
+        task.setStatus(1);
+        task.setIsDeleted(0);
+        task.setVersion(0);
+        return task;
     }
 
     private ResearchProjectEntity activeProject() {

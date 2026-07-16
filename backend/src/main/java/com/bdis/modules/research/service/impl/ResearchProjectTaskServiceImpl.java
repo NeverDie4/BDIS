@@ -109,17 +109,20 @@ public class ResearchProjectTaskServiceImpl implements ResearchProjectTaskServic
     public void accept(Long taskId) {
         Long user = requiredUser();
         ResearchProjectTaskEntity e = taskMapper.selectById(taskId);
-        if (e == null) {
+        if (e == null || Objects.equals(e.getIsDeleted(), 1) || !Objects.equals(e.getStatus(), 1)) {
             throw new ResourceNotFoundException("Research task not found");
         }
-        if (memberMapper.exists(taskId, user) == 0
-                && !projectMapper.existsActiveMember(e.getProjectId(), user)) {
+        if (memberMapper.exists(taskId, user) == 0) {
             throw new ForbiddenException("Only assigned project members can accept tasks");
         }
-        e.setTaskStatus("in_progress");
-        e.setUpdatedAt(LocalDateTime.now());
-        e.setUpdatedBy(user);
-        taskMapper.updateById(e);
+        if (!"pending".equals(e.getTaskStatus())) {
+            throw new BusinessException("Only pending tasks can be accepted");
+        }
+        if (taskMapper.acceptPendingByIdAndVersion(
+                        taskId, e.getVersion(), user, LocalDateTime.now())
+                == 0) {
+            throw new BusinessException("Task accept state or version conflict");
+        }
     }
 
     @Override

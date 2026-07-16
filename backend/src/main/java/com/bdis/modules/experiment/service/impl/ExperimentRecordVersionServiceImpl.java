@@ -64,7 +64,20 @@ public class ExperimentRecordVersionServiceImpl implements ExperimentRecordVersi
         if (versionMapper.insert(version) == 0) {
             throw new BusinessException("Experiment report version creation failed");
         }
-        if (recordMapper.submitByIdAndVersion(id, record.getVersion(), userId, now) == 0) {
+        record.setExperimentTitle(request.getExperimentTitle());
+        record.setExperimentProcess(request.getExperimentProcess());
+        record.setExperimentResult(request.getExperimentResult());
+        record.setReportFileId(request.getReportFileId());
+        if (recordMapper.resubmitVersionByIdAndVersion(
+                        id,
+                        record.getVersion(),
+                        userId,
+                        now,
+                        request.getExperimentTitle(),
+                        request.getExperimentProcess(),
+                        request.getExperimentResult(),
+                        request.getReportFileId())
+                == 0) {
             throw new BusinessException("Experiment record resubmission conflict");
         }
         return version;

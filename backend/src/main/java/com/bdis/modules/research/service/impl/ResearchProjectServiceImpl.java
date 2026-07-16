@@ -372,6 +372,13 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         }
         String target = request.getTargetStatus().trim();
         ResearchProjectStatus.validateTransition(project.getProjectStatus(), target);
+        if (ResearchProjectStatus.PLANNING.equals(project.getProjectStatus())
+                && ResearchProjectStatus.ONGOING.equals(target)
+                && !"approved".equals(project.getReviewStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT,
+                    "Project requires review approval before it can start");
+        }
         if ((ResearchProjectStatus.SUSPENDED.equals(target)
                         || ResearchProjectStatus.COMPLETED.equals(target)
                         || ResearchProjectStatus.ONGOING.equals(target)
@@ -388,18 +395,6 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             validateBeforeComplete(project);
         }
         project.setProjectStatus(target);
-        project.setReviewStatus(
-                ResearchProjectStatus.ONGOING.equals(target)
-                        ? "approved"
-                        : ResearchProjectStatus.COMPLETED.equals(target)
-                                ? "archived"
-                                : project.getReviewStatus());
-        project.setReviewComment(request.getReason());
-        project.setReviewedBy(CurrentUserUtils.currentUserId());
-        project.setReviewedAt(LocalDateTime.now());
-        if (ResearchProjectStatus.COMPLETED.equals(target)) {
-            project.setArchivedAt(LocalDateTime.now());
-        }
         project.setUpdatedAt(LocalDateTime.now());
         project.setUpdatedBy(CurrentUserUtils.currentUserId());
         if (projectMapper.updateById(project) == 0) {

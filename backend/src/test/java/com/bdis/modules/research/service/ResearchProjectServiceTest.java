@@ -21,6 +21,7 @@ import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
 import com.bdis.modules.research.request.ResearchProjectCreateRequest;
+import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.service.impl.ResearchProjectServiceImpl;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
@@ -294,6 +295,51 @@ class ResearchProjectServiceTest {
         assertThat(existing.getProjectName()).isEqualTo("Updated");
         verify(projectMapper).updateById(existing);
         verify(auditLogService).record(any());
+    }
+
+    @Test
+    void projectLeaderCannotStartPlanningProjectBeforeReviewApproval() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setLeaderId(7L);
+        existing.setReviewStatus("draft");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(7L, "RESEARCHER");
+
+        ResearchProjectStatusChangeRequest request = new ResearchProjectStatusChangeRequest();
+        request.setTargetStatus("ongoing");
+        request.setVersion(0);
+
+        assertThatThrownBy(() -> service.changeStatus(100L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("review approval");
+        verify(projectMapper, never()).updateById(any(ResearchProjectEntity.class));
+    }
+
+    @Test
+    void lifecycleStatusChangeDoesNotRewriteReviewDecision() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setLeaderId(7L);
+        existing.setProjectStatus("ongoing");
+        existing.setReviewStatus("approved");
+        existing.setReviewComment("approved by committee");
+        existing.setReviewedBy(9L);
+        LocalDateTime reviewedAt = LocalDateTime.of(2026, 7, 15, 10, 0);
+        existing.setReviewedAt(reviewedAt);
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        when(projectMapper.updateById(existing)).thenReturn(1);
+        setUser(7L, "RESEARCHER");
+
+        ResearchProjectStatusChangeRequest request = new ResearchProjectStatusChangeRequest();
+        request.setTargetStatus("suspended");
+        request.setReason("pause experiments");
+        request.setVersion(0);
+
+        service.changeStatus(100L, request);
+
+        assertThat(existing.getReviewStatus()).isEqualTo("approved");
+        assertThat(existing.getReviewComment()).isEqualTo("approved by committee");
+        assertThat(existing.getReviewedBy()).isEqualTo(9L);
+        assertThat(existing.getReviewedAt()).isEqualTo(reviewedAt);
     }
 
     @Test

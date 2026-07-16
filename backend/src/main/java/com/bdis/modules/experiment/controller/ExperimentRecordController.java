@@ -145,7 +145,7 @@ public class ExperimentRecordController {
     public Result<ExperimentRecordVersionEntity> createVersion(
             @PathVariable @Positive Long id,
             @Valid @RequestBody ExperimentRecordVersionRequest request) {
-        authorizationService.requirePermission("edu:experiment-record:version");
+        authorizationService.requirePermission("edu:experiment-record:submit");
         return Result.success(versionService.create(id, request));
     }
 

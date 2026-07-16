@@ -274,12 +274,6 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
         LocalDateTime now = LocalDateTime.now();
         TrainingRecordEntity record = newDefaultRecord(plan, currentUserId, null, now);
-        record.setProgress(HUNDRED);
-        record.setTrainingStatus(TrainingStatus.COMPLETED);
-        record.setAttendanceStatus(AttendanceStatus.PRESENT);
-        record.setStartedAt(now);
-        record.setCheckedInAt(now);
-        record.setCompletedAt(now);
         if (recordMapper.insert(record) == 0) {
             throw conflict("Training participation submission failed");
         }

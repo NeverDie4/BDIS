@@ -119,6 +119,13 @@ class TrainingRecordServiceTest {
         ArgumentCaptor<TrainingRecordEntity> captor =
                 ArgumentCaptor.forClass(TrainingRecordEntity.class);
         verify(recordMapper, times(2)).insert(captor.capture());
+        assertTrue(
+                captor.getAllValues().stream()
+                        .allMatch(
+                                record ->
+                                        "not_started".equals(record.getTrainingStatus())
+                                                && BigDecimal.ZERO.compareTo(record.getProgress()) == 0
+                                                && record.getCompletedAt() == null));
         assertNotEquals(
                 captor.getAllValues().get(0).getAttendanceNo(),
                 captor.getAllValues().get(1).getAttendanceNo());

@@ -17,7 +17,9 @@ import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.GlobalExceptionHandler;
 import com.bdis.file.vo.FileBusinessVO;
+import com.bdis.modules.experiment.entity.ExperimentRecordVersionEntity;
 import com.bdis.modules.experiment.service.ExperimentRecordService;
+import com.bdis.modules.experiment.service.ExperimentRecordVersionService;
 import com.bdis.modules.experiment.vo.ExperimentRecordDetailVO;
 import com.bdis.modules.experiment.vo.ExperimentRecordListVO;
 import com.bdis.modules.file.vo.FileResourceVO;
@@ -35,16 +37,34 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class ExperimentRecordControllerTest {
 
     @Mock private ExperimentRecordService recordService;
+    @Mock private ExperimentRecordVersionService versionService;
     @Mock private AuthorizationService authorizationService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc =
-                MockMvcBuilders.standaloneSetup(
-                                new ExperimentRecordController(recordService, authorizationService))
+                        MockMvcBuilders.standaloneSetup(
+                                new ExperimentRecordController(
+                                        recordService, authorizationService, versionService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
+    }
+
+    @Test
+    void reportVersionCreationUsesStudentSubmitPermission() throws Exception {
+        ExperimentRecordVersionEntity version = new ExperimentRecordVersionEntity();
+        version.setId(12L);
+        when(versionService.create(any(), any())).thenReturn(version);
+
+        mockMvc.perform(
+                        post("/experiment-records/1/versions")
+                                .contentType("application/json")
+                                .content("{\"experimentTitle\":\"Revised report\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(12));
+
+        verify(authorizationService).requirePermission("edu:experiment-record:submit");
     }
 
     @Test
