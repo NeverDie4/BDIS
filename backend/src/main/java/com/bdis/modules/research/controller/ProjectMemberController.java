@@ -2,6 +2,7 @@ package com.bdis.modules.research.controller;
 
 import com.bdis.common.core.Result;
 import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.research.request.ProjectInvitationResponseRequest;
 import com.bdis.modules.research.request.ProjectMemberAddRequest;
 import com.bdis.modules.research.request.ProjectMemberUpdateRequest;
 import com.bdis.modules.research.service.ProjectMemberService;
@@ -66,6 +67,24 @@ public class ProjectMemberController {
             @PathVariable @Positive Long projectId, @PathVariable @Positive Long userId) {
         authorizationService.requirePermission("research:project-member:remove");
         memberService.remove(projectId, userId);
+        return Result.success();
+    }
+
+    @PostMapping("/invite")
+    public Result<ProjectMemberVO> invite(
+            @PathVariable @Positive Long projectId,
+            @Valid @RequestBody ProjectMemberAddRequest request) {
+        authorizationService.requirePermission("research:project:invitation");
+        memberService.invite(projectId, request);
+        return Result.success(memberService.get(projectId, request.getUserId()));
+    }
+
+    @PostMapping("/respond")
+    public Result<Void> respond(
+            @PathVariable @Positive Long projectId,
+            @Valid @RequestBody ProjectInvitationResponseRequest request) {
+        authorizationService.requirePermission("research:project:invitation:respond");
+        memberService.respond(projectId, request.getResponse());
         return Result.success();
     }
 }

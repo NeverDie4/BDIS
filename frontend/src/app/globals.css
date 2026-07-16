@@ -432,3 +432,21 @@ time {
     grid-template-columns: 1fr;
   }
 }
+/* Teaching editor forms use balanced two-column groups. */
+.ant-modal .ant-form > .ant-space {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  width: 100%;
+}
+
+.ant-modal .ant-form > .ant-space > .ant-space-item {
+  min-width: 0;
+}
+
+.ant-modal .ant-form > .ant-space .ant-form-item,
+.ant-modal .ant-form > .ant-space .ant-input,
+.ant-modal .ant-form > .ant-space .ant-input-number,
+.ant-modal .ant-form > .ant-space .ant-select {
+  width: 100%;
+}

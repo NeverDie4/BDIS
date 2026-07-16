@@ -1,0 +1,246 @@
+import { apiDelete, apiGet, apiPost, apiPut, request } from "@/lib/request";
+import type { PageResult } from "@/types/api";
+
+export type TrainingPlanStatus = "draft" | "published" | "closed";
+
+export type TrainingPlan = {
+  id: number;
+  planNo: string;
+  planName: string;
+  planType: string;
+  ownerId: number;
+  ownerName?: string;
+  trainerId?: number;
+  trainerName?: string;
+  courseId?: number;
+  courseName?: string;
+  description?: string;
+  location?: string;
+  startedAt?: string;
+  endedAt?: string;
+  publishStatus: TrainingPlanStatus;
+  version: number;
+  participantCount?: number;
+  materialCount?: number;
+  updatedAt?: string;
+};
+
+export type TrainingPlanItem = {
+  id: number;
+  planId: number;
+  attendanceNo?: string;
+  itemType: string;
+  itemTitle: string;
+  description?: string;
+  courseId?: number;
+  projectId?: number;
+  baseId?: number;
+  speciesId?: number;
+  sortOrder?: number;
+};
+
+export type TrainingMaterial = {
+  id: number;
+  materialNo: string;
+  materialName: string;
+  materialType: string;
+  description?: string;
+  fileId: number;
+  originalFilename?: string;
+  fileUrl?: string;
+  sourceType: string;
+  sourceResourceId?: number;
+  reuseCount?: number;
+  version: number;
+};
+
+export type TrainingPlanMaterial = TrainingMaterial & {
+  isRequired: number;
+  sortOrder: number;
+};
+
+export type TrainingRecord = {
+  id: number;
+  planId: number;
+  planName?: string;
+  userId: number;
+  userName?: string;
+  realName?: string;
+  attendanceStatus?: string;
+  checkedInAt?: string;
+  trainingStatus?: string;
+  progress?: number;
+  score?: number;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt?: string;
+  resultComment?: string;
+};
+
+export type TrainingFeedback = {
+  id: number;
+  trainingRecordId: number;
+  planId?: number;
+  planName?: string;
+  userId: number;
+  userName?: string;
+  rating: number;
+  feedbackContent?: string;
+  submittedAt?: string;
+};
+
+export type TrainingSummary = {
+  totalParticipantCount: number;
+  completedCount: number;
+  learningCount: number;
+  notStartedCount: number;
+  presentCount: number;
+  absentCount: number;
+  averageProgress: number;
+  averageScore?: number;
+  feedbackCount: number;
+  averageRating?: number;
+};
+
+export type TrainingCompletionProof = {
+  trainingRecordId: number;
+  completed: boolean;
+  score?: number;
+  completionProofFileId?: number;
+  message?: string;
+};
+
+export type TrainingPlanPayload = {
+  planNo: string;
+  planName: string;
+  planType: string;
+  ownerId: number;
+  trainerId?: number;
+  courseId?: number;
+  description?: string;
+  location?: string;
+  startedAt?: string;
+  endedAt?: string;
+  remark?: string;
+};
+
+export function listTrainingPlans(params?: Record<string, unknown>) {
+  return apiGet<PageResult<TrainingPlan>>("/training-plans", { pageNo: 1, pageSize: 50, ...params });
+}
+
+export function getTrainingPlan(id: number) {
+  return apiGet<TrainingPlan & { materials: TrainingPlanMaterial[] }>(`/training-plans/${id}`);
+}
+
+export function listTrainingPlanItems(planId: number) {
+  return apiGet<TrainingPlanItem[]>(`/training-plans/${planId}/items`);
+}
+
+export function createTrainingPlanItem(planId: number, payload: Omit<TrainingPlanItem, "id" | "planId">) {
+  return apiPost<number>(`/training-plans/${planId}/items`, payload);
+}
+
+export function createTrainingPlan(payload: TrainingPlanPayload) {
+  return apiPost<TrainingPlan>("/training-plans", payload);
+}
+
+export function updateTrainingPlan(id: number, payload: TrainingPlanPayload & { version: number }) {
+  return apiPut<TrainingPlan>(`/training-plans/${id}`, payload);
+}
+
+export function deleteTrainingPlan(id: number) {
+  return apiDelete<void>(`/training-plans/${id}`);
+}
+
+export function publishTrainingPlan(id: number, version: number) {
+  return apiPost<TrainingPlan>(`/training-plans/${id}/publish`, { version });
+}
+
+export function closeTrainingPlan(id: number, version: number, reason: string) {
+  return apiPost<TrainingPlan>(`/training-plans/${id}/close`, { version, reason });
+}
+
+export function listTrainingMaterials(params?: Record<string, unknown>) {
+  return apiGet<PageResult<TrainingMaterial>>("/training-materials", { pageNo: 1, pageSize: 100, ...params });
+}
+
+export function createTrainingMaterial(payload: {
+  materialNo: string;
+  materialName: string;
+  materialType: string;
+  fileId: number;
+  sourceType: string;
+  sourceResourceId?: number;
+  description?: string;
+}) {
+  return apiPost<TrainingMaterial>("/training-materials", payload);
+}
+
+export function listPlanMaterials(planId: number) {
+  return apiGet<TrainingPlanMaterial[]>(`/training-plans/${planId}/materials`);
+}
+
+export function bindPlanMaterial(planId: number, payload: { materialId: number; isRequired?: number; sortOrder?: number }) {
+  return apiPost<number>(`/training-plans/${planId}/materials`, payload);
+}
+
+export function unbindPlanMaterial(planId: number, materialId: number) {
+  return apiDelete<void>(`/training-plans/${planId}/materials/${materialId}`);
+}
+
+export function listTrainingRecords(params?: Record<string, unknown>) {
+  return apiGet<PageResult<TrainingRecord>>("/training-records", { pageNo: 1, pageSize: 100, ...params });
+}
+
+export async function exportTrainingRecords(params?: Record<string, unknown>) {
+  const response = await request.get<Blob>("/training-records/export", { params, responseType: "blob" });
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "training-attendance.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export function addTrainingParticipants(planId: number, userIds: number[]) {
+  return apiPost<{ successCount: number; duplicateCount: number; failureCount: number }>(
+    `/training-plans/${planId}/participants/batch`,
+    { userIds },
+  );
+}
+
+export function joinTrainingPlan(planId: number) {
+  return apiPost<TrainingRecord>(`/training-plans/${planId}/participants/me`, {});
+}
+
+export function updateTrainingRecord(id: number, payload: Partial<TrainingRecord>) {
+  return apiPut<TrainingRecord>(`/training-records/${id}`, payload);
+}
+
+export function listTrainingFeedback(params?: Record<string, unknown>) {
+  return apiGet<PageResult<TrainingFeedback>>("/training-feedbacks", { pageNo: 1, pageSize: 100, ...params });
+}
+
+export function createTrainingFeedback(payload: {
+  trainingRecordId: number;
+  rating: number;
+  feedbackContent?: string;
+}) {
+  return apiPost<TrainingFeedback>("/training-feedbacks", payload);
+}
+
+export function getTrainingSummary(planId: number) {
+  return apiGet<TrainingSummary>(`/training-plans/${planId}/summary`);
+}
+
+export function submitTrainingReport(id: number, payload: { fileId?: number; content?: string }) {
+  return apiPost(`/training-records/${id}/submit`, payload);
+}
+
+export function reviewTrainingRecord(id: number, payload: { action: "return" | "complete" | "approve"; comment?: string }) {
+  return apiPost(`/training-records/${id}/review`, payload);
+}
+
+export function getTrainingCompletionProof(id: number) {
+  return apiGet<TrainingCompletionProof>(`/training-records/${id}/completion-proof`);
+}

@@ -18,6 +18,8 @@ public class ResearchProjectUpdateRequest {
 
     private Long speciesId;
     private String description;
+    private String researchObjective;
+    private String researchContent;
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
 

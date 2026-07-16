@@ -18,6 +18,11 @@ public class ProjectMemberEntity extends CreateAuditEntity {
     private String memberRole;
 
     private String memberStatus;
+    private String invitationStatus;
+    private Long invitedBy;
+    private LocalDateTime invitedAt;
+    private LocalDateTime acceptedAt;
+    private LocalDateTime rejectedAt;
 
     private LocalDateTime joinedAt;
 

@@ -173,6 +173,7 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         entity.setCourseId(request.getCourseId());
         entity.setTrainerId(request.getTrainerId());
         entity.setDescription(request.getDescription());
+        entity.setCompletionCriteria(request.getCompletionCriteria());
         entity.setLocation(request.getLocation());
         entity.setStartedAt(request.getStartedAt());
         entity.setEndedAt(request.getEndedAt());
@@ -224,7 +225,10 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
             CourseEntity course = courseMapper.selectById(entity.getCourseId());
             validCourse = course != null && Objects.equals(course.getStatus(), 1);
         }
-        if (!validCourse && !planMaterialService.hasValidMaterial(id)) {
+        if (!validCourse
+                && !planMaterialService.hasValidMaterial(id)
+                && (planMapper.countValidStructuredBindings(id) == null
+                        || planMapper.countValidStructuredBindings(id) == 0)) {
             throw conflict(
                     "Training plan requires a course or at least one material before publishing");
         }
@@ -406,21 +410,14 @@ public class TrainingPlanServiceImpl implements TrainingPlanService {
         if (!hasScopedIdentity() || isAdmin()) {
             return;
         }
-        Long userId = CurrentUserUtils.currentUserId();
-        wrapper.and(
-                scope ->
-                        scope.eq(TrainingPlanEntity::getOwnerId, userId)
-                                .or()
-                                .eq(TrainingPlanEntity::getTrainerId, userId)
-                                .or()
-                                .apply(
-                                        "EXISTS (SELECT 1 FROM edu_training_record r "
-                                                + "WHERE r.plan_id = edu_training_plan.id AND r.user_id = {0})",
-                                        userId));
+        wrapper.eq(TrainingPlanEntity::getPublishStatus, TrainingPublishStatus.PUBLISHED);
     }
 
     private void requirePlanAccess(TrainingPlanEntity plan, boolean manage) {
         if (!hasScopedIdentity() || isAdmin()) {
+            return;
+        }
+        if (TrainingPublishStatus.PUBLISHED.equals(plan.getPublishStatus())) {
             return;
         }
         Long userId = CurrentUserUtils.currentUserId();

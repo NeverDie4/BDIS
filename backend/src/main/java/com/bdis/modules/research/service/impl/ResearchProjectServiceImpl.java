@@ -16,11 +16,14 @@ import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
+import com.bdis.modules.research.entity.ResearchProjectReviewEntity;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
+import com.bdis.modules.research.mapper.ResearchProjectReviewMapper;
 import com.bdis.modules.research.query.ResearchProjectQuery;
 import com.bdis.modules.research.request.ResearchProjectCreateRequest;
 import com.bdis.modules.research.request.ResearchProjectLeaderChangeRequest;
+import com.bdis.modules.research.request.ResearchProjectReviewRequest;
 import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.service.ProjectMaterialService;
@@ -29,6 +32,7 @@ import com.bdis.modules.research.service.ResearchAchievementService;
 import com.bdis.modules.research.service.ResearchProjectService;
 import com.bdis.modules.research.vo.ResearchProjectDetailVO;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
+import com.bdis.modules.research.vo.ResearchUserCandidateVO;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
@@ -57,6 +61,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     private final ProjectMaterialService materialService;
     private final ResearchAchievementService achievementService;
     private final AuditLogService auditLogService;
+    private final ResearchProjectReviewMapper reviewMapper;
 
     public ResearchProjectServiceImpl(
             ResearchProjectMapper projectMapper,
@@ -74,7 +79,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
                 memberService,
                 materialService,
                 null,
-                auditLogService);
+                auditLogService,
+                null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -86,7 +92,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             ProjectMemberService memberService,
             ProjectMaterialService materialService,
             ResearchAchievementService achievementService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            ResearchProjectReviewMapper reviewMapper) {
         this.projectMapper = projectMapper;
         this.memberMapper = memberMapper;
         this.userMapper = userMapper;
@@ -95,6 +102,7 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         this.materialService = materialService;
         this.achievementService = achievementService;
         this.auditLogService = auditLogService;
+        this.reviewMapper = reviewMapper;
     }
 
     @Override
@@ -145,6 +153,43 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
     }
 
     @Override
+    public List<ResearchUserCandidateVO> listUserCandidates() {
+        Map<Long, String> leaderRoles =
+                userMapper.selectResearchLeaderUserIds().stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        id -> id,
+                                        id -> {
+                                            String role = userMapper.selectResearchLeaderRole(id);
+                                            return role == null ? null : role.toLowerCase();
+                                        },
+                                        (left, right) -> left));
+        return userMapper
+                .selectList(
+                        new LambdaQueryWrapper<UserEntity>()
+                                .eq(UserEntity::getStatus, 1)
+                                .eq(UserEntity::getIsDeleted, 0)
+                                .orderByAsc(UserEntity::getRealName)
+                                .orderByAsc(UserEntity::getUsername))
+                .stream()
+                .map(
+                        user -> {
+                            ResearchUserCandidateVO vo = new ResearchUserCandidateVO();
+                            vo.setId(user.getId());
+                            vo.setUsername(user.getUsername());
+                            vo.setRealName(user.getRealName());
+                            String role = leaderRoles.get(user.getId());
+                            vo.setUserType(
+                                    StringUtils.hasText(user.getUserType())
+                                            ? user.getUserType().toLowerCase()
+                                            : role);
+                            vo.setStatus(user.getStatus());
+                            return vo;
+                        })
+                .toList();
+    }
+
+    @Override
     public ResearchProjectDetailVO getDetail(Long id) {
         ResearchProjectEntity entity = requireActive(id);
         requireProjectAccess(entity, false);
@@ -183,6 +228,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         entity.setLeaderId(leader.getId());
         entity.setSpeciesId(request.getSpeciesId());
         entity.setDescription(request.getDescription());
+        entity.setResearchObjective(request.getResearchObjective());
+        entity.setResearchContent(request.getResearchContent());
         entity.setStartedAt(request.getStartedAt());
         entity.setEndedAt(request.getEndedAt());
         entity.setProjectStatus(PLANNING);
@@ -237,6 +284,8 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         entity.setProjectType(request.getProjectType().trim());
         entity.setSpeciesId(request.getSpeciesId());
         entity.setDescription(request.getDescription());
+        entity.setResearchObjective(request.getResearchObjective());
+        entity.setResearchContent(request.getResearchContent());
         entity.setStartedAt(request.getStartedAt());
         entity.setEndedAt(request.getEndedAt());
         entity.setRemark(request.getRemark());
@@ -323,6 +372,13 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         }
         String target = request.getTargetStatus().trim();
         ResearchProjectStatus.validateTransition(project.getProjectStatus(), target);
+        if (ResearchProjectStatus.PLANNING.equals(project.getProjectStatus())
+                && ResearchProjectStatus.ONGOING.equals(target)
+                && !"approved".equals(project.getReviewStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT,
+                    "Project requires review approval before it can start");
+        }
         if ((ResearchProjectStatus.SUSPENDED.equals(target)
                         || ResearchProjectStatus.COMPLETED.equals(target)
                         || ResearchProjectStatus.ONGOING.equals(target)
@@ -345,6 +401,98 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Project status change conflict");
         }
         recordAudit("CHANGE_STATUS", id);
+    }
+
+    @Override
+    @Transactional
+    public void submitReview(Long id) {
+        ResearchProjectEntity project = requireActive(id);
+        requireProjectAccess(project, true);
+        if (!"draft".equals(project.getReviewStatus())
+                && !"rejected".equals(project.getReviewStatus())) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project is not ready for review");
+        }
+        writeReview(project, "submit", "pending", null);
+    }
+
+    @Override
+    @Transactional
+    public void review(Long id, ResearchProjectReviewRequest request) {
+        ResearchProjectEntity project = requireActive(id);
+        if (!isAdmin()
+                && !CurrentUserUtils.currentRoleCodes().stream()
+                        .anyMatch(r -> "REVIEWER".equalsIgnoreCase(r))) {
+            throw new ForbiddenException("Only reviewer or administrator can review project");
+        }
+        if (request == null
+                || !Set.of("approve", "reject", "archive").contains(request.getAction())) {
+            throw new BusinessException("Invalid project review action");
+        }
+        if ("archive".equals(request.getAction())) {
+            if (!"approved".equals(project.getReviewStatus())) {
+                throw new BusinessException(
+                        ResultCodeEnum.CONFLICT, "Only approved projects can be archived");
+            }
+        } else {
+            if (!"pending".equals(project.getReviewStatus())) {
+                throw new BusinessException(
+                        ResultCodeEnum.CONFLICT, "Only pending projects can be approved or rejected");
+            }
+            if ("approve".equals(request.getAction())) {
+                validateBeforeStart(project);
+            }
+        }
+        String target =
+                "approve".equals(request.getAction())
+                        ? "approved"
+                        : "reject".equals(request.getAction()) ? "rejected" : "archived";
+        writeReview(project, request.getAction(), target, request.getComment());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ResearchProjectReviewEntity> reviewHistory(Long id) {
+        ResearchProjectEntity project = requireActive(id);
+        requireProjectAccess(project, false);
+        if (reviewMapper == null) {
+            return List.of();
+        }
+        return reviewMapper.selectByProjectId(id);
+    }
+
+    private void writeReview(
+            ResearchProjectEntity project, String action, String target, String comment) {
+        Long operator = CurrentUserUtils.currentUserId();
+        String from = project.getReviewStatus();
+        project.setReviewStatus(target);
+        project.setReviewComment(comment);
+        project.setReviewedBy(operator);
+        project.setReviewedAt(LocalDateTime.now());
+        if ("approved".equals(target)) {
+            project.setProjectStatus(ResearchProjectStatus.ONGOING);
+        }
+        if ("archived".equals(target)) {
+            project.setProjectStatus(ResearchProjectStatus.COMPLETED);
+            project.setArchivedAt(LocalDateTime.now());
+        }
+        project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedBy(operator);
+        if (projectMapper.updateById(project) == 0) {
+            throw new BusinessException(ResultCodeEnum.CONFLICT, "Project review conflict");
+        }
+        if (reviewMapper != null) {
+            ResearchProjectReviewEntity history = new ResearchProjectReviewEntity();
+            history.setProjectId(project.getId());
+            history.setReviewAction(action);
+            history.setFromStatus(from);
+            history.setToStatus(target);
+            history.setReviewComment(comment);
+            history.setOperatorId(operator);
+            history.setOperatedAt(LocalDateTime.now());
+            history.setCreatedAt(LocalDateTime.now());
+            history.setUpdatedAt(LocalDateTime.now());
+            reviewMapper.insert(history);
+        }
     }
 
     private void validateLeaderChangeRequest(
@@ -435,7 +583,12 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
         UserEntity user = userMapper.selectById(leaderId);
         if (user == null
                 || !Objects.equals(user.getStatus(), 1)
-                || !Set.of("teacher", "researcher").contains(user.getUserType())) {
+                || (!Set.of("teacher", "researcher")
+                                .contains(
+                                        user.getUserType() == null
+                                                ? ""
+                                                : user.getUserType().toLowerCase())
+                        && userMapper.selectResearchLeaderRole(leaderId) == null)) {
             throw new BusinessException(
                     ResultCodeEnum.VALIDATION_ERROR,
                     "Leader must be an enabled teacher or researcher");

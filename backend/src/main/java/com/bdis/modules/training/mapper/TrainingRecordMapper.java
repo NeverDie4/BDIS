@@ -14,6 +14,9 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
+    @Select("SELECT * FROM edu_training_record WHERE id=#{id} AND is_deleted=0 LIMIT 1")
+    TrainingRecordEntity selectActiveById(@Param("id") Long id);
+
     @Select(
             """
             <script>
@@ -51,7 +54,31 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
             """
             <script>
             SELECT r.id, r.plan_id, p.plan_no, p.plan_name, r.user_id,
-                   u.username, u.real_name, r.course_id, r.progress,
+                   u.username, u.real_name, r.course_id, r.attendance_no, r.progress,
+                   r.training_status, r.attendance_status, r.score,
+                   r.started_at, r.checked_in_at, r.completed_at,
+                   r.created_at, r.updated_at
+            FROM edu_training_record r
+            JOIN edu_training_plan p ON p.id = r.plan_id AND p.is_deleted = 0
+            JOIN sys_user u ON u.id = r.user_id AND u.is_deleted = 0
+            WHERE 1 = 1
+            <if test="query.planId != null">AND r.plan_id = #{query.planId}</if>
+            <if test="query.userId != null">AND r.user_id = #{query.userId}</if>
+            <if test="query.scopeAll != true">
+              AND (r.user_id = #{query.scopeUserId}
+                   OR p.owner_id = #{query.scopeUserId}
+                   OR p.trainer_id = #{query.scopeUserId})
+            </if>
+            ORDER BY r.created_at DESC, r.id DESC
+            </script>
+            """)
+    List<TrainingRecordListVO> selectAllVO(@Param("query") TrainingRecordQuery query);
+
+    @Select(
+            """
+            <script>
+            SELECT r.id, r.plan_id, p.plan_no, p.plan_name, r.user_id,
+                   u.username, u.real_name, r.course_id, r.attendance_no, r.progress,
                    r.training_status, r.attendance_status, r.score,
                    r.started_at, r.checked_in_at, r.completed_at,
                    r.created_at, r.updated_at
@@ -89,7 +116,7 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecordEntity> {
     @Select(
             """
             SELECT r.id, r.plan_id, p.plan_no, p.plan_name, r.user_id,
-                   u.username, u.real_name, r.course_id, r.progress,
+                   u.username, u.real_name, r.course_id, r.attendance_no, r.progress,
                    r.training_status, r.attendance_status, r.score,
                    r.started_at, r.checked_in_at, r.completed_at,
                    r.created_at, r.updated_at, r.result_comment, r.remark

@@ -25,6 +25,8 @@ public class TrainingPlanEntity extends BaseEntity {
 
     private String description;
 
+    private String completionCriteria;
+
     private String location;
 
     private LocalDateTime startedAt;

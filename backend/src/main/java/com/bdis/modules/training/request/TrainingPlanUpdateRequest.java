@@ -22,6 +22,7 @@ public class TrainingPlanUpdateRequest {
     @Positive private Long courseId;
     @Positive private Long trainerId;
     private String description;
+    private String completionCriteria;
 
     @Size(max = 255)
     private String location;

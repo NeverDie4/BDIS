@@ -15,7 +15,6 @@ import com.bdis.modules.herb.dto.HerbSpeciesQueryRequest;
 import com.bdis.modules.herb.dto.HerbSpeciesUpdateRequest;
 import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
-import com.bdis.modules.herb.service.HerbSpeciesCoverFileService;
 import com.bdis.modules.herb.service.impl.HerbSpeciesServiceImpl;
 import com.bdis.modules.herb.vo.HerbSpeciesVO;
 import java.util.List;

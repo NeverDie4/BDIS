@@ -15,15 +15,13 @@ import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifeArchiveVO;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.herb.vo.HerbImageVO;
-
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 @Component
 public class DigitalLifeIntegrityEventCollector {

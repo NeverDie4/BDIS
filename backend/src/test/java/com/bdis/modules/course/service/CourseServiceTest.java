@@ -88,6 +88,22 @@ class CourseServiceTest {
     }
 
     @Test
+    void teacherCanReadAnotherUsersPublishedCourseButCannotManageIt() {
+        setUser(8L, "TEACHER");
+        CourseEntity published = activeCourse();
+        published.setPublishStatus("published");
+        published.setCreatedBy(99L);
+        published.setTeacherId(7L);
+        when(courseMapper.selectById(11L)).thenReturn(published);
+        when(experimentStepService.listByCourseId(11L)).thenReturn(List.of());
+        when(courseResourceService.listByCourseId(11L, null)).thenReturn(List.of());
+
+        assertThat(courseService.getDetail(11L).getPublishStatus()).isEqualTo("published");
+        assertThatThrownBy(() -> courseService.update(11L, validUpdateRequest()))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
     void administratorCanReadAnotherTeachersCourse() {
         setUser(99L, "ADMIN");
         when(courseMapper.selectById(11L)).thenReturn(activeCourse());

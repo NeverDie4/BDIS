@@ -34,7 +34,11 @@ import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
-
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,13 +46,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import javax.imageio.ImageIO;
-
-import java.io.InputStream;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class HerbDigitalLifeArchiveServiceImplTest {
@@ -88,18 +85,15 @@ class HerbDigitalLifeArchiveServiceImplTest {
     void publicQrCodeTargetsTaskLevelDigitalLifePage() throws Exception {
         HerbCollectionTaskEntity task = task(true);
         when(taskMapper.selectByTraceCode("DL-009")).thenReturn(task);
-        ReflectionTestUtils.setField(
-                service, "publicWebBaseUrl", "https://archive.example.com/");
+        ReflectionTestUtils.setField(service, "publicWebBaseUrl", "https://archive.example.com/");
 
         try (InputStream input = service.publicQrCode("DL-009").getResource().getInputStream()) {
             var image = ImageIO.read(input);
             var bitmap =
-                    new BinaryBitmap(
-                            new HybridBinarizer(new BufferedImageLuminanceSource(image)));
+                    new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(image)));
 
             assertThat(new MultiFormatReader().decode(bitmap).getText())
-                    .isEqualTo(
-                            "https://archive.example.com/trace/digital-life/DL-009");
+                    .isEqualTo("https://archive.example.com/trace/digital-life/DL-009");
         }
     }
 
@@ -168,8 +162,7 @@ class HerbDigitalLifeArchiveServiceImplTest {
 
         HerbDigitalLifePublicArchiveVO archive = service.publicArchive("DL-009");
 
-        assertThat(archive.getQrCodeUrl())
-                .isEqualTo("/api/trace/digital-life/DL-009/qrcode");
+        assertThat(archive.getQrCodeUrl()).isEqualTo("/api/trace/digital-life/DL-009/qrcode");
         assertThat(archive.getStages()).hasSize(1);
         assertThat(archive.getStages().get(0).getBatchCode()).isEqualTo("BATCH-1");
         assertThat(archive.getStages().get(0).getAuditStatus()).isEqualTo("已通过");

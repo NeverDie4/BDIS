@@ -3,7 +3,6 @@ package com.bdis.modules.growth.service.impl;
 import com.bdis.modules.assistant.client.ArkResponsesClient;
 import com.bdis.modules.assistant.config.HerbAssistantProperties;
 import com.bdis.modules.growth.service.DigitalLifeNarrationGenerator;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

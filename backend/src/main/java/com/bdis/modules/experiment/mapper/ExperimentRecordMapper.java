@@ -57,6 +57,11 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                    recorder.real_name AS recorder_name,
                    er.recorded_at,
                    er.archive_status,
+                   er.score,
+                   er.graded_by,
+                   er.graded_at,
+                   er.grade_comment,
+                   er.report_file_id,
                    er.status,
                    er.created_at,
                    er.updated_at
@@ -117,6 +122,12 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                    recorder.real_name AS recorder_name,
                    er.recorded_at,
                    er.archive_status,
+                   er.score,
+                   er.graded_by,
+                   er.graded_at,
+                   grader.real_name AS graded_by_name,
+                   er.grade_comment,
+                   er.report_file_id,
                    er.submitted_at,
                    er.submitted_by,
                    submitter.real_name AS submitted_by_name,
@@ -137,6 +148,7 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
             LEFT JOIN sys_user recorder ON recorder.id = er.recorder_id
             LEFT JOIN sys_user submitter ON submitter.id = er.submitted_by
             LEFT JOIN sys_user archiver ON archiver.id = er.archived_by
+             LEFT JOIN sys_user grader ON grader.id = er.graded_by
             WHERE er.id = #{id} AND er.is_deleted = 0
             LIMIT 1
             """)
@@ -156,7 +168,7 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                 version = version + 1
             WHERE id = #{id}
               AND is_deleted = 0
-              AND archive_status = 'draft'
+              AND archive_status IN ('draft', 'returned')
               AND version = #{version}
             """)
     int submitByIdAndVersion(
@@ -164,6 +176,38 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
             @Param("version") Integer version,
             @Param("submittedBy") Long submittedBy,
             @Param("submittedAt") LocalDateTime submittedAt);
+
+    @Update(
+            """
+            UPDATE edu_experiment_record
+            SET experiment_title = #{experimentTitle},
+                experiment_process = #{experimentProcess},
+                experiment_result = #{experimentResult},
+                report_file_id = #{reportFileId},
+                archive_status = 'submitted',
+                submitted_at = #{submittedAt},
+                submitted_by = #{submittedBy},
+                archived_at = NULL,
+                archived_by = NULL,
+                archive_comment = NULL,
+                updated_at = #{submittedAt},
+                updated_by = #{submittedBy},
+                version = version + 1
+            WHERE id = #{id}
+              AND recorder_id = #{submittedBy}
+              AND is_deleted = 0
+              AND archive_status IN ('draft', 'returned')
+              AND version = #{version}
+            """)
+    int resubmitVersionByIdAndVersion(
+            @Param("id") Long id,
+            @Param("version") Integer version,
+            @Param("submittedBy") Long submittedBy,
+            @Param("submittedAt") LocalDateTime submittedAt,
+            @Param("experimentTitle") String experimentTitle,
+            @Param("experimentProcess") String experimentProcess,
+            @Param("experimentResult") String experimentResult,
+            @Param("reportFileId") Long reportFileId);
 
     @Update(
             """
@@ -186,6 +230,38 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
             @Param("archivedBy") Long archivedBy,
             @Param("archivedAt") LocalDateTime archivedAt,
             @Param("archiveComment") String archiveComment);
+
+    @Update(
+            """
+            UPDATE edu_experiment_record
+            SET score = #{score},
+                graded_by = #{gradedBy},
+                graded_at = #{gradedAt},
+                grade_comment = #{gradeComment},
+                updated_at = #{gradedAt},
+                updated_by = #{gradedBy},
+                version = version + 1
+            WHERE id = #{id}
+              AND is_deleted = 0
+              AND archive_status = 'submitted'
+              AND version = #{version}
+            """)
+    int gradeByIdAndVersion(
+            @Param("id") Long id,
+            @Param("version") Integer version,
+            @Param("gradedBy") Long gradedBy,
+            @Param("score") java.math.BigDecimal score,
+            @Param("gradedAt") LocalDateTime gradedAt,
+            @Param("gradeComment") String gradeComment);
+
+    @Update(
+            "UPDATE edu_experiment_record SET archive_status='returned', archive_comment=#{comment}, updated_at=#{operatedAt}, updated_by=#{operatorId}, version=version+1 WHERE id=#{id} AND is_deleted=0 AND archive_status='submitted' AND version=#{version}")
+    int returnByIdAndVersion(
+            @Param("id") Long id,
+            @Param("version") Integer version,
+            @Param("operatorId") Long operatorId,
+            @Param("operatedAt") LocalDateTime operatedAt,
+            @Param("comment") String comment);
 
     @Update(
             """

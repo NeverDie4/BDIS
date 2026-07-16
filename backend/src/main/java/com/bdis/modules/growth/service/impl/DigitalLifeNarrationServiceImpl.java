@@ -16,12 +16,6 @@ import com.bdis.modules.growth.vo.HerbDigitalLifeRecognitionVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifeStageVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,6 +31,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class DigitalLifeNarrationServiceImpl implements DigitalLifeNarrationService {

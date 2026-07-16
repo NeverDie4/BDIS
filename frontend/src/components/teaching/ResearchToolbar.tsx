@@ -11,18 +11,23 @@ import styles from "./teaching.module.css";
 
 type ResearchToolbarProps = {
   hasSelection: boolean;
+  canAdd?: boolean;
+  canEdit?: boolean;
+  onAdd: () => void;
+  onEdit: () => void;
+  onReload: () => void;
 };
 
-export function ResearchToolbar({ hasSelection }: ResearchToolbarProps) {
+export function ResearchToolbar({ hasSelection, canAdd, canEdit, onAdd, onEdit, onReload }: ResearchToolbarProps) {
   return (
     <div className={styles.researchToolbar}>
       <strong>课题研究</strong>
       <div className={styles.researchToolbarGroups}>
         <Space className={styles.researchToolbarLeft} size={8} wrap>
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => undefined}>
+          <Button disabled={!canAdd} icon={<PlusOutlined />} type="primary" onClick={onAdd}>
             新增
           </Button>
-          <Button disabled={!hasSelection} icon={<EditOutlined />} onClick={() => undefined}>
+          <Button disabled={!hasSelection || !canEdit} icon={<EditOutlined />} onClick={onEdit}>
             编辑
           </Button>
           <Button icon={<DownloadOutlined />} onClick={() => undefined}>
@@ -31,7 +36,7 @@ export function ResearchToolbar({ hasSelection }: ResearchToolbarProps) {
         </Space>
         <Space className={styles.researchToolbarRight} size={4}>
           <Tooltip title="刷新">
-            <Button aria-label="刷新课题列表" icon={<ReloadOutlined />} onClick={() => undefined} />
+            <Button aria-label="刷新课题列表" icon={<ReloadOutlined />} onClick={onReload} />
           </Tooltip>
           <Tooltip title="列表视图">
             <Button aria-label="切换课题列表视图" icon={<UnorderedListOutlined />} onClick={() => undefined} />

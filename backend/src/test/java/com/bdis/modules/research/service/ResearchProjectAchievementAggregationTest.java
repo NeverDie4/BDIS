@@ -8,6 +8,7 @@ import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
+import com.bdis.modules.research.mapper.ResearchProjectReviewMapper;
 import com.bdis.modules.research.service.impl.ResearchProjectServiceImpl;
 import com.bdis.modules.research.vo.ResearchAchievementListVO;
 import com.bdis.modules.research.vo.ResearchAchievementSummaryVO;
@@ -29,6 +30,7 @@ class ResearchProjectAchievementAggregationTest {
     @Mock private ProjectMaterialService materialService;
     @Mock private ResearchAchievementService achievementService;
     @Mock private AuditLogService auditLogService;
+    @Mock private ResearchProjectReviewMapper researchProjectReviewMapper;
 
     private ResearchProjectServiceImpl service;
 
@@ -43,7 +45,8 @@ class ResearchProjectAchievementAggregationTest {
                         memberService,
                         materialService,
                         achievementService,
-                        auditLogService);
+                        auditLogService,
+                        researchProjectReviewMapper);
     }
 
     @Test

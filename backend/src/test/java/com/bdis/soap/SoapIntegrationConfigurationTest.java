@@ -11,7 +11,8 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 class SoapIntegrationConfigurationTest {
 
     private final ApplicationContextRunner contextRunner =
-            new ApplicationContextRunner().withUserConfiguration(SoapIntegrationConfiguration.class);
+            new ApplicationContextRunner()
+                    .withUserConfiguration(SoapIntegrationConfiguration.class);
 
     @Test
     void doesNotPublishMockEndpointUnlessMockModeIsExplicitlyEnabled() {

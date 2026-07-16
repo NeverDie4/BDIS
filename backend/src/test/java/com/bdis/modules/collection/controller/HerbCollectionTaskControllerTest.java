@@ -72,9 +72,9 @@ class HerbCollectionTaskControllerTest {
                                                 + "\"taskName\":\"Forbidden task\","
                                                 + "\"collectorId\":7}"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put("/herb/collection-task/1/publish"))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/herb/collection-task/1/publish")).andExpect(status().isForbidden());
     }
+
     @Test
     void createTaskReturnsUnifiedResult() throws Exception {
         HerbCollectionTaskVO vo = activeVO();
@@ -145,6 +145,7 @@ class HerbCollectionTaskControllerTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(user, null, List.of()));
     }
+
     private HerbCollectionTaskVO activeVO() {
         HerbCollectionTaskVO vo = new HerbCollectionTaskVO();
         vo.setId(1L);
