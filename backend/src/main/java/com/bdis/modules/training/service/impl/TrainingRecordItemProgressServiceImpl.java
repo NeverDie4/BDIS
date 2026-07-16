@@ -1,5 +1,6 @@
 package com.bdis.modules.training.service.impl;
 
+import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
@@ -17,11 +18,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TrainingRecordItemProgressServiceImpl implements TrainingRecordItemProgressService {
+    private static final Set<String> EDITABLE_TRAINING_STATUSES =
+            Set.of(TrainingStatus.NOT_STARTED, TrainingStatus.LEARNING, TrainingStatus.MAKEUP);
+
     private final TrainingRecordMapper recordMapper;
     private final TrainingPlanItemMapper itemMapper;
     private final TrainingRecordItemMapper progressMapper;
@@ -49,6 +54,13 @@ public class TrainingRecordItemProgressServiceImpl implements TrainingRecordItem
         }
         if (!Objects.equals(record.getUserId(), userId)) {
             throw new ForbiddenException("Only the participant can update training progress");
+        }
+        if (!EDITABLE_TRAINING_STATUSES.contains(record.getTrainingStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT,
+                    "Training progress cannot be updated in "
+                            + record.getTrainingStatus()
+                            + " status");
         }
         TrainingPlanItemEntity item = itemMapper.selectActiveById(itemId);
         if (item == null || !Objects.equals(item.getPlanId(), record.getPlanId())) {
@@ -79,10 +91,13 @@ public class TrainingRecordItemProgressServiceImpl implements TrainingRecordItem
         entity.setCompletedAt(request.getCompleted() ? now : null);
         entity.setUpdatedAt(now);
         entity.setUpdatedBy(userId);
-        if (entity.getId() == null) {
-            progressMapper.insert(entity);
-        } else {
-            progressMapper.updateById(entity);
+        int affected =
+                entity.getId() == null
+                        ? progressMapper.insert(entity)
+                        : progressMapper.updateById(entity);
+        if (affected == 0) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Training item progress save conflict");
         }
         boolean startedLearning = TrainingStatus.NOT_STARTED.equals(record.getTrainingStatus());
         if (startedLearning) {
