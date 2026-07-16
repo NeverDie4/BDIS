@@ -56,6 +56,43 @@
         </view>
       </view>
 
+      <view v-if="agentRequirements.agentGenerated" class="herb-card agent-requirements-card">
+        <view class="section-header">
+          <text class="section-title">Agent 复测要求</text>
+          <text class="section-count">科研 Agent</text>
+        </view>
+        <view class="text-block description-block">
+          <text class="block-value">{{ displayText(agentRequirements.objective) }}</text>
+        </view>
+
+        <view v-if="agentRequirements.requiredMetrics.length" class="requirement-group">
+          <text class="requirement-title">需补采指标</text>
+          <view class="requirement-list">
+            <view v-for="item in agentRequirements.requiredMetrics" :key="`metric-${item.code}`" class="requirement-item">
+              <text class="requirement-name">{{ displayText(item.name) }}</text>
+              <text class="requirement-meta">{{ formatRequirementMeta(item) }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view v-if="agentRequirements.requiredImages.length" class="requirement-group">
+          <text class="requirement-title">需上传图片</text>
+          <view class="requirement-list">
+            <view v-for="item in agentRequirements.requiredImages" :key="`image-${item.code}`" class="requirement-item">
+              <text class="requirement-name">{{ displayText(item.name) }}</text>
+              <text class="requirement-meta">{{ formatRequirementMeta(item) }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view v-if="agentRequirements.completionCriteria.length" class="requirement-group">
+          <text class="requirement-title">完成条件</text>
+          <view class="criteria-list">
+            <text v-for="item in agentRequirements.completionCriteria" :key="item" class="criteria-item">{{ item }}</text>
+          </view>
+        </view>
+      </view>
+
       <view class="herb-card task-batch-card">
         <view class="section-header">
           <text class="section-title">任务下批次</text>
@@ -129,13 +166,14 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
-import { getTaskBatches, getTaskDetail } from '../../api/mobileTaskApi'
+import { getTaskAgentRequirements, getTaskBatches, getTaskDetail } from '../../api/mobileTaskApi'
 import { BATCH_STATUS_MAP, QUALITY_LEVEL_MAP, TASK_STATUS_MAP } from '../../utils/constants'
 import { formatDateTime, formatScore, formatStatus } from '../../utils/format'
 
 const taskId = ref('')
 const detail = ref({})
 const batches = ref([])
+const agentRequirements = ref(normalizeAgentRequirements())
 const loading = ref(false)
 const errorText = ref('')
 const errorTip = ref('请检查网络或后端服务是否启动')
@@ -179,8 +217,12 @@ async function loadDetail() {
   errorTip.value = '请检查网络或后端服务是否启动'
 
   try {
-    const data = await getTaskDetail(taskId.value)
+    const [data, requirements] = await Promise.all([
+      getTaskDetail(taskId.value),
+      loadAgentRequirements()
+    ])
     detail.value = normalizeTaskDetail(data)
+    agentRequirements.value = requirements
     batches.value = await resolveBatchList(data)
   } catch (error) {
     console.error('任务详情加载失败', error)
@@ -193,6 +235,43 @@ async function loadDetail() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadAgentRequirements() {
+  try {
+    const data = await getTaskAgentRequirements(taskId.value)
+    return normalizeAgentRequirements(data)
+  } catch (error) {
+    console.error('Agent 复测要求加载失败', error)
+    return normalizeAgentRequirements()
+  }
+}
+
+function normalizeAgentRequirements(data = {}) {
+  const source = data || {}
+  return {
+    agentGenerated: Boolean(source.agentGenerated),
+    objective: source.objective || '',
+    requiredMetrics: normalizeRequirementItems(source.requiredMetrics),
+    requiredImages: normalizeRequirementItems(source.requiredImages),
+    completionCriteria: Array.isArray(source.completionCriteria) ? source.completionCriteria.filter(Boolean) : []
+  }
+}
+
+function normalizeRequirementItems(items) {
+  return Array.isArray(items) ? items.filter((item) => item && item.required !== false) : []
+}
+
+function formatRequirementMeta(item) {
+  if (item.minCount) {
+    return `至少 ${item.minCount} 项${item.guidance ? `｜${item.guidance}` : ''}`
+  }
+
+  if (item.unit) {
+    return `单位：${item.unit}${item.guidance ? `｜${item.guidance}` : ''}`
+  }
+
+  return item.guidance || item.reason || '按方案要求补采'
 }
 
 function normalizeTaskDetail(data) {
@@ -693,6 +772,76 @@ function goBatchDetail(item) {
 
 .task-batch-card .section-header {
   margin-bottom: 18rpx;
+}
+
+.agent-requirements-card .description-block {
+  margin-bottom: 24rpx;
+}
+
+.requirement-group {
+  margin-top: 24rpx;
+}
+
+.requirement-title {
+  display: block;
+  margin-bottom: 14rpx;
+  color: #0f3d2e;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.requirement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.requirement-item {
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #dfeadd;
+  border-radius: 16rpx;
+  background: #f4fbf5;
+}
+
+.requirement-name {
+  display: block;
+  color: #1f2933;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.requirement-meta {
+  display: block;
+  margin-top: 8rpx;
+  color: #5f5548;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.criteria-item {
+  position: relative;
+  padding-left: 24rpx;
+  color: #3f3a32;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.criteria-item::before {
+  position: absolute;
+  top: 16rpx;
+  left: 4rpx;
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: #166534;
+  content: '';
 }
 
 .batch-card {

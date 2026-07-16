@@ -260,6 +260,10 @@ export function TeachingPageClient() {
         onPublishCourse={handlePublish}
         onOfflineCourse={handleOffline}
         onDeleteCourse={handleDelete}
+        onCourseUpdated={(detail) => {
+          setSelectedCourse(mapCourseDetail(detail));
+          void reloadCourses();
+        }}
         researchProjects={researchProjects}
         researchLoading={researchLoading}
         canResearchAdd={hasPermission("research:project:add")}

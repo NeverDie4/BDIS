@@ -19,6 +19,22 @@ test('移动端生长记录 API 复用正式后端批次记录', async () => {
   assert.doesNotMatch(source, /localStorage|setStorage|mock/i)
 })
 
+test('移动端任务详情展示科研 Agent 下发的复测要求', async () => {
+  const [api, detail] = await Promise.all([
+    readSource('api/mobileTaskApi.js'),
+    readSource('pages/task/detail.vue')
+  ])
+
+  assert.match(api, /getTaskAgentRequirements/)
+  assert.match(api, /\/tasks\/\$\{taskId\}\/agent-requirements/)
+  assert.match(detail, /getTaskAgentRequirements/)
+  assert.match(detail, /Agent 复测要求/)
+  assert.match(detail, /需补采指标/)
+  assert.match(detail, /需上传图片/)
+  assert.match(detail, /完成条件/)
+  assert.match(detail, /agentRequirements\.agentGenerated/)
+})
+
 test('生长记录表单按 batchId 创建并按 recordId 编辑', async () => {
   const source = await readSource('pages/growth/form.vue')
 

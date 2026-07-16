@@ -26,6 +26,12 @@ import {
   type ExperimentRecordListApi,
 } from "@/lib/experiment-records";
 import { getApiErrorMessage } from "@/lib/request";
+import {
+  getCourseRelationOptions,
+  updateCourseRelations,
+  type CourseDetailApi,
+  type CourseRelationOptionsApi,
+} from "@/lib/courses";
 import { ExperimentRecordEditorModal } from "./ExperimentRecordEditorModal";
 import { TeachingStatusTag } from "./TeachingStatusTag";
 import type { CourseRecord } from "./types";
@@ -41,6 +47,8 @@ type CourseDetailPanelProps = {
   canRecordArchive?: boolean;
   canRecordDelete?: boolean;
   canGrade?: boolean;
+  canEdit?: boolean;
+  onCourseUpdated?: (course: CourseDetailApi) => void;
 };
 
 export function CourseDetailPanel({
@@ -53,6 +61,8 @@ export function CourseDetailPanel({
   canRecordArchive,
   canRecordDelete,
   canGrade,
+  canEdit,
+  onCourseUpdated,
 }: CourseDetailPanelProps) {
   const { message, modal } = App.useApp();
   const [records, setRecords] = useState<ExperimentRecordListApi[]>([]);
@@ -63,6 +73,41 @@ export function CourseDetailPanel({
   const [gradingRecordId, setGradingRecordId] = useState<number | null>(null);
   const [gradeValue, setGradeValue] = useState<number | null>(null);
   const [gradeComment, setGradeComment] = useState("");
+  const [relationEditorOpen, setRelationEditorOpen] = useState(false);
+  const [relationSaving, setRelationSaving] = useState(false);
+  const [relationOptions, setRelationOptions] = useState<CourseRelationOptionsApi>({ herbs: [], projects: [] });
+  const [selectedHerbIds, setSelectedHerbIds] = useState<number[]>([]);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
+
+  async function openRelationEditor() {
+    try {
+      const options = await getCourseRelationOptions(Number(course.id));
+      setRelationOptions(options);
+      setSelectedHerbIds(course.detail.relatedHerbItems.map((item) => item.id));
+      setSelectedProjectIds(course.detail.relatedProjectItems.map((item) => item.id));
+      setRelationEditorOpen(true);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "关联候选数据加载失败"));
+    }
+  }
+
+  async function saveRelations() {
+    try {
+      setRelationSaving(true);
+      const detail = await updateCourseRelations(Number(course.id), {
+        version: course.version ?? 0,
+        speciesIds: selectedHerbIds,
+        projectIds: selectedProjectIds,
+      });
+      onCourseUpdated?.(detail);
+      setRelationEditorOpen(false);
+      message.success("课程关联已保存");
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "课程关联保存失败"));
+    } finally {
+      setRelationSaving(false);
+    }
+  }
 
   async function reloadRecords() {
     if (!canRecordList) {
@@ -210,12 +255,40 @@ export function CourseDetailPanel({
     },
   ];
 
+  const renderedDetailItems = detailItems.map((item) => {
+    if (item.key === "resources") {
+      return {
+        ...item,
+        children: <div className={styles.detailContent}><div className={styles.detailResourceList}>{course.detail.resources.map((resource) => <div className={styles.detailResourceRow} key={resource.id ?? resource.name}><FileTextOutlined /><div><strong>{resource.name}</strong><span>{resource.type} · {resource.size}</span></div>{resource.url ? <Button className={styles.actionLink} type="link" href={resource.url} target="_blank">查看</Button> : null}</div>)}</div>{course.detail.resources.length === 0 ? <p>暂无课程文件</p> : null}</div>,
+      };
+    }
+    if (item.key === "videos") {
+      return {
+        ...item,
+        children: <div className={styles.detailContent}><div className={styles.detailResourceList}>{course.detail.videos.map((video) => <div className={styles.detailResourceRow} key={video.id ?? video.title}><PlayCircleOutlined /><div><strong>{video.title}</strong><span>{video.size ?? "课程视频"}</span></div>{video.url ? <Button className={styles.actionLink} type="link" href={video.url} target="_blank">播放</Button> : null}</div>)}</div>{course.detail.videos.length === 0 ? <p>暂无视频资源</p> : null}</div>,
+      };
+    }
+    if (item.key === "relations") {
+      return {
+        ...item,
+        children: <div className={styles.detailContent}>{canEdit ? <div className={styles.recordToolbar}><Button size="small" icon={<EditOutlined />} onClick={() => void openRelationEditor()}>编辑关联</Button></div> : null}<div className={styles.detailRelationGroup}><section><h3><ExperimentOutlined />关联药材</h3><div className={styles.detailTagGroup}>{course.detail.relatedHerbs.map((name) => <Tag className={styles.detailTag} key={name}>{name}</Tag>)}</div></section><section><h3><LinkOutlined />关联课题</h3><ul>{course.detail.relatedProjects.map((name) => <li key={name}>{name}</li>)}</ul></section></div></div>,
+      };
+    }
+    return item;
+  });
+
   return (
     <aside className={styles.detailPanel} aria-label="课程详情">
       <div className={styles.detailHeader}><h2>课程详情</h2><div className={styles.detailHeaderActions}><Button icon={<EyeOutlined />} size="small">学生预览</Button>{canGrade ? <Button size="small" onClick={() => { const record = records.find((item) => item.archiveStatus === "submitted"); if (record) { openGradingRecord(record); } else message.info("暂无待批阅的实验报告"); }}>批阅报告</Button> : null}<Button aria-label="关闭课程详情" icon={<CloseOutlined />} size="small" type="text" onClick={onClose} /></div></div>
       <section className={styles.courseSummary}><Image alt={`${course.courseName}课程封面`} className={styles.detailCover} height={78} src={course.thumbnail} width={104} /><div className={styles.courseSummaryBody}><div className={styles.courseSummaryTitle}><h3>{course.courseName}</h3><TeachingStatusTag status={course.status} /></div><dl className={styles.courseSummaryMeta}><div><dt>课程编号</dt><dd>{course.courseNo}</dd></div><div><dt>学科方向</dt><dd>{course.subject}</dd></div><div><dt>负责人</dt><dd>{course.teacher}</dd></div><div><dt>更新时间</dt><dd>{course.updatedAt}</dd></div></dl></div></section>
-      <Tabs className={styles.detailTabs} items={detailItems} size="small" tabBarGutter={16} />
+      <Tabs className={styles.detailTabs} items={renderedDetailItems} size="small" tabBarGutter={16} />
       <ExperimentRecordEditorModal open={recordEditorOpen} courseId={Number(course.id)} record={editingRecord} onCancel={() => setRecordEditorOpen(false)} onSaved={async () => { setRecordEditorOpen(false); await reloadRecords(); }} />
+      <Modal open={relationEditorOpen} title="编辑课程关联" confirmLoading={relationSaving} okText="保存关联" cancelText="取消" onCancel={() => setRelationEditorOpen(false)} onOk={() => void saveRelations()}>
+        <p>关联药材</p>
+        <Select mode="multiple" value={selectedHerbIds} onChange={setSelectedHerbIds} options={relationOptions.herbs.map((item) => ({ value: item.id, label: `${item.code} · ${item.name}` }))} style={{ width: "100%" }} />
+        <p style={{ marginTop: 16 }}>关联课题</p>
+        <Select mode="multiple" value={selectedProjectIds} onChange={setSelectedProjectIds} options={relationOptions.projects.map((item) => ({ value: item.id, label: `${item.code} · ${item.name}` }))} style={{ width: "100%" }} />
+      </Modal>
       <Modal open={Boolean(gradingRecord)} title="批阅实验报告" okText="保存评分" cancelText="取消" onCancel={() => setGradingRecord(null)} onOk={async () => { if (!gradingRecord || gradeValue == null) return; try { const detail = await getExperimentRecord(gradingRecord.id); await gradeExperimentRecord(gradingRecord.id, { version: detail.version, score: gradeValue, gradeComment: gradeComment.trim() || undefined }); message.success("评分已保存"); setGradingRecord(null); await reloadRecords(); } catch (error) { message.error(getApiErrorMessage(error, "评分保存失败")); } }}>
         <p>{gradingRecord?.experimentTitle} · {gradingRecord?.recorderName ?? "学生"}</p>
         <Select value={gradingRecordId ?? undefined} placeholder="选择要批阅的学生报告" style={{ width: "100%", marginBottom: 12 }} options={records.filter((record) => record.archiveStatus === "submitted").map((record) => ({ value: record.id, label: `${record.experimentTitle} · ${record.recorderName ?? "学生"}` }))} onChange={(value) => { const record = records.find((item) => item.id === value); if (record) openGradingRecord(record); }} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { chatWithAssistant } from "@/lib/assistant";
+import { AssistantAgentPanel } from "./assistant-agent-panel";
 import { getStoredToken } from "@/lib/auth-token";
 import { isAuthRedirectError } from "@/lib/request";
 import axios from "axios";
@@ -103,6 +104,7 @@ export function AssistantFloat() {
   const [floatPosition, setFloatPosition] = useState<FloatPosition | null>(null);
   const [dragging, setDragging] = useState(false);
   const [quickExpanded, setQuickExpanded] = useState(true);
+  const [mode, setMode] = useState<"chat" | "agent">("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: WELCOME_MESSAGE },
   ]);
@@ -372,7 +374,7 @@ export function AssistantFloat() {
             />
             <div className={styles.titleGroup}>
               <h2 className={styles.title}>本草 AI 小助手</h2>
-              <p className={styles.subtitle}>采集、识别、审核与溯源问答</p>
+              <p className={styles.subtitle}>{mode === "chat" ? "采集、识别、审核与溯源问答" : "长期科研任务与可信档案"}</p>
             </div>
           </div>
           <button
@@ -384,6 +386,13 @@ export function AssistantFloat() {
             <X size={18} />
           </button>
         </header>
+
+        <div className={styles.modeSwitch} role="tablist" aria-label="助手模式">
+          <button type="button" role="tab" aria-selected={mode === "chat"} className={mode === "chat" ? styles.modeActive : ""} onClick={() => setMode("chat")}>智能问答</button>
+          <button type="button" role="tab" aria-selected={mode === "agent"} className={mode === "agent" ? styles.modeActive : ""} onClick={() => setMode("agent")}>科研 Agent</button>
+        </div>
+
+        {mode === "agent" ? <AssistantAgentPanel /> : <>
 
         <section className={styles.contextBox} aria-label="当前页面上下文">
           <p className={styles.contextTitle}>
@@ -495,6 +504,7 @@ export function AssistantFloat() {
             </button>
           </div>
         </div>
+        </>}
       </aside>
     </>
   );

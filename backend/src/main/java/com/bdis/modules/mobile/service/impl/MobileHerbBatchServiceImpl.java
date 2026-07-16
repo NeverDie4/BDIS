@@ -1,6 +1,8 @@
 package com.bdis.modules.mobile.service.impl;
 
 import com.bdis.common.exception.BusinessException;
+import com.bdis.modules.assistant.agent.event.AgentFieldDataChangedEvent;
+import com.bdis.modules.assistant.agent.event.AgentFieldDataEventPublisher;
 import com.bdis.modules.collection.constant.HerbBatchImageRoleConstants;
 import com.bdis.modules.collection.constant.HerbBatchStatusConstants;
 import com.bdis.modules.collection.dto.HerbBatchImageBindRequest;
@@ -40,6 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -50,441 +53,453 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class MobileHerbBatchServiceImpl implements MobileHerbBatchService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MobileHerbBatchServiceImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MobileHerbBatchServiceImpl.class);
 
-    private final HerbBatchMapper herbBatchMapper;
-    private final HerbBatchImageMapper herbBatchImageMapper;
-    private final HerbCollectionTaskMapper herbCollectionTaskMapper;
-    private final HerbImageService herbImageService;
-    private final HerbBatchImageService herbBatchImageService;
-    private final HerbIdentificationService herbIdentificationService;
-    private final HerbBatchSummaryService herbBatchSummaryService;
-    private final HerbBatchStatusService herbBatchStatusService;
-    private final MobileBatchAutoIdentificationExecutor autoIdentificationExecutor;
-    private final GrowthRecordService growthRecordService;
+  private final HerbBatchMapper herbBatchMapper;
+  private final HerbBatchImageMapper herbBatchImageMapper;
+  private final HerbCollectionTaskMapper herbCollectionTaskMapper;
+  private final HerbImageService herbImageService;
+  private final HerbBatchImageService herbBatchImageService;
+  private final HerbIdentificationService herbIdentificationService;
+  private final HerbBatchSummaryService herbBatchSummaryService;
+  private final HerbBatchStatusService herbBatchStatusService;
+  private final MobileBatchAutoIdentificationExecutor autoIdentificationExecutor;
+  private final GrowthRecordService growthRecordService;
+  private AgentFieldDataEventPublisher agentEventPublisher;
 
-    public MobileHerbBatchServiceImpl(
-            HerbBatchMapper herbBatchMapper,
-            HerbBatchImageMapper herbBatchImageMapper,
-            HerbCollectionTaskMapper herbCollectionTaskMapper,
-            HerbImageService herbImageService,
-            HerbBatchImageService herbBatchImageService,
-            HerbIdentificationService herbIdentificationService,
-            HerbBatchSummaryService herbBatchSummaryService,
-            HerbBatchStatusService herbBatchStatusService,
-            MobileBatchAutoIdentificationExecutor autoIdentificationExecutor,
-            GrowthRecordService growthRecordService) {
-        this.herbBatchMapper = herbBatchMapper;
-        this.herbBatchImageMapper = herbBatchImageMapper;
-        this.herbCollectionTaskMapper = herbCollectionTaskMapper;
-        this.herbImageService = herbImageService;
-        this.herbBatchImageService = herbBatchImageService;
-        this.herbIdentificationService = herbIdentificationService;
-        this.herbBatchSummaryService = herbBatchSummaryService;
-        this.herbBatchStatusService = herbBatchStatusService;
-        this.autoIdentificationExecutor = autoIdentificationExecutor;
-        this.growthRecordService = growthRecordService;
+  public MobileHerbBatchServiceImpl(
+      HerbBatchMapper herbBatchMapper,
+      HerbBatchImageMapper herbBatchImageMapper,
+      HerbCollectionTaskMapper herbCollectionTaskMapper,
+      HerbImageService herbImageService,
+      HerbBatchImageService herbBatchImageService,
+      HerbIdentificationService herbIdentificationService,
+      HerbBatchSummaryService herbBatchSummaryService,
+      HerbBatchStatusService herbBatchStatusService,
+      MobileBatchAutoIdentificationExecutor autoIdentificationExecutor,
+      GrowthRecordService growthRecordService) {
+    this.herbBatchMapper = herbBatchMapper;
+    this.herbBatchImageMapper = herbBatchImageMapper;
+    this.herbCollectionTaskMapper = herbCollectionTaskMapper;
+    this.herbImageService = herbImageService;
+    this.herbBatchImageService = herbBatchImageService;
+    this.herbIdentificationService = herbIdentificationService;
+    this.herbBatchSummaryService = herbBatchSummaryService;
+    this.herbBatchStatusService = herbBatchStatusService;
+    this.autoIdentificationExecutor = autoIdentificationExecutor;
+    this.growthRecordService = growthRecordService;
+  }
+
+  @Autowired(required = false)
+  void setAgentEventPublisher(AgentFieldDataEventPublisher agentEventPublisher) {
+    this.agentEventPublisher = agentEventPublisher;
+  }
+
+  @Override
+  public MobileBatchDetailVO detail(Long batchId, Long collectorId) {
+    HerbBatchVO batch = getBatchDetail(batchId);
+    validateBatchCollector(batch.getTaskId(), collectorId);
+    MobileBatchDetailVO vo = toDetailVO(batch);
+    HerbBatchImageQueryRequest query = new HerbBatchImageQueryRequest();
+    List<HerbBatchImageVO> images = herbBatchImageService.listByBatch(batchId, query);
+    vo.setImages(images.stream().map(this::toMobileImageVO).toList());
+    return vo;
+  }
+
+  @Override
+  @Transactional
+  public MobileBatchImageUploadResultVO uploadImage(
+      Long batchId, MultipartFile file, MobileBatchImageUploadRequest request) {
+    HerbBatchEntity batch = getActiveBatch(batchId);
+    MobileBatchImageUploadRequest safeRequest =
+        request == null ? new MobileBatchImageUploadRequest() : request;
+    validateBatchCollector(batch.getTaskId(), safeRequest.getCollectorId());
+    ensureUploadAllowed(batch);
+    if (HerbBatchStatusConstants.DRAFT.equals(batch.getBatchStatus())) {
+      herbBatchStatusService.startCollection(batchId);
+      batch.setBatchStatus(HerbBatchStatusConstants.COLLECTING);
     }
-
-    @Override
-    public MobileBatchDetailVO detail(Long batchId, Long collectorId) {
-        HerbBatchVO batch = getBatchDetail(batchId);
-        validateBatchCollector(batch.getTaskId(), collectorId);
-        MobileBatchDetailVO vo = toDetailVO(batch);
-        HerbBatchImageQueryRequest query = new HerbBatchImageQueryRequest();
-        List<HerbBatchImageVO> images = herbBatchImageService.listByBatch(batchId, query);
-        vo.setImages(images.stream().map(this::toMobileImageVO).toList());
-        return vo;
+    HerbImageVO image = herbImageService.upload(file, toImageUploadRequest(batch, safeRequest));
+    HerbBatchImageVO binding;
+    try {
+      binding = herbBatchImageService.bind(batchId, toBindRequest(safeRequest, image));
+    } catch (RuntimeException exception) {
+      herbImageService.delete(image.getId());
+      throw exception;
     }
-
-    @Override
-    @Transactional
-    public MobileBatchImageUploadResultVO uploadImage(
-            Long batchId, MultipartFile file, MobileBatchImageUploadRequest request) {
-        HerbBatchEntity batch = getActiveBatch(batchId);
-        MobileBatchImageUploadRequest safeRequest =
-                request == null ? new MobileBatchImageUploadRequest() : request;
-        validateBatchCollector(batch.getTaskId(), safeRequest.getCollectorId());
-        ensureUploadAllowed(batch);
-        if (HerbBatchStatusConstants.DRAFT.equals(batch.getBatchStatus())) {
-            herbBatchStatusService.startCollection(batchId);
-            batch.setBatchStatus(HerbBatchStatusConstants.COLLECTING);
-        }
-        HerbImageVO image = herbImageService.upload(file, toImageUploadRequest(batch, safeRequest));
-        HerbBatchImageVO binding;
-        try {
-            binding = herbBatchImageService.bind(batchId, toBindRequest(safeRequest, image));
-        } catch (RuntimeException exception) {
-            herbImageService.delete(image.getId());
-            throw exception;
-        }
-        MobileBatchImageUploadResultVO result = toUploadResult(binding);
-        if (Boolean.TRUE.equals(safeRequest.getAutoIdentify())) {
-            result.setAutoIdentifySuccess(null);
-            identifyBoundImageAfterCommit(batchId, image.getId(), new MobileBatchIdentifyRequest());
-            result.setMessage("图片上传并绑定成功，自动识别已提交，请稍后查看识别结果");
-        } else {
-            result.setAutoIdentifySuccess(false);
-            result.setMessage("图片上传并绑定成功，未开启自动识别");
-        }
-        return result;
+    MobileBatchImageUploadResultVO result = toUploadResult(binding);
+    if (Boolean.TRUE.equals(safeRequest.getAutoIdentify())) {
+      result.setAutoIdentifySuccess(null);
+      identifyBoundImageAfterCommit(batchId, image.getId(), new MobileBatchIdentifyRequest());
+      result.setMessage("图片上传并绑定成功，自动识别已提交，请稍后查看识别结果");
+    } else {
+      result.setAutoIdentifySuccess(false);
+      result.setMessage("图片上传并绑定成功，未开启自动识别");
     }
+    return result;
+  }
 
-    @Override
-    @Transactional
-    public MobileBatchImageUploadResultVO identifyImage(
-            Long batchId, Long imageId, MobileBatchIdentifyRequest request) {
-        getEditableBatch(batchId);
-        HerbBatchImageEntity binding = getBoundBinding(batchId, imageId);
-        HerbIdentificationVO identification = identify(imageId, request);
+  @Override
+  @Transactional
+  public MobileBatchImageUploadResultVO identifyImage(
+      Long batchId, Long imageId, MobileBatchIdentifyRequest request) {
+    HerbBatchEntity batch = getEditableBatch(batchId);
+    HerbBatchImageEntity binding = getBoundBinding(batchId, imageId);
+    HerbIdentificationVO identification = identify(imageId, request);
+    updateBindingIdentification(binding, identification.getId());
+    publishRecognitionEvent(batch, imageId);
+    HerbBatchImageVO detail =
+        herbBatchImageMapper.selectDetailByBatchIdAndImageId(batchId, imageId);
+    MobileBatchImageUploadResultVO result = toUploadResult(detail);
+    result.setAutoIdentifySuccess(true);
+    result.setMessage("identified");
+    return result;
+  }
+
+  @Override
+  @Transactional
+  public MobileIdentifyMissingResultVO identifyMissingImages(Long batchId) {
+    HerbBatchEntity batch = getEditableBatch(batchId);
+    HerbBatchImageQueryRequest query = new HerbBatchImageQueryRequest();
+    List<HerbBatchImageVO> images =
+        herbBatchImageService.listByBatch(batchId, query).stream()
+            .filter(image -> image.getIdentificationResultId() == null)
+            .toList();
+    List<MobileIdentifyMissingItemVO> items = new ArrayList<>();
+    int successCount = 0;
+    for (HerbBatchImageVO image : images) {
+      MobileIdentifyMissingItemVO item = new MobileIdentifyMissingItemVO();
+      item.setImageId(image.getImageId());
+      item.setBatchImageId(image.getId());
+      try {
+        HerbIdentificationVO identification = identify(image.getImageId(), null);
+        HerbBatchImageEntity binding = getBoundBinding(batchId, image.getImageId());
         updateBindingIdentification(binding, identification.getId());
-        HerbBatchImageVO detail =
-                herbBatchImageMapper.selectDetailByBatchIdAndImageId(batchId, imageId);
-        MobileBatchImageUploadResultVO result = toUploadResult(detail);
-        result.setAutoIdentifySuccess(true);
-        result.setMessage("identified");
-        return result;
+        publishRecognitionEvent(batch, image.getImageId());
+        item.setSuccess(true);
+        item.setIdentificationResultId(identification.getId());
+        item.setFinalSpeciesName(identification.getFinalSpeciesName());
+        item.setMessage("identified");
+        successCount++;
+      } catch (RuntimeException exception) {
+        item.setSuccess(false);
+        item.setMessage(exception.getMessage());
+      }
+      items.add(item);
     }
+    MobileIdentifyMissingResultVO result = new MobileIdentifyMissingResultVO();
+    result.setTotalCount(items.size());
+    result.setSuccessCount(successCount);
+    result.setFailCount(items.size() - successCount);
+    result.setItems(items);
+    return result;
+  }
 
-    @Override
-    @Transactional
-    public MobileIdentifyMissingResultVO identifyMissingImages(Long batchId) {
-        getEditableBatch(batchId);
-        HerbBatchImageQueryRequest query = new HerbBatchImageQueryRequest();
-        List<HerbBatchImageVO> images =
-                herbBatchImageService.listByBatch(batchId, query).stream()
-                        .filter(image -> image.getIdentificationResultId() == null)
-                        .toList();
-        List<MobileIdentifyMissingItemVO> items = new ArrayList<>();
-        int successCount = 0;
-        for (HerbBatchImageVO image : images) {
-            MobileIdentifyMissingItemVO item = new MobileIdentifyMissingItemVO();
-            item.setImageId(image.getImageId());
-            item.setBatchImageId(image.getId());
-            try {
-                HerbIdentificationVO identification = identify(image.getImageId(), null);
-                HerbBatchImageEntity binding = getBoundBinding(batchId, image.getImageId());
-                updateBindingIdentification(binding, identification.getId());
-                item.setSuccess(true);
-                item.setIdentificationResultId(identification.getId());
-                item.setFinalSpeciesName(identification.getFinalSpeciesName());
-                item.setMessage("identified");
-                successCount++;
-            } catch (RuntimeException exception) {
-                item.setSuccess(false);
-                item.setMessage(exception.getMessage());
-            }
-            items.add(item);
-        }
-        MobileIdentifyMissingResultVO result = new MobileIdentifyMissingResultVO();
-        result.setTotalCount(items.size());
-        result.setSuccessCount(successCount);
-        result.setFailCount(items.size() - successCount);
-        result.setItems(items);
-        return result;
+  private void publishRecognitionEvent(HerbBatchEntity batch, Long imageId) {
+    if (agentEventPublisher != null) {
+      agentEventPublisher.publish(
+          AgentFieldDataChangedEvent.Type.IMAGE_RECOGNITION_COMPLETED,
+          batch.getTaskId(),
+          batch.getId(),
+          imageId,
+          null);
     }
+  }
 
-    @Override
-    public HerbBatchSummaryVO refreshSummary(Long batchId) {
-        HerbBatchSummaryVO summary = herbBatchSummaryService.refreshSummary(batchId);
-        if (summary.getNeedReviewCount() != null && summary.getNeedReviewCount() > 0) {
-            summary.setEvaluationSummary(
-                    appendText(summary.getEvaluationSummary(), "存在待复核图片，需要 PC 端或管理员复核。"));
-        }
-        return summary;
+  @Override
+  public HerbBatchSummaryVO refreshSummary(Long batchId) {
+    HerbBatchSummaryVO summary = herbBatchSummaryService.refreshSummary(batchId);
+    if (summary.getNeedReviewCount() != null && summary.getNeedReviewCount() > 0) {
+      summary.setEvaluationSummary(
+          appendText(summary.getEvaluationSummary(), "存在待复核图片，需要 PC 端或管理员复核。"));
     }
+    return summary;
+  }
 
-    @Override
-    @Transactional
-    public MobileBatchDetailVO submit(Long batchId, MobileBatchSubmitRequest request) {
-        HerbBatchEntity batch = getActiveBatch(batchId);
-        validateBatchCollector(
-                batch.getTaskId(), request == null ? null : request.getCollectorId());
-        if (HerbBatchStatusConstants.DRAFT.equals(batch.getBatchStatus())) {
-            herbBatchStatusService.startCollection(batchId);
-            batch.setBatchStatus(HerbBatchStatusConstants.COLLECTING);
-        }
-        if (!HerbBatchStatusConstants.COLLECTING.equals(batch.getBatchStatus())) {
-            throw new BusinessException(
-                    "Only draft or collecting batch can be submitted by mobile");
-        }
-        submitGrowthRecordForBatch(batchId);
-        herbBatchStatusService.submit(batchId);
-        HerbBatchEntity update = new HerbBatchEntity();
-        update.setId(batchId);
-        update.setCollectEndTime(
-                batch.getCollectEndTime() == null
-                        ? LocalDateTime.now()
-                        : batch.getCollectEndTime());
-        update.setRemark(
-                appendText(batch.getRemark(), request == null ? null : request.getRemark()));
-        update.setUpdatedAt(LocalDateTime.now());
-        herbBatchMapper.updateMobileSubmitFields(update);
-        return detail(batchId, request == null ? null : request.getCollectorId());
+  @Override
+  @Transactional
+  public MobileBatchDetailVO submit(Long batchId, MobileBatchSubmitRequest request) {
+    HerbBatchEntity batch = getActiveBatch(batchId);
+    validateBatchCollector(batch.getTaskId(), request == null ? null : request.getCollectorId());
+    if (HerbBatchStatusConstants.DRAFT.equals(batch.getBatchStatus())) {
+      herbBatchStatusService.startCollection(batchId);
+      batch.setBatchStatus(HerbBatchStatusConstants.COLLECTING);
     }
-
-    private void submitGrowthRecordForBatch(Long batchId) {
-        GrowthRecordVO growthRecord = growthRecordService.getByBatchId(batchId);
-        if (growthRecord == null) {
-            throw new BusinessException("请先填写本次生长记录后再提交审核");
-        }
-        String reviewStatus = growthRecord.getReviewStatus();
-        if ("draft".equals(reviewStatus) || "rejected".equals(reviewStatus)) {
-            growthRecordService.submit(growthRecord.getId());
-            return;
-        }
-        if (!"submitted".equals(reviewStatus) && !"approved".equals(reviewStatus)) {
-            throw new BusinessException("当前生长记录状态不允许提交审核");
-        }
+    if (!HerbBatchStatusConstants.COLLECTING.equals(batch.getBatchStatus())) {
+      throw new BusinessException("Only draft or collecting batch can be submitted by mobile");
     }
+    submitGrowthRecordForBatch(batchId);
+    herbBatchStatusService.submit(batchId);
+    HerbBatchEntity update = new HerbBatchEntity();
+    update.setId(batchId);
+    update.setCollectEndTime(
+        batch.getCollectEndTime() == null ? LocalDateTime.now() : batch.getCollectEndTime());
+    update.setRemark(appendText(batch.getRemark(), request == null ? null : request.getRemark()));
+    update.setUpdatedAt(LocalDateTime.now());
+    herbBatchMapper.updateMobileSubmitFields(update);
+    return detail(batchId, request == null ? null : request.getCollectorId());
+  }
 
-    @Override
-    public MobileImageIdentificationVO latestIdentification(Long imageId) {
-        HerbIdentificationVO identification = herbIdentificationService.latest(imageId);
-        HerbImageVO image = herbImageService.getById(imageId);
-        return toMobileIdentificationVO(identification, image);
+  private void submitGrowthRecordForBatch(Long batchId) {
+    GrowthRecordVO growthRecord = growthRecordService.getByBatchId(batchId);
+    if (growthRecord == null) {
+      throw new BusinessException("请先填写本次生长记录后再提交审核");
     }
+    String reviewStatus = growthRecord.getReviewStatus();
+    if ("draft".equals(reviewStatus) || "rejected".equals(reviewStatus)) {
+      growthRecordService.submit(growthRecord.getId());
+      return;
+    }
+    if (!"submitted".equals(reviewStatus) && !"approved".equals(reviewStatus)) {
+      throw new BusinessException("当前生长记录状态不允许提交审核");
+    }
+  }
 
-    private void identifyBoundImageAfterCommit(
-            Long batchId, Long imageId, MobileBatchIdentifyRequest request) {
-        Runnable task =
-                () -> {
-                    try {
-                        autoIdentificationExecutor.identifyBoundImage(batchId, imageId, request);
-                    } catch (RuntimeException exception) {
-                        LOGGER.warn(
-                                "Auto identification failed after image upload, batchId={}, imageId={}: {}",
-                                batchId,
-                                imageId,
-                                exception.getMessage());
-                    }
-                };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+  @Override
+  public MobileImageIdentificationVO latestIdentification(Long imageId) {
+    HerbIdentificationVO identification = herbIdentificationService.latest(imageId);
+    HerbImageVO image = herbImageService.getById(imageId);
+    return toMobileIdentificationVO(identification, image);
+  }
+
+  private void identifyBoundImageAfterCommit(
+      Long batchId, Long imageId, MobileBatchIdentifyRequest request) {
+    Runnable task =
+        () -> {
+          try {
+            autoIdentificationExecutor.identifyBoundImage(batchId, imageId, request);
+          } catch (RuntimeException exception) {
+            LOGGER.warn(
+                "Auto identification failed after image upload, batchId={}, imageId={}: {}",
+                batchId,
+                imageId,
+                exception.getMessage());
+          }
+        };
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      task.run();
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
             task.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        task.run();
-                    }
-                });
-    }
+          }
+        });
+  }
 
-    private HerbIdentificationVO identify(Long imageId, MobileBatchIdentifyRequest request) {
-        HerbIdentifyRequest identifyRequest = new HerbIdentifyRequest();
-        if (request != null) {
-            identifyRequest.setForceRefresh(request.getForceRefresh());
-            identifyRequest.setTopK(request.getTopK());
-        }
-        return herbIdentificationService.identify(imageId, identifyRequest);
+  private HerbIdentificationVO identify(Long imageId, MobileBatchIdentifyRequest request) {
+    HerbIdentifyRequest identifyRequest = new HerbIdentifyRequest();
+    if (request != null) {
+      identifyRequest.setForceRefresh(request.getForceRefresh());
+      identifyRequest.setTopK(request.getTopK());
     }
+    return herbIdentificationService.identify(imageId, identifyRequest);
+  }
 
-    private HerbImageUploadRequest toImageUploadRequest(
-            HerbBatchEntity batch, MobileBatchImageUploadRequest request) {
-        HerbImageUploadRequest uploadRequest = new HerbImageUploadRequest();
-        uploadRequest.setSpeciesId(batch.getSpeciesId());
-        uploadRequest.setBaseId(batch.getBaseId());
-        uploadRequest.setUploadSource("mobile");
-        uploadRequest.setCollectorId(request.getCollectorId());
-        uploadRequest.setCollectPlace(
-                StringUtils.hasText(request.getCollectPlace())
-                        ? request.getCollectPlace()
-                        : batch.getOriginPlace());
-        uploadRequest.setCollectTime(
-                request.getCollectTime() == null ? LocalDateTime.now() : request.getCollectTime());
-        uploadRequest.setImageType(request.getImageType());
-        uploadRequest.setGrowthStage(request.getGrowthStage());
-        uploadRequest.setHealthStatus(request.getHealthStatus());
-        return uploadRequest;
-    }
+  private HerbImageUploadRequest toImageUploadRequest(
+      HerbBatchEntity batch, MobileBatchImageUploadRequest request) {
+    HerbImageUploadRequest uploadRequest = new HerbImageUploadRequest();
+    uploadRequest.setSpeciesId(batch.getSpeciesId());
+    uploadRequest.setBaseId(batch.getBaseId());
+    uploadRequest.setUploadSource("mobile");
+    uploadRequest.setCollectorId(request.getCollectorId());
+    uploadRequest.setCollectPlace(
+        StringUtils.hasText(request.getCollectPlace())
+            ? request.getCollectPlace()
+            : batch.getOriginPlace());
+    uploadRequest.setCollectTime(
+        request.getCollectTime() == null ? LocalDateTime.now() : request.getCollectTime());
+    uploadRequest.setImageType(request.getImageType());
+    uploadRequest.setGrowthStage(request.getGrowthStage());
+    uploadRequest.setHealthStatus(request.getHealthStatus());
+    return uploadRequest;
+  }
 
-    private HerbBatchImageBindRequest toBindRequest(
-            MobileBatchImageUploadRequest request, Long identificationResultId) {
-        HerbBatchImageBindRequest bindRequest = new HerbBatchImageBindRequest();
-        bindRequest.setImageId(null);
-        bindRequest.setIdentificationResultId(identificationResultId);
-        bindRequest.setImageRole(
-                StringUtils.hasText(request.getImageRole())
-                        ? request.getImageRole()
-                        : HerbBatchImageRoleConstants.OTHER);
-        bindRequest.setIsPrimary(request.getIsPrimary() == null ? 0 : request.getIsPrimary());
-        bindRequest.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
-        bindRequest.setRemark("mobile upload");
-        return bindRequest;
-    }
+  private HerbBatchImageBindRequest toBindRequest(
+      MobileBatchImageUploadRequest request, Long identificationResultId) {
+    HerbBatchImageBindRequest bindRequest = new HerbBatchImageBindRequest();
+    bindRequest.setImageId(null);
+    bindRequest.setIdentificationResultId(identificationResultId);
+    bindRequest.setImageRole(
+        StringUtils.hasText(request.getImageRole())
+            ? request.getImageRole()
+            : HerbBatchImageRoleConstants.OTHER);
+    bindRequest.setIsPrimary(request.getIsPrimary() == null ? 0 : request.getIsPrimary());
+    bindRequest.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
+    bindRequest.setRemark("mobile upload");
+    return bindRequest;
+  }
 
-    private HerbBatchImageBindRequest toBindRequest(
-            MobileBatchImageUploadRequest request, HerbImageVO image) {
-        HerbBatchImageBindRequest bindRequest = toBindRequest(request, (Long) null);
-        bindRequest.setImageId(image.getId());
-        return bindRequest;
-    }
+  private HerbBatchImageBindRequest toBindRequest(
+      MobileBatchImageUploadRequest request, HerbImageVO image) {
+    HerbBatchImageBindRequest bindRequest = toBindRequest(request, (Long) null);
+    bindRequest.setImageId(image.getId());
+    return bindRequest;
+  }
 
-    private HerbBatchVO getBatchDetail(Long batchId) {
-        HerbBatchVO batch = herbBatchMapper.selectDetailById(batchId);
-        if (batch == null) {
-            throw new BusinessException("Batch not found");
-        }
-        return batch;
+  private HerbBatchVO getBatchDetail(Long batchId) {
+    HerbBatchVO batch = herbBatchMapper.selectDetailById(batchId);
+    if (batch == null) {
+      throw new BusinessException("Batch not found");
     }
+    return batch;
+  }
 
-    private HerbBatchEntity getActiveBatch(Long batchId) {
-        if (batchId == null) {
-            throw new BusinessException("Batch id is required");
-        }
-        HerbBatchEntity batch = herbBatchMapper.selectById(batchId);
-        if (batch == null) {
-            throw new BusinessException("Batch not found");
-        }
-        return batch;
+  private HerbBatchEntity getActiveBatch(Long batchId) {
+    if (batchId == null) {
+      throw new BusinessException("Batch id is required");
     }
+    HerbBatchEntity batch = herbBatchMapper.selectById(batchId);
+    if (batch == null) {
+      throw new BusinessException("Batch not found");
+    }
+    return batch;
+  }
 
-    private HerbBatchEntity getEditableBatch(Long batchId) {
-        HerbBatchEntity batch = getActiveBatch(batchId);
-        if (HerbBatchStatusConstants.ARCHIVED.equals(batch.getBatchStatus())
-                || HerbBatchStatusConstants.CANCELLED.equals(batch.getBatchStatus())) {
-            throw new BusinessException("Archived or cancelled batch cannot be operated by mobile");
-        }
-        return batch;
+  private HerbBatchEntity getEditableBatch(Long batchId) {
+    HerbBatchEntity batch = getActiveBatch(batchId);
+    if (HerbBatchStatusConstants.ARCHIVED.equals(batch.getBatchStatus())
+        || HerbBatchStatusConstants.CANCELLED.equals(batch.getBatchStatus())) {
+      throw new BusinessException("Archived or cancelled batch cannot be operated by mobile");
     }
+    return batch;
+  }
 
-    private void validateBatchCollector(Long taskId, Long collectorId) {
-        if (collectorId == null || taskId == null) {
-            return;
-        }
-        HerbCollectionTaskEntity task = herbCollectionTaskMapper.selectById(taskId);
-        if (task == null) {
-            throw new BusinessException("Task not found");
-        }
-        if (task.getCollectorId() != null && !collectorId.equals(task.getCollectorId())) {
-            throw new BusinessException("Task does not belong to current collector");
-        }
+  private void validateBatchCollector(Long taskId, Long collectorId) {
+    if (collectorId == null || taskId == null) {
+      return;
     }
+    HerbCollectionTaskEntity task = herbCollectionTaskMapper.selectById(taskId);
+    if (task == null) {
+      throw new BusinessException("Task not found");
+    }
+    if (task.getCollectorId() != null && !collectorId.equals(task.getCollectorId())) {
+      throw new BusinessException("Task does not belong to current collector");
+    }
+  }
 
-    private void ensureUploadAllowed(HerbBatchEntity batch) {
-        getEditableBatch(batch.getId());
-        if (!HerbBatchStatusConstants.DRAFT.equals(batch.getBatchStatus())
-                && !HerbBatchStatusConstants.COLLECTING.equals(batch.getBatchStatus())) {
-            throw new BusinessException(
-                    "Only draft or collecting batch can upload images by mobile");
-        }
+  private void ensureUploadAllowed(HerbBatchEntity batch) {
+    getEditableBatch(batch.getId());
+    if (!HerbBatchStatusConstants.DRAFT.equals(batch.getBatchStatus())
+        && !HerbBatchStatusConstants.COLLECTING.equals(batch.getBatchStatus())) {
+      throw new BusinessException("Only draft or collecting batch can upload images by mobile");
     }
+  }
 
-    private HerbBatchImageEntity getBoundBinding(Long batchId, Long imageId) {
-        HerbBatchImageEntity binding =
-                herbBatchImageMapper.selectByBatchIdAndImageId(batchId, imageId);
-        if (binding == null) {
-            throw new BusinessException("Batch image binding not found");
-        }
-        return binding;
+  private HerbBatchImageEntity getBoundBinding(Long batchId, Long imageId) {
+    HerbBatchImageEntity binding = herbBatchImageMapper.selectByBatchIdAndImageId(batchId, imageId);
+    if (binding == null) {
+      throw new BusinessException("Batch image binding not found");
     }
+    return binding;
+  }
 
-    private void updateBindingIdentification(
-            HerbBatchImageEntity binding, Long identificationResultId) {
-        binding.setIdentificationResultId(identificationResultId);
-        binding.setUpdatedAt(LocalDateTime.now());
-        herbBatchImageMapper.updateIdentificationResultById(binding);
-    }
+  private void updateBindingIdentification(
+      HerbBatchImageEntity binding, Long identificationResultId) {
+    binding.setIdentificationResultId(identificationResultId);
+    binding.setUpdatedAt(LocalDateTime.now());
+    herbBatchImageMapper.updateIdentificationResultById(binding);
+  }
 
-    private MobileBatchDetailVO toDetailVO(HerbBatchVO batch) {
-        MobileBatchDetailVO vo = new MobileBatchDetailVO();
-        vo.setBatchId(batch.getId());
-        vo.setBatchCode(batch.getBatchCode());
-        vo.setBatchName(batch.getBatchName());
-        vo.setTaskId(batch.getTaskId());
-        vo.setSpeciesId(batch.getSpeciesId());
-        vo.setSpeciesName(batch.getSpeciesName());
-        vo.setBaseId(batch.getBaseId());
-        vo.setBaseName(batch.getBaseName());
-        vo.setOriginPlace(batch.getOriginPlace());
-        vo.setCollectStartTime(batch.getCollectStartTime());
-        vo.setCollectEndTime(batch.getCollectEndTime());
-        vo.setBatchStatus(batch.getBatchStatus());
-        vo.setImageCount(batch.getImageCount());
-        vo.setIdentifiedCount(batch.getIdentifiedCount());
-        vo.setReviewedCount(batch.getReviewedCount());
-        vo.setNeedReviewCount(batch.getNeedReviewCount());
-        vo.setFinalSpeciesName(batch.getFinalSpeciesName());
-        vo.setAvgSimilarity(batch.getAvgSimilarity());
-        vo.setQualityLevel(batch.getQualityLevel());
-        vo.setQualityScore(batch.getQualityScore());
-        vo.setEvaluationSummary(batch.getEvaluationSummary());
-        return vo;
-    }
+  private MobileBatchDetailVO toDetailVO(HerbBatchVO batch) {
+    MobileBatchDetailVO vo = new MobileBatchDetailVO();
+    vo.setBatchId(batch.getId());
+    vo.setBatchCode(batch.getBatchCode());
+    vo.setBatchName(batch.getBatchName());
+    vo.setTaskId(batch.getTaskId());
+    vo.setSpeciesId(batch.getSpeciesId());
+    vo.setSpeciesName(batch.getSpeciesName());
+    vo.setBaseId(batch.getBaseId());
+    vo.setBaseName(batch.getBaseName());
+    vo.setOriginPlace(batch.getOriginPlace());
+    vo.setCollectStartTime(batch.getCollectStartTime());
+    vo.setCollectEndTime(batch.getCollectEndTime());
+    vo.setBatchStatus(batch.getBatchStatus());
+    vo.setImageCount(batch.getImageCount());
+    vo.setIdentifiedCount(batch.getIdentifiedCount());
+    vo.setReviewedCount(batch.getReviewedCount());
+    vo.setNeedReviewCount(batch.getNeedReviewCount());
+    vo.setFinalSpeciesName(batch.getFinalSpeciesName());
+    vo.setAvgSimilarity(batch.getAvgSimilarity());
+    vo.setQualityLevel(batch.getQualityLevel());
+    vo.setQualityScore(batch.getQualityScore());
+    vo.setEvaluationSummary(batch.getEvaluationSummary());
+    return vo;
+  }
 
-    private MobileBatchImageVO toMobileImageVO(HerbBatchImageVO image) {
-        MobileBatchImageVO vo = new MobileBatchImageVO();
-        vo.setBatchImageId(image.getId());
-        vo.setImageId(image.getImageId());
-        vo.setImageCode(image.getImageCode());
-        vo.setImageUrl(image.getImageUrl());
-        vo.setImageRole(image.getImageRole());
-        vo.setIsPrimary(image.getIsPrimary());
-        vo.setIdentificationResultId(image.getIdentificationResultId());
-        vo.setFinalSpeciesName(image.getFinalSpeciesName());
-        vo.setFinalConfidence(image.getFinalConfidence());
-        vo.setNeedReview(image.getNeedReview());
-        vo.setReviewStatus(image.getReviewStatus());
-        vo.setResultSource(image.getResultSource());
-        vo.setIdentifyTime(image.getIdentifyTime());
-        return vo;
-    }
+  private MobileBatchImageVO toMobileImageVO(HerbBatchImageVO image) {
+    MobileBatchImageVO vo = new MobileBatchImageVO();
+    vo.setBatchImageId(image.getId());
+    vo.setImageId(image.getImageId());
+    vo.setImageCode(image.getImageCode());
+    vo.setImageUrl(image.getImageUrl());
+    vo.setImageRole(image.getImageRole());
+    vo.setIsPrimary(image.getIsPrimary());
+    vo.setIdentificationResultId(image.getIdentificationResultId());
+    vo.setFinalSpeciesName(image.getFinalSpeciesName());
+    vo.setFinalConfidence(image.getFinalConfidence());
+    vo.setNeedReview(image.getNeedReview());
+    vo.setReviewStatus(image.getReviewStatus());
+    vo.setResultSource(image.getResultSource());
+    vo.setIdentifyTime(image.getIdentifyTime());
+    return vo;
+  }
 
-    private MobileBatchImageUploadResultVO toUploadResult(HerbBatchImageVO image) {
-        MobileBatchImageUploadResultVO result = new MobileBatchImageUploadResultVO();
-        fillUploadResult(result, image);
-        return result;
-    }
+  private MobileBatchImageUploadResultVO toUploadResult(HerbBatchImageVO image) {
+    MobileBatchImageUploadResultVO result = new MobileBatchImageUploadResultVO();
+    fillUploadResult(result, image);
+    return result;
+  }
 
-    private void fillUploadResult(MobileBatchImageUploadResultVO result, HerbBatchImageVO image) {
-        result.setBatchId(image.getBatchId());
-        result.setBatchImageId(image.getId());
-        result.setImageId(image.getImageId());
-        result.setImageCode(image.getImageCode());
-        result.setImageUrl(image.getImageUrl());
-        result.setImageRole(image.getImageRole());
-        result.setIsPrimary(image.getIsPrimary());
-        result.setIdentificationResultId(image.getIdentificationResultId());
-        result.setFinalSpeciesName(image.getFinalSpeciesName());
-        result.setFinalConfidence(image.getFinalConfidence());
-        result.setNeedReview(image.getNeedReview());
-        result.setReviewStatus(image.getReviewStatus());
-    }
+  private void fillUploadResult(MobileBatchImageUploadResultVO result, HerbBatchImageVO image) {
+    result.setBatchId(image.getBatchId());
+    result.setBatchImageId(image.getId());
+    result.setImageId(image.getImageId());
+    result.setImageCode(image.getImageCode());
+    result.setImageUrl(image.getImageUrl());
+    result.setImageRole(image.getImageRole());
+    result.setIsPrimary(image.getIsPrimary());
+    result.setIdentificationResultId(image.getIdentificationResultId());
+    result.setFinalSpeciesName(image.getFinalSpeciesName());
+    result.setFinalConfidence(image.getFinalConfidence());
+    result.setNeedReview(image.getNeedReview());
+    result.setReviewStatus(image.getReviewStatus());
+  }
 
-    private MobileImageIdentificationVO toMobileIdentificationVO(
-            HerbIdentificationVO identification, HerbImageVO image) {
-        MobileImageIdentificationVO vo = new MobileImageIdentificationVO();
-        vo.setId(identification.getId());
-        vo.setImageId(identification.getImageId());
-        vo.setImageCode(identification.getImageCode());
-        vo.setImageUrl(identification.getImageUrl());
-        vo.setImageName(image == null ? null : image.getImageName());
-        vo.setImageRole(image == null ? null : image.getImageType());
-        vo.setCollectPlace(image == null ? null : image.getCollectPlace());
-        vo.setCollectTime(image == null ? null : image.getCollectTime());
-        vo.setFinalSpeciesId(identification.getFinalSpeciesId());
-        vo.setFinalSpeciesName(identification.getFinalSpeciesName());
-        vo.setFinalConfidence(identification.getFinalConfidence());
-        vo.setResultSource(identification.getResultSource());
-        vo.setMatchResult(identification.getMatchResult());
-        vo.setNeedReview(identification.getNeedReview());
-        vo.setReviewStatus(identification.getReviewStatus());
-        vo.setSuggestion(identification.getSuggestion());
-        vo.setLocalCandidates(identification.getLocalCandidates());
-        vo.setDoubaoRecognition(identification.getDoubaoRecognition());
-        vo.setIdentifyTime(identification.getIdentifyTime());
-        return vo;
-    }
+  private MobileImageIdentificationVO toMobileIdentificationVO(
+      HerbIdentificationVO identification, HerbImageVO image) {
+    MobileImageIdentificationVO vo = new MobileImageIdentificationVO();
+    vo.setId(identification.getId());
+    vo.setImageId(identification.getImageId());
+    vo.setImageCode(identification.getImageCode());
+    vo.setImageUrl(identification.getImageUrl());
+    vo.setImageName(image == null ? null : image.getImageName());
+    vo.setImageRole(image == null ? null : image.getImageType());
+    vo.setCollectPlace(image == null ? null : image.getCollectPlace());
+    vo.setCollectTime(image == null ? null : image.getCollectTime());
+    vo.setFinalSpeciesId(identification.getFinalSpeciesId());
+    vo.setFinalSpeciesName(identification.getFinalSpeciesName());
+    vo.setFinalConfidence(identification.getFinalConfidence());
+    vo.setResultSource(identification.getResultSource());
+    vo.setMatchResult(identification.getMatchResult());
+    vo.setNeedReview(identification.getNeedReview());
+    vo.setReviewStatus(identification.getReviewStatus());
+    vo.setSuggestion(identification.getSuggestion());
+    vo.setLocalCandidates(identification.getLocalCandidates());
+    vo.setDoubaoRecognition(identification.getDoubaoRecognition());
+    vo.setIdentifyTime(identification.getIdentifyTime());
+    return vo;
+  }
 
-    private String appendText(String first, String second) {
-        if (!StringUtils.hasText(first)) {
-            return second;
-        }
-        if (!StringUtils.hasText(second)) {
-            return first;
-        }
-        return first + "；" + second;
+  private String appendText(String first, String second) {
+    if (!StringUtils.hasText(first)) {
+      return second;
     }
+    if (!StringUtils.hasText(second)) {
+      return first;
+    }
+    return first + "；" + second;
+  }
 }

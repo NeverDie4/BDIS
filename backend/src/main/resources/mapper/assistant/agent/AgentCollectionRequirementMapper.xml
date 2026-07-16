@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentCollectionRequirementMapper">
+    <resultMap id="RequirementResultMap" type="com.bdis.modules.assistant.agent.entity.AgentCollectionRequirementEntity">
+        <id column="id" property="id"/>
+        <result column="collection_plan_id" property="collectionPlanId"/>
+        <result column="collection_task_id" property="collectionTaskId"/>
+        <result column="requirement_type" property="requirementType"/>
+        <result column="requirement_code" property="requirementCode"/>
+        <result column="requirement_name" property="requirementName"/>
+        <result column="required" property="required"/>
+        <result column="min_count" property="minCount"/>
+        <result column="unit" property="unit"/>
+        <result column="guidance" property="guidance"/>
+        <result column="reason" property="reason"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_collection_requirement (
+            collection_plan_id, collection_task_id, requirement_type, requirement_code,
+            requirement_name, required, min_count, unit, guidance, reason, sort_order, create_time
+        ) VALUES (
+            #{collectionPlanId}, #{collectionTaskId}, #{requirementType}, #{requirementCode},
+            #{requirementName}, #{required}, #{minCount}, #{unit}, #{guidance}, #{reason},
+            #{sortOrder}, #{createTime}
+        )
+    </insert>
+
+    <select id="selectByTaskId" resultMap="RequirementResultMap">
+        SELECT id, collection_plan_id, collection_task_id, requirement_type,
+               requirement_code, requirement_name, required, min_count, unit,
+               guidance, reason, sort_order, create_time
+        FROM assistant_agent_collection_requirement
+        WHERE collection_task_id = #{collectionTaskId}
+        ORDER BY sort_order, id
+    </select>
+</mapper>

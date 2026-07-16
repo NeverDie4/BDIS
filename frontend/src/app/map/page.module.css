@@ -4,24 +4,9 @@
   gap: 12px;
 }
 
-.bannerWrap > section {
-  padding: 16px 24px;
-}
-
-.bannerWrap > section > p {
-  margin-bottom: 6px;
-  font-size: 11px;
-}
-
-.bannerWrap :global(h1.ant-typography) {
-  font-size: 30px !important;
-  line-height: 1.16 !important;
-}
-
-.bannerWrap :global(p.ant-typography) {
-  margin-top: 6px !important;
-  font-size: 14px;
-  line-height: 1.5;
+.bannerWrap {
+  overflow: hidden;
+  border-radius: 2px;
 }
 
 @media (max-width: 640px) {
@@ -30,11 +15,4 @@
     margin-left: calc((100% - 100vw + 24px) / 2);
   }
 
-  .bannerWrap > section {
-    padding: 14px 16px;
-  }
-
-  .bannerWrap :global(h1.ant-typography) {
-    font-size: 25px !important;
-  }
 }

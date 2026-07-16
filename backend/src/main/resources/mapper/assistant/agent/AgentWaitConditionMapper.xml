@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentWaitConditionMapper">
+    <resultMap id="WaitConditionResultMap"
+               type="com.bdis.modules.assistant.agent.entity.AgentWaitConditionEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="agent_step_id" property="agentStepId"/>
+        <result column="collection_plan_id" property="collectionPlanId"/>
+        <result column="follow_up_task_id" property="followUpTaskId"/>
+        <result column="condition_type" property="conditionType"/>
+        <result column="condition_json" property="conditionJson"/>
+        <result column="current_snapshot_json" property="currentSnapshotJson"/>
+        <result column="status" property="status"/>
+        <result column="deadline" property="deadline"/>
+        <result column="last_check_time" property="lastCheckTime"/>
+        <result column="satisfied_time" property="satisfiedTime"/>
+        <result column="check_count" property="checkCount"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="waitConditionColumns">
+        id, agent_task_id, agent_step_id, collection_plan_id, follow_up_task_id,
+        condition_type, condition_json, current_snapshot_json, status, deadline,
+        last_check_time, satisfied_time, check_count, version, create_time, update_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_wait_condition (
+            agent_task_id, agent_step_id, collection_plan_id, follow_up_task_id,
+            condition_type, condition_json, current_snapshot_json, status, deadline,
+            last_check_time, satisfied_time, check_count, version, create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{agentStepId}, #{collectionPlanId}, #{followUpTaskId},
+            #{conditionType}, #{conditionJson}, #{currentSnapshotJson}, #{status}, #{deadline},
+            #{lastCheckTime}, #{satisfiedTime}, #{checkCount}, #{version}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="WaitConditionResultMap">
+        SELECT <include refid="waitConditionColumns"/>
+        FROM assistant_agent_wait_condition
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByAgentTaskId" resultMap="WaitConditionResultMap">
+        SELECT <include refid="waitConditionColumns"/>
+        FROM assistant_agent_wait_condition
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveByFollowUpTaskId" resultMap="WaitConditionResultMap">
+        SELECT <include refid="waitConditionColumns"/>
+        FROM assistant_agent_wait_condition
+        WHERE follow_up_task_id = #{followUpTaskId}
+          AND status IN ('WAITING', 'PARTIALLY_SATISFIED', 'SATISFIED')
+        ORDER BY id
+    </select>
+
+    <select id="selectRecoveryCandidates" resultMap="WaitConditionResultMap">
+        SELECT w.id, w.agent_task_id, w.agent_step_id, w.collection_plan_id,
+               w.follow_up_task_id, w.condition_type, w.condition_json,
+               w.current_snapshot_json, w.status, w.deadline, w.last_check_time,
+               w.satisfied_time, w.check_count, w.version, w.create_time, w.update_time
+        FROM assistant_agent_wait_condition w
+        JOIN assistant_agent_task t ON t.id = w.agent_task_id AND t.is_deleted = 0
+        WHERE w.status IN ('WAITING', 'PARTIALLY_SATISFIED', 'SATISFIED')
+          AND t.status = 'WAITING_FIELD_DATA'
+        ORDER BY COALESCE(w.last_check_time, w.create_time), w.id
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateCheck">
+        UPDATE assistant_agent_wait_condition
+        SET status = #{status}, current_snapshot_json = #{snapshotJson},
+            last_check_time = #{checkTime}, satisfied_time = #{satisfiedTime},
+            check_count = check_count + 1, version = version + 1,
+            update_time = #{checkTime}
+        WHERE id = #{id}
+          AND status IN ('WAITING', 'PARTIALLY_SATISFIED')
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="incrementTerminalCheckCount">
+        UPDATE assistant_agent_wait_condition
+        SET last_check_time = #{checkTime}, check_count = check_count + 1,
+            update_time = #{checkTime}
+        WHERE id = #{id}
+          AND status IN ('SATISFIED', 'EXPIRED', 'CANCELLED', 'FAILED')
+    </update>
+
+    <update id="cancelByAgentTaskId">
+        UPDATE assistant_agent_wait_condition
+        SET status = 'CANCELLED', update_time = #{updateTime}, version = version + 1
+        WHERE agent_task_id = #{agentTaskId}
+          AND status IN ('WAITING', 'PARTIALLY_SATISFIED', 'SATISFIED')
+    </update>
+</mapper>

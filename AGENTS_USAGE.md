@@ -1,19 +1,19 @@
 # BDIS AI Agent 使用说明
 
-本文档说明团队如何统一使用 AI 开发规则。根目录中的 `AGENTS.template.md` 是可提交的模板文件；各工具真正读取的个人规则文件已被 `.gitignore` 忽略。
+本文档说明团队如何统一使用 AI 开发规则。根目录中的 `AGENTS.template.md` 是可提交的团队模板；各工具真正读取的项目级或个人规则文件已被 `.gitignore` 忽略。模板以当前冻结基线为准，个人规则不得继续保留与模板冲突的“项目初始化中”等过时约束。
 
 ## 一、推荐做法
 
 1. 团队共同维护 `AGENTS.template.md`。
 2. 每个成员根据自己使用的 AI 工具复制模板到对应位置。
 3. 个人可在本地规则文件中补充工具偏好，但不得提交。
-4. 如果规则对全组都有价值，先更新 `AGENTS.template.md`，再通知成员同步。
+4. 如果规则对全组都有价值，先更新 `AGENTS.template.md`，再通知成员合并同步，不直接覆盖个人工具偏好。
 
 ## 二、不同工具的使用方式
 
 | 工具 | 建议做法 | 是否提交 |
 | --- | --- | --- |
-| OpenAI Codex | 将 `AGENTS.template.md` 内容复制到本机 `~/.codex/AGENTS.md`；临时覆盖可使用项目根目录 `AGENTS.override.md`。 | 不提交个人规则 |
+| OpenAI Codex | 优先将模板合并到项目根目录 `AGENTS.md`，供支持项目规则的 Codex 使用；全局规则可另放在 `~/.codex/AGENTS.md`，项目临时覆盖可使用 `AGENTS.override.md`。 | 不提交个人规则 |
 | TRAE CN | 在 IDE 设置中创建规则，或把模板内容复制到项目 `.trae/rules/` 下的规则文件。 | 不提交 `.trae/rules/` |
 | GitHub Copilot | 将模板内容复制到 `.github/copilot-instructions.md`。 | 当前不提交 |
 | Claude 类工具 | 可复制为根目录 `CLAUDE.md`。 | 当前不提交 |
@@ -35,11 +35,10 @@
 ### OpenAI Codex
 
 ```bash
-mkdir -p ~/.codex
-cp AGENTS.template.md ~/.codex/AGENTS.md
+cp AGENTS.template.md AGENTS.md
 ```
 
-如需项目临时覆盖，可复制一份：
+已有本地 `AGENTS.md` 包含个人工具规则时，应手工合并模板，不要直接覆盖。全局通用偏好可单独维护在 `~/.codex/AGENTS.md`。如需项目临时覆盖，可复制一份：
 
 ```bash
 cp AGENTS.template.md AGENTS.override.md
@@ -81,7 +80,7 @@ cp AGENTS.template.md CLAUDE.md
 
 1. 先修改 `AGENTS.template.md`。
 2. 在提交说明中写明规则变更原因。
-3. 通知成员重新复制或手动同步到自己的工具规则文件。
+3. 通知成员手动同步到自己的项目级或工具规则文件；同步后检查当前阶段、文档索引和 Flyway 约束没有保留旧值。
 4. 如果只是个人偏好，写在本地规则文件中，不修改模板。
 
 ## 六、当前忽略的 AI 规则文件

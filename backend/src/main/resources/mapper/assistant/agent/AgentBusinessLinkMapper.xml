@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentBusinessLinkMapper">
+    <resultMap id="LinkResultMap" type="com.bdis.modules.assistant.agent.entity.AgentBusinessLinkEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="agent_action_id" property="agentActionId"/>
+        <result column="collection_plan_id" property="collectionPlanId"/>
+        <result column="relation_type" property="relationType"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="business_no" property="businessNo"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_business_link (
+            agent_task_id, agent_action_id, collection_plan_id, relation_type,
+            business_type, business_id, business_no, create_time
+        ) VALUES (
+            #{agentTaskId}, #{agentActionId}, #{collectionPlanId}, #{relationType},
+            #{businessType}, #{businessId}, #{businessNo}, #{createTime}
+        )
+    </insert>
+
+    <select id="selectByAction" resultMap="LinkResultMap">
+        SELECT id, agent_task_id, agent_action_id, collection_plan_id, relation_type,
+               business_type, business_id, business_no, create_time
+        FROM assistant_agent_business_link
+        WHERE agent_action_id = #{agentActionId}
+          AND relation_type = #{relationType}
+        LIMIT 1
+    </select>
+
+    <select id="selectByAgentTaskId" resultMap="LinkResultMap">
+        SELECT id, agent_task_id, agent_action_id, collection_plan_id, relation_type,
+               business_type, business_id, business_no, create_time
+        FROM assistant_agent_business_link
+        WHERE agent_task_id = #{agentTaskId}
+          AND relation_type = #{relationType}
+        ORDER BY id
+    </select>
+</mapper>

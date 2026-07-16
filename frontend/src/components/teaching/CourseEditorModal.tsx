@@ -13,6 +13,7 @@ import {
   deleteCourseStep,
   getCourse,
   getApiErrorMessage,
+  listCourses,
   updateCourse,
   updateCourseStep,
   type CourseDetailApi,
@@ -28,10 +29,10 @@ type CourseFormValues = {
   applicableMajors?: string;
   hours?: number;
   credits?: number;
-  prerequisites?: string;
+  prerequisiteCourseIds?: number[];
   teachingObjectives?: string;
   teachingMethods?: string;
-  tags?: string;
+  tags?: string[];
   remark?: string;
 };
 
@@ -80,10 +81,10 @@ function fromCourse(course: CourseRecord | null) {
       applicableMajors: course.detail.applicableMajors.join("\n"),
       hours: course.detail.hours,
       credits: course.detail.credits,
-      prerequisites: course.detail.prerequisites.join("\n"),
+      prerequisiteCourseIds: course.detail.prerequisiteCourseIds,
       teachingObjectives: course.detail.teachingObjectives.join("\n"),
       teachingMethods: course.detail.teachingMethods.join("\n"),
-      tags: course.detail.tags.join("\n"),
+      tags: course.detail.tags,
     },
     steps: course.detail.experimentSteps.map((step, index) => ({
       key: `step-${step.id ?? index}`,
@@ -115,6 +116,7 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
   const [steps, setSteps] = useState<StepDraft[]>([]);
   const [resources, setResources] = useState<ResourceDraft[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [prerequisiteOptions, setPrerequisiteOptions] = useState<Array<{ value: number; label: string }>>([]);
   const [saving, setSaving] = useState(false);
   const initial = useMemo(() => fromCourse(course), [course]);
 
@@ -126,6 +128,15 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
     setVideoFile(null);
     setActiveTab("basic");
   }, [form, initial, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    void listCourses({ publishStatus: "published" })
+      .then((page) => setPrerequisiteOptions(page.records
+        .filter((item) => item.id !== Number(course?.id))
+        .map((item) => ({ value: item.id, label: `${item.courseNo} · ${item.courseName}` }))))
+      .catch(() => setPrerequisiteOptions([]));
+  }, [course?.id, open]);
 
   function addStep() {
     setSteps((current) => [
@@ -198,10 +209,10 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
         ...values,
         teacherId,
         applicableMajors: toList(values.applicableMajors),
-        prerequisites: toList(values.prerequisites),
+        prerequisiteCourseIds: values.prerequisiteCourseIds ?? [],
         teachingObjectives: toList(values.teachingObjectives),
         teachingMethods: toList(values.teachingMethods),
-        tags: toList(values.tags),
+        tags: values.tags ?? [],
       };
       const current = course ? await getCourse(Number(course.id)) : null;
       const currentStepVersions = new Map((current?.steps ?? []).map((step) => [step.id, step.version]));
@@ -313,8 +324,8 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
                     <InputNumber min={0} step={0.5} style={{ width: "100%" }} />
                   </Form.Item>
                 </Space>
-                <Form.Item label="先修课程（每行一个）" name="prerequisites">
-                  <Input.TextArea rows={2} />
+                <Form.Item label="先修课程" name="prerequisiteCourseIds">
+                  <Select allowClear mode="multiple" options={prerequisiteOptions} placeholder="选择已发布先修课程" showSearch optionFilterProp="label" />
                 </Form.Item>
                 <Form.Item label="教学目标（每行一个）" name="teachingObjectives">
                   <Input.TextArea rows={3} />
@@ -322,8 +333,8 @@ export function CourseEditorModal({ open, course, teacherId, onCancel, onSaved }
                 <Form.Item label="教学方式（每行一个）" name="teachingMethods">
                   <Input.TextArea rows={2} />
                 </Form.Item>
-                <Form.Item label="课程标签（每行一个）" name="tags">
-                  <Input.TextArea rows={2} />
+                <Form.Item label="课程标签" name="tags">
+                  <Select mode="tags" tokenSeparators={[",", "，"]} placeholder="输入标签后按回车添加" />
                 </Form.Item>
                 <Upload
                   accept="video/*"

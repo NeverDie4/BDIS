@@ -6,6 +6,7 @@ node_modules/
 frontend/.next/
 frontend/out/
 frontend/coverage/
+frontend/.npm-cache/
 frontend/.env*.local
 frontend/.next-dev*.log
 frontend/build-debug.log
@@ -86,6 +87,12 @@ Thumbs.db
 
 # Local teaching dev logs
 frontend/.teaching-dev.*.log
+
+# Personal internship materials and generated document previews
+/.artifacts/
+/*.docx
+/~$*.docx
+/docs/superpowers/plans/
 
 # Git worktrees
 .worktrees/

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentFieldDataMapper">
+    <resultMap id="GrowthRecordResultMap"
+               type="com.bdis.modules.growth.entity.GrowthRecordEntity">
+        <id column="id" property="id"/>
+        <result column="batch_id" property="batchId"/>
+        <result column="task_id" property="taskId"/>
+        <result column="plant_height" property="plantHeight"/>
+        <result column="stem_diameter" property="stemDiameter"/>
+        <result column="temperature" property="temperature"/>
+        <result column="humidity" property="humidity"/>
+        <result column="soil_moisture" property="soilMoisture"/>
+        <result column="soil_ph" property="soilPh"/>
+        <result column="light" property="light"/>
+        <result column="leaf_color" property="leafColor"/>
+        <result column="flowering_status" property="floweringStatus"/>
+        <result column="sample_weight" property="sampleWeight"/>
+        <result column="review_status" property="reviewStatus"/>
+        <result column="submitted_at" property="submittedAt"/>
+        <result column="collected_at" property="collectedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectValidBatches"
+            resultType="com.bdis.modules.collection.entity.HerbBatchEntity">
+        SELECT id, task_id, batch_code, batch_name, batch_status,
+               collect_start_time, collect_end_time, created_at, updated_at
+        FROM herb_batch
+        WHERE task_id = #{taskId}
+          AND is_deleted = 0
+          AND batch_status != 'cancelled'
+        ORDER BY COALESCE(collect_start_time, created_at), id
+    </select>
+
+    <select id="selectLatestGrowthRecord" resultMap="GrowthRecordResultMap">
+        SELECT id, batch_id, task_id, plant_height, stem_diameter, temperature,
+               humidity, soil_moisture, soil_ph, light, leaf_color,
+               flowering_status, sample_weight, review_status, submitted_at,
+               collected_at, created_at, updated_at
+        FROM herb_growth_record
+        WHERE task_id = #{taskId}
+          AND is_deleted = 0
+        ORDER BY COALESCE(collected_at, created_at) DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectGrowthRecords" resultMap="GrowthRecordResultMap">
+        SELECT id, batch_id, task_id, plant_height, stem_diameter, temperature,
+               humidity, soil_moisture, soil_ph, light, leaf_color,
+               flowering_status, sample_weight, review_status, submitted_at,
+               collected_at, created_at, updated_at
+        FROM herb_growth_record
+        WHERE task_id = #{taskId}
+          AND is_deleted = 0
+        ORDER BY COALESCE(collected_at, created_at), id
+    </select>
+
+    <select id="selectImages"
+            resultType="com.bdis.modules.assistant.agent.dto.AgentFieldDataModels$ImageObservation">
+        SELECT i.id AS imageId,
+               i.image_type AS imageType,
+               CASE WHEN EXISTS (
+                   SELECT 1
+                   FROM herb_identification_result r
+                   WHERE r.image_id = i.id AND r.is_deleted = 0
+               ) THEN TRUE ELSE FALSE END AS recognitionReady,
+               COALESCE(i.collected_at, i.created_at) AS uploadTime
+        FROM herb_batch b
+        JOIN herb_batch_image bi
+          ON bi.batch_id = b.id AND bi.is_deleted = 0 AND bi.bind_status = 'bound'
+        JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
+        WHERE b.task_id = #{taskId}
+          AND b.is_deleted = 0
+          AND b.batch_status != 'cancelled'
+        ORDER BY COALESCE(i.collected_at, i.created_at), i.id
+    </select>
+
+    <select id="selectSnapshotImages"
+            resultType="com.bdis.modules.assistant.agent.dto.AgentFieldDataModels$SnapshotImageObservation">
+        SELECT b.id AS batchId,
+               i.id AS imageId,
+               i.image_type AS imageType,
+               CASE WHEN EXISTS (
+                   SELECT 1 FROM herb_identification_result r
+                   WHERE r.image_id = i.id AND r.is_deleted = 0
+               ) THEN TRUE ELSE FALSE END AS recognitionReady,
+               COALESCE(i.collected_at, i.created_at) AS uploadTime
+        FROM herb_batch b
+        JOIN herb_batch_image bi
+          ON bi.batch_id = b.id AND bi.is_deleted = 0 AND bi.bind_status = 'bound'
+        JOIN herb_image i ON i.id = bi.image_id AND i.is_deleted = 0
+        WHERE b.task_id = #{taskId}
+          AND b.is_deleted = 0
+          AND b.batch_status != 'cancelled'
+        ORDER BY b.id, COALESCE(i.collected_at, i.created_at), i.id
+    </select>
+</mapper>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentAnalysisRoundMapper">
+    <resultMap id="RoundResultMap"
+               type="com.bdis.modules.assistant.agent.entity.AgentAnalysisRoundEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="round_no" property="roundNo"/>
+        <result column="round_type" property="roundType"/>
+        <result column="source_collection_task_id" property="sourceCollectionTaskId"/>
+        <result column="follow_up_collection_task_id" property="followUpCollectionTaskId"/>
+        <result column="baseline_snapshot" property="baselineSnapshot"/>
+        <result column="baseline_hash" property="baselineHash"/>
+        <result column="current_snapshot" property="currentSnapshot"/>
+        <result column="current_hash" property="currentHash"/>
+        <result column="change_summary" property="changeSummary"/>
+        <result column="conclusion" property="conclusion"/>
+        <result column="outcome" property="outcome"/>
+        <result column="status" property="status"/>
+        <result column="start_time" property="startTime"/>
+        <result column="finish_time" property="finishTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="columns">
+        id, agent_task_id, round_no, round_type, source_collection_task_id,
+        follow_up_collection_task_id, baseline_snapshot, baseline_hash,
+        current_snapshot, current_hash, change_summary, conclusion, outcome,
+        status, start_time, finish_time, create_time, update_time
+    </sql>
+
+    <insert id="insertIfAbsent" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO assistant_agent_analysis_round (
+            agent_task_id, round_no, round_type, source_collection_task_id,
+            follow_up_collection_task_id, baseline_snapshot, baseline_hash,
+            current_snapshot, current_hash, change_summary, conclusion, outcome,
+            status, start_time, finish_time, create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{roundNo}, #{roundType}, #{sourceCollectionTaskId},
+            #{followUpCollectionTaskId}, #{baselineSnapshot}, #{baselineHash},
+            #{currentSnapshot}, #{currentHash}, #{changeSummary}, #{conclusion}, #{outcome},
+            #{status}, #{startTime}, #{finishTime}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <select id="selectByTaskAndRound" resultMap="RoundResultMap">
+        SELECT <include refid="columns"/>
+        FROM assistant_agent_analysis_round
+        WHERE agent_task_id = #{agentTaskId} AND round_no = #{roundNo}
+    </select>
+
+    <select id="selectLatestByTaskId" resultMap="RoundResultMap">
+        SELECT <include refid="columns"/>
+        FROM assistant_agent_analysis_round
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY round_no DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByTaskId" resultMap="RoundResultMap">
+        SELECT <include refid="columns"/>
+        FROM assistant_agent_analysis_round
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY round_no DESC
+    </select>
+
+    <update id="markRunning">
+        UPDATE assistant_agent_analysis_round
+        SET status = 'RUNNING', baseline_snapshot = #{baselineSnapshot},
+            baseline_hash = #{baselineHash}, current_snapshot = #{currentSnapshot},
+            current_hash = #{currentHash}, start_time = #{startTime}, update_time = #{startTime}
+        WHERE id = #{id} AND status = 'CREATED'
+    </update>
+
+    <update id="markSucceeded">
+        UPDATE assistant_agent_analysis_round
+        SET status = 'SUCCEEDED', current_snapshot = #{currentSnapshot},
+            current_hash = #{currentHash}, change_summary = #{changeSummary}, conclusion = #{conclusion},
+            outcome = #{outcome}, finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE id = #{id} AND status = 'RUNNING'
+    </update>
+
+    <update id="markFailed">
+        UPDATE assistant_agent_analysis_round
+        SET status = 'FAILED', conclusion = #{conclusion},
+            finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE id = #{id} AND status = 'RUNNING'
+    </update>
+</mapper>

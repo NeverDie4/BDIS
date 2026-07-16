@@ -137,6 +137,57 @@ function destination(point: MeasurePoint, distanceMeters: number, bearingDeg: nu
   return { lat: (lat2 * 180) / Math.PI, lng: (lng2 * 180) / Math.PI };
 }
 
+const GCJ_AXIS_MAJOR = 6378245.0;
+const GCJ_ECCENTRICITY_SQUARED = 0.00669342162296594323;
+
+function isOutsideChina(point: MeasurePoint) {
+  return point.lng < 72.004 || point.lng > 137.8347 || point.lat < 0.8293 || point.lat > 55.8271;
+}
+
+function transformGcjLatitude(lng: number, lat: number) {
+  let result = -100 + 2 * lng + 3 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * Math.sqrt(Math.abs(lng));
+  result += ((20 * Math.sin(6 * lng * Math.PI) + 20 * Math.sin(2 * lng * Math.PI)) * 2) / 3;
+  result += ((20 * Math.sin(lat * Math.PI) + 40 * Math.sin((lat / 3) * Math.PI)) * 2) / 3;
+  result += ((160 * Math.sin((lat / 12) * Math.PI) + 320 * Math.sin((lat * Math.PI) / 30)) * 2) / 3;
+  return result;
+}
+
+function transformGcjLongitude(lng: number, lat: number) {
+  let result = 300 + lng + 2 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * Math.sqrt(Math.abs(lng));
+  result += ((20 * Math.sin(6 * lng * Math.PI) + 20 * Math.sin(2 * lng * Math.PI)) * 2) / 3;
+  result += ((20 * Math.sin(lng * Math.PI) + 40 * Math.sin((lng / 3) * Math.PI)) * 2) / 3;
+  result += ((150 * Math.sin((lng / 12) * Math.PI) + 300 * Math.sin((lng / 30) * Math.PI)) * 2) / 3;
+  return result;
+}
+
+function wgs84ToGcj02(point: MeasurePoint): MeasurePoint {
+  if (isOutsideChina(point)) return point;
+  const adjustedLng = point.lng - 105;
+  const adjustedLat = point.lat - 35;
+  let deltaLat = transformGcjLatitude(adjustedLng, adjustedLat);
+  let deltaLng = transformGcjLongitude(adjustedLng, adjustedLat);
+  const radians = (point.lat / 180) * Math.PI;
+  let magic = Math.sin(radians);
+  magic = 1 - GCJ_ECCENTRICITY_SQUARED * magic * magic;
+  const sqrtMagic = Math.sqrt(magic);
+  deltaLat = (deltaLat * 180) / (((GCJ_AXIS_MAJOR * (1 - GCJ_ECCENTRICITY_SQUARED)) / (magic * sqrtMagic)) * Math.PI);
+  deltaLng = (deltaLng * 180) / ((GCJ_AXIS_MAJOR / sqrtMagic) * Math.cos(radians) * Math.PI);
+  return { lat: point.lat + deltaLat, lng: point.lng + deltaLng };
+}
+
+function gcj02ToWgs84(point: MeasurePoint): MeasurePoint {
+  if (isOutsideChina(point)) return point;
+  let estimate = { ...point };
+  for (let index = 0; index < 5; index += 1) {
+    const converted = wgs84ToGcj02(estimate);
+    estimate = {
+      lat: estimate.lat - (converted.lat - point.lat),
+      lng: estimate.lng - (converted.lng - point.lng),
+    };
+  }
+  return estimate;
+}
+
 function interpolate(p1: MeasurePoint, p2: MeasurePoint, t: number) {
   return {
     lat: p1.lat + t * (p2.lat - p1.lat),
@@ -289,6 +340,14 @@ function remainingRouteDistance(geometry: [number, number][], startIndex: number
   );
 }
 
+function formatNavigationInstruction(type?: string, modifier?: string, roadName?: string) {
+  const direction = modifier === "left" ? "左转" : modifier === "right" ? "右转" : modifier === "straight" ? "直行" : "继续前行";
+  if (type === "depart") return "沿当前道路出发";
+  if (type === "arrive") return "到达采集点";
+  if (type === "roundabout") return "进入环岛";
+  return roadName ? `${direction}进入 ${roadName}` : direction;
+}
+
 function optimizeRouteOrder(points: MapPoint[], origin?: RouteOrigin) {
   if (points.length < 2) {
     return points;
@@ -416,6 +475,7 @@ export function HerbDistributionMap() {
   const [routeOrderedPointIds, setRouteOrderedPointIds] = useState<number[]>([]);
   const [routeOrigin, setRouteOrigin] = useState<RouteOrigin>();
   const [routePlan, setRoutePlan] = useState<RoutePlan>();
+  const [routePreviewVisible, setRoutePreviewVisible] = useState(false);
   const [routePlanningLoading, setRoutePlanningLoading] = useState(false);
   const [routePlannerCollapsed, setRoutePlannerCollapsed] = useState(false);
   const [routeNavigating, setRouteNavigating] = useState(false);
@@ -751,6 +811,7 @@ export function HerbDistributionMap() {
     setSuitabilityMode(false);
     setSuitabilityCollapsed(false);
     setRoutePlan(undefined);
+    setRoutePreviewVisible(false);
     setRoutePlannerCollapsed(false);
     setRouteNavigating(false);
     setNavigationHudCollapsed(false);
@@ -786,6 +847,7 @@ export function HerbDistributionMap() {
       return next;
     });
     setRoutePlan(undefined);
+    setRoutePreviewVisible(true);
   }, []);
 
   const locateRouteOrigin = useCallback(() => {
@@ -795,13 +857,17 @@ export function HerbDistributionMap() {
     }
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const origin = {
+        const displayOrigin = wgs84ToGcj02({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
+        });
+        const origin = {
+          ...displayOrigin,
           label: "当前位置",
         };
         setRouteOrigin(origin);
         setRoutePlan(undefined);
+        setRoutePreviewVisible(true);
         mapRef.current?.flyTo([origin.lat, origin.lng], Math.max(mapRef.current.getZoom(), 12));
         message.success("已将当前位置设为路线起点");
       },
@@ -1299,11 +1365,13 @@ export function HerbDistributionMap() {
       return;
     }
 
-    const fallbackGeometry: [number, number][] = [
-      ...(routeOrigin ? [[routeOrigin.lat, routeOrigin.lng] as [number, number]] : []),
-      ...orderedPoints.map((point) => [point.latitude, point.longitude] as [number, number]),
-    ];
-    const geometry = routePlan?.geometry.length ? routePlan.geometry : fallbackGeometry;
+    const previewGeometry: [number, number][] = routePreviewVisible
+      ? [
+          ...(routeOrigin ? [[routeOrigin.lat, routeOrigin.lng] as [number, number]] : []),
+          ...orderedPoints.map((point) => [point.latitude, point.longitude] as [number, number]),
+        ]
+      : [];
+    const geometry = routePlan?.geometry ?? previewGeometry;
     if (geometry.length >= 2) {
       L.polyline(geometry, {
         color: routePlan?.roadRoute ? "#0f766e" : "#2563eb",
@@ -1332,7 +1400,7 @@ export function HerbDistributionMap() {
         .bindTooltip(`${index + 1}. ${point.herbName}`, { direction: "top" })
         .addTo(layer);
     });
-  }, [navigationStopIndex, routeNavigating, routeOrigin, routeOrderedPoints, routePlan, routePlanning, routeSelectedPoints]);
+  }, [navigationStopIndex, routeNavigating, routeOrigin, routeOrderedPoints, routePlan, routePlanning, routePreviewVisible, routeSelectedPoints]);
 
   useEffect(() => {
     if (!routeNavigating || !navigator.geolocation || !routePlan) {
@@ -1340,9 +1408,12 @@ export function HerbDistributionMap() {
     }
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const nextPosition: NavigationPosition = {
+        const displayPosition = wgs84ToGcj02({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
+        });
+        const nextPosition: NavigationPosition = {
+          ...displayPosition,
           heading: position.coords.heading ?? undefined,
           speed: position.coords.speed ?? undefined,
           accuracy: position.coords.accuracy,
@@ -1469,26 +1540,73 @@ export function HerbDistributionMap() {
       ...(originOverride ? [[originOverride.lat, originOverride.lng] as [number, number]] : []),
       ...orderedPoints.map((point) => [point.latitude, point.longitude] as [number, number]),
     ];
-    const fallbackDistance = routeCoordinates.slice(0, -1).reduce(
-      (sum, coordinate, index) =>
-        sum + pointDistance({ lat: coordinate[0], lng: coordinate[1] }, { lat: routeCoordinates[index + 1][0], lng: routeCoordinates[index + 1][1] }),
-      0,
-    );
-
     setRoutePlanningLoading(true);
-    const plan = {
-      distanceMeters: fallbackDistance,
-      durationSeconds: Math.round(fallbackDistance / (35 * 1000 / 3600)),
-      geometry: routeCoordinates,
-      roadRoute: false,
-      steps: [],
-    };
-    setRoutePlan(plan);
-    setRoutePlanningLoading(false);
-    if (!silent) {
-      message.success(`已生成 ${orderedPoints.length} 个采集点的任务路线估算`);
+    try {
+      if (routeCoordinates.length < 2) {
+        const plan = { distanceMeters: 0, durationSeconds: 0, geometry: routeCoordinates, roadRoute: false, steps: [] };
+        setRoutePlan(plan);
+        return plan;
+      }
+      const coordinates = routeCoordinates
+        .map(([lat, lng]) => gcj02ToWgs84({ lat, lng }))
+        .map((point) => `${point.lng},${point.lat}`)
+        .join(";");
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`,
+      );
+      if (!response.ok) {
+        throw new Error("route service unavailable");
+      }
+      const result = (await response.json()) as {
+        code?: string;
+        routes?: Array<{
+          distance: number;
+          duration: number;
+          geometry?: { coordinates?: [number, number][] };
+          legs?: Array<{ steps?: Array<{ name?: string; maneuver?: { type?: string; modifier?: string; location?: [number, number] } }> }>;
+        }>;
+      };
+      const route = result.routes?.[0];
+      if (result.code !== "Ok" || !route?.geometry?.coordinates) {
+        throw new Error("route data unavailable");
+      }
+      const geometry = route.geometry.coordinates.map(([lng, lat]) => {
+        const point = wgs84ToGcj02({ lat, lng });
+        return [point.lat, point.lng] as [number, number];
+      });
+      const steps = (route.legs ?? []).flatMap((leg) => leg.steps ?? []).flatMap((step) => {
+        const location = step.maneuver?.location;
+        if (!location) return [];
+        const maneuverPoint = wgs84ToGcj02({ lat: location[1], lng: location[0] });
+        const coordinate: [number, number] = [maneuverPoint.lat, maneuverPoint.lng];
+        return [{
+          instruction: formatNavigationInstruction(step.maneuver?.type, step.maneuver?.modifier, step.name),
+          location: coordinate,
+          routeIndex: closestRouteIndex(geometry, { lat: coordinate[0], lng: coordinate[1] }).index,
+        }];
+      });
+      const plan = {
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        geometry,
+        roadRoute: true,
+        steps,
+      };
+      setRoutePlan(plan);
+      setRoutePreviewVisible(false);
+      if (!silent) {
+        message.success(`已生成 ${orderedPoints.length} 个采集点的最优路线`);
+      }
+      return plan;
+    } catch {
+      setRoutePlan(undefined);
+      setRoutePreviewVisible(false);
+      setRouteNavigating(false);
+      message.error("路径获取失败，请重新尝试");
+      return undefined;
+    } finally {
+      setRoutePlanningLoading(false);
     }
-    return plan;
   }
 
   routePlanGeneratorRef.current = generateRoutePlan;
@@ -1498,19 +1616,18 @@ export function HerbDistributionMap() {
       message.warning("请先选择采集点");
       return;
     }
-    if (!routePlan?.roadRoute) {
-      message.warning("未配置受信任道路导航服务，当前路线仅可用于任务规划和导出");
-      return;
-    }
     if (!navigator.geolocation) {
       message.error("当前浏览器不支持实时定位，无法启动本地图导航");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const origin = {
+        const displayOrigin = wgs84ToGcj02({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
+        });
+        const origin = {
+          ...displayOrigin,
           label: "当前位置",
         };
         setRouteOrigin(origin);
@@ -1888,6 +2005,7 @@ export function HerbDistributionMap() {
                 setRoutePointIds([]);
                 setRouteOrderedPointIds([]);
                 setRoutePlan(undefined);
+                setRoutePreviewVisible(false);
               }}>
                 清空
               </Button>
