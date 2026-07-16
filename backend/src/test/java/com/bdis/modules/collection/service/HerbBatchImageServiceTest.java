@@ -14,19 +14,22 @@ import com.bdis.modules.collection.dto.HerbBatchImageBindRequest;
 import com.bdis.modules.collection.dto.HerbBatchImageUpdateRequest;
 import com.bdis.modules.collection.entity.HerbBatchEntity;
 import com.bdis.modules.collection.entity.HerbBatchImageEntity;
+import com.bdis.modules.collection.entity.HerbCollectionTaskEntity;
 import com.bdis.modules.collection.mapper.HerbBatchImageMapper;
 import com.bdis.modules.collection.mapper.HerbBatchMapper;
+import com.bdis.modules.collection.mapper.HerbCollectionTaskMapper;
 import com.bdis.modules.collection.service.impl.HerbBatchImageServiceImpl;
 import com.bdis.modules.collection.support.CollectionAccessService;
 import com.bdis.modules.collection.vo.HerbBatchImageBindResultVO;
 import com.bdis.modules.collection.vo.HerbBatchImageStatisticsVO;
 import com.bdis.modules.collection.vo.HerbBatchImageVO;
+import com.bdis.modules.collection.vo.HerbBatchVO;
 import com.bdis.modules.herb.entity.HerbImageEntity;
 import com.bdis.modules.herb.mapper.HerbImageMapper;
 import com.bdis.modules.spectrum.entity.HerbIdentificationResultEntity;
 import com.bdis.modules.spectrum.mapper.HerbIdentificationResultMapper;
 import com.bdis.modules.spectrum.vo.HerbIdentificationPageVO;
-import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,12 +37,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class HerbBatchImageServiceTest {
 
     @Mock private HerbBatchImageMapper herbBatchImageMapper;
 
     @Mock private HerbBatchMapper herbBatchMapper;
+
+    @Mock private HerbCollectionTaskMapper herbCollectionTaskMapper;
 
     @Mock private HerbImageMapper herbImageMapper;
 
@@ -55,6 +62,7 @@ class HerbBatchImageServiceTest {
                 new HerbBatchImageServiceImpl(
                         herbBatchImageMapper,
                         herbBatchMapper,
+                        herbCollectionTaskMapper,
                         herbImageMapper,
                         herbIdentificationResultMapper,
                         collectionAccessService);
@@ -91,6 +99,31 @@ class HerbBatchImageServiceTest {
         assertThat(inserted.getIsDeleted()).isZero();
         assertThat(result.getImageId()).isEqualTo(12L);
         verify(herbBatchMapper).updateStatisticsById(any(HerbBatchEntity.class));
+    }
+
+    @Test
+    void listByTaskUsesOneBatchImageQueryAndExistingTaskPermission() {
+        HerbCollectionTaskEntity task = new HerbCollectionTaskEntity();
+        task.setId(9L);
+        HerbBatchVO first = new HerbBatchVO();
+        first.setId(101L);
+        HerbBatchVO second = new HerbBatchVO();
+        second.setId(102L);
+        HerbBatchImageVO image = new HerbBatchImageVO();
+        image.setImageId(301L);
+        when(herbCollectionTaskMapper.selectById(9L)).thenReturn(task);
+        when(herbBatchMapper.selectByTaskId(9L)).thenReturn(List.of(first, second));
+        when(herbBatchImageMapper.selectBatchImagesWithIdentificationByBatchIds(
+                        List.of(101L, 102L)))
+                .thenReturn(List.of(image));
+
+        List<HerbBatchImageVO> result = herbBatchImageService.listByTask(9L);
+
+        assertThat(result).containsExactly(image);
+        verify(collectionAccessService).requireTaskAccess(task);
+        verify(herbBatchMapper).selectByTaskId(9L);
+        verify(herbBatchImageMapper)
+                .selectBatchImagesWithIdentificationByBatchIds(List.of(101L, 102L));
     }
 
     @Test

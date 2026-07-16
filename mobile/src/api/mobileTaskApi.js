@@ -27,6 +27,13 @@ export function getTaskBatches(taskId, params) {
   })
 }
 
+export function getTaskAgentRequirements(taskId) {
+  return request({
+    url: `${prefix}/tasks/${taskId}/agent-requirements`,
+    method: 'GET'
+  })
+}
+
 export function createBatchUnderTask(taskId, data) {
   return request({
     url: `${prefix}/tasks/${taskId}/batches`,

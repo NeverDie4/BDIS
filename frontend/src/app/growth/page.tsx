@@ -6,7 +6,8 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { init, use as registerECharts, type EChartsCoreOption } from "echarts/core";
 import axios from "axios";
 import { App, Button, Empty, Form, Input, Modal, Select, Spin } from "antd";
-import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, ExternalLink, Eye, Filter, Layers, MapPin, Plus, QrCode, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
+import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, ExternalLink, Eye, Filter, FlaskConical, Layers, MapPin, Plus, QrCode, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SecureImageThumb } from "@/components/common/SecureImageThumb";
 import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
@@ -1044,6 +1045,17 @@ export default function GrowthPage() {
           sealText="生长"
           title="生长数据"
           description="管理移动端采集的中药材生长记录，汇聚现场图片、审核状态与溯源轨迹。"
+          actions={
+            canCreateTask && taskId ? (
+              <Link
+                className={styles.heroAgentEntry}
+                href={`/assistant/research-agent?collectionTaskId=${taskId}&pageContext=growth`}
+              >
+                <FlaskConical size={16} />
+                启动科研 Agent
+              </Link>
+            ) : undefined
+          }
         />
 
         <div className={styles.workspaceLayout}>
@@ -1753,7 +1765,12 @@ export default function GrowthPage() {
                         <p>生成后，公开数字生命档案将显示事件数量、根哈希和校验结果。</p>
                       </div>
                     )}
-                    <div className={styles.traceQrActions}>
+                  <div className={styles.traceQrActions}>
+                      {canCreateTask && selectedRecord.taskId ? (
+                        <Link href={`/assistant/research-agent?collectionTaskId=${selectedRecord.taskId}&pageContext=digital-life`}>
+                          <Button icon={<FlaskConical size={15} />}>交由科研 Agent 准备档案</Button>
+                        </Link>
+                      ) : null}
                       <Button
                         type="primary"
                         icon={<ShieldCheck size={15} />}

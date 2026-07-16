@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentToolCallLogMapper">
+    <resultMap id="ToolCallLogResultMap"
+               type="com.bdis.modules.assistant.agent.entity.AgentToolCallLogEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="step_id" property="stepId"/>
+        <result column="user_id" property="userId"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="tool_name" property="toolName"/>
+        <result column="request_summary" property="requestSummary"/>
+        <result column="input_hash" property="inputHash"/>
+        <result column="output_summary" property="outputSummary"/>
+        <result column="output_json" property="outputJson"/>
+        <result column="success" property="success"/>
+        <result column="error_code" property="errorCode"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="time_cost_ms" property="timeCostMs"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_tool_call_log (
+            agent_task_id, step_id, user_id, session_id, tool_name,
+            request_summary, input_hash, output_summary, output_json, success,
+            error_code, error_message, time_cost_ms, create_time
+        ) VALUES (
+            #{agentTaskId}, #{stepId}, #{userId}, #{sessionId}, #{toolName},
+            #{requestSummary}, #{inputHash}, #{outputSummary}, #{outputJson}, #{success},
+            #{errorCode}, #{errorMessage}, #{timeCostMs}, #{createTime}
+        )
+    </insert>
+
+    <select id="selectByTaskId" resultMap="ToolCallLogResultMap">
+        SELECT id, agent_task_id, step_id, user_id, session_id, tool_name,
+               request_summary, input_hash, output_summary, output_json, success,
+               error_code, error_message, time_cost_ms, create_time
+        FROM assistant_agent_tool_call_log
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY create_time, id
+    </select>
+</mapper>

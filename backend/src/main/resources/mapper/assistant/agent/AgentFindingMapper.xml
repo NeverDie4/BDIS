@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentFindingMapper">
+    <resultMap id="FindingResultMap" type="com.bdis.modules.assistant.agent.entity.AgentFindingEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="step_id" property="stepId"/>
+        <result column="finding_type" property="findingType"/>
+        <result column="severity" property="severity"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="title" property="title"/>
+        <result column="description" property="description"/>
+        <result column="evidence_json" property="evidenceJson"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="status" property="status"/>
+        <result column="resolved_time" property="resolvedTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_finding (
+            agent_task_id, step_id, finding_type, severity, target_type, target_id,
+            title, description, evidence_json, suggestion, status, resolved_time,
+            create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{stepId}, #{findingType}, #{severity}, #{targetType}, #{targetId},
+            #{title}, #{description}, #{evidenceJson}, #{suggestion}, #{status}, #{resolvedTime},
+            #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <insert id="upsert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_finding (
+            agent_task_id, step_id, finding_type, severity, target_type, target_id,
+            title, description, evidence_json, suggestion, status, resolved_time,
+            create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{stepId}, #{findingType}, #{severity}, #{targetType}, #{targetId},
+            #{title}, #{description}, #{evidenceJson}, #{suggestion}, #{status}, #{resolvedTime},
+            #{createTime}, #{updateTime}
+        )
+        ON DUPLICATE KEY UPDATE
+            step_id = VALUES(step_id),
+            severity = VALUES(severity),
+            title = VALUES(title),
+            description = VALUES(description),
+            evidence_json = VALUES(evidence_json),
+            suggestion = VALUES(suggestion),
+            resolved_time = IF(status = 'RESOLVED', NULL, resolved_time),
+            status = IF(status = 'RESOLVED', 'OPEN', status),
+            update_time = VALUES(update_time)
+    </insert>
+
+    <select id="selectByTaskId" resultMap="FindingResultMap">
+        SELECT id, agent_task_id, step_id, finding_type, severity, target_type,
+               target_id, title, description, evidence_json, suggestion, status,
+               resolved_time, create_time, update_time
+        FROM assistant_agent_finding
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <update id="resolve">
+        UPDATE assistant_agent_finding
+        SET status = 'RESOLVED', evidence_json = #{evidenceJson},
+            resolved_time = #{resolvedTime}, update_time = #{resolvedTime}
+        WHERE id = #{id}
+          AND status IN ('OPEN', 'ACKNOWLEDGED')
+    </update>
+
+    <update id="updateOpenEvidence">
+        UPDATE assistant_agent_finding
+        SET evidence_json = #{evidenceJson}, update_time = #{updateTime}
+        WHERE id = #{id}
+          AND status IN ('OPEN', 'ACKNOWLEDGED')
+    </update>
+</mapper>

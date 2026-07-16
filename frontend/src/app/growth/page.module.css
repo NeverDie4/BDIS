@@ -3036,6 +3036,31 @@
   }
 }
 
+.heroAgentEntry {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #b9d2bb;
+  border-radius: 999px;
+  padding: 7px 13px;
+  background: rgba(255, 250, 242, 0.9);
+  color: #0f5132;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: 0.18s ease;
+}
+
+.heroAgentEntry::before {
+  display: none;
+}
+
+.heroAgentEntry:hover {
+  border-color: #6fa078;
+  background: #eef7ef;
+  transform: translateY(-1px);
+}
+
 /* Growth workspace visual refinement */
 .page {
   width: min(1780px, calc(100vw - 24px));

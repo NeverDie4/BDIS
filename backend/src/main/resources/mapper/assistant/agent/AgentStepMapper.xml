@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentStepMapper">
+    <resultMap id="StepResultMap" type="com.bdis.modules.assistant.agent.entity.AgentStepEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="step_no" property="stepNo"/>
+        <result column="step_type" property="stepType"/>
+        <result column="step_name" property="stepName"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="input_snapshot" property="inputSnapshot"/>
+        <result column="output_summary" property="outputSummary"/>
+        <result column="output_json" property="outputJson"/>
+        <result column="error_code" property="errorCode"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="max_retry_count" property="maxRetryCount"/>
+        <result column="start_time" property="startTime"/>
+        <result column="finish_time" property="finishTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_step (
+            agent_task_id, step_no, step_type, step_name, description, status,
+            input_snapshot, output_summary, output_json, error_code, error_message,
+            retry_count, max_retry_count, start_time, finish_time, create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{stepNo}, #{stepType}, #{stepName}, #{description}, #{status},
+            #{inputSnapshot}, #{outputSummary}, #{outputJson}, #{errorCode}, #{errorMessage},
+            #{retryCount}, #{maxRetryCount}, #{startTime}, #{finishTime}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <insert id="insertIfAbsent" useGeneratedKeys="true" keyProperty="id">
+        INSERT IGNORE INTO assistant_agent_step (
+            agent_task_id, step_no, step_type, step_name, description, status,
+            input_snapshot, output_summary, output_json, error_code, error_message,
+            retry_count, max_retry_count, start_time, finish_time, create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{stepNo}, #{stepType}, #{stepName}, #{description}, #{status},
+            #{inputSnapshot}, #{outputSummary}, #{outputJson}, #{errorCode}, #{errorMessage},
+            #{retryCount}, #{maxRetryCount}, #{startTime}, #{finishTime}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <select id="selectByTaskId" resultMap="StepResultMap">
+        SELECT id, agent_task_id, step_no, step_type, step_name, description, status,
+               input_snapshot, output_summary, output_json, error_code, error_message,
+               retry_count, max_retry_count, start_time, finish_time, create_time, update_time
+        FROM assistant_agent_step
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY step_no ASC, id ASC
+    </select>
+
+    <select id="selectByTaskIdAndType" resultMap="StepResultMap">
+        SELECT id, agent_task_id, step_no, step_type, step_name, description, status,
+               input_snapshot, output_summary, output_json, error_code, error_message,
+               retry_count, max_retry_count, start_time, finish_time, create_time, update_time
+        FROM assistant_agent_step
+        WHERE agent_task_id = #{agentTaskId}
+          AND step_type = #{stepType}
+        ORDER BY step_no, id
+        LIMIT 1
+    </select>
+
+    <select id="selectByTaskIdAndNo" resultMap="StepResultMap">
+        SELECT id, agent_task_id, step_no, step_type, step_name, description, status,
+               input_snapshot, output_summary, output_json, error_code, error_message,
+               retry_count, max_retry_count, start_time, finish_time, create_time, update_time
+        FROM assistant_agent_step
+        WHERE agent_task_id = #{agentTaskId}
+          AND step_no = #{stepNo}
+        LIMIT 1
+    </select>
+
+    <select id="selectMaxStepNo" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(step_no), 0)
+        FROM assistant_agent_step
+        WHERE agent_task_id = #{agentTaskId}
+    </select>
+
+    <update id="markRunning">
+        UPDATE assistant_agent_step
+        SET status = 'RUNNING', start_time = COALESCE(start_time, #{startTime}),
+            finish_time = NULL, error_code = NULL, error_message = NULL,
+            update_time = #{startTime}
+        WHERE id = #{id}
+          AND status = 'PENDING'
+    </update>
+
+    <update id="markSucceeded">
+        UPDATE assistant_agent_step
+        SET status = 'SUCCEEDED', output_summary = #{outputSummary}, output_json = #{outputJson},
+            finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE id = #{id}
+          AND status = 'RUNNING'
+    </update>
+
+    <update id="markFailed">
+        UPDATE assistant_agent_step
+        SET status = 'FAILED', error_code = #{errorCode}, error_message = #{errorMessage},
+            finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE id = #{id}
+          AND status = 'RUNNING'
+    </update>
+
+    <update id="markWaiting">
+        UPDATE assistant_agent_step
+        SET status = 'WAITING', update_time = #{updateTime}
+        WHERE id = #{id}
+          AND status = 'PENDING'
+    </update>
+
+    <update id="completeWaiting">
+        UPDATE assistant_agent_step
+        SET status = 'SUCCEEDED', output_summary = #{outputSummary}, output_json = #{outputJson},
+            finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE id = #{id}
+          AND status = 'WAITING'
+    </update>
+
+    <update id="markSkipped">
+        UPDATE assistant_agent_step
+        SET status = 'SKIPPED', output_summary = #{outputSummary},
+            finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE id = #{id}
+          AND status = 'PENDING'
+    </update>
+
+    <update id="cancelUnfinished">
+        UPDATE assistant_agent_step
+        SET status = 'CANCELLED', finish_time = #{finishTime}, update_time = #{finishTime}
+        WHERE agent_task_id = #{agentTaskId}
+          AND status IN ('PENDING', 'RUNNING', 'WAITING')
+    </update>
+</mapper>
