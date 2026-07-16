@@ -3,7 +3,10 @@ package com.bdis.modules.course.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,10 +22,12 @@ import com.bdis.modules.course.mapper.CourseMapper;
 import com.bdis.modules.course.mapper.ExperimentStepMapper;
 import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
+import com.bdis.modules.course.request.CourseRelationUpdateRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
 import com.bdis.modules.course.service.impl.CourseServiceImpl;
 import com.bdis.modules.course.vo.CourseDetailVO;
 import com.bdis.modules.course.vo.CourseListVO;
+import com.bdis.modules.course.vo.CourseRelationOptionVO;
 import com.bdis.modules.course.vo.CourseResourceVO;
 import com.bdis.modules.course.vo.ExperimentStepVO;
 import com.bdis.modules.user.entity.UserEntity;
@@ -123,6 +128,57 @@ class CourseServiceTest {
                 ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(courseMapper).selectPage(any(), captor.capture());
         assertThat(captor.getValue()).isNotNull();
+    }
+
+    @Test
+    void relationOptionsUseCurrentUsersProjectScope() {
+        setUser(7L, "TEACHER");
+        when(courseMapper.selectById(11L)).thenReturn(activeCourse());
+        when(courseMapper.selectHerbRelationOptions()).thenReturn(List.of());
+        when(courseMapper.selectProjectRelationOptions(7L, true))
+                .thenReturn(List.of(relationOption(31L)));
+
+        assertThat(courseService.getRelationOptions(11L).getProjects())
+                .extracting(CourseRelationOptionVO::getId)
+                .containsExactly(31L);
+        verify(courseMapper).selectProjectRelationOptions(7L, true);
+    }
+
+    @Test
+    void updateRelationsRestoresExistingRowsInsteadOfReinsertingThem() {
+        setUser(7L, "TEACHER");
+        when(courseMapper.selectById(11L)).thenReturn(activeCourse());
+        when(courseMapper.selectHerbRelationOptions()).thenReturn(List.of(relationOption(21L)));
+        when(courseMapper.selectProjectRelationOptions(7L, true))
+                .thenReturn(List.of(relationOption(31L)));
+        when(courseMapper.restoreHerbRelation(eq(11L), eq(21L), anyInt(), eq(7L), any()))
+                .thenReturn(1);
+        when(courseMapper.restoreProjectRelation(eq(11L), eq(31L), anyInt(), eq(7L), any()))
+                .thenReturn(1);
+
+        courseService.updateRelations(11L, relationUpdateRequest(List.of(21L), List.of(31L)));
+
+        verify(courseMapper).restoreHerbRelation(eq(11L), eq(21L), anyInt(), eq(7L), any());
+        verify(courseMapper).restoreProjectRelation(eq(11L), eq(31L), anyInt(), eq(7L), any());
+        verify(courseMapper, never()).insertHerbRelation(eq(11L), eq(21L), anyInt(), eq(7L), any());
+        verify(courseMapper, never())
+                .insertProjectRelation(eq(11L), eq(31L), anyInt(), eq(7L), any());
+    }
+
+    @Test
+    void updateRelationsRejectsProjectOutsideCurrentUsersScope() {
+        setUser(7L, "TEACHER");
+        when(courseMapper.selectById(11L)).thenReturn(activeCourse());
+        when(courseMapper.selectHerbRelationOptions()).thenReturn(List.of());
+        when(courseMapper.selectProjectRelationOptions(7L, true)).thenReturn(List.of());
+
+        assertThatThrownBy(
+                        () ->
+                                courseService.updateRelations(
+                                        11L, relationUpdateRequest(List.of(), List.of(99L))))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Related project is unavailable");
+        verify(courseMapper, never()).deactivateProjectRelations(any(), any(), any());
     }
 
     private void setUser(Long id, String role) {
@@ -463,6 +519,23 @@ class CourseServiceTest {
         request.setTeacherId(7L);
         request.setVersion(0);
         return request;
+    }
+
+    private CourseRelationUpdateRequest relationUpdateRequest(
+            List<Long> speciesIds, List<Long> projectIds) {
+        CourseRelationUpdateRequest request = new CourseRelationUpdateRequest();
+        request.setVersion(0);
+        request.setSpeciesIds(speciesIds);
+        request.setProjectIds(projectIds);
+        return request;
+    }
+
+    private CourseRelationOptionVO relationOption(Long id) {
+        CourseRelationOptionVO option = new CourseRelationOptionVO();
+        option.setId(id);
+        option.setCode("P-" + id);
+        option.setName("Project " + id);
+        return option;
     }
 
     private CourseEntity activeCourse() {

@@ -88,5 +88,11 @@ Thumbs.db
 # Local teaching dev logs
 frontend/.teaching-dev.*.log
 
+# Personal internship materials and generated document previews
+/.artifacts/
+/*.docx
+/~$*.docx
+/docs/superpowers/plans/
+
 # Git worktrees
 .worktrees/

@@ -40,9 +40,15 @@ public interface CourseMapper extends BaseMapper<CourseEntity> {
     List<CourseRelationOptionVO> selectHerbRelationOptions();
 
     @Select(
-            "SELECT id, project_no AS code, project_name AS name FROM research_project "
-                    + "WHERE status = 1 AND is_deleted = 0 ORDER BY project_name, id")
-    List<CourseRelationOptionVO> selectProjectRelationOptions();
+            "SELECT p.id, p.project_no AS code, p.project_name AS name FROM research_project p "
+                    + "WHERE p.status = 1 AND p.is_deleted = 0 "
+                    + "AND (#{applyUserScope} = 0 OR p.leader_id = #{userId} "
+                    + "OR EXISTS (SELECT 1 FROM rel_project_member rpm "
+                    + "WHERE rpm.project_id = p.id AND rpm.user_id = #{userId} "
+                    + "AND rpm.member_status = 'active')) "
+                    + "ORDER BY p.project_name, p.id")
+    List<CourseRelationOptionVO> selectProjectRelationOptions(
+            @Param("userId") Long userId, @Param("applyUserScope") boolean applyUserScope);
 
     @Update(
             "UPDATE rel_course_species SET status = 0, is_deleted = 1, deleted_at = #{now}, deleted_by = #{userId}, updated_at = #{now}, updated_by = #{userId} "
@@ -53,10 +59,34 @@ public interface CourseMapper extends BaseMapper<CourseEntity> {
             @Param("now") LocalDateTime now);
 
     @Update(
+            "UPDATE rel_course_species SET relation_type = 'material', is_required = 1, "
+                    + "sort_order = #{sortOrder}, status = 1, is_deleted = 0, deleted_at = NULL, "
+                    + "deleted_by = NULL, updated_at = #{now}, updated_by = #{userId} "
+                    + "WHERE course_id = #{courseId} AND species_id = #{speciesId}")
+    int restoreHerbRelation(
+            @Param("courseId") Long courseId,
+            @Param("speciesId") Long speciesId,
+            @Param("sortOrder") int sortOrder,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now);
+
+    @Update(
             "UPDATE rel_project_course SET status = 0, is_deleted = 1, deleted_at = #{now}, deleted_by = #{userId}, updated_at = #{now}, updated_by = #{userId} "
                     + "WHERE course_id = #{courseId} AND is_deleted = 0")
     int deactivateProjectRelations(
             @Param("courseId") Long courseId,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now);
+
+    @Update(
+            "UPDATE rel_project_course SET relation_type = 'foundation', is_primary = 0, "
+                    + "sort_order = #{sortOrder}, status = 1, is_deleted = 0, deleted_at = NULL, "
+                    + "deleted_by = NULL, updated_at = #{now}, updated_by = #{userId} "
+                    + "WHERE project_id = #{projectId} AND course_id = #{courseId}")
+    int restoreProjectRelation(
+            @Param("courseId") Long courseId,
+            @Param("projectId") Long projectId,
+            @Param("sortOrder") int sortOrder,
             @Param("userId") Long userId,
             @Param("now") LocalDateTime now);
 

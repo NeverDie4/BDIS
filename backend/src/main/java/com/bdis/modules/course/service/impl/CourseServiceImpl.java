@@ -187,7 +187,7 @@ public class CourseServiceImpl implements CourseService {
         requireCourseAccess(course, true);
         CourseRelationOptionsVO options = new CourseRelationOptionsVO();
         options.setHerbs(courseMapper.selectHerbRelationOptions());
-        options.setProjects(courseMapper.selectProjectRelationOptions());
+        options.setProjects(selectProjectRelationOptions());
         return options;
     }
 
@@ -200,18 +200,26 @@ public class CourseServiceImpl implements CourseService {
         if (!Objects.equals(request.getVersion(), course.getVersion())) {
             throw new BusinessException(ResultCodeEnum.CONFLICT, "Course version conflict");
         }
-        validateRelationIds(request.getSpeciesIds(), request.getProjectIds());
+        List<Long> speciesIds = distinctIds(request.getSpeciesIds());
+        List<Long> projectIds = distinctIds(request.getProjectIds());
+        validateRelationIds(speciesIds, projectIds);
         LocalDateTime now = LocalDateTime.now();
         Long userId = CurrentUserUtils.currentUserId();
         courseMapper.deactivateHerbRelations(id, userId, now);
         courseMapper.deactivateProjectRelations(id, userId, now);
         int sortOrder = 0;
-        for (Long speciesId : distinctIds(request.getSpeciesIds())) {
-            courseMapper.insertHerbRelation(id, speciesId, sortOrder++, userId, now);
+        for (Long speciesId : speciesIds) {
+            if (courseMapper.restoreHerbRelation(id, speciesId, sortOrder, userId, now) == 0) {
+                courseMapper.insertHerbRelation(id, speciesId, sortOrder, userId, now);
+            }
+            sortOrder++;
         }
         sortOrder = 0;
-        for (Long projectId : distinctIds(request.getProjectIds())) {
-            courseMapper.insertProjectRelation(id, projectId, sortOrder++, userId, now);
+        for (Long projectId : projectIds) {
+            if (courseMapper.restoreProjectRelation(id, projectId, sortOrder, userId, now) == 0) {
+                courseMapper.insertProjectRelation(id, projectId, sortOrder, userId, now);
+            }
+            sortOrder++;
         }
         recordAudit("UPDATE_RELATIONS", id);
         return getDetail(id);
@@ -382,7 +390,7 @@ public class CourseServiceImpl implements CourseService {
             throw new BusinessException("Related herb is unavailable");
         }
         Set<Long> availableProjectIds =
-                courseMapper.selectProjectRelationOptions().stream()
+                selectProjectRelationOptions().stream()
                         .map(CourseRelationOptionVO::getId)
                         .filter(Objects::nonNull)
                         .collect(Collectors.toSet());
@@ -401,6 +409,11 @@ public class CourseServiceImpl implements CourseService {
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
                 .stream()
                 .toList();
+    }
+
+    private List<CourseRelationOptionVO> selectProjectRelationOptions() {
+        return courseMapper.selectProjectRelationOptions(
+                CurrentUserUtils.currentUserId(), hasScopedIdentity() && !isAdmin());
     }
 
     private String writeStringList(List<String> values) {
