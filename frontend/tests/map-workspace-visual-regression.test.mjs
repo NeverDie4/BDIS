@@ -13,7 +13,15 @@ test("分布地图复用统一本草标题栏且不保留旧标题组件", async
 
   assert.match(source, /import \{ ModuleHeroBanner \}/);
   assert.match(source, /<ModuleHeroBanner/);
+  assert.match(source, /eyebrow="CHONGQING DISTRIBUTION"/);
+  assert.match(source, /sealText="分布"/);
   assert.doesNotMatch(source, /PageBanner/);
+});
+
+test("分布地图和生长数据使用同一标准标题栏高度", async () => {
+  const css = await readSource("components/layout/ModuleHeroBanner.module.css");
+
+  assert.match(css, /\.moduleHero\s*\{[^}]*min-height:\s*164px;/s);
 });
 
 test("分布地图使用紧凑三栏纸张布局和扁平详情", async () => {

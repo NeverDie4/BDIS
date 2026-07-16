@@ -13,6 +13,9 @@ test("生长数据复用统一本草标题栏", async () => {
 
   assert.match(source, /import \{ ModuleHeroBanner \}/);
   assert.match(source, /<ModuleHeroBanner/);
+  assert.match(source, /eyebrow="GROWTH DATA ARCHIVE"/);
+  assert.match(source, /sealText="生长"/);
+  assert.doesNotMatch(source, /<ModuleHeroBanner\s+variant="compact"/);
   assert.doesNotMatch(source, /className=\{styles\.growthHero\}/);
   assert.doesNotMatch(source, /heroIllustrationUrl/);
 });

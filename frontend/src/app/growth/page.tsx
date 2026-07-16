@@ -1040,8 +1040,8 @@ export default function GrowthPage() {
     <SiteLayout>
       <main className={styles.page}>
         <ModuleHeroBanner
-          variant="compact"
-          eyebrow="本草生长档案"
+          eyebrow="GROWTH DATA ARCHIVE"
+          sealText="生长"
           title="生长数据"
           description="管理移动端采集的中药材生长记录，汇聚现场图片、审核状态与溯源轨迹。"
         />
