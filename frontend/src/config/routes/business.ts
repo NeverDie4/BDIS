@@ -34,6 +34,12 @@ export const businessRoutes: RouteMeta[] = [
     navOrder: 40,
   },
   {
+    path: "/assistant/research-agent",
+    title: "本草数字孪生科研 Agent 工作台",
+    owner: "herb",
+    permission: "growth:record:view",
+  },
+  {
     path: "/teaching",
     title: "教学科研",
     owner: "teaching",

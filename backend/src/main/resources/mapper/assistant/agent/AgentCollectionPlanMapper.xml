@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentCollectionPlanMapper">
+    <resultMap id="PlanResultMap" type="com.bdis.modules.assistant.agent.entity.AgentCollectionPlanEntity">
+        <id column="id" property="id"/>
+        <result column="plan_no" property="planNo"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="source_step_id" property="sourceStepId"/>
+        <result column="research_round" property="researchRound"/>
+        <result column="collection_task_id" property="collectionTaskId"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="base_id" property="baseId"/>
+        <result column="objective" property="objective"/>
+        <result column="recommended_time_type" property="recommendedTimeType"/>
+        <result column="recommended_after_days" property="recommendedAfterDays"/>
+        <result column="recommended_start_time" property="recommendedStartTime"/>
+        <result column="recommended_end_time" property="recommendedEndTime"/>
+        <result column="required_metrics_json" property="requiredMetricsJson"/>
+        <result column="required_images_json" property="requiredImagesJson"/>
+        <result column="optional_items_json" property="optionalItemsJson"/>
+        <result column="completion_criteria_json" property="completionCriteriaJson"/>
+        <result column="source_findings_json" property="sourceFindingsJson"/>
+        <result column="rationale" property="rationale"/>
+        <result column="uncertainty" property="uncertainty"/>
+        <result column="priority" property="priority"/>
+        <result column="plan_source" property="planSource"/>
+        <result column="prompt_version" property="promptVersion"/>
+        <result column="model_name" property="modelName"/>
+        <result column="status" property="status"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="confirm_time" property="confirmTime"/>
+        <result column="expire_time" property="expireTime"/>
+    </resultMap>
+
+    <sql id="PlanColumns">
+        id, plan_no, agent_task_id, source_step_id, research_round, collection_task_id,
+        species_id, base_id, objective, recommended_time_type, recommended_after_days,
+        recommended_start_time, recommended_end_time,
+        required_metrics_json, required_images_json, optional_items_json,
+        completion_criteria_json, source_findings_json, rationale, uncertainty, priority,
+        plan_source, prompt_version, model_name, status, version, create_time,
+        update_time, confirm_time, expire_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_collection_plan (
+            plan_no, agent_task_id, source_step_id, research_round, collection_task_id,
+            species_id, base_id, objective, recommended_time_type, recommended_after_days,
+            recommended_start_time, recommended_end_time,
+            required_metrics_json, required_images_json, optional_items_json,
+            completion_criteria_json, source_findings_json, rationale, uncertainty, priority,
+            plan_source, prompt_version, model_name, status, version, create_time,
+            update_time, confirm_time, expire_time
+        ) VALUES (
+            #{planNo}, #{agentTaskId}, #{sourceStepId}, #{researchRound}, #{collectionTaskId},
+            #{speciesId}, #{baseId}, #{objective}, #{recommendedTimeType}, #{recommendedAfterDays},
+            #{recommendedStartTime}, #{recommendedEndTime},
+            #{requiredMetricsJson}, #{requiredImagesJson}, #{optionalItemsJson},
+            #{completionCriteriaJson}, #{sourceFindingsJson}, #{rationale}, #{uncertainty}, #{priority},
+            #{planSource}, #{promptVersion}, #{modelName}, #{status}, #{version}, #{createTime},
+            #{updateTime}, #{confirmTime}, #{expireTime}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="PlanResultMap">
+        SELECT <include refid="PlanColumns"/>
+        FROM assistant_agent_collection_plan
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectLatestActive" resultMap="PlanResultMap">
+        SELECT <include refid="PlanColumns"/>
+        FROM assistant_agent_collection_plan
+        WHERE agent_task_id = #{agentTaskId}
+          AND status IN ('DRAFT', 'PROPOSED', 'CONFIRMED')
+        ORDER BY research_round DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectMaxRound" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(research_round), 0)
+        FROM assistant_agent_collection_plan
+        WHERE agent_task_id = #{agentTaskId}
+    </select>
+
+    <update id="cancelActive">
+        UPDATE assistant_agent_collection_plan
+        SET status = 'CANCELLED', update_time = #{updateTime}, version = version + 1
+        WHERE agent_task_id = #{agentTaskId}
+          AND status IN ('DRAFT', 'PROPOSED')
+    </update>
+
+    <update id="updateEditable">
+        UPDATE assistant_agent_collection_plan
+        SET objective = #{plan.objective},
+            recommended_time_type = #{plan.recommendedTimeType},
+            recommended_after_days = #{plan.recommendedAfterDays},
+            recommended_start_time = #{plan.recommendedStartTime},
+            recommended_end_time = #{plan.recommendedEndTime},
+            required_metrics_json = #{plan.requiredMetricsJson},
+            required_images_json = #{plan.requiredImagesJson},
+            completion_criteria_json = #{plan.completionCriteriaJson},
+            rationale = #{plan.rationale},
+            plan_source = 'MANUAL_ADJUSTED',
+            version = version + 1,
+            update_time = #{plan.updateTime}
+        WHERE id = #{plan.id}
+          AND agent_task_id = #{plan.agentTaskId}
+          AND status IN ('DRAFT', 'PROPOSED')
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE assistant_agent_collection_plan
+        SET status = #{targetStatus}, version = version + 1, update_time = #{updateTime},
+            confirm_time = CASE WHEN #{targetStatus} = 'CONFIRMED' THEN #{updateTime} ELSE confirm_time END
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+          AND version = #{expectedVersion}
+    </update>
+</mapper>

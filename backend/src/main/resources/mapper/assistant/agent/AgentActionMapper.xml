@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentActionMapper">
+    <resultMap id="ActionResultMap" type="com.bdis.modules.assistant.agent.entity.AgentActionEntity">
+        <id column="id" property="id"/>
+        <result column="agent_task_id" property="agentTaskId"/>
+        <result column="step_id" property="stepId"/>
+        <result column="action_type" property="actionType"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="action_name" property="actionName"/>
+        <result column="action_description" property="actionDescription"/>
+        <result column="payload_json" property="payloadJson"/>
+        <result column="risk_level" property="riskLevel"/>
+        <result column="need_confirm" property="needConfirm"/>
+        <result column="status" property="status"/>
+        <result column="requested_time" property="requestedTime"/>
+        <result column="confirmed_by" property="confirmedBy"/>
+        <result column="confirmed_time" property="confirmedTime"/>
+        <result column="rejected_time" property="rejectedTime"/>
+        <result column="executed_time" property="executedTime"/>
+        <result column="result_summary" property="resultSummary"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_action (
+            agent_task_id, step_id, action_type, target_type, target_id, action_name,
+            action_description, payload_json, risk_level, need_confirm, status,
+            requested_time, confirmed_by, confirmed_time, rejected_time, executed_time,
+            result_summary, error_message, version, create_time, update_time
+        ) VALUES (
+            #{agentTaskId}, #{stepId}, #{actionType}, #{targetType}, #{targetId}, #{actionName},
+            #{actionDescription}, #{payloadJson}, #{riskLevel}, #{needConfirm}, #{status},
+            #{requestedTime}, #{confirmedBy}, #{confirmedTime}, #{rejectedTime}, #{executedTime},
+            #{resultSummary}, #{errorMessage}, #{version}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="ActionResultMap">
+        SELECT id, agent_task_id, step_id, action_type, target_type, target_id,
+               action_name, action_description, payload_json, risk_level,
+               need_confirm, status, requested_time, confirmed_by, confirmed_time,
+               rejected_time, executed_time, result_summary, error_message, version,
+               create_time, update_time
+        FROM assistant_agent_action
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByTaskId" resultMap="ActionResultMap">
+        SELECT id, agent_task_id, step_id, action_type, target_type, target_id,
+               action_name, action_description, payload_json, risk_level,
+               need_confirm, status, requested_time, confirmed_by, confirmed_time,
+               rejected_time, executed_time, result_summary, error_message, version,
+               create_time, update_time
+        FROM assistant_agent_action
+        WHERE agent_task_id = #{agentTaskId}
+        ORDER BY requested_time DESC, id DESC
+    </select>
+
+    <update id="cancelUnexecuted">
+        UPDATE assistant_agent_action
+        SET status = 'CANCELLED', update_time = #{updateTime}
+        WHERE agent_task_id = #{agentTaskId}
+          AND status IN ('PROPOSED', 'WAITING_CONFIRMATION', 'CONFIRMED')
+    </update>
+
+    <update id="cancelPendingCollectionPlanAction">
+        UPDATE assistant_agent_action
+        SET status = 'CANCELLED', update_time = #{updateTime}
+        WHERE agent_task_id = #{agentTaskId}
+          AND action_type = 'CREATE_FOLLOW_UP_COLLECTION_TASK'
+          AND status IN ('PROPOSED', 'WAITING_CONFIRMATION')
+    </update>
+
+    <update id="confirm">
+        UPDATE assistant_agent_action
+        SET status = 'CONFIRMED', confirmed_by = #{confirmedBy},
+            confirmed_time = #{confirmedTime}, update_time = #{confirmedTime},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = 'WAITING_CONFIRMATION'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markExecuting">
+        UPDATE assistant_agent_action
+        SET status = 'EXECUTING', update_time = #{updateTime}, version = version + 1
+        WHERE id = #{id}
+          AND status = 'CONFIRMED'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markSucceeded">
+        UPDATE assistant_agent_action
+        SET status = 'SUCCEEDED', result_summary = #{resultSummary},
+            executed_time = #{executedTime}, update_time = #{executedTime},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = 'EXECUTING'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markFailed">
+        UPDATE assistant_agent_action
+        SET status = 'FAILED', error_message = #{errorMessage},
+            update_time = #{updateTime}, version = version + 1
+        WHERE id = #{id}
+          AND status IN ('WAITING_CONFIRMATION', 'CONFIRMED', 'EXECUTING')
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="reject">
+        UPDATE assistant_agent_action
+        SET status = 'REJECTED', result_summary = #{resultSummary},
+            rejected_time = #{rejectedTime}, update_time = #{rejectedTime},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = 'WAITING_CONFIRMATION'
+          AND version = #{expectedVersion}
+    </update>
+</mapper>

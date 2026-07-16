@@ -70,6 +70,13 @@ bdis:
 file:
   atlas-import-path: ${FILE_ATLAS_IMPORT_PATH:import/herb_atlas}
 
+assistant:
+  agent:
+    wait-check-interval-seconds: ${ASSISTANT_AGENT_WAIT_CHECK_INTERVAL_SECONDS:300}
+    wait-check-batch-size: ${ASSISTANT_AGENT_WAIT_CHECK_BATCH_SIZE:100}
+    max-research-rounds: ${ASSISTANT_AGENT_MAX_RESEARCH_ROUNDS:3}
+    archive-min-completeness-score: ${ASSISTANT_AGENT_ARCHIVE_MIN_COMPLETENESS_SCORE:85}
+
 herb:
   assistant:
     enabled: ${HERB_ASSISTANT_ENABLED:true}

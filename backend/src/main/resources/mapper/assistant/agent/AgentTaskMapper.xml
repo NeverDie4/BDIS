@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.assistant.agent.mapper.AgentTaskMapper">
+    <resultMap id="TaskResultMap" type="com.bdis.modules.assistant.agent.entity.AgentTaskEntity">
+        <id column="id" property="id"/>
+        <result column="task_no" property="taskNo"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="user_id" property="userId"/>
+        <result column="goal_type" property="goalType"/>
+        <result column="goal_text" property="goalText"/>
+        <result column="target_type" property="targetType"/>
+        <result column="target_id" property="targetId"/>
+        <result column="collection_task_id" property="collectionTaskId"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="status" property="status"/>
+        <result column="current_phase" property="currentPhase"/>
+        <result column="progress_percent" property="progressPercent"/>
+        <result column="context_json" property="contextJson"/>
+        <result column="result_summary" property="resultSummary"/>
+        <result column="error_code" property="errorCode"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="version" property="version"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="start_time" property="startTime"/>
+        <result column="finish_time" property="finishTime"/>
+        <result column="cancel_time" property="cancelTime"/>
+        <result column="is_deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="TaskColumns">
+        t.id, t.task_no, t.session_id, t.user_id, t.goal_type, t.goal_text,
+        t.target_type, t.target_id, t.collection_task_id, t.species_id,
+        t.status, t.current_phase, t.progress_percent, t.context_json,
+        t.result_summary, t.error_code, t.error_message, t.version,
+        t.create_time, t.update_time, t.start_time, t.finish_time,
+        t.cancel_time, t.is_deleted
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assistant_agent_task (
+            task_no, session_id, user_id, goal_type, goal_text, target_type, target_id,
+            collection_task_id, species_id, status, current_phase, progress_percent,
+            context_json, result_summary, error_code, error_message, version,
+            create_time, update_time, start_time, finish_time, cancel_time, is_deleted
+        ) VALUES (
+            #{taskNo}, #{sessionId}, #{userId}, #{goalType}, #{goalText}, #{targetType}, #{targetId},
+            #{collectionTaskId}, #{speciesId}, #{status}, #{currentPhase}, #{progressPercent},
+            #{contextJson}, #{resultSummary}, #{errorCode}, #{errorMessage}, #{version},
+            #{createTime}, #{updateTime}, #{startTime}, #{finishTime}, #{cancelTime}, #{deleted}
+        )
+    </insert>
+
+    <update id="updateTaskNo">
+        UPDATE assistant_agent_task
+        SET task_no = #{taskNo}, update_time = #{updateTime}
+        WHERE id = #{id} AND task_no = #{oldTaskNo} AND is_deleted = 0
+    </update>
+
+    <select id="selectById" resultMap="TaskResultMap">
+        SELECT <include refid="TaskColumns"/>
+        FROM assistant_agent_task t
+        WHERE t.id = #{id} AND t.is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveDuplicate" resultMap="TaskResultMap">
+        SELECT <include refid="TaskColumns"/>
+        FROM assistant_agent_task t
+        WHERE t.user_id = #{userId}
+          AND t.collection_task_id = #{collectionTaskId}
+          AND t.goal_type = #{goalType}
+          AND t.status IN (
+            'CREATED', 'PLANNING', 'RUNNING', 'WAITING_CONFIRMATION',
+            'WAITING_FIELD_DATA', 'REANALYZING'
+          )
+          AND t.is_deleted = 0
+        ORDER BY t.id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectPlanRecoveryCandidates" resultMap="TaskResultMap">
+        SELECT <include refid="TaskColumns"/>
+        FROM assistant_agent_task t
+        WHERE t.status = 'RUNNING'
+          AND t.current_phase = 'EVIDENCE_ANALYSIS_COMPLETED'
+          AND t.is_deleted = 0
+          AND NOT EXISTS (
+            SELECT 1
+            FROM assistant_agent_collection_plan p
+            WHERE p.agent_task_id = t.id
+              AND p.status IN ('DRAFT', 'PROPOSED', 'CONFIRMED')
+          )
+        ORDER BY t.update_time, t.id
+        LIMIT #{limit}
+    </select>
+
+    <sql id="PageWhere">
+        <where>
+            t.is_deleted = 0
+            <if test="query.status != null and query.status != ''">
+                AND t.status = #{query.status}
+            </if>
+            <if test="query.goalType != null and query.goalType != ''">
+                AND t.goal_type = #{query.goalType}
+            </if>
+            <if test="query.collectionTaskId != null">
+                AND t.collection_task_id = #{query.collectionTaskId}
+            </if>
+            <if test="!admin">
+                AND ct.id IS NOT NULL
+                AND (
+                    t.user_id = #{currentUserId}
+                    OR ct.collector_id = #{currentUserId}
+                    OR ct.created_by = #{currentUserId}
+                    <if test="reviewer and scope != null and scope.allIncluded">
+                        OR t.collection_task_id IS NOT NULL
+                    </if>
+                    <if test="reviewer and scope != null and !scope.allIncluded and scope.ownerIds != null and scope.ownerIds.size() > 0">
+                        OR ct.created_by IN
+                        <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                            #{ownerId}
+                        </foreach>
+                        OR ct.collector_id IN
+                        <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                            #{ownerId}
+                        </foreach>
+                    </if>
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM assistant_agent_task t
+        LEFT JOIN herb_collection_task ct
+          ON ct.id = t.collection_task_id AND ct.is_deleted = 0
+        <include refid="PageWhere"/>
+    </select>
+
+    <select id="selectPage" resultMap="TaskResultMap">
+        SELECT <include refid="TaskColumns"/>
+        FROM assistant_agent_task t
+        LEFT JOIN herb_collection_task ct
+          ON ct.id = t.collection_task_id AND ct.is_deleted = 0
+        <include refid="PageWhere"/>
+        ORDER BY t.create_time DESC, t.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <update id="updateState">
+        UPDATE assistant_agent_task
+        SET status = #{targetStatus},
+            result_summary = COALESCE(#{resultSummary}, result_summary),
+            start_time = COALESCE(start_time, #{startTime}),
+            finish_time = COALESCE(#{finishTime}, finish_time),
+            cancel_time = COALESCE(#{cancelTime}, cancel_time),
+            update_time = #{updateTime},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+          AND version = #{expectedVersion}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateProgress">
+        UPDATE assistant_agent_task
+        SET progress_percent = #{progressPercent}, current_phase = #{currentPhase},
+            update_time = #{updateTime}, version = version + 1
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED')
+          AND is_deleted = 0
+    </update>
+</mapper>

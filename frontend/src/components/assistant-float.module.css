@@ -160,6 +160,262 @@
   background: #eef7ef;
 }
 
+.modeSwitch {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 12px 18px 0;
+  padding: 4px;
+  border: 1px solid #e5d8c5;
+  border-radius: 12px;
+  background: #efe7da;
+}
+
+.modeSwitch button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #68776e;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.modeSwitch .modeActive {
+  background: #fffaf2;
+  color: #0f5132;
+  box-shadow: 0 3px 10px rgba(63, 45, 24, 0.08);
+}
+
+.agentPanel {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 14px 18px 20px;
+}
+
+.agentIntro {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid #d5e4d3;
+  border-radius: 14px;
+  background: #eef7ef;
+  color: #246943;
+}
+
+.agentIntro svg {
+  flex: 0 0 auto;
+}
+
+.agentIntro strong {
+  color: #164a31;
+  font-size: 14px;
+}
+
+.agentIntro p {
+  margin: 4px 0 0;
+  color: #66776c;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.agentLoading {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #718078;
+}
+
+.agentTaskCard {
+  padding: 16px;
+  border: 1px solid #e4d7c4;
+  border-radius: 15px;
+  background: #fffaf2;
+  box-shadow: 0 8px 18px rgba(63, 45, 24, 0.05);
+}
+
+.agentTaskTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.agentTaskTop span {
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #e8f2e7;
+  color: #286e47;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.agentTaskTop em {
+  color: #1f633d;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.agentTaskCard h3 {
+  margin: 13px 0 7px;
+  color: #173f2c;
+  font-size: 16px;
+}
+
+.agentTaskCard > p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0 0 11px;
+  color: #68786e;
+  font-size: 12px;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.agentCurrentStep {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: #51695a;
+  font-size: 12px;
+}
+
+.agentFacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.agentFacts span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #e9dece;
+  border-radius: 10px;
+  background: #fffcf7;
+  color: #68776e;
+  font-size: 11px;
+}
+
+.agentFacts b {
+  color: #215f3b;
+  font-size: 16px;
+}
+
+.agentPending,
+.agentWaiting {
+  padding: 12px 13px;
+  border: 1px solid #e7c88f;
+  border-radius: 11px;
+  background: #fff3dd;
+  color: #75551e;
+}
+
+.agentPending strong {
+  font-size: 12px;
+}
+
+.agentPending p {
+  margin: 5px 0;
+  color: #654918;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.agentPending small {
+  color: #806c48;
+  line-height: 1.5;
+}
+
+.agentWaiting {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-color: #ceddca;
+  background: #edf5ea;
+  color: #436b50;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.agentWorkbenchLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 11px;
+  padding: 11px 13px;
+  background: #0f5132;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.agentFooterActions,
+.agentFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.agentRecent {
+  display: grid;
+  gap: 5px;
+  padding-top: 5px;
+  border-top: 1px solid #e8ddcd;
+}
+
+.agentRecent > strong {
+  margin: 5px 0;
+  color: #596d60;
+  font-size: 12px;
+}
+
+.agentRecent button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: transparent;
+  color: #617168;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.agentRecent button:hover,
+.agentRecent .agentRecentActive {
+  background: #eee8dc;
+  color: #235c3c;
+}
+
+.agentRecent em {
+  font-style: normal;
+}
+
+.agentFullWidth {
+  width: 100%;
+}
+
+.agentError {
+  color: #a83f38;
+  font-size: 12px;
+}
+
 .contextBox {
   margin: 12px 18px 10px;
   flex: 0 0 auto;

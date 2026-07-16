@@ -26,6 +26,7 @@ public class HerbAssistantConfig {
                 OpenAiApi.builder()
                         .baseUrl(properties.getBaseUrl())
                         .apiKey(properties.getApiKey())
+                        .completionsPath("/chat/completions")
                         .restClientBuilder(RestClient.builder().requestFactory(requestFactory))
                         .build();
         OpenAiChatModel chatModel =

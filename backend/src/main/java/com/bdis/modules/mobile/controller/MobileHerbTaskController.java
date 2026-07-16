@@ -2,12 +2,15 @@ package com.bdis.modules.mobile.controller;
 
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
+import com.bdis.modules.assistant.agent.service.AgentCollectionRequirementQueryService;
 import com.bdis.modules.mobile.dto.MobileBatchCreateRequest;
 import com.bdis.modules.mobile.dto.MobileTaskQueryRequest;
 import com.bdis.modules.mobile.service.MobileHerbTaskService;
+import com.bdis.modules.mobile.vo.MobileAgentRequirementsVO;
 import com.bdis.modules.mobile.vo.MobileBatchVO;
 import com.bdis.modules.mobile.vo.MobileTaskDetailVO;
 import com.bdis.modules.mobile.vo.MobileTaskVO;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,9 +25,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class MobileHerbTaskController {
 
     private final MobileHerbTaskService mobileHerbTaskService;
+    private final AgentCollectionRequirementQueryService agentRequirementService;
 
-    public MobileHerbTaskController(MobileHerbTaskService mobileHerbTaskService) {
+    public MobileHerbTaskController(
+            MobileHerbTaskService mobileHerbTaskService,
+            AgentCollectionRequirementQueryService agentRequirementService) {
         this.mobileHerbTaskService = mobileHerbTaskService;
+        this.agentRequirementService = agentRequirementService;
     }
 
     @GetMapping
@@ -37,6 +44,11 @@ public class MobileHerbTaskController {
     public Result<MobileTaskDetailVO> detail(
             @PathVariable Long taskId, @RequestParam(required = false) Long collectorId) {
         return Result.success(mobileHerbTaskService.detail(taskId, collectorId));
+    }
+
+    @GetMapping("/{taskId}/agent-requirements")
+    public Result<MobileAgentRequirementsVO> agentRequirements(@PathVariable Long taskId) {
+        return Result.success(agentRequirementService.getForMobile(taskId));
     }
 
     @GetMapping("/{taskId}/batches")
