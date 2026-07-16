@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Alert, App, Button, Layout, Menu, Spin } from "antd";
 import type { MenuProps } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -42,6 +43,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { message } = App.useApp();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const menus = useAuthStore((state) => state.menus);
@@ -91,6 +93,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     try {
       await apiDelete<void>("/auth/sessions/current");
     } finally {
+      queryClient.clear();
       clearAuth();
       router.replace("/login");
     }

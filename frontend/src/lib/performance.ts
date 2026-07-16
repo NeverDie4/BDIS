@@ -10,6 +10,23 @@ export type ApiPage<T> = {
   size?: number;
 };
 
+function normalizeApiPage<T>(data: unknown): ApiPage<T> {
+  if (Array.isArray(data)) {
+    return { records: data as T[], total: data.length };
+  }
+  if (!data || typeof data !== "object") {
+    return { records: [], total: 0 };
+  }
+  const page = data as Partial<ApiPage<T>>;
+  const records = Array.isArray(page.records) ? page.records : [];
+  return {
+    records,
+    total: typeof page.total === "number" && page.total >= 0 ? page.total : records.length,
+    current: page.current,
+    size: page.size,
+  };
+}
+
 export type PerformanceRecord = {
   id: number;
   performanceNo: string;
@@ -50,6 +67,8 @@ export type PerformanceParticipant = {
   id: number;
   performanceId: number;
   userId: number;
+  username?: string;
+  realName?: string;
   participantRole: string;
   sortOrder: number;
   isPrimary: number;
@@ -148,8 +167,12 @@ export function updateStandard(id: number, payload: StandardPayload) {
   return apiPut<PerformanceStandard>(`/performance-standards/${id}`, payload);
 }
 
-export function fetchPerformanceParticipantUsers(id: number) {
-  return apiGet<PerformanceParticipantUser[]>(`/performances/${id}/participants/participant-users`);
+export async function fetchPerformanceParticipantUsers(
+  id: number,
+  params: Record<string, unknown>,
+) {
+  const data = await apiGet<unknown>(`/performances/${id}/participants/participant-users`, params);
+  return normalizeApiPage<PerformanceParticipantUser>(data);
 }
 
 export function submitPerformance(id: number) {
@@ -176,6 +199,17 @@ export function addParticipant(
   payload: { userId: number; participantRole: string; sortOrder?: number },
 ) {
   return apiPost<PerformanceParticipant>(`/performances/${id}/participants`, payload);
+}
+
+export function updateParticipant(
+  id: number,
+  participantId: number,
+  payload: { userId: number; participantRole: string; sortOrder?: number },
+) {
+  return apiPut<PerformanceParticipant>(
+    `/performances/${id}/participants/${participantId}`,
+    payload,
+  );
 }
 
 export function removeParticipant(id: number, participantId: number) {

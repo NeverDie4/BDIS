@@ -1,10 +1,14 @@
 package com.bdis.modules.performance.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.BusinessAccessService;
 import com.bdis.modules.performance.dto.PerformanceAuditRequest;
+import com.bdis.modules.performance.entity.PerformanceAuditEntity;
 import com.bdis.modules.performance.entity.PerformanceEntity;
 import com.bdis.modules.performance.mapper.PerformanceAuditMapper;
 import com.bdis.modules.performance.mapper.PerformanceMapper;
@@ -50,7 +54,24 @@ class PerformanceAuditServiceTest {
                                 new PerformanceAuditServiceImpl(
                                                 performanceMapper, auditMapper, accessService)
                                         .auditPerformance(8L, request))
-                .hasMessage("退回业绩时必须填写认定意见");
+                .hasMessage("要求修改时必须填写认定意见");
+    }
+
+    @Test
+    void reviewerCanApproveAnotherUsersSubmittedPerformance() {
+        PerformanceEntity performance = submittedPerformance(5L);
+        when(performanceMapper.selectById(8L)).thenReturn(performance);
+        when(accessService.currentUserId()).thenReturn(6L);
+        when(performanceMapper.updateById(performance)).thenReturn(1);
+        PerformanceAuditRequest request = new PerformanceAuditRequest();
+        request.setDecision("approved");
+        request.setComment("材料齐全，符合认定条件");
+
+        new PerformanceAuditServiceImpl(performanceMapper, auditMapper, accessService)
+                .auditPerformance(8L, request);
+
+        assertThat(performance.getIdentifyStatus()).isEqualTo("approved");
+        verify(auditMapper).insert(any(PerformanceAuditEntity.class));
     }
 
     private PerformanceEntity submittedPerformance(Long ownerId) {

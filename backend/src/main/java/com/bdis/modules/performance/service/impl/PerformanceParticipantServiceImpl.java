@@ -1,6 +1,8 @@
 package com.bdis.modules.performance.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
@@ -12,18 +14,26 @@ import com.bdis.modules.performance.mapper.PerformanceMapper;
 import com.bdis.modules.performance.mapper.PerformanceParticipantMapper;
 import com.bdis.modules.performance.service.PerformanceParticipantService;
 import com.bdis.modules.performance.vo.PerformanceParticipantUserVO;
+import com.bdis.modules.performance.vo.PerformanceParticipantVO;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 public class PerformanceParticipantServiceImpl implements PerformanceParticipantService {
+
+    private static final long DEFAULT_CANDIDATE_PAGE_SIZE = 20L;
+    private static final long MAX_CANDIDATE_PAGE_SIZE = 50L;
 
     private final PerformanceMapper performanceMapper;
     private final PerformanceParticipantMapper participantMapper;
@@ -31,19 +41,40 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
     private final BusinessAccessService accessService;
 
     @Override
-    public List<PerformanceParticipantEntity> listParticipants(Long performanceId) {
+    public List<PerformanceParticipantVO> listParticipants(Long performanceId) {
         PerformanceEntity performance =
                 requirePerformance(performanceId, "performance:record:view");
-        return participantMapper.selectList(
-                new LambdaQueryWrapper<PerformanceParticipantEntity>()
-                        .eq(PerformanceParticipantEntity::getPerformanceId, performance.getId())
-                        .orderByDesc(PerformanceParticipantEntity::getIsPrimary)
-                        .orderByAsc(PerformanceParticipantEntity::getSortOrder)
-                        .orderByAsc(PerformanceParticipantEntity::getId));
+        List<PerformanceParticipantEntity> participants =
+                participantMapper.selectList(
+                        new LambdaQueryWrapper<PerformanceParticipantEntity>()
+                                .eq(
+                                        PerformanceParticipantEntity::getPerformanceId,
+                                        performance.getId())
+                                .orderByDesc(PerformanceParticipantEntity::getIsPrimary)
+                                .orderByAsc(PerformanceParticipantEntity::getSortOrder)
+                                .orderByAsc(PerformanceParticipantEntity::getId));
+        Map<Long, UserEntity> usersById =
+                participants.isEmpty()
+                        ? Map.of()
+                        : userMapper
+                                .selectBatchIds(
+                                        participants.stream()
+                                                .map(PerformanceParticipantEntity::getUserId)
+                                                .distinct()
+                                                .toList())
+                                .stream()
+                                .collect(Collectors.toMap(UserEntity::getId, Function.identity()));
+        return participants.stream()
+                .map(
+                        participant ->
+                                PerformanceParticipantVO.from(
+                                        participant, usersById.get(participant.getUserId())))
+                .toList();
     }
 
     @Override
-    public List<PerformanceParticipantUserVO> listParticipantUsers(Long performanceId) {
+    public IPage<PerformanceParticipantUserVO> listParticipantUsers(
+            Long performanceId, String keyword, Long pageNum, Long pageSize) {
         PerformanceEntity performance = requireEditablePerformance(performanceId);
         UserEntity owner = requireParticipantScopeOwner(performance);
         LambdaQueryWrapper<UserEntity> wrapper =
@@ -51,11 +82,20 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
                         .eq(UserEntity::getStatus, 1)
                         .orderByAsc(UserEntity::getUsername);
         applyParticipantBusinessScope(wrapper, owner);
-        return userMapper
-                .selectList(wrapper)
-                .stream()
-                .map(PerformanceParticipantUserVO::from)
-                .toList();
+        wrapper.and(
+                StringUtils.hasText(keyword),
+                query ->
+                        query.like(UserEntity::getRealName, keyword)
+                                .or()
+                                .like(UserEntity::getUsername, keyword));
+        IPage<UserEntity> users =
+                userMapper.selectPage(
+                        new Page<>(safePageNum(pageNum), safePageSize(pageSize)), wrapper);
+        Page<PerformanceParticipantUserVO> candidates =
+                new Page<>(users.getCurrent(), users.getSize(), users.getTotal());
+        candidates.setRecords(
+                users.getRecords().stream().map(PerformanceParticipantUserVO::from).toList());
+        return candidates;
     }
 
     @Override
@@ -71,12 +111,14 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
                 && !performance.getUserId().equals(request.getUserId())) {
             throw new IllegalArgumentException("负责人必须与业绩归属人一致");
         }
+        boolean primary = Boolean.TRUE.equals(request.getPrimary());
+        validateParticipantRole(request.getParticipantRole(), primary);
         PerformanceParticipantEntity entity = new PerformanceParticipantEntity();
         entity.setPerformanceId(performanceId);
         entity.setUserId(request.getUserId());
-        entity.setParticipantRole(request.getParticipantRole());
+        entity.setParticipantRole(request.getParticipantRole().trim());
         entity.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
-        entity.setIsPrimary(Boolean.TRUE.equals(request.getPrimary()) ? 1 : 0);
+        entity.setIsPrimary(primary ? 1 : 0);
         entity.setStatus(1);
         entity.setCreatedBy(accessService.currentUserId());
         entity.setRemark(request.getRemark());
@@ -102,13 +144,15 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
         } else if (Boolean.TRUE.equals(request.getPrimary())) {
             throw new IllegalArgumentException("负责人已由业绩归属人固定维护");
         }
+        boolean primary = Integer.valueOf(1).equals(entity.getIsPrimary());
+        validateParticipantRole(request.getParticipantRole(), primary);
         requireActiveParticipant(performance, request.getUserId());
         if (!entity.getUserId().equals(request.getUserId())
                 && existsParticipant(performanceId, request.getUserId())) {
             throw new IllegalArgumentException("参与人已存在");
         }
         entity.setUserId(request.getUserId());
-        entity.setParticipantRole(request.getParticipantRole());
+        entity.setParticipantRole(request.getParticipantRole().trim());
         entity.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
         entity.setUpdatedBy(accessService.currentUserId());
         entity.setRemark(request.getRemark());
@@ -212,6 +256,27 @@ public class PerformanceParticipantServiceImpl implements PerformanceParticipant
         return owner.getDepartmentId() != null
                 || owner.getOrganizationId() != null
                 || owner.getId().equals(participant.getId());
+    }
+
+    private long safePageNum(Long pageNum) {
+        return pageNum == null || pageNum < 1 ? 1L : pageNum;
+    }
+
+    private long safePageSize(Long pageSize) {
+        if (pageSize == null || pageSize < 1) {
+            return DEFAULT_CANDIDATE_PAGE_SIZE;
+        }
+        return Math.min(pageSize, MAX_CANDIDATE_PAGE_SIZE);
+    }
+
+    private void validateParticipantRole(String participantRole, boolean primary) {
+        String role = participantRole == null ? "" : participantRole.trim();
+        if (primary && !"owner".equals(role)) {
+            throw new IllegalArgumentException("负责人参与记录的角色必须为 owner");
+        }
+        if (!primary && "owner".equals(role)) {
+            throw new IllegalArgumentException("owner 是负责人保留角色，普通参与人不能使用");
+        }
     }
 
     private void updateOrThrow(PerformanceParticipantEntity entity) {

@@ -99,6 +99,7 @@ public class SecurityConfig {
                                         .denyAll()
                                         .requestMatchers(
                                                 "/auth/sessions",
+                                                "/auth/sessions/refresh",
                                                 "/auth/bootstrap-admin",
                                                 "/swagger-ui.html",
                                                 "/swagger-ui/**",
