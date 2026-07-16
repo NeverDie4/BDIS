@@ -12,7 +12,6 @@ import com.bdis.modules.growth.vo.DigitalLifeIntegrityVO;
 import com.bdis.modules.growth.vo.DigitalLifeNarrationGenerationVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifeArchiveVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifePublicArchiveVO;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

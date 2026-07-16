@@ -7,6 +7,8 @@ const statusMeta: Record<TeachingStatus, { label: string; className: string }> =
   draft: { label: "草稿", className: styles.statusDraft },
   offline: { label: "已下架", className: styles.statusOffline },
   ongoing: { label: "进行中", className: styles.statusOngoing },
+  planning: { label: "规划中", className: styles.statusDraft },
+  suspended: { label: "已暂停", className: styles.statusOffline },
   completed: { label: "已结题", className: styles.statusCompleted },
   applying: { label: "申报中", className: styles.statusApplying },
 };

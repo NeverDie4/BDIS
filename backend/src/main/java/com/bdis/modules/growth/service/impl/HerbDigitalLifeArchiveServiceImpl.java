@@ -33,19 +33,17 @@ import com.bdis.modules.herb.vo.HerbImageVO;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.qrcode.QRCodeWriter;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class HerbDigitalLifeArchiveServiceImpl implements HerbDigitalLifeArchiveService {
@@ -105,8 +103,7 @@ public class HerbDigitalLifeArchiveServiceImpl implements HerbDigitalLifeArchive
         HerbCollectionTaskEntity task = requirePublicTask(traceCode);
         String publicUrl = fullPublicUrl(PUBLIC_ARCHIVE_PATH + task.getTraceCode());
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            var matrix =
-                    new QRCodeWriter().encode(publicUrl, BarcodeFormat.QR_CODE, 320, 320);
+            var matrix = new QRCodeWriter().encode(publicUrl, BarcodeFormat.QR_CODE, 320, 320);
             MatrixToImageWriter.writeToStream(matrix, "PNG", output);
             byte[] content = output.toByteArray();
             FileContentVO file = new FileContentVO();
@@ -281,8 +278,7 @@ public class HerbDigitalLifeArchiveServiceImpl implements HerbDigitalLifeArchive
         target.setStartTime(source.getStartTime());
         target.setEndTime(source.getEndTime());
         target.setArchiveStatus(source.getArchiveStatus());
-        target.setQrCodeUrl(
-                "/api/trace/digital-life/" + source.getTraceCode() + "/qrcode");
+        target.setQrCodeUrl("/api/trace/digital-life/" + source.getTraceCode() + "/qrcode");
         target.setStages(
                 source.getStages().stream()
                         .map(stage -> toPublicStage(stage, source.getTraceCode()))

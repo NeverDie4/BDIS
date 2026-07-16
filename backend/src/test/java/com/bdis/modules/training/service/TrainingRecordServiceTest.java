@@ -98,6 +98,40 @@ class TrainingRecordServiceTest {
     }
 
     @Test
+    void joiningTheSamePlanTwiceCreatesTwoAttendanceRecords() {
+        when(userMapper.selectById(7L)).thenReturn(user(7L));
+        when(planMapper.selectByIdIncludingDeleted(1L)).thenReturn(plan("published"));
+        when(recordMapper.insert(any(TrainingRecordEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            TrainingRecordEntity record = invocation.getArgument(0);
+                            record.setId(record.getAttendanceNo().endsWith("0") ? 10L : 11L);
+                            return 1;
+                        });
+        TrainingRecordDetailVO detail = new TrainingRecordDetailVO();
+        detail.setUserId(7L);
+        detail.setPlanId(1L);
+        when(recordMapper.selectDetailById(anyLong())).thenReturn(detail);
+
+        service.join(1L);
+        service.join(1L);
+
+        ArgumentCaptor<TrainingRecordEntity> captor =
+                ArgumentCaptor.forClass(TrainingRecordEntity.class);
+        verify(recordMapper, times(2)).insert(captor.capture());
+        assertTrue(
+                captor.getAllValues().stream()
+                        .allMatch(
+                                record ->
+                                        "not_started".equals(record.getTrainingStatus())
+                                                && BigDecimal.ZERO.compareTo(record.getProgress()) == 0
+                                                && record.getCompletedAt() == null));
+        assertNotEquals(
+                captor.getAllValues().get(0).getAttendanceNo(),
+                captor.getAllValues().get(1).getAttendanceNo());
+    }
+
+    @Test
     void pageUsesSingleJoinedMapperQueryAndValidatesFilters() {
         TrainingRecordListVO vo = new TrainingRecordListVO();
         vo.setId(1L);

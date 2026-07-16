@@ -2,6 +2,7 @@ package com.bdis.modules.experiment.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bdis.common.core.BaseEntity;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,4 +39,14 @@ public class ExperimentRecordEntity extends BaseEntity {
     private Long archivedBy;
 
     private String archiveComment;
+
+    private BigDecimal score;
+
+    private Long gradedBy;
+
+    private LocalDateTime gradedAt;
+
+    private String gradeComment;
+
+    private Long reportFileId;
 }

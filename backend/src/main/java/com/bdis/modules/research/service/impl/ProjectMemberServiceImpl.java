@@ -176,6 +176,69 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         recordAudit("REMOVE", member.getId());
     }
 
+    @Override
+    @Transactional
+    public Long invite(Long projectId, ProjectMemberAddRequest request) {
+        ResearchProjectEntity project = requireProject(projectId);
+        requireProjectAccess(project, true);
+        ResearchProjectStatus.assertMutable(project);
+        validateRole(request == null ? null : request.getMemberRole());
+        UserEntity user = requireUser(request.getUserId());
+        ProjectMemberEntity member =
+                memberMapper.selectByProjectIdAndUserId(projectId, user.getId());
+        if (member != null && "active".equals(member.getMemberStatus())) {
+            throw new BusinessException("Member is already active");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (member == null) {
+            member = new ProjectMemberEntity();
+            member.setProjectId(projectId);
+            member.setUserId(user.getId());
+            member.setCreatedAt(now);
+            member.setCreatedBy(CurrentUserUtils.currentUserId());
+        }
+        member.setMemberRole(request.getMemberRole());
+        member.setMemberStatus("invited");
+        member.setInvitationStatus("pending");
+        member.setInvitedBy(CurrentUserUtils.currentUserId());
+        member.setInvitedAt(now);
+        member.setAcceptedAt(null);
+        member.setRejectedAt(null);
+        member.setRemark(request.getRemark());
+        if (member.getId() == null) {
+            memberMapper.insert(member);
+        } else {
+            memberMapper.updateById(member);
+        }
+        return member.getId();
+    }
+
+    @Override
+    @Transactional
+    public void respond(Long projectId, String response) {
+        Long userId = CurrentUserUtils.currentUserId();
+        if (userId == null) {
+            throw new ForbiddenException("Authentication is required");
+        }
+        if (!"accept".equals(response) && !"reject".equals(response)) {
+            throw new BusinessException("Invalid invitation response");
+        }
+        ProjectMemberEntity member = memberMapper.selectByProjectIdAndUserId(projectId, userId);
+        if (member == null || !"pending".equals(member.getInvitationStatus())) {
+            throw new ResourceNotFoundException("Pending invitation not found");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        boolean accepted = "accept".equals(response);
+        member.setInvitationStatus(accepted ? "accepted" : "rejected");
+        member.setMemberStatus(accepted ? "active" : "left");
+        member.setJoinedAt(accepted ? now : null);
+        member.setAcceptedAt(accepted ? now : null);
+        member.setRejectedAt(accepted ? null : now);
+        if (memberMapper.updateById(member) == 0) {
+            throw new BusinessException("Invitation response failed");
+        }
+    }
+
     private ResearchProjectEntity requireProject(Long projectId) {
         ResearchProjectEntity project = projectMapper.selectById(projectId);
         if (project == null) {

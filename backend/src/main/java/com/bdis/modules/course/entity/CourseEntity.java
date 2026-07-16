@@ -23,6 +23,20 @@ public class CourseEntity extends BaseEntity {
 
     private String videoUrl;
 
+    private String applicableMajors;
+
+    private Integer hours;
+
+    private java.math.BigDecimal credits;
+
+    private String prerequisites;
+
+    private String teachingObjectives;
+
+    private String teachingMethods;
+
+    private String tags;
+
     private String publishStatus;
 
     private LocalDateTime publishedAt;

@@ -64,7 +64,8 @@ public class HerbSpeciesServiceImpl implements HerbSpeciesService {
         herbSpeciesMapper.insertSpecies(entity);
         if (StringUtils.hasText(request.getCoverImageUrl())) {
             entity.setCoverImageUrl(
-                    coverFileService.replaceCover(entity.getId(), null, request.getCoverImageUrl()));
+                    coverFileService.replaceCover(
+                            entity.getId(), null, request.getCoverImageUrl()));
             entity.setUpdatedAt(LocalDateTime.now());
             herbSpeciesMapper.updateSpecies(entity);
         }

@@ -214,14 +214,7 @@ public class TrainingFeedbackServiceImpl implements TrainingFeedbackService {
     }
 
     private void applyScope(TrainingFeedbackQuery query) {
-        if (CurrentUserUtils.currentRoleCodes().isEmpty()
-                || CurrentUserUtils.currentRoleCodes().stream()
-                        .anyMatch(role -> "ADMIN".equalsIgnoreCase(role))) {
-            query.setScopeAll(true);
-        } else {
-            query.setScopeAll(false);
-            query.setScopeUserId(CurrentUserUtils.currentUserId());
-        }
+        query.setScopeAll(true);
     }
 
     private void requireFeedbackAccess(Long feedbackUserId, Long recordId) {

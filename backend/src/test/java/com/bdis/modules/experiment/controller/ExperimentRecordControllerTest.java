@@ -17,7 +17,9 @@ import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.GlobalExceptionHandler;
 import com.bdis.file.vo.FileBusinessVO;
+import com.bdis.modules.experiment.entity.ExperimentRecordVersionEntity;
 import com.bdis.modules.experiment.service.ExperimentRecordService;
+import com.bdis.modules.experiment.service.ExperimentRecordVersionService;
 import com.bdis.modules.experiment.vo.ExperimentRecordDetailVO;
 import com.bdis.modules.experiment.vo.ExperimentRecordListVO;
 import com.bdis.modules.file.vo.FileResourceVO;
@@ -35,16 +37,35 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class ExperimentRecordControllerTest {
 
     @Mock private ExperimentRecordService recordService;
+    @Mock private ExperimentRecordVersionService versionService;
     @Mock private AuthorizationService authorizationService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc =
-                MockMvcBuilders.standaloneSetup(
-                                new ExperimentRecordController(recordService, authorizationService))
+                        MockMvcBuilders.standaloneSetup(
+                                new ExperimentRecordController(
+                                        recordService, authorizationService, versionService))
                         .setControllerAdvice(new GlobalExceptionHandler())
                         .build();
+    }
+
+    @Test
+    void reportVersionCreationUsesStudentSubmitPermission() throws Exception {
+        ExperimentRecordVersionEntity version = new ExperimentRecordVersionEntity();
+        version.setId(12L);
+        when(versionService.create(any(), any())).thenReturn(version);
+
+        mockMvc.perform(
+                        post("/experiment-records/1/versions")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"experimentTitle\":\"Revised report\",\"experimentProcess\":\"Revised process\",\"experimentResult\":\"Revised result\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(12));
+
+        verify(authorizationService).requirePermission("edu:experiment-record:submit");
     }
 
     @Test
@@ -202,6 +223,25 @@ class ExperimentRecordControllerTest {
                 .andExpect(jsonPath("$.data.archiveStatus").value("archived"));
         verify(authorizationService).requirePermission("edu:experiment-record:archive");
         verify(recordService).archive(any(), any());
+    }
+
+    @Test
+    void gradeUsesDedicatedPathPermissionAndReturnsUpdatedDetail() throws Exception {
+        ExperimentRecordDetailVO vo = new ExperimentRecordDetailVO();
+        vo.setId(1L);
+        vo.setScore(new java.math.BigDecimal("92.5"));
+        when(recordService.getDetail(1L)).thenReturn(vo);
+
+        mockMvc.perform(
+                        post("/experiment-records/1/grade")
+                                .contentType("application/json")
+                                .content(
+                                        "{\"version\":0,\"score\":92.5,"
+                                                + "\"gradeComment\":\"过程完整\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.score").value(92.5));
+        verify(authorizationService).requirePermission("edu:experiment-record:grade");
+        verify(recordService).grade(any(), any());
     }
 
     @Test

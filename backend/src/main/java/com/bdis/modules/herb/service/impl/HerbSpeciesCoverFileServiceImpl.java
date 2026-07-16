@@ -58,8 +58,7 @@ public class HerbSpeciesCoverFileServiceImpl implements HerbSpeciesCoverFileServ
             return null;
         }
         if (requestedFileId == null) {
-            throw new BusinessException(
-                    ResultCodeEnum.VALIDATION_ERROR, "药材封面必须使用文件上传模块返回的图片");
+            throw new BusinessException(ResultCodeEnum.VALIDATION_ERROR, "药材封面必须使用文件上传模块返回的图片");
         }
 
         String publicUrl = publishAndBind(speciesId, requestedFileId);
@@ -98,8 +97,7 @@ public class HerbSpeciesCoverFileServiceImpl implements HerbSpeciesCoverFileServ
                 throw new ForbiddenException("只能使用本人上传的药材封面");
             }
             if (!"private".equalsIgnoreCase(file.getAccessLevel())) {
-                throw new BusinessException(
-                        ResultCodeEnum.CONFLICT, "未绑定的药材封面必须保持私有状态");
+                throw new BusinessException(ResultCodeEnum.CONFLICT, "未绑定的药材封面必须保持私有状态");
             }
         }
 

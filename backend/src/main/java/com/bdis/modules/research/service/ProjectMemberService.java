@@ -15,4 +15,8 @@ public interface ProjectMemberService {
     void updateRole(Long projectId, Long userId, ProjectMemberUpdateRequest request);
 
     void remove(Long projectId, Long userId);
+
+    Long invite(Long projectId, ProjectMemberAddRequest request);
+
+    void respond(Long projectId, String response);
 }

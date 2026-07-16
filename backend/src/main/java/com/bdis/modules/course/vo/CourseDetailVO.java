@@ -1,5 +1,6 @@
 package com.bdis.modules.course.vo;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Data;
@@ -15,9 +16,17 @@ public class CourseDetailVO {
     private String teacherName;
     private String description;
     private String videoUrl;
+    private List<String> applicableMajors = List.of();
+    private Integer hours;
+    private BigDecimal credits;
+    private List<String> prerequisites = List.of();
+    private List<String> teachingObjectives = List.of();
+    private List<String> teachingMethods = List.of();
+    private List<String> tags = List.of();
     private String publishStatus;
     private LocalDateTime publishedAt;
     private Long publishedBy;
+    private String publisherName;
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
     private Integer status;

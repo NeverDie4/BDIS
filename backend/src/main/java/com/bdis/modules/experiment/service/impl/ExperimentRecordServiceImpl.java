@@ -22,16 +22,20 @@ import com.bdis.modules.experiment.query.ExperimentRecordQuery;
 import com.bdis.modules.experiment.request.ExperimentRecordArchiveRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordAttachmentBindRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordCreateRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordGradeRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordReturnRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordSubmitRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordUpdateRequest;
 import com.bdis.modules.experiment.service.ExperimentRecordService;
 import com.bdis.modules.experiment.vo.ExperimentRecordDetailVO;
 import com.bdis.modules.experiment.vo.ExperimentRecordListVO;
 import com.bdis.modules.file.vo.FileResourceVO;
+import com.bdis.modules.notification.service.NotificationService;
 import com.bdis.modules.research.constant.ResearchProjectStatus;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -51,12 +55,15 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                     ExperimentArchiveStatus.DRAFT,
                     ExperimentArchiveStatus.SUBMITTED,
                     ExperimentArchiveStatus.ARCHIVED);
-    private static final Set<String> ATTACHMENT_USAGES = Set.of("attachment", "image");
+    private static final Set<String> ATTACHMENT_USAGES = Set.of("attachment", "image", "report");
 
     private final ExperimentRecordMapper recordMapper;
     private final UserMapper userMapper;
     private final FileBusinessService fileBusinessService;
     private final AuditLogService auditLogService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private NotificationService notificationService;
 
     public ExperimentRecordServiceImpl(
             ExperimentRecordMapper recordMapper,
@@ -212,6 +219,7 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                     ResultCodeEnum.CONFLICT, "Experiment record submit state or version conflict");
         }
         recordAudit("SUBMIT", id);
+        notifyCourseTeacher(entity, "REPORT_SUBMITTED", "实验报告已提交", "学生提交了实验报告，请及时批阅");
     }
 
     @Override
@@ -240,6 +248,59 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
                     ResultCodeEnum.CONFLICT, "Experiment record archive state or version conflict");
         }
         recordAudit("ARCHIVE", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void grade(Long id, ExperimentRecordGradeRequest request) {
+        ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
+        if (!ExperimentArchiveStatus.SUBMITTED.equals(entity.getArchiveStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Only submitted experiment records can be graded");
+        }
+        validateGrade(request, entity);
+        UserEntity operator = requireCurrentOperator();
+        LocalDateTime gradedAt = LocalDateTime.now();
+        if (recordMapper.gradeByIdAndVersion(
+                        id,
+                        request.getVersion(),
+                        operator.getId(),
+                        request.getScore(),
+                        gradedAt,
+                        request.getGradeComment())
+                == 0) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Experiment record grade state or version conflict");
+        }
+        recordAudit("GRADE", id);
+        notifyRecorder(entity, "REPORT_GRADED", "实验报告已评分", "教师已完成实验报告评分，请查看成绩与评语");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void returnForRevision(Long id, ExperimentRecordReturnRequest request) {
+        ExperimentRecordEntity entity = requireActive(id);
+        requireRecordAccess(
+                entity.getRecorderId(), entity.getCourseId(), entity.getProjectId(), true);
+        if (!ExperimentArchiveStatus.SUBMITTED.equals(entity.getArchiveStatus())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Only submitted experiment records can be returned");
+        }
+        UserEntity operator = requireCurrentOperator();
+        if (recordMapper.returnByIdAndVersion(
+                        id,
+                        request.getVersion(),
+                        operator.getId(),
+                        LocalDateTime.now(),
+                        request.getComment())
+                == 0) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Experiment record return state or version conflict");
+        }
+        recordAudit("RETURN", id);
+        notifyRecorder(entity, "REPORT_RETURNED", "实验报告已退回", request.getComment());
     }
 
     @Override
@@ -274,6 +335,12 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         if (relation == null || relation.getId() == null) {
             throw new BusinessException(
                     ResultCodeEnum.CONFLICT, "Experiment attachment bind failed");
+        }
+        if ("report".equals(bindDTO.getFileUsage())) {
+            entity.setReportFileId(request.getFileId());
+            entity.setUpdatedAt(LocalDateTime.now());
+            entity.setUpdatedBy(CurrentUserUtils.currentUserId());
+            recordMapper.updateById(entity);
         }
         return relation;
     }
@@ -464,6 +531,24 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         }
     }
 
+    private void validateGrade(
+            ExperimentRecordGradeRequest request, ExperimentRecordEntity entity) {
+        if (request == null || request.getVersion() == null || request.getScore() == null) {
+            throw new BusinessException("Experiment record version and score are required");
+        }
+        if (!Objects.equals(request.getVersion(), entity.getVersion())) {
+            throw new BusinessException(
+                    ResultCodeEnum.CONFLICT, "Experiment record version conflict");
+        }
+        BigDecimal score = request.getScore();
+        if (score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new BusinessException("Experiment score must be between 0 and 100");
+        }
+        if (request.getGradeComment() != null && request.getGradeComment().length() > 1000) {
+            throw new BusinessException("Experiment grade comment is too long");
+        }
+    }
+
     private UserEntity requireCurrentOperator() {
         Long userId = CurrentUserUtils.currentUserId();
         if (userId == null || userId <= 0) {
@@ -564,5 +649,25 @@ public class ExperimentRecordServiceImpl implements ExperimentRecordService {
         audit.setBizType(BIZ_TYPE);
         audit.setBizId(recordId);
         auditLogService.record(audit);
+    }
+
+    private void notifyCourseTeacher(
+            ExperimentRecordEntity record, String type, String title, String content) {
+        if (notificationService == null || record.getCourseId() == null) {
+            return;
+        }
+        CourseEntity course = recordMapper.selectCourseByIdIncludingDeleted(record.getCourseId());
+        if (course != null) {
+            notificationService.create(
+                    course.getTeacherId(), type, BIZ_TYPE, record.getId(), title, content);
+        }
+    }
+
+    private void notifyRecorder(
+            ExperimentRecordEntity record, String type, String title, String content) {
+        if (notificationService != null) {
+            notificationService.create(
+                    record.getRecorderId(), type, BIZ_TYPE, record.getId(), title, content);
+        }
     }
 }

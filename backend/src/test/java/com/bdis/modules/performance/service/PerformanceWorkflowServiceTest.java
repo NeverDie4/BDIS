@@ -147,7 +147,12 @@ class PerformanceWorkflowServiceTest {
         service().submitPerformance(8L);
 
         assertThat(existing.getStandardRuleSnapshot())
-                .isEqualTo("认定规则：满足项目验收要求\n等级规则：按省部级认定\n佐证材料：无需提供材料");
+                .isEqualTo(
+                        String.join(
+                                System.lineSeparator(),
+                                "认定规则：满足项目验收要求",
+                                "等级规则：按省部级认定",
+                                "佐证材料：无需提供材料"));
     }
 
     @Test

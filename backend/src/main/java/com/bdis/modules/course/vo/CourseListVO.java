@@ -13,9 +13,14 @@ public class CourseListVO {
     private Long teacherId;
     private String teacherName;
     private String publishStatus;
+    private LocalDateTime publishedAt;
+    private Long publishedBy;
+    private String publisherName;
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
     private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Long createdBy;
+    private Integer version;
 }

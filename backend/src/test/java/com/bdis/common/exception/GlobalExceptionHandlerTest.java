@@ -51,7 +51,8 @@ class GlobalExceptionHandlerTest {
     @Test
     void illegalArgumentShouldReturnValidationErrorMessage() {
         ResponseEntity<Result<Void>> response =
-                exceptionHandler.handleIllegalArgument(new IllegalArgumentException("来源类型和来源 ID 必须同时提供"));
+                exceptionHandler.handleIllegalArgument(
+                        new IllegalArgumentException("来源类型和来源 ID 必须同时提供"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();

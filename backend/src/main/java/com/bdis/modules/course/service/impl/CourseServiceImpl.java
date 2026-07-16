@@ -310,7 +310,9 @@ public class CourseServiceImpl implements CourseService {
         }
         wrapper.and(
                 scope ->
-                        scope.eq(CourseEntity::getCreatedBy, userId)
+                        scope.eq(CourseEntity::getPublishStatus, CoursePublishStatus.PUBLISHED)
+                                .or()
+                                .eq(CourseEntity::getCreatedBy, userId)
                                 .or()
                                 .eq(CourseEntity::getTeacherId, userId));
     }
@@ -324,6 +326,9 @@ public class CourseServiceImpl implements CourseService {
             if (manage || !CoursePublishStatus.PUBLISHED.equals(course.getPublishStatus())) {
                 throw new ForbiddenException("Student cannot manage or view this course");
             }
+            return;
+        }
+        if (!manage && CoursePublishStatus.PUBLISHED.equals(course.getPublishStatus())) {
             return;
         }
         if (!Objects.equals(userId, course.getCreatedBy())
@@ -362,7 +367,13 @@ public class CourseServiceImpl implements CourseService {
         vo.setCourseName(entity.getCourseName());
         vo.setCourseType(entity.getCourseType());
         vo.setTeacherId(entity.getTeacherId());
+        vo.setTeacherName(resolveUserName(entity.getTeacherId()));
         vo.setPublishStatus(entity.getPublishStatus());
+        vo.setPublishedAt(entity.getPublishedAt());
+        vo.setPublishedBy(entity.getPublishedBy());
+        vo.setPublisherName(resolveUserName(entity.getPublishedBy()));
+        vo.setCreatedBy(entity.getCreatedBy());
+        vo.setVersion(entity.getVersion());
         vo.setStartedAt(entity.getStartedAt());
         vo.setEndedAt(entity.getEndedAt());
         vo.setStatus(entity.getStatus());
@@ -389,6 +400,7 @@ public class CourseServiceImpl implements CourseService {
         vo.setPublishStatus(entity.getPublishStatus());
         vo.setPublishedAt(entity.getPublishedAt());
         vo.setPublishedBy(entity.getPublishedBy());
+        vo.setPublisherName(resolveUserName(entity.getPublishedBy()));
         vo.setStartedAt(entity.getStartedAt());
         vo.setEndedAt(entity.getEndedAt());
         vo.setStatus(entity.getStatus());
@@ -399,6 +411,14 @@ public class CourseServiceImpl implements CourseService {
         vo.setUpdatedBy(entity.getUpdatedBy());
         vo.setVersion(entity.getVersion());
         return vo;
+    }
+
+    private String resolveUserName(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        UserEntity user = userMapper.selectById(userId);
+        return user == null ? null : user.getRealName();
     }
 
     private void recordAudit(String operationType, Long courseId) {

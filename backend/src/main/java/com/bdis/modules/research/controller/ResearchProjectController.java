@@ -3,16 +3,20 @@ package com.bdis.modules.research.controller;
 import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.modules.permission.service.AuthorizationService;
+import com.bdis.modules.research.entity.ResearchProjectReviewEntity;
 import com.bdis.modules.research.query.ResearchProjectQuery;
 import com.bdis.modules.research.request.ResearchProjectCreateRequest;
 import com.bdis.modules.research.request.ResearchProjectLeaderChangeRequest;
+import com.bdis.modules.research.request.ResearchProjectReviewRequest;
 import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.service.ResearchProjectService;
 import com.bdis.modules.research.vo.ResearchProjectDetailVO;
 import com.bdis.modules.research.vo.ResearchProjectListVO;
+import com.bdis.modules.research.vo.ResearchUserCandidateVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import java.util.List;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -49,6 +53,12 @@ public class ResearchProjectController {
         return Result.success(projectService.getDetail(id));
     }
 
+    @GetMapping("/candidate-users")
+    public Result<List<ResearchUserCandidateVO>> candidateUsers() {
+        authorizationService.requirePermission("research:project:detail");
+        return Result.success(projectService.listUserCandidates());
+    }
+
     @PostMapping
     public Result<ResearchProjectDetailVO> create(
             @Valid @RequestBody ResearchProjectCreateRequest request) {
@@ -82,5 +92,28 @@ public class ResearchProjectController {
         authorizationService.requirePermission("research:project:status");
         projectService.changeStatus(id, request);
         return Result.success(projectService.getDetail(id));
+    }
+
+    @PostMapping("/{id}/submit-review")
+    public Result<Void> submitReview(@PathVariable @Positive Long id) {
+        authorizationService.requirePermission("research:project:submit-review");
+        projectService.submitReview(id);
+        return Result.success();
+    }
+
+    @PostMapping("/{id}/review")
+    public Result<Void> review(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody ResearchProjectReviewRequest request) {
+        authorizationService.requirePermission("research:project:review");
+        projectService.review(id, request);
+        return Result.success();
+    }
+
+    @GetMapping("/{id}/review-history")
+    public Result<List<ResearchProjectReviewEntity>> reviewHistory(
+            @PathVariable @Positive Long id) {
+        authorizationService.requirePermission("research:project:detail");
+        return Result.success(projectService.reviewHistory(id));
     }
 }

@@ -28,6 +28,7 @@ import com.bdis.modules.experiment.mapper.ExperimentRecordMapper;
 import com.bdis.modules.experiment.query.ExperimentRecordQuery;
 import com.bdis.modules.experiment.request.ExperimentRecordArchiveRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordCreateRequest;
+import com.bdis.modules.experiment.request.ExperimentRecordGradeRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordSubmitRequest;
 import com.bdis.modules.experiment.request.ExperimentRecordUpdateRequest;
 import com.bdis.modules.experiment.service.impl.ExperimentRecordServiceImpl;
@@ -36,6 +37,7 @@ import com.bdis.modules.experiment.vo.ExperimentRecordListVO;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
 import com.bdis.modules.user.entity.UserEntity;
 import com.bdis.modules.user.mapper.UserMapper;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -497,6 +499,21 @@ class ExperimentRecordServiceTest {
     }
 
     @Test
+    void returnedRecordCanBeSubmittedAgain() {
+        ExperimentRecordEntity entity = completeDraftRecord();
+        entity.setArchiveStatus(ExperimentArchiveStatus.RETURNED);
+        when(recordMapper.selectById(1L)).thenReturn(entity);
+        when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(activeCourse(2L));
+        when(userMapper.selectById(7L)).thenReturn(activeUser(7L));
+        when(recordMapper.submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class)))
+                .thenReturn(1);
+
+        service.submit(1L, submitRequest(0));
+
+        verify(recordMapper).submitByIdAndVersion(eq(1L), eq(0), eq(7L), any(LocalDateTime.class));
+    }
+
+    @Test
     void submitRejectsSubmittedArchivedAndVersionConflict() {
         ExperimentRecordEntity submitted = completeDraftRecord();
         submitted.setArchiveStatus(ExperimentArchiveStatus.SUBMITTED);
@@ -724,6 +741,44 @@ class ExperimentRecordServiceTest {
                 .record(any(AuditRecordDTO.class));
 
         assertThrows(IllegalStateException.class, () -> service.archive(1L, archiveRequest(0)));
+    }
+
+    @Test
+    void gradeSubmittedRecordPersistsScoreAndReviewer() {
+        ExperimentRecordEntity entity = submittedRecord();
+        CourseEntity course = activeCourse(2L);
+        course.setTeacherId(8L);
+        setUser(8L, "TEACHER");
+        when(recordMapper.selectById(1L)).thenReturn(entity);
+        when(recordMapper.selectCourseByIdIncludingDeleted(2L)).thenReturn(course);
+        when(userMapper.selectById(8L)).thenReturn(activeUser(8L));
+        when(recordMapper.gradeByIdAndVersion(anyLong(), any(), anyLong(), any(), any(), any()))
+                .thenReturn(1);
+
+        ExperimentRecordGradeRequest request = new ExperimentRecordGradeRequest();
+        request.setVersion(0);
+        request.setScore(new BigDecimal("92.5"));
+        request.setGradeComment("过程完整");
+
+        service.grade(1L, request);
+
+        verify(recordMapper)
+                .gradeByIdAndVersion(
+                        eq(1L), eq(0), eq(8L), eq(new BigDecimal("92.5")), any(), eq("过程完整"));
+        verify(auditLogService).record(any(AuditRecordDTO.class));
+    }
+
+    @Test
+    void gradeRejectsUnsubmittedRecord() {
+        when(recordMapper.selectById(1L)).thenReturn(draftRecord());
+
+        ExperimentRecordGradeRequest request = new ExperimentRecordGradeRequest();
+        request.setVersion(0);
+        request.setScore(BigDecimal.TEN);
+
+        assertThrows(BusinessException.class, () -> service.grade(1L, request));
+        verify(recordMapper, never())
+                .gradeByIdAndVersion(anyLong(), any(), anyLong(), any(), any(), any());
     }
 
     private ExperimentRecordCreateRequest validCreate() {

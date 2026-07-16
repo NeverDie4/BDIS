@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bdis.modules.assistant.config.HerbAssistantProperties;
 import com.bdis.modules.growth.service.impl.DigitalLifeNarrationGeneratorImpl;
-
 import org.junit.jupiter.api.Test;
 
 class DigitalLifeNarrationGeneratorImplTest {

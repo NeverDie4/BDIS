@@ -81,6 +81,37 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    public String exportCsv(TrainingRecordQuery query) {
+        TrainingRecordQuery safe = query == null ? new TrainingRecordQuery() : query;
+        applyScope(safe);
+        StringBuilder csv = new StringBuilder("培训计划,参加人,参加编号,参加时间,出勤状态,培训状态,进度,成绩\n");
+        for (TrainingRecordListVO record : recordMapper.selectAllVO(safe)) {
+            csv.append(csvCell(record.getPlanName()))
+                    .append(',')
+                    .append(
+                            csvCell(
+                                    record.getRealName() == null
+                                            ? record.getUsername()
+                                            : record.getRealName()))
+                    .append(',')
+                    .append(csvCell(record.getAttendanceNo()))
+                    .append(',')
+                    .append(csvCell(record.getCreatedAt()))
+                    .append(',')
+                    .append(csvCell(record.getAttendanceStatus()))
+                    .append(',')
+                    .append(csvCell(record.getTrainingStatus()))
+                    .append(',')
+                    .append(csvCell(record.getProgress()))
+                    .append(',')
+                    .append(csvCell(record.getScore()))
+                    .append('\n');
+        }
+        return "\uFEFF" + csv;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public TrainingRecordDetailVO getDetail(Long id) {
         if (id == null || id <= 0) {
             throw new BusinessException("Training record id must be positive");
@@ -233,6 +264,25 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public TrainingRecordDetailVO join(Long planId) {
+        Long currentUserId = CurrentUserUtils.currentUserId();
+        requireCurrentOperator();
+        TrainingPlanEntity plan = requireActivePlan(planId);
+        if (!TrainingPublishStatus.PUBLISHED.equals(plan.getPublishStatus())) {
+            throw new ForbiddenException("Only published training plans accept participation");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        TrainingRecordEntity record = newDefaultRecord(plan, currentUserId, null, now);
+        if (recordMapper.insert(record) == 0) {
+            throw conflict("Training participation submission failed");
+        }
+        recordAudit("JOIN", record.getId());
+        return getDetail(record.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void update(Long id, TrainingRecordUpdateRequest request) {
         if (request == null) {
             throw new BusinessException("Training record update request is required");
@@ -328,6 +378,7 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
         entity.setPlanId(plan.getId());
         entity.setCourseId(plan.getCourseId());
         entity.setUserId(userId);
+        entity.setAttendanceNo("ATT-" + java.util.UUID.randomUUID());
         entity.setProgress(ZERO);
         entity.setTrainingStatus(TrainingStatus.NOT_STARTED);
         entity.setAttendanceStatus(AttendanceStatus.PENDING);
@@ -497,5 +548,12 @@ public class TrainingRecordServiceImpl implements TrainingRecordService {
 
     private static BusinessException conflict(String message) {
         return new BusinessException(ResultCodeEnum.CONFLICT, message);
+    }
+
+    private static String csvCell(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return "\"" + String.valueOf(value).replace("\"", "\"\"") + "\"";
     }
 }
