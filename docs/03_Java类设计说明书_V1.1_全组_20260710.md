@@ -94,7 +94,7 @@ com.bdis
 
 目标结构统一使用 `com.bdis.modules.<module>`。当前 `audit`、`dashboard`、`file`、`soap` 的部分 Controller、Service、DTO、Query 和 VO 仍位于 `com.bdis.<module>`，而 Entity、Mapper 位于 `com.bdis.modules.<module>`；这是合并后的兼容状态。后续按模块整体迁移，迁移完成前不再新增顶层业务包。
 
-具体迁移顺序、非目标和验收标准见 [03_代码一致性重构需求说明_V1.0_全组_20260710.md](03_代码一致性重构需求说明_V1.0_全组_20260710.md)。
+具体迁移顺序、非目标和验收标准见 [03_代码一致性重构需求说明_V1.1_全组_20260716.md](03_代码一致性重构需求说明_V1.1_全组_20260716.md)。
 
 ---
 
