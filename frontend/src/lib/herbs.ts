@@ -164,3 +164,7 @@ function withBrowserCoverUrl(herb: HerbSpeciesApi): HerbSpeciesApi {
       : herb.coverImageUrl,
   };
 }
+
+export function fetchEnabledHerbBases() {
+  return apiGet<HerbBaseApi[]>("/herb-bases/enabled");
+}
