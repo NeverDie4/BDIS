@@ -61,19 +61,6 @@ export interface GrowthRecord {
   reviewStatus?: string;
   collectedAt?: string;
   remark?: string;
-  recordCount?: number;
-}
-
-export interface MapPointCollectionSummary {
-  pointId: number;
-  recordCount: number;
-  latestCollectedAt?: string;
-  latestGrowthStage?: string;
-  monthlySnapshots: Array<{
-    month: string;
-    collectedAt?: string;
-    growthStage?: string;
-  }>;
 }
 
 export interface GrowthRecordPayload {
@@ -148,14 +135,6 @@ export function getMapPointRequestErrorMessage(error: unknown, action: string) {
 export async function fetchMapPoints(params?: MapPointQuery) {
   const response = await request.get<ApiResult<MapPoint[]>>("/map-points", { params });
   return response.data.data.map(withBrowserCoverUrl);
-}
-
-export async function fetchMapPointCollectionSummaries(pointIds: number[]) {
-  const response = await request.post<ApiResult<MapPointCollectionSummary[]>>(
-    "/map-points/collection-summaries",
-    { pointIds },
-  );
-  return response.data.data;
 }
 
 export async function createMapPoint(payload: MapPointPayload) {

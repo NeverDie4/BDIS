@@ -147,7 +147,14 @@
 }
 
 .pointItemRoutePlanning {
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: 46px minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  padding: 8px;
+}
+
+.pointItemRoutePlanning .pointThumb {
+  width: 46px;
+  height: 46px;
 }
 
 .routePointSelected {
@@ -270,7 +277,7 @@
 
 .mapPanelFullscreen {
   position: fixed;
-  top: 78px;
+  top: var(--map-fullscreen-top, 78px);
   right: 0;
   bottom: 0;
   left: 0;
@@ -791,226 +798,9 @@
   color: #ffffff;
 }
 
-.temporalModeButton {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  z-index: 1050;
-  display: inline-flex;
-  height: 40px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.16);
-  color: #1f2937;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 0 12px;
-  transition: 0.18s ease;
-}
-
-.temporalModeButton:hover {
-  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.22);
-  transform: translateY(-1px);
-}
-
-.temporalModeButtonActive {
-  border-color: #0f766e;
-  background: #0f766e;
-  box-shadow: 0 5px 16px rgba(13, 148, 136, 0.32);
-  color: #ffffff;
-}
-
-.temporalStatusCard {
-  position: absolute;
-  top: 68px;
-  left: 18px;
-  z-index: 1050;
-  display: inline-flex;
-  max-width: 230px;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid rgba(13, 148, 136, 0.22);
-  border-radius: 8px;
-  background: rgba(248, 255, 253, 0.96);
-  box-shadow: 0 5px 16px rgba(15, 23, 42, 0.14);
-  color: #134e4a;
-  padding: 8px 10px;
-}
-
-.temporalStatusIcon {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #ccfbf1;
-  color: #0f766e;
-}
-
-.temporalStatusCard > span:last-child {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.temporalStatusCard strong,
-.temporalStatusCard small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.temporalStatusCard strong {
-  font-size: 12px;
-}
-
-.temporalStatusCard small {
-  color: #64748b;
-  font-size: 11px;
-}
-
-.temporalTimeline {
-  position: absolute;
-  right: 76px;
-  bottom: 16px;
-  left: 116px;
-  z-index: 1101;
-  display: grid;
-  gap: 10px;
-  border: 1px solid rgba(15, 118, 110, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.22);
-  pointer-events: auto;
-  padding: 10px 12px 8px;
-}
-
-.temporalTimelineHeader,
-.temporalTimelineControls {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.temporalTitle {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-  color: #115e59;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.temporalSpeciesSelect {
-  min-width: 150px;
-  max-width: 300px;
-  flex: 1;
-}
-
-.temporalDataSummary {
-  flex: 0 0 auto;
-  color: #64748b;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.temporalPlayButton,
-.temporalResetButton {
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.temporalPlayButton {
-  background: #0f766e;
-  box-shadow: 0 3px 9px rgba(13, 148, 136, 0.28);
-  color: #ffffff;
-  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-}
-
-.temporalPlayButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
-}
-
-.temporalResetButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #475569;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, transform 0.18s ease;
-}
-
-.temporalPlayButton:hover:not(:disabled) {
-  background: #115e59;
-  box-shadow: 0 5px 14px rgba(13, 148, 136, 0.42);
-  transform: translateY(-1px) scale(1.04);
-}
-
-.temporalResetButton:hover {
-  border-color: #0f766e;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
-  color: #0f766e;
-  transform: translateY(-1px);
-}
-
-.temporalSliderWrap {
-  min-width: 0;
-  flex: 1;
-}
-
-.temporalSliderWrap :global(.ant-slider) {
-  margin: 6px 7px 2px;
-  cursor: grab;
-}
-
-.temporalSliderWrap :global(.ant-slider:hover) {
-  cursor: grab;
-}
-
-.temporalSliderWrap :global(.ant-slider-dragging) {
-  cursor: grabbing;
-}
-
-.temporalSliderWrap :global(.ant-slider-track) {
-  background: #0f766e;
-}
-
-.temporalSliderWrap :global(.ant-slider-handle::after) {
-  box-shadow: 0 0 0 3px #99f6e4;
-}
-
-.temporalAxisLabels {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: #64748b;
-  font-size: 11px;
-}
-
-.temporalAxisLabels strong {
-  color: #0f766e;
-  font-size: 12px;
-}
-
 .suitabilityModeButton {
   position: absolute;
-  top: 66px;
+  top: 18px;
   left: 18px;
   z-index: 1050;
   display: inline-flex;
@@ -1039,10 +829,6 @@
   background: #15803d;
   box-shadow: 0 5px 16px rgba(22, 163, 74, 0.28);
   color: #ffffff;
-}
-
-.suitabilityModeButtonHidden {
-  display: none;
 }
 
 .suitabilityPanel {
@@ -2115,13 +1901,6 @@
     gap: 6px;
   }
 
-  .temporalModeButton {
-    top: 12px;
-    left: 12px;
-    height: 38px;
-    padding: 0 10px;
-  }
-
   .routePlannerPanel {
     top: 12px;
     left: 12px;
@@ -2152,31 +1931,6 @@
       opacity: 1;
       transform: translateY(0);
     }
-  }
-
-  .temporalStatusCard {
-    top: 58px;
-    left: 12px;
-  }
-
-  .temporalTimeline {
-    right: 12px;
-    bottom: 104px;
-    left: 12px;
-  }
-
-  .temporalTimelineHeader {
-    display: grid;
-    grid-template-columns: 1fr auto;
-  }
-
-  .temporalSpeciesSelect {
-    grid-column: 1 / -1;
-    max-width: none;
-  }
-
-  .temporalDataSummary {
-    text-align: right;
   }
 
   .fullscreenMapButton {

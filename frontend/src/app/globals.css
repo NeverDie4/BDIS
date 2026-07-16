@@ -171,84 +171,6 @@ time {
   white-space: nowrap;
 }
 
-.bdis-temporal-marker {
-  background: transparent;
-  border: 0;
-}
-
-.bdis-temporal-marker-wrap {
-  position: relative;
-  display: grid;
-  width: 96px;
-  height: 72px;
-  place-items: center;
-  pointer-events: none;
-}
-
-.bdis-temporal-marker-core {
-  position: absolute;
-  width: 17px;
-  height: 17px;
-  border: 3px solid #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.34);
-}
-
-.bdis-temporal-marker-seedling {
-  background: #84cc16;
-}
-
-.bdis-temporal-marker-growing {
-  background: #0f766e;
-}
-
-.bdis-temporal-marker-flowering {
-  background: #c2410c;
-}
-
-.bdis-temporal-marker-mature {
-  background: #7c3aed;
-}
-
-.bdis-temporal-marker-ring {
-  position: absolute;
-  width: 27px;
-  height: 27px;
-  border: 1px solid rgba(15, 118, 110, 0.58);
-  border-radius: 50%;
-}
-
-.bdis-temporal-marker-current .bdis-temporal-marker-ring {
-  animation: bdis-temporal-pulse 1.4s ease-out infinite;
-}
-
-.bdis-temporal-marker-name,
-.bdis-temporal-marker-stage {
-  position: absolute;
-  max-width: 92px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.82);
-  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
-  color: #ffffff;
-  font-size: 11px;
-  line-height: 16px;
-  padding: 0 5px;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bdis-temporal-marker-name {
-  top: 0;
-}
-
-.bdis-temporal-marker-stage {
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.94);
-  color: #334155;
-}
-
 .bdis-route-stop-marker {
   background: transparent;
   border: 0;
@@ -334,18 +256,6 @@ time {
   100% {
     opacity: 0;
     transform: scale(1.55);
-  }
-}
-
-@keyframes bdis-temporal-pulse {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.75);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(2.1);
   }
 }
 

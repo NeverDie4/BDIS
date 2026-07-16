@@ -46,7 +46,6 @@ import com.bdis.modules.herb.mapper.HerbMapper;
 import com.bdis.modules.herb.vo.HerbImageVO;
 import com.bdis.modules.map.entity.MapPointEntity;
 import com.bdis.modules.map.mapper.MapPointMapper;
-import com.bdis.modules.map.vo.MapPointCollectionSummaryVO;
 import com.bdis.modules.permission.service.DataScopeService;
 import com.bdis.modules.permission.vo.DataScopeResultVO;
 import com.bdis.modules.user.entity.UserEntity;
@@ -62,11 +61,9 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -149,66 +146,6 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
                         .orderByDesc(GrowthRecordEntity::getId);
         applyDataScope(wrapper);
         return growthRecordMapper.selectList(wrapper).stream().map(this::toVO).toList();
-    }
-
-    @Override
-    public List<MapPointCollectionSummaryVO> listMapPointSummaries(List<Long> pointIds) {
-        List<Long> distinctPointIds = new ArrayList<>(new LinkedHashSet<>(pointIds));
-        if (distinctPointIds.isEmpty()) {
-            return List.of();
-        }
-
-        LambdaQueryWrapper<GrowthRecordEntity> wrapper =
-                new LambdaQueryWrapper<GrowthRecordEntity>()
-                        .in(GrowthRecordEntity::getDistributionId, distinctPointIds)
-                        .orderByDesc(GrowthRecordEntity::getCollectedAt)
-                        .orderByDesc(GrowthRecordEntity::getId);
-        applyDataScope(wrapper);
-
-        Map<Long, List<GrowthRecordEntity>> recordsByPoint = new LinkedHashMap<>();
-        distinctPointIds.forEach(pointId -> recordsByPoint.put(pointId, new ArrayList<>()));
-        growthRecordMapper.selectList(wrapper).forEach(record -> {
-            List<GrowthRecordEntity> records = recordsByPoint.get(record.getDistributionId());
-            if (records != null) {
-                records.add(record);
-            }
-        });
-
-        return recordsByPoint.entrySet().stream()
-                .map(entry -> toMapPointSummary(entry.getKey(), entry.getValue()))
-                .toList();
-    }
-
-    private MapPointCollectionSummaryVO toMapPointSummary(
-            Long pointId, List<GrowthRecordEntity> records) {
-        MapPointCollectionSummaryVO summary = new MapPointCollectionSummaryVO();
-        summary.setPointId(pointId);
-        summary.setRecordCount(records.size());
-        if (!records.isEmpty()) {
-            GrowthRecordEntity latest = records.getFirst();
-            summary.setLatestCollectedAt(latest.getCollectedAt());
-            summary.setLatestGrowthStage(latest.getGrowthStage());
-        }
-
-        Map<YearMonth, GrowthRecordEntity> latestByMonth = new LinkedHashMap<>();
-        records.forEach(record -> {
-            if (record.getCollectedAt() != null) {
-                latestByMonth.putIfAbsent(YearMonth.from(record.getCollectedAt()), record);
-            }
-        });
-        summary.setMonthlySnapshots(
-                latestByMonth.entrySet().stream()
-                        .map(entry -> {
-                            GrowthRecordEntity record = entry.getValue();
-                            MapPointCollectionSummaryVO.MonthlySnapshot snapshot =
-                                    new MapPointCollectionSummaryVO.MonthlySnapshot();
-                            snapshot.setMonth(entry.getKey().toString());
-                            snapshot.setCollectedAt(record.getCollectedAt());
-                            snapshot.setGrowthStage(record.getGrowthStage());
-                            return snapshot;
-                        })
-                        .toList());
-        return summary;
     }
 
     @Override
@@ -1478,11 +1415,11 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         GrowthRecordVO vo = new GrowthRecordVO();
         BeanUtils.copyProperties(entity, vo);
         vo.setCollectorName(entity.getCollectorNameSnapshot());
-        HerbEntity species = herbMapper.selectById(entity.getSpeciesId());
-        vo.setSpeciesName(
-                StringUtils.hasText(entity.getSpeciesName())
-                        ? entity.getSpeciesName()
-                        : species == null ? null : species.getHerbName());
+        String speciesName = entity.getSpeciesName();
+        if (!StringUtils.hasText(speciesName) && entity.getSpeciesId() != null) {
+            speciesName = herbMapper.selectHerbNameById(entity.getSpeciesId());
+        }
+        vo.setSpeciesName(speciesName);
         if (entity.getBatchId() != null) {
             HerbBatchEntity batch = herbBatchMapper.selectById(entity.getBatchId());
             vo.setBatchName(batch == null ? null : batch.getBatchName());

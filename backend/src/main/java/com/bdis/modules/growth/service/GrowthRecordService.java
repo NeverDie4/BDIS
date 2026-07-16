@@ -13,14 +13,11 @@ import com.bdis.modules.growth.vo.GrowthPublicTraceArchiveVO;
 import com.bdis.modules.growth.vo.GrowthRecordVO;
 import com.bdis.modules.growth.vo.GrowthTraceEventVO;
 import com.bdis.modules.growth.vo.GrowthTraceQrCodeVO;
-import com.bdis.modules.map.vo.MapPointCollectionSummaryVO;
 import java.util.List;
 
 public interface GrowthRecordService {
 
     List<GrowthRecordVO> listByPointId(Long pointId);
-
-    List<MapPointCollectionSummaryVO> listMapPointSummaries(List<Long> pointIds);
 
     GrowthRecordVO createForPoint(Long pointId, GrowthRecordCreateRequest request);
 
