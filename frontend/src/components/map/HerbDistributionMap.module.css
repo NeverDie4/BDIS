@@ -1832,7 +1832,7 @@
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1230px) {
 
   .contentGrid {
     grid-template-columns: 290px minmax(460px, 1fr);
@@ -1844,7 +1844,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 800px) {
   .toolbar {
     grid-template-columns: 1fr;
     padding: 12px;

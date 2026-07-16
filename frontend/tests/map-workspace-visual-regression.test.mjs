@@ -38,3 +38,16 @@ test("分布地图详情保持现有无标签交互结构", async () => {
   assert.match(source, /className=\{styles\.detailHero\}/);
   assert.match(source, /className=\{styles\.coordinateRow\}/);
 });
+
+test("分布地图在网格最小宽度之前切换响应式栏数", async () => {
+  const css = await readSource("components/map/HerbDistributionMap.module.css");
+
+  assert.match(
+    css,
+    /@media \(max-width:\s*1230px\)[\s\S]*?\.contentGrid\s*\{[^}]*grid-template-columns:\s*290px\s+minmax\(460px,\s*1fr\)/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*800px\)[\s\S]*?\.contentGrid\s*\{[^}]*grid-template-columns:\s*1fr/,
+  );
+});
