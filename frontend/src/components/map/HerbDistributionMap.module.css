@@ -11,11 +11,11 @@
   grid-template-columns:
     minmax(180px, 0.85fr) minmax(180px, 0.85fr) minmax(190px, 0.9fr) minmax(190px, 0.9fr)
     minmax(300px, 1.45fr) auto;
-  gap: 12px 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  gap: 10px 14px;
+  border: 1px solid rgba(135, 106, 65, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 252, 245, 0.96);
+  box-shadow: 0 1px 4px rgba(94, 70, 35, 0.035);
   padding: 12px 16px;
 }
 
@@ -59,17 +59,18 @@
   align-items: start;
   min-height: 640px;
   flex: 1;
-  grid-template-columns: clamp(320px, 20vw, 380px) minmax(560px, 1fr) minmax(400px, 420px);
-  gap: 10px;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(560px, 1.55fr) minmax(340px, 1fr);
+  gap: 8px;
 }
 
 .pointListPanel,
 .detailPanel {
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  padding: 14px;
+  border: 1px solid rgba(135, 106, 65, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 252, 245, 0.97);
+  box-shadow: 0 1px 4px rgba(94, 70, 35, 0.035);
+  padding: 12px;
 }
 
 .pointListPanel {
@@ -85,7 +86,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+
+.panelHeader strong {
+  color: #263f32;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 16px;
+  letter-spacing: 0.04em;
 }
 
 .panelHeader span {
@@ -96,11 +104,12 @@
 .pointActions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .pointActions :global(.ant-btn) {
   min-width: 0;
+  border-radius: 3px;
   padding-inline: 6px;
 }
 
@@ -110,8 +119,8 @@
   min-height: 0;
   flex: 1;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 0;
+  margin-top: 10px;
   overflow: auto;
 }
 
@@ -130,20 +139,22 @@
   display: grid;
   width: 100%;
   align-items: center;
-  grid-template-columns: 56px minmax(0, 1fr) auto auto;
-  min-height: 80px;
-  gap: 12px;
-  border: 1px solid transparent;
-  border-radius: 12px;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
+  min-height: 68px;
+  gap: 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(135, 106, 65, 0.16);
+  border-radius: 0;
   background: transparent;
-  padding: 10px;
+  padding: 8px 4px;
   text-align: left;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .pointItem:hover,
 .pointItemActive {
-  border-color: rgba(22, 101, 52, 0.22);
-  background: rgba(240, 253, 244, 0.82);
+  background: rgba(231, 241, 225, 0.66);
+  box-shadow: inset 3px 0 #2f6f4f;
 }
 
 .pointItemRoutePlanning {
@@ -158,8 +169,8 @@
 }
 
 .routePointSelected {
-  border-color: rgba(13, 148, 136, 0.42);
   background: rgba(240, 253, 250, 0.9);
+  box-shadow: inset 3px 0 #0f766e;
 }
 
 .routePointButton {
@@ -186,12 +197,12 @@
   display: grid;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
+  width: 50px;
+  height: 50px;
   overflow: hidden;
   border: 1px solid rgba(20, 83, 45, 0.1);
-  border-radius: 10px;
-  background: #dcfce7;
+  border-radius: 4px;
+  background: #e4efe0;
   background-position: center;
   background-size: cover;
   color: #166534;
@@ -210,7 +221,12 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+}
+
+.pointMeta strong {
+  color: #26352d;
+  font-size: 13px;
 }
 
 .pointMeta strong,
@@ -269,10 +285,11 @@
   min-height: 640px;
   flex-direction: column;
   gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  padding: 12px;
+  border: 1px solid rgba(135, 106, 65, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 252, 245, 0.97);
+  box-shadow: 0 1px 4px rgba(94, 70, 35, 0.035);
+  padding: 10px;
 }
 
 .mapPanelFullscreen {
@@ -312,8 +329,9 @@
 
 .mapPanelHeader h2 {
   margin: 0;
-  color: #1f2937;
-  font-size: 18px;
+  color: #263f32;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 19px;
   font-weight: 700;
   line-height: 32px;
 }
@@ -327,20 +345,20 @@
 .statCard {
   display: flex;
   min-width: 0;
-  height: 68px;
+  height: 62px;
   align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(191, 166, 113, 0.24);
-  border-radius: 8px;
-  background: rgba(255, 253, 247, 0.96);
-  padding: 9px 12px;
+  gap: 9px;
+  border: 1px solid rgba(151, 122, 73, 0.18);
+  border-radius: 3px;
+  background: rgba(250, 246, 235, 0.78);
+  padding: 8px 10px;
 }
 
 .statIcon {
   display: inline-flex;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
@@ -399,8 +417,8 @@
   min-height: 640px;
   flex: 1;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid rgba(135, 106, 65, 0.2);
+  border-radius: 2px;
   background: var(--color-panel);
 }
 
@@ -413,29 +431,30 @@
   align-self: start;
   min-height: 0;
   overflow: auto;
-  min-width: 400px;
-  max-width: 460px;
-  background: #fffaf2;
-  padding: 0 18px 22px;
+  min-width: 0;
+  max-width: none;
+  background: rgba(255, 252, 245, 0.98);
+  padding: 0 16px 20px;
   scrollbar-width: thin;
   scrollbar-color: rgba(145, 127, 94, 0.28) transparent;
 }
 
 .detailHeader {
   display: grid;
-  min-height: 78px;
+  min-height: 66px;
   align-items: start;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  border-bottom: 1px solid rgba(228, 216, 198, 0.72);
-  padding: 14px 0 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  border-bottom: 1px solid rgba(135, 106, 65, 0.2);
+  padding: 12px 0 10px;
 }
 
 .detailHeader h3 {
   margin: 0;
-  color: #0f172a;
+  color: #26352d;
   overflow: hidden;
-  font-size: 24px;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -446,14 +465,15 @@
   display: grid;
   align-items: center;
   grid-template-columns: minmax(0, auto) auto;
-  gap: 10px;
+  gap: 8px;
 }
 
 .detailTitleRow :global(.ant-tag) {
-  height: 26px;
+  height: 22px;
   margin-inline-end: 0;
   border-radius: 999px;
-  line-height: 24px;
+  font-size: 11px;
+  line-height: 20px;
 }
 
 .detailHeader p {
@@ -474,15 +494,18 @@
 }
 
 .detailSection {
-  margin-top: 22px;
-  padding: 0;
+  margin-top: 17px;
+  border-bottom: 1px solid rgba(135, 106, 65, 0.17);
+  padding: 0 0 16px;
 }
 
 .detailSection h4 {
-  margin: 0 0 15px;
+  margin: 0 0 12px;
   color: #0f5132;
-  font-size: 18px;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 16px;
   font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .sectionTitleRow h4 {
@@ -493,28 +516,28 @@
   display: grid;
   min-width: 0;
   align-items: center;
-  grid-template-columns: 126px minmax(0, 1fr);
-  gap: 18px;
-  border: 1px solid #e4ddcf;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(242, 248, 241, 0.88));
-  box-shadow: 0 6px 18px rgba(68, 53, 30, 0.04);
-  padding: 17px;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 2px;
 }
 
 .detailCover {
   display: flex;
-  width: 126px;
-  height: 126px;
+  width: 84px;
+  height: 96px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border: 1px solid rgba(20, 83, 45, 0.12);
-  border-radius: 14px;
+  border-radius: 4px;
   background: #e8f4e5;
   background-position: center;
   background-size: cover;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  box-shadow: none;
   color: #2f7d4a;
   font-size: 30px;
   font-weight: 700;
@@ -539,15 +562,15 @@
 .infoRows {
   display: grid;
   align-content: center;
-  grid-template-columns: 86px minmax(0, 1fr);
-  gap: 12px;
-  color: #69809b;
-  font-size: 14px;
-  line-height: 1.5;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px 10px;
+  color: #6f7d73;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .infoRows span {
-  color: #69809b;
+  color: #6f7d73;
 }
 
 .infoRows strong {
@@ -555,8 +578,8 @@
   min-width: 0;
   overflow: hidden;
   overflow-wrap: anywhere;
-  color: #172033;
-  font-size: 15px;
+  color: #26352d;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
   -webkit-box-orient: vertical;
@@ -567,38 +590,39 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  min-height: 104px;
-  border: 1px solid #e4ddcf;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(242, 248, 241, 0.88));
-  box-shadow: 0 6px 18px rgba(68, 53, 30, 0.04);
-  color: #69809b;
-  font-size: 14px;
+  min-height: 72px;
+  border-top: 1px solid rgba(135, 106, 65, 0.14);
+  border-bottom: 1px solid rgba(135, 106, 65, 0.14);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #6f7d73;
+  font-size: 12px;
 }
 
 .coordinateRow span {
   display: grid;
   align-content: center;
-  gap: 10px;
-  padding: 16px 18px;
+  gap: 6px;
+  padding: 11px 12px;
 }
 
 .coordinateRow span + span {
-  border-left: 1px solid #e4ddcf;
+  border-left: 1px solid rgba(135, 106, 65, 0.16);
 }
 
 .coordinateRow strong {
-  color: #172033;
-  font-size: 21px;
+  color: #26352d;
+  font-size: 17px;
   font-weight: 700;
 }
 
 .detailSection > .infoRows {
-  border: 1px solid #e4ddcf;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(242, 248, 241, 0.88));
-  box-shadow: 0 6px 18px rgba(68, 53, 30, 0.04);
-  padding: 17px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .detailText {
@@ -1808,7 +1832,7 @@
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1230px) {
 
   .contentGrid {
     grid-template-columns: 290px minmax(460px, 1fr);
@@ -1820,7 +1844,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 800px) {
   .toolbar {
     grid-template-columns: 1fr;
     padding: 12px;
@@ -1872,8 +1896,10 @@
   }
 
   .detailCover {
-    min-height: 210px;
-    aspect-ratio: 16 / 10;
+    width: 100%;
+    height: auto;
+    min-height: 160px;
+    aspect-ratio: 16 / 9;
   }
 
   .pointList {

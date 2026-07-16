@@ -10,6 +10,7 @@ import { Activity, BarChart3, Check, ChevronDown, Copy, Download, Edit3, Externa
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SecureImageThumb } from "@/components/common/SecureImageThumb";
+import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import {
   approveGrowthRecord,
@@ -53,8 +54,6 @@ import { useAuthStore } from "@/stores/auth-store";
 import styles from "./page.module.css";
 
 registerECharts([CanvasRenderer, LineChart, GridComponent, TooltipComponent]);
-
-const heroIllustrationUrl = "";
 
 type DetailTab = "base" | "metrics" | "images" | "trace";
 
@@ -1041,16 +1040,13 @@ export default function GrowthPage() {
   return (
     <SiteLayout>
       <main className={styles.page}>
-        <section
-          className={styles.growthHero}
-          aria-label="生长数据工作台"
-          style={heroIllustrationUrl ? { backgroundImage: `url(${heroIllustrationUrl})` } : undefined}
-        >
-          <div className={styles.heroCopy}>
-            <span>本草研究院标本馆</span>
-            <h1>生长数据</h1>
-            <p>管理移动端采集的中药材生长记录，汇聚现场图片、审核状态与溯源轨迹。</p>
-            {canCreateTask && taskId ? (
+        <ModuleHeroBanner
+          eyebrow="GROWTH DATA ARCHIVE"
+          sealText="生长"
+          title="生长数据"
+          description="管理移动端采集的中药材生长记录，汇聚现场图片、审核状态与溯源轨迹。"
+          actions={
+            canCreateTask && taskId ? (
               <Link
                 className={styles.heroAgentEntry}
                 href={`/assistant/research-agent?collectionTaskId=${taskId}&pageContext=growth`}
@@ -1058,12 +1054,9 @@ export default function GrowthPage() {
                 <FlaskConical size={16} />
                 启动科研 Agent
               </Link>
-            ) : null}
-          </div>
-          <div className={styles.heroIllustrationPlaceholder} aria-hidden="true">
-            <i /><i /><i />
-          </div>
-        </section>
+            ) : undefined
+          }
+        />
 
         <div className={styles.workspaceLayout}>
           <div className={styles.workspaceMain}>

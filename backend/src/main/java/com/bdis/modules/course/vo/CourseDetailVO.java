@@ -20,6 +20,7 @@ public class CourseDetailVO {
     private Integer hours;
     private BigDecimal credits;
     private List<String> prerequisites = List.of();
+    private List<Long> prerequisiteCourseIds = List.of();
     private List<String> teachingObjectives = List.of();
     private List<String> teachingMethods = List.of();
     private List<String> tags = List.of();
@@ -38,4 +39,6 @@ public class CourseDetailVO {
     private Integer version;
     private List<ExperimentStepVO> steps = List.of();
     private List<CourseResourceVO> resources = List.of();
+    private List<CourseRelationOptionVO> relatedHerbs = List.of();
+    private List<CourseRelationOptionVO> relatedProjects = List.of();
 }

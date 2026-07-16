@@ -32,6 +32,7 @@ const baseCourseDetail: CourseDetailData = {
   hours: 32,
   credits: 2,
   prerequisites: ["中药学基础", "药用植物学"],
+  prerequisiteCourseIds: [],
   teachingObjectives: [
     "掌握常用中药材的性状与显微鉴定方法。",
     "能够规范记录实验过程并形成可复核的实验结论。",
@@ -58,6 +59,8 @@ const baseCourseDetail: CourseDetailData = {
   ],
   relatedHerbs: ["黄芪", "当归", "丹参", "黄连"],
   relatedProjects: ["川渝道地药材资源研究", "中药标本数字化规范"],
+  relatedHerbItems: [],
+  relatedProjectItems: [],
   relatedCollections: ["2026 春季课堂采集", "武陵山区药材样本", "显微图像数据集"],
   experimentRecords: [
     { date: "2026-06-18", className: "中药学 2024-1 班", participantCount: 42, completionRate: "100%" },

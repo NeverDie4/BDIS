@@ -1606,7 +1606,7 @@
   padding: 20px;
   border: 1px solid rgba(15, 81, 50, 0.14);
   border-radius: 16px;
-  background: linear-gradient(135deg, #eaf5ea 0%, #f8f5e9 100%);
+  background: transparent;
   box-shadow: none;
 }
 
@@ -2623,7 +2623,7 @@
 .detailPanel .archiveSummary {
   padding: 20px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #e8f4e9 0%, #f8f4e8 100%);
+  background: transparent;
 }
 
 .detailPanel .summaryIdentity h2 {
@@ -3040,7 +3040,6 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-top: 13px;
   border: 1px solid #b9d2bb;
   border-radius: 999px;
   padding: 7px 13px;
@@ -3060,4 +3059,317 @@
   border-color: #6fa078;
   background: #eef7ef;
   transform: translateY(-1px);
+}
+
+/* Growth workspace visual refinement */
+.page {
+  width: min(1780px, calc(100vw - 24px));
+  gap: 12px;
+}
+
+.workspaceLayout {
+  grid-template-columns: minmax(0, 2.55fr) minmax(340px, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.workspaceMain {
+  gap: 10px;
+}
+
+.workspaceMain .filters,
+.recordWorkspace,
+.trendDisclosure {
+  border: 1px solid #ddd1bd;
+  border-radius: 2px;
+  background: rgba(255, 253, 247, 0.96);
+  box-shadow: none;
+}
+
+.workspaceMain .filters {
+  padding: 14px 16px;
+}
+
+.workspaceMain .filterHeading {
+  padding-left: 12px;
+  border-left-width: 3px;
+}
+
+.workspaceMain .filterHeading h2 {
+  font-size: 18px;
+  letter-spacing: 0.03em;
+}
+
+.workspaceMain .filterHeading p {
+  margin-top: 1px;
+  color: #718075;
+  font-size: 12px;
+}
+
+.workspaceMain .filterGrid,
+.workspaceMain .collectorFilterGrid {
+  gap: 10px 12px;
+  margin-top: 10px;
+}
+
+.workspaceMain .filterGrid > label > span {
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.workspaceMain .filterGrid :global(.ant-select-selector),
+.workspaceMain .filterGrid :global(.ant-input-affix-wrapper) {
+  min-height: 36px !important;
+  border-color: #dfd4c2 !important;
+  border-radius: 2px !important;
+  background: #fffdf7 !important;
+  box-shadow: none !important;
+}
+
+.dateFilter input {
+  height: 36px;
+  border-color: #dfd4c2;
+  border-radius: 2px;
+  background: #fffdf7;
+}
+
+.filterActions {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.filterActions :global(.ant-btn),
+.recordToolbar :global(.ant-btn),
+.paginationBar :global(.ant-btn) {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.recordToolbar {
+  min-height: 54px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e1d5c2;
+  background: rgba(255, 250, 242, 0.7);
+}
+
+.tableScroller {
+  background: #fffdf8;
+}
+
+.recordTable thead th {
+  border-bottom: 1px solid #d6c8b1;
+  background: #f1f3e8;
+  color: #174735;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.recordTable tbody td {
+  border-bottom-color: #eee4d5;
+  background: transparent;
+}
+
+.recordTable tbody tr:hover td,
+.recordTable tbody tr.selectedRow td {
+  background: #f2f7ed;
+}
+
+.paginationBar {
+  border-top: 1px solid #e1d5c2;
+  background: #fffaf2;
+}
+
+.trendDisclosure > summary,
+.trendEntryHeader {
+  background: rgba(255, 250, 242, 0.64);
+}
+
+.workspaceLayout .detailPanel {
+  position: sticky;
+  top: 76px;
+  width: auto;
+  height: calc(100vh - 92px);
+  min-width: 0;
+  border: 1px solid #d8cbb6;
+  border-radius: 2px;
+  background: #fffdf7;
+  box-shadow: none;
+}
+
+.detailPanelHeader {
+  min-height: 52px;
+  padding: 13px 16px 10px;
+  border-bottom: 1px solid #e3d7c4;
+}
+
+.detailPanelHeader span {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Microsoft YaHei", serif;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.detailPanelHeader button {
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+}
+
+.detailTabs {
+  gap: 0;
+  padding: 0 10px;
+  background: #fbf6ec;
+}
+
+.detailTabs button {
+  min-width: 78px;
+  padding: 10px 6px;
+  font-size: 12px;
+}
+
+.detailTabs .activeDetailTab::after {
+  right: 5px;
+  left: 5px;
+  height: 2px;
+}
+
+.detailPanel .drawerContent {
+  gap: 14px;
+  padding: 14px 16px 28px;
+}
+
+.detailPanel .archiveSummary {
+  padding: 4px 0 16px;
+  border-bottom: 1px solid #e3d7c4;
+  border-radius: 0;
+  background: transparent;
+}
+
+.detailPanel .summaryIdentity h2 {
+  font-size: 21px;
+}
+
+.detailPanel .detailSection {
+  padding-top: 10px;
+}
+
+.detailPanel .detailSectionHeader {
+  padding-bottom: 7px;
+  border-bottom: 1px solid #e7ddce;
+}
+
+.detailPanel .detailCardGrid,
+.detailPanel .metricCardGrid,
+.detailPanel .growthMetricGrid {
+  gap: 0;
+}
+
+.detailPanel .detailCardGrid > div,
+.detailPanel .growthMetricGrid > div,
+.detailPanel .metricCardGrid > div {
+  min-height: 58px;
+  padding: 9px 6px;
+  border: 0;
+  border-bottom: 1px solid #eee4d5;
+  border-radius: 2px;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.detailPanel .basicInfoList {
+  gap: 0 18px;
+}
+
+.detailPanel .basicInfoList > div {
+  min-height: 56px;
+  padding: 9px 2px;
+  border-bottom: 1px solid #eee4d5;
+}
+
+.detailPanel .imageEvidenceGrid {
+  gap: 8px;
+}
+
+.imageEvidenceItem,
+.mapPreview,
+.traceQrCard,
+.traceQrImage,
+.traceQrMeta > div,
+.traceQrEmpty,
+.trendFacts > div {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.traceQrCard {
+  border-color: #dfd4c2;
+  background: #fffdf7;
+}
+
+.traceQrImage,
+.traceQrMeta > div {
+  background: #fffdf7;
+}
+
+.detailPanel .drawerActions {
+  padding-top: 12px;
+  background: #fffdf7;
+}
+
+@media (max-width: 1260px) {
+  .workspaceLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspaceLayout .detailPanel {
+    position: relative;
+    top: auto;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+
+  .detailPanel > :global(.ant-spin-nested-loading),
+  .detailPanel > :global(.ant-spin-nested-loading) > :global(.ant-spin-container) {
+    height: auto;
+    overflow: visible;
+  }
+
+  .detailPanel .drawerContent {
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: min(100%, calc(100vw - 16px));
+  }
+
+  .workspaceMain .filterGrid,
+  .workspaceMain .collectorFilterGrid,
+  .advancedFilterGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspaceMain .taskFilter,
+  .workspaceMain .dateFilter,
+  .workspaceMain .keywordFilter {
+    grid-column: auto;
+  }
+
+  .filterActions,
+  .recordToolbar,
+  .recordToolbar > div {
+    align-items: stretch;
+  }
+
+  .recordToolbar,
+  .paginationBar {
+    flex-wrap: wrap;
+  }
+
+  .detailTabs {
+    overflow-x: auto;
+  }
 }

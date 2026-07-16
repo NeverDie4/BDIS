@@ -1,15 +1,19 @@
 "use client";
 
 import { SettingsShell } from "@/components/settings/SettingsShell";
-import { PageBanner } from "@/components/layout/PageBanner";
+import { ModuleHeroBanner } from "@/components/layout/ModuleHeroBanner";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import styles from "@/styles/mockPages.module.css";
+import pageStyles from "./page.module.css";
 
 export default function SettingsPage() {
   return (
-    <SiteLayout>
-      <div className={styles.pageStack}>
-        <PageBanner sealText="PERSONAL SETTINGS" title="个人设置" subtitle="管理个人资料、账号安全与使用偏好。" />
+    <SiteLayout contentMode="fluid">
+      <div className={pageStyles.settingsPage}>
+        <ModuleHeroBanner
+          description="管理个人资料、账号安全与使用偏好。"
+          sealText="PERSONAL SETTINGS"
+          title="个人设置"
+        />
         <SettingsShell />
       </div>
     </SiteLayout>

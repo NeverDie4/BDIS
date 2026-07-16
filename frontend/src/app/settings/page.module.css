@@ -1,0 +1,15 @@
+.settingsPage {
+  display: grid;
+  width: calc(100vw - 32px);
+  margin-left: calc((100% - 100vw + 32px) / 2);
+  gap: 12px;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+  .settingsPage {
+    width: calc(100vw - 16px);
+    margin-left: calc((100% - 100vw + 16px) / 2);
+    gap: 8px;
+  }
+}

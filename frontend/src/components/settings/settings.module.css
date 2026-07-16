@@ -1,23 +1,23 @@
 .shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  min-height: 620px;
+  grid-template-columns: 208px minmax(0, 1fr);
+  min-height: 0;
   overflow: hidden;
-  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
-  border-radius: var(--radius-card);
-  background: rgba(var(--color-texture-rgb), 0.92);
-  box-shadow: var(--shadow-card);
+  border: 1px solid #d8cbb6;
+  border-radius: 2px;
+  background: #fffdf7;
+  box-shadow: none;
 }
 
 .navigation {
-  padding: 18px 12px;
-  border-right: 1px solid rgba(var(--color-border-rgb), 0.82);
-  background: rgba(229, 242, 233, 0.58);
+  padding: 14px 10px;
+  border-right: 1px solid #ddd1bd;
+  background: #f7f4eb;
 }
 
 .tabList {
   display: grid;
-  gap: 6px;
+  gap: 2px;
 }
 
 .tab,
@@ -28,59 +28,113 @@
   min-height: 42px;
   padding: 0 12px;
   border: 0;
-  border-radius: 6px;
+  border-left: 3px solid transparent;
+  border-radius: 0;
   background: transparent;
   color: var(--color-text);
   font: inherit;
   gap: 10px;
   cursor: pointer;
+  text-align: left;
 }
 
 .tab:hover {
-  background: rgba(var(--color-primary-rgb), 0.08);
+  background: #edf3e6;
+  color: var(--color-primary);
 }
 
 .tabActive {
-  background: var(--color-primary);
-  color: white;
+  border-left-color: var(--color-primary);
+  background: #edf3e6;
+  color: var(--color-primary);
+  font-weight: 700;
 }
 
 .content {
   min-width: 0;
-  padding: 26px;
+  padding: 18px;
+  background: #fffdf7;
 }
 
 .sectionStack {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .section {
-  border: 1px solid rgba(var(--color-border-rgb), 0.86);
-  border-radius: 8px;
-  background: rgba(255, 250, 242, 0.88);
+  border: 1px solid #dfd4c2;
+  border-radius: 2px;
+  background: #fffdf7;
 }
 
 .sectionHeader {
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid rgba(var(--color-border-rgb), 0.72);
+  padding: 15px 18px 12px;
+  border-bottom: 1px solid #e7ddce;
+  background: rgba(255, 250, 242, 0.66);
 }
 
 .sectionHeader h2 {
   margin: 0;
   color: var(--color-title);
+  font-family: var(--font-ui);
   font-size: 18px;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .sectionHeader p {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--color-muted);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .sectionBody {
-  padding: 20px;
+  padding: 18px;
+}
+
+.sectionBody :global(.ant-form-item-label > label) {
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+}
+
+.sectionBody :global(.ant-input),
+.sectionBody :global(.ant-input-affix-wrapper),
+.sectionBody :global(.ant-select-selector),
+.sectionBody :global(.ant-picker) {
+  border-color: #dfd4c2 !important;
+  border-radius: 2px !important;
+  background: #fffdf7 !important;
+  box-shadow: none !important;
+}
+
+.sectionBody :global(.ant-input:hover),
+.sectionBody :global(.ant-input-affix-wrapper:hover),
+.sectionBody :global(.ant-select:hover .ant-select-selector),
+.sectionBody :global(.ant-picker:hover) {
+  border-color: #b8a78c !important;
+}
+
+.sectionBody :global(.ant-input:focus),
+.sectionBody :global(.ant-input-affix-wrapper-focused),
+.sectionBody :global(.ant-select-focused .ant-select-selector),
+.sectionBody :global(.ant-picker-focused) {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.08) !important;
+}
+
+.sectionBody :global(.ant-btn) {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.sectionBody :global(.ant-btn-primary) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.sectionBody :global(.ant-btn-primary:hover) {
+  border-color: var(--color-primary-hover) !important;
+  background: var(--color-primary-hover) !important;
 }
 
 .controlRow {
@@ -89,12 +143,12 @@
   justify-content: space-between;
   min-height: 62px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(var(--color-border-rgb), 0.62);
+  border-bottom: 1px solid #e7ddce;
   gap: 18px;
 }
 
 .controlRow:last-of-type {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .controlRow strong,
@@ -121,8 +175,16 @@
 .profileHeader {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  gap: 18px;
+  margin-bottom: 18px;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e7ddce;
+}
+
+.profileHeader :global(.ant-btn) {
+  border-color: #d8cbb6;
+  background: #fffaf2;
+  color: var(--color-primary);
 }
 
 .passwordForm {
@@ -136,7 +198,11 @@
 
   .navigation {
     border-right: 0;
-    border-bottom: 1px solid rgba(var(--color-border-rgb), 0.82);
+    border-bottom: 1px solid #ddd1bd;
+  }
+
+  .tabList {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   }
 
   .content {
