@@ -1,0 +1,40 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const root = new URL("../src/", import.meta.url);
+
+async function readSource(relativePath) {
+  return readFile(new URL(relativePath, root), "utf8");
+}
+
+test("分布地图复用统一本草标题栏且不保留旧标题组件", async () => {
+  const source = await readSource("app/map/page.tsx");
+
+  assert.match(source, /import \{ ModuleHeroBanner \}/);
+  assert.match(source, /<ModuleHeroBanner/);
+  assert.doesNotMatch(source, /PageBanner/);
+});
+
+test("分布地图使用紧凑三栏纸张布局和扁平详情", async () => {
+  const css = await readSource("components/map/HerbDistributionMap.module.css");
+
+  assert.match(
+    css,
+    /grid-template-columns:\s*minmax\(280px,\s*0\.8fr\)\s+minmax\(560px,\s*1\.55fr\)\s+minmax\(340px,\s*1fr\)/,
+  );
+  assert.match(css, /\.pointList\s*\{[^}]*gap:\s*0;/s);
+  assert.match(css, /\.pointItem\s*\{[^}]*border-bottom:/s);
+  assert.match(css, /\.detailHero\s*\{[^}]*background:\s*transparent;/s);
+  assert.match(css, /\.coordinateRow\s*\{[^}]*border-radius:\s*0;/s);
+  assert.doesNotMatch(css, /\.detailHero\s*\{[^}]*linear-gradient/s);
+});
+
+test("分布地图详情保持现有无标签交互结构", async () => {
+  const source = await readSource("components/map/HerbDistributionMap.tsx");
+
+  assert.doesNotMatch(source, /<Tabs|items=\{detailTabs\}|activeKey=/);
+  assert.match(source, /className=\{styles\.detailHeader\}/);
+  assert.match(source, /className=\{styles\.detailHero\}/);
+  assert.match(source, /className=\{styles\.coordinateRow\}/);
+});
