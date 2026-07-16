@@ -35,4 +35,3 @@ SET waiting_step.status = CASE
 WHERE waiting_step.step_type = 'WAIT_FOR_CONFIRMATION'
   AND waiting_step.status = 'WAITING'
   AND action_row.status IN ('SUCCEEDED', 'REJECTED', 'CANCELLED', 'FAILED');
-

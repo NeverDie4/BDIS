@@ -80,4 +80,3 @@ WHERE current_snapshot_json IS NOT NULL
 DELETE FROM `assistant_agent_collection_requirement`
 WHERE requirement_type = 'METRIC'
   AND requirement_code = 'sampleWeight';
-
