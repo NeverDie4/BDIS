@@ -1,0 +1,60 @@
+.statePage {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+  padding: 32px;
+  background:
+    linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.08) 0 1px, transparent 1px 56px),
+    linear-gradient(45deg, rgba(138, 90, 43, 0.06) 0 1px, transparent 1px 64px), var(--color-bg);
+}
+
+.statePage::after {
+  position: absolute;
+  right: -8%;
+  bottom: -14%;
+  width: min(720px, 78vw);
+  height: min(420px, 48vw);
+  content: "";
+  background-image: url("/images/home/hero-herb-bg.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.stateContent {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  max-width: 440px;
+  justify-items: center;
+  text-align: center;
+}
+
+.seal {
+  display: grid;
+  width: 50px;
+  height: 58px;
+  margin-bottom: 20px;
+  place-items: center;
+  border: 2px solid #b13a2e;
+  border-radius: 8px;
+  color: #b13a2e;
+  font-family: var(--font-brand);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.stateContent h2 {
+  margin: 18px 0 8px;
+  color: var(--color-title);
+  font-family: var(--font-brand);
+}
+
+.stateContent p {
+  margin: 0 0 20px;
+  color: var(--color-muted);
+}

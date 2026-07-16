@@ -1,0 +1,23 @@
+.thumb,
+.image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.square {
+  border-radius: var(--radius-button);
+}
+
+.rounded {
+  border-radius: var(--radius-card);
+}
+
+.circle {
+  border-radius: 50%;
+}

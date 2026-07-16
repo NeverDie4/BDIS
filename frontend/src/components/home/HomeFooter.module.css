@@ -1,0 +1,46 @@
+.footer {
+  position: relative;
+  width: 100vw;
+  height: 56px;
+  margin: 18px calc(50% - 50vw) 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-top: 1px solid rgba(138, 90, 43, 0.36);
+  background:
+    linear-gradient(90deg, rgba(255, 250, 242, 0.05) 0 1px, transparent 1px 96px),
+    linear-gradient(180deg, rgba(15, 95, 59, 0.96), rgba(10, 61, 42, 0.98));
+  color: rgba(255, 250, 242, 0.86);
+  font-family: var(--font-brand);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+}
+
+.footer::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 62%, rgba(255, 250, 242, 0.08), transparent 24%),
+    radial-gradient(circle at 88% 38%, rgba(255, 250, 242, 0.06), transparent 22%);
+  content: "";
+}
+
+.footer p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0 18px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .footer {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 0;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+}

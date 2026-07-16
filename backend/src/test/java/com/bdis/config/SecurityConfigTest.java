@@ -1,0 +1,111 @@
+package com.bdis.config;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.bdis.common.security.JwtAuthenticationFilter;
+import com.bdis.common.security.JwtUtils;
+import com.bdis.common.security.TokenBlacklistService;
+import com.bdis.modules.auth.service.CurrentUserService;
+import com.bdis.modules.herb.controller.HerbSpeciesController;
+import com.bdis.modules.herb.service.HerbSpeciesService;
+import com.bdis.modules.settings.service.UserSessionService;
+import com.bdis.modules.user.mapper.UserMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.web.servlet.MockMvc;
+
+@WebMvcTest(HerbSpeciesController.class)
+@ContextConfiguration(
+        classes = {
+            HerbSpeciesController.class,
+            SecurityConfig.class,
+            JwtAuthenticationFilter.class
+        })
+class SecurityConfigTest {
+
+    @Autowired private MockMvc mockMvc;
+
+    @MockBean private HerbSpeciesService herbSpeciesService;
+
+    @MockBean private JwtUtils jwtUtils;
+
+    @MockBean private TokenBlacklistService tokenBlacklistService;
+
+    @MockBean private CurrentUserService currentUserService;
+
+    @MockBean private UserSessionService userSessionService;
+
+    @MockBean private UserMapper userMapper;
+
+    @Test
+    void herbApiRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/herb/species/list")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void herbPostApiRequiresAuthentication() throws Exception {
+        mockMvc.perform(
+                        post("/herb/atlas/feature/batch-extract")
+                                .contentType("application/json")
+                                .content("{\"speciesId\":null,\"forceRefresh\":false}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void mobileHerbApiRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/mobile/herb/tasks?collectorId=1001"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void privateStoragePathIsNotExposed() throws Exception {
+        mockMvc.perform(get("/files/uploads/missing.png")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/files/uploads/missing.png").with(user("teacher")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void publicFileEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(get("/public-files/1/content")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void refreshSessionEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(
+                        post("/auth/sessions/refresh")
+                                .contentType("application/json")
+                                .content("{\"refreshToken\":\"token\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mockSoapEndpointOnlyAllowsLoopbackRequests() throws Exception {
+        mockMvc.perform(
+                        get("/services/campus-growth")
+                                .with(
+                                        request -> {
+                                            request.setRemoteAddr("203.0.113.10");
+                                            return request;
+                                        }))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                        get("/services/campus-growth")
+                                .with(
+                                        request -> {
+                                            request.setRemoteAddr("127.0.0.1");
+                                            return request;
+                                        }))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void digitalLifeTraceEndpointAllowsAnonymousRequests() throws Exception {
+        mockMvc.perform(get("/trace/digital-life/missing")).andExpect(status().isNotFound());
+    }
+}

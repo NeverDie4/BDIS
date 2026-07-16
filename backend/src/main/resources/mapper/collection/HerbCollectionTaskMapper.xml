@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bdis.modules.collection.mapper.HerbCollectionTaskMapper">
+    <resultMap id="BaseResultMap" type="com.bdis.modules.collection.entity.HerbCollectionTaskEntity">
+        <id column="id" property="id"/>
+        <result column="task_code" property="taskCode"/>
+        <result column="task_name" property="taskName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="base_id" property="baseId"/>
+        <result column="base_name" property="baseName"/>
+        <result column="collect_place" property="collectPlace"/>
+        <result column="planned_start_time" property="plannedStartTime"/>
+        <result column="planned_end_time" property="plannedEndTime"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="collector_name" property="collectorName"/>
+        <result column="task_status" property="taskStatus"/>
+        <result column="description" property="description"/>
+        <result column="trace_code" property="traceCode"/>
+        <result column="public_visible" property="publicVisible"/>
+        <result column="status" property="status"/>
+        <result column="remark" property="remark"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_by" property="updatedBy"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <resultMap id="TaskVOResultMap" type="com.bdis.modules.collection.vo.HerbCollectionTaskVO">
+        <id column="id" property="id"/>
+        <result column="task_code" property="taskCode"/>
+        <result column="task_name" property="taskName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="base_id" property="baseId"/>
+        <result column="base_name" property="baseName"/>
+        <result column="collect_place" property="collectPlace"/>
+        <result column="planned_start_time" property="plannedStartTime"/>
+        <result column="planned_end_time" property="plannedEndTime"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="collector_name" property="collectorName"/>
+        <result column="task_status" property="taskStatus"/>
+        <result column="description" property="description"/>
+        <result column="trace_code" property="traceCode"/>
+        <result column="public_visible" property="publicVisible"/>
+        <result column="remark" property="remark"/>
+        <result column="batch_count" property="batchCount"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
+    </resultMap>
+
+    <resultMap id="TaskListVOResultMap" type="com.bdis.modules.collection.vo.HerbCollectionTaskListVO">
+        <id column="id" property="id"/>
+        <result column="task_code" property="taskCode"/>
+        <result column="task_name" property="taskName"/>
+        <result column="species_id" property="speciesId"/>
+        <result column="species_name" property="speciesName"/>
+        <result column="collector_id" property="collectorId"/>
+        <result column="collector_name" property="collectorName"/>
+        <result column="task_status" property="taskStatus"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id,
+        task_code,
+        task_name,
+        species_id,
+        species_name,
+        base_id,
+        base_name,
+        collect_place,
+        planned_start_time,
+        planned_end_time,
+        collector_id,
+        collector_name,
+        task_status,
+        description,
+        trace_code,
+        public_visible,
+        status,
+        remark,
+        created_at,
+        updated_at,
+        created_by,
+        updated_by,
+        is_deleted
+    </sql>
+
+    <sql id="TaskVOColumns">
+        t.id,
+        t.task_code,
+        t.task_name,
+        t.species_id,
+        t.species_name,
+        t.base_id,
+        t.base_name,
+        t.collect_place,
+        t.planned_start_time,
+        t.planned_end_time,
+        t.collector_id,
+        t.collector_name,
+        t.task_status,
+        t.description,
+        t.trace_code,
+        t.public_visible,
+        t.remark,
+        COUNT(b.id) AS batch_count,
+        t.created_at,
+        t.updated_at
+    </sql>
+
+    <sql id="PageWhere">
+        <where>
+            t.is_deleted = 0
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (
+                    t.task_code LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR t.task_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR t.species_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR t.base_name LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR t.collect_place LIKE CONCAT('%', #{query.keyword}, '%')
+                    OR t.collector_name LIKE CONCAT('%', #{query.keyword}, '%')
+                )
+            </if>
+            <if test="query.speciesId != null">
+                AND t.species_id = #{query.speciesId}
+            </if>
+            <if test="query.collectorId != null">
+                AND t.collector_id = #{query.collectorId}
+            </if>
+            <if test="query.baseId != null">
+                AND t.base_id = #{query.baseId}
+            </if>
+            <if test="query.taskStatus != null and query.taskStatus != ''">
+                AND t.task_status = #{query.taskStatus}
+            </if>
+            <if test="query.startTime != null">
+                AND t.planned_start_time &gt;= #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                AND t.planned_start_time &lt;= #{query.endTime}
+            </if>
+            <if test="query.excludedStatuses != null and query.excludedStatuses.size() > 0">
+                AND t.task_status NOT IN
+                <foreach collection="query.excludedStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="!scope.allIncluded">
+                AND (
+                    t.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR t.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="ListWhere">
+        <where>
+            t.is_deleted = 0
+            <if test="query.speciesId != null">
+                AND t.species_id = #{query.speciesId}
+            </if>
+            <if test="query.collectorId != null">
+                AND t.collector_id = #{query.collectorId}
+            </if>
+            <if test="query.taskStatus != null and query.taskStatus != ''">
+                AND t.task_status = #{query.taskStatus}
+            </if>
+            <if test="query.excludedStatuses != null and query.excludedStatuses.size() > 0">
+                AND t.task_status NOT IN
+                <foreach collection="query.excludedStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="!scope.allIncluded">
+                AND (
+                    t.created_by IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                    OR t.collector_id IN
+                    <foreach collection="scope.ownerIds" item="ownerId" open="(" separator="," close=")">
+                        #{ownerId}
+                    </foreach>
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="MyTaskWhere">
+        <where>
+            t.is_deleted = 0
+            AND t.collector_id = #{query.collectorId}
+            <if test="query.taskStatus != null and query.taskStatus != ''">
+                AND t.task_status = #{query.taskStatus}
+            </if>
+            <if test="query.includedStatuses != null and query.includedStatuses.size() > 0">
+                AND t.task_status IN
+                <foreach collection="query.includedStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+        </where>
+    </sql>
+
+    <insert id="insert" parameterType="com.bdis.modules.collection.entity.HerbCollectionTaskEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO herb_collection_task (
+            task_code,
+            task_name,
+            species_id,
+            species_name,
+            base_id,
+            base_name,
+            collect_place,
+            planned_start_time,
+            planned_end_time,
+            collector_id,
+            collector_name,
+            task_status,
+            description,
+            remark,
+            created_at,
+            updated_at,
+            created_by,
+            updated_by,
+            is_deleted
+        ) VALUES (
+            #{taskCode},
+            #{taskName},
+            #{speciesId},
+            #{speciesName},
+            #{baseId},
+            #{baseName},
+            #{collectPlace},
+            #{plannedStartTime},
+            #{plannedEndTime},
+            #{collectorId},
+            #{collectorName},
+            #{taskStatus},
+            #{description},
+            #{remark},
+            #{createdAt},
+            #{updatedAt},
+            #{createdBy},
+            #{updatedBy},
+            #{isDeleted}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.bdis.modules.collection.entity.HerbCollectionTaskEntity">
+        UPDATE herb_collection_task
+        SET task_name = #{taskName},
+            species_id = #{speciesId},
+            species_name = #{speciesName},
+            base_id = #{baseId},
+            base_name = #{baseName},
+            collect_place = #{collectPlace},
+            planned_start_time = #{plannedStartTime},
+            planned_end_time = #{plannedEndTime},
+            collector_id = #{collectorId},
+            collector_name = #{collectorName},
+            task_status = #{taskStatus},
+            description = #{description},
+            remark = #{remark},
+            updated_at = #{updatedAt},
+            updated_by = #{updatedBy}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="logicDeleteById">
+        UPDATE herb_collection_task
+        SET is_deleted = 1,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="updateStatusById">
+        UPDATE herb_collection_task
+        SET task_status = #{taskStatus},
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_collection_task
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_collection_task
+        WHERE id = #{id}
+          AND is_deleted = 0
+        FOR UPDATE
+    </select>
+
+    <select id="selectByTaskCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_collection_task
+        WHERE task_code = #{taskCode}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByTraceCode" resultMap="BaseResultMap">
+        SELECT
+        <include refid="BaseColumns"/>
+        FROM herb_collection_task
+        WHERE trace_code = #{traceCode}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDetailById" resultMap="TaskVOResultMap">
+        SELECT
+        <include refid="TaskVOColumns"/>
+        FROM herb_collection_task t
+        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.is_deleted = 0
+        WHERE t.id = #{id}
+          AND t.is_deleted = 0
+        GROUP BY t.id
+    </select>
+
+    <select id="countPage" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_collection_task t
+        <include refid="PageWhere"/>
+    </select>
+
+    <select id="selectPage" resultMap="TaskVOResultMap">
+        SELECT
+        <include refid="TaskVOColumns"/>
+        FROM herb_collection_task t
+        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.is_deleted = 0
+        <include refid="PageWhere"/>
+        GROUP BY t.id
+        ORDER BY t.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectList" resultMap="TaskListVOResultMap">
+        SELECT
+        t.id,
+        t.task_code,
+        t.task_name,
+        t.species_id,
+        t.species_name,
+        t.collector_id,
+        t.collector_name,
+        t.task_status
+        FROM herb_collection_task t
+        <include refid="ListWhere"/>
+        ORDER BY t.created_at DESC
+    </select>
+
+    <select id="countMyTasks" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_collection_task t
+        <include refid="MyTaskWhere"/>
+    </select>
+
+    <select id="selectMyTasks" resultMap="TaskVOResultMap">
+        SELECT
+        <include refid="TaskVOColumns"/>
+        FROM herb_collection_task t
+        LEFT JOIN herb_batch b ON b.task_id = t.id AND b.is_deleted = 0
+        <include refid="MyTaskWhere"/>
+        GROUP BY t.id
+        ORDER BY t.planned_start_time ASC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countBatchByTaskId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM herb_batch
+        WHERE task_id = #{taskId}
+          AND is_deleted = 0
+    </select>
+</mapper>

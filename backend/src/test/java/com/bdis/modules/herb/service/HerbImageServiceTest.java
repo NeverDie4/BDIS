@@ -1,0 +1,256 @@
+package com.bdis.modules.herb.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.bdis.common.core.PageResult;
+import com.bdis.common.exception.BusinessException;
+import com.bdis.common.security.CurrentUser;
+import com.bdis.file.service.FileBusinessService;
+import com.bdis.file.service.FileResourceService;
+import com.bdis.modules.collection.support.CollectionAccessScope;
+import com.bdis.modules.file.vo.FileResourceVO;
+import com.bdis.modules.growth.mapper.GrowthRecordMapper;
+import com.bdis.modules.herb.dto.HerbImageQueryRequest;
+import com.bdis.modules.herb.dto.HerbImageUpdateRequest;
+import com.bdis.modules.herb.dto.HerbImageUploadRequest;
+import com.bdis.modules.herb.entity.HerbEntity;
+import com.bdis.modules.herb.entity.HerbImageEntity;
+import com.bdis.modules.herb.mapper.HerbImageMapper;
+import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
+import com.bdis.modules.herb.service.impl.HerbImageServiceImpl;
+import com.bdis.modules.herb.support.HerbImageAccessService;
+import com.bdis.modules.herb.vo.HerbImageVO;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+@ExtendWith(MockitoExtension.class)
+class HerbImageServiceTest {
+    @Mock private HerbImageMapper herbImageMapper;
+
+    @Mock private HerbSpeciesMapper herbSpeciesMapper;
+
+    @Mock private GrowthRecordMapper growthRecordMapper;
+
+    @Mock private FileResourceService fileResourceService;
+
+    @Mock private FileBusinessService fileBusinessService;
+
+    @Mock private HerbImageAccessService herbImageAccessService;
+
+    private HerbImageService herbImageService;
+
+    @BeforeEach
+    void setUp() {
+        CurrentUser user =
+                new CurrentUser(
+                        9L,
+                        "collector",
+                        "Collector",
+                        null,
+                        null,
+                        Set.of("COLLECTOR"),
+                        Set.of(3L),
+                        Set.of("herb:identification:execute"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, null));
+        herbImageService =
+                new HerbImageServiceImpl(
+                        herbImageMapper,
+                        herbSpeciesMapper,
+                        growthRecordMapper,
+                        fileResourceService,
+                        fileBusinessService,
+                        herbImageAccessService);
+    }
+
+    @AfterEach
+    void clearCurrentUser() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void uploadImageSavesFileAndInsertsUploadedRecord() {
+        HerbImageUploadRequest request = new HerbImageUploadRequest();
+        request.setSpeciesId(1L);
+        request.setCollectorId(9L);
+        request.setCollectPlace("Shizhu base");
+        request.setImageType("leaf");
+        request.setGrowthStage("growth");
+        request.setHealthStatus("unknown");
+        HerbEntity species = new HerbEntity();
+        species.setId(1L);
+        species.setHerbName("Huanglian");
+        when(herbSpeciesMapper.selectActiveById(1L)).thenReturn(species);
+        FileResourceVO fileResource = new FileResourceVO();
+        fileResource.setId(21L);
+        fileResource.setFileUrl("/api/files/21/content");
+        when(fileResourceService.upload(any())).thenReturn(fileResource);
+        doAnswer(
+                        invocation -> {
+                            HerbImageEntity image = invocation.getArgument(0);
+                            image.setId(11L);
+                            return 1;
+                        })
+                .when(herbImageMapper)
+                .insertImage(any(HerbImageEntity.class));
+        MockMultipartFile file =
+                new MockMultipartFile("file", "huanglian_leaf.jpg", "image/jpeg", new byte[] {1});
+
+        HerbImageVO result = herbImageService.upload(file, request);
+
+        ArgumentCaptor<HerbImageEntity> imageCaptor =
+                ArgumentCaptor.forClass(HerbImageEntity.class);
+        verify(herbImageMapper).insertImage(imageCaptor.capture());
+        HerbImageEntity inserted = imageCaptor.getValue();
+        assertThat(inserted.getImageNo()).startsWith("IMG_");
+        assertThat(inserted.getImageUrl()).isEqualTo("/api/files/21/content");
+        assertThat(inserted.getOriginalFilename()).isEqualTo("huanglian_leaf.jpg");
+        assertThat(inserted.getUploadSource()).isEqualTo("mobile");
+        assertThat(inserted.getProcessStatus()).isEqualTo("uploaded");
+        assertThat(inserted.getCollectedAt()).isNotNull();
+        assertThat(inserted.getCreatedAt()).isNotNull();
+        assertThat(inserted.getUpdatedAt()).isNotNull();
+        assertThat(inserted.getIsDeleted()).isZero();
+        assertThat(result.getImageCode()).isEqualTo(inserted.getImageNo());
+        assertThat(result.getSpeciesName()).isEqualTo("Huanglian");
+        assertThat(result.getProcessStatus()).isEqualTo("uploaded");
+        verify(fileBusinessService).bind(any());
+    }
+
+    @Test
+    void getByIdRejectsMissingImage() {
+        when(herbImageMapper.selectDetailById(1L)).thenReturn(null);
+
+        assertThatThrownBy(() -> herbImageService.getById(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Herb image not found");
+    }
+
+    @Test
+    void getByIdReturnsImageDetail() {
+        HerbImageVO detail = new HerbImageVO();
+        detail.setId(1L);
+        detail.setImageCode("IMG_1");
+        detail.setSpeciesName("Huanglian");
+        when(herbImageMapper.selectDetailById(1L)).thenReturn(detail);
+
+        HerbImageVO result = herbImageService.getById(1L);
+
+        assertThat(result.getImageCode()).isEqualTo("IMG_1");
+        assertThat(result.getSpeciesName()).isEqualTo("Huanglian");
+    }
+
+    @Test
+    void deleteImageUsesLogicalDelete() {
+        HerbImageEntity existing = imageEntity();
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(existing);
+        when(herbImageMapper.logicalDeleteById(any(HerbImageEntity.class))).thenReturn(1);
+
+        herbImageService.delete(1L);
+
+        ArgumentCaptor<HerbImageEntity> captor = ArgumentCaptor.forClass(HerbImageEntity.class);
+        verify(herbImageMapper).logicalDeleteById(captor.capture());
+        assertThat(captor.getValue().getId()).isEqualTo(1L);
+        assertThat(captor.getValue().getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void updateImageValidatesSpeciesWhenProvided() {
+        HerbImageEntity existing = imageEntity();
+        HerbImageUpdateRequest request = new HerbImageUpdateRequest();
+        request.setSpeciesId(2L);
+        request.setProcessStatus("recognized");
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(existing);
+        when(herbSpeciesMapper.selectActiveById(2L)).thenReturn(null);
+
+        assertThatThrownBy(() -> herbImageService.update(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Herb species not found");
+    }
+
+    @Test
+    void updateImageUpdatesBusinessFields() {
+        HerbImageEntity existing = imageEntity();
+        HerbImageUpdateRequest request = new HerbImageUpdateRequest();
+        request.setSpeciesId(2L);
+        request.setCollectPlace("New place");
+        request.setProcessStatus("recognized");
+        HerbEntity species = new HerbEntity();
+        species.setId(2L);
+        species.setHerbName("Dangshen");
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(existing);
+        when(herbSpeciesMapper.selectActiveById(2L)).thenReturn(species);
+
+        HerbImageVO result = herbImageService.update(1L, request);
+
+        ArgumentCaptor<HerbImageEntity> captor = ArgumentCaptor.forClass(HerbImageEntity.class);
+        verify(herbImageMapper).updateImage(captor.capture());
+        assertThat(captor.getValue().getSpeciesId()).isEqualTo(2L);
+        assertThat(captor.getValue().getCollectedLocation()).isEqualTo("New place");
+        assertThat(captor.getValue().getProcessStatus()).isEqualTo("recognized");
+        assertThat(result.getSpeciesName()).isEqualTo("Dangshen");
+    }
+
+    @Test
+    void pageImageNormalizesInvalidPageParameters() {
+        HerbImageQueryRequest request = new HerbImageQueryRequest();
+        request.setPageNum(0);
+        request.setPageSize(0);
+        CollectionAccessScope scope = new CollectionAccessScope(false, List.of(9L));
+        when(herbImageAccessService.currentScope()).thenReturn(scope);
+        when(herbImageMapper.countPage(request, scope)).thenReturn(1L);
+        when(herbImageMapper.selectPage(request, scope, 0L, 10))
+                .thenReturn(List.of(new HerbImageVO()));
+
+        PageResult<HerbImageVO> result = herbImageService.page(request);
+
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.getTotal()).isEqualTo(1);
+        assertThat(result.getRecords()).hasSize(1);
+    }
+
+    @Test
+    void myImagesRequiresCollectorIdAndPaginates() {
+        when(herbImageMapper.countByCollectorId(9L)).thenReturn(1L);
+        when(herbImageMapper.selectByCollectorId(9L, 0L, 10))
+                .thenReturn(List.of(new HerbImageVO()));
+
+        PageResult<HerbImageVO> result = herbImageService.my(9L, 0, 0);
+
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.getTotal()).isEqualTo(1);
+    }
+
+    private HerbImageEntity imageEntity() {
+        HerbImageEntity image = new HerbImageEntity();
+        image.setId(1L);
+        image.setImageNo("IMG_1");
+        image.setImageUrl("/api/files/uploads/2026-07-08/IMG_1.jpg");
+        image.setOriginalFilename("leaf.jpg");
+        image.setSpeciesId(1L);
+        image.setUploaderId(9L);
+        image.setUploadSource("mobile");
+        image.setCollectedAt(LocalDateTime.now());
+        image.setProcessStatus("uploaded");
+        image.setIsDeleted(0);
+        return image;
+    }
+}

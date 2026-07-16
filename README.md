@@ -1,6 +1,6 @@
 # BDIS
 
-BDIS（Biomedicine Digital Information System，生物医药数字信息系统）是面向中药材科研、教学、培训与管理场景的信息系统。项目当前仅完成工程初始化，不包含业务类设计、数据库表结构和具体业务实现，这些内容由小组在后续详细设计确定后补充。
+BDIS（Biomedicine Digital Information System，生物医药数字信息系统）是面向中药材科研、教学、培训与管理场景的信息系统。项目已进入多模块集成阶段，已具备用户鉴权、业务权限、字典与区域、药材与基地、地图与生长采集审核、私有文件资源、日志审计、SOAP 生长记录导入、AI 识别服务和首页看板等基础实现；课程、评价、申报、业绩等后续业务仍按设计文档逐步完善。
 
 ## 功能概括
 
@@ -25,7 +25,10 @@ BDIS（Biomedicine Digital Information System，生物医药数字信息系统�
 
 ```text
 frontend/          Next.js 前端工程
+mobile/            uni-app 移动端工程（由移动端小组独立维护）
 backend/           Spring Boot 后端工程
+ai_service/        FastAPI 图像识别与特征提取服务
+flyway/            独立数据库迁移模块
 deploy/nginx/      nginx 反向代理配置
 docs/              项目需求与设计文档
 ```
@@ -55,7 +58,21 @@ pnpm dev:api
 Docker Compose：
 
 ```bash
+pnpm setup
+# 修改 .env 中的数据库、Redis、Bootstrap Token 与 JWT 密钥
 pnpm compose:up
+```
+
+Compose 会等待 MySQL、Redis 健康后启动后端，并由后端自动执行 Flyway 迁移。`ARK_API_KEY` 未配置时识别服务仍可启动并通过健康检查，但调用大模型识别接口会返回明确的配置错误。特征提取服务首次启动时会下载经过哈希校验的 ResNet50 权重，并保存到 `ai-model-cache` 卷供后续启动复用；因此首次启动需要能够访问 `download.pytorch.org`。
+
+Compose 中 MySQL 的容器端口仍为 `3306`，宿主机默认通过 `127.0.0.1:3307` 访问，避免与本机 MySQL 冲突。需要其他端口时在 `.env` 中设置 `MYSQL_DOCKER_PORT`。
+
+数据库迁移：
+
+```bash
+pnpm dev:infra
+pnpm db:migrate
+pnpm db:validate
 ```
 
 提交前可运行：
@@ -64,14 +81,15 @@ pnpm compose:up
 pnpm validate
 ```
 
-更多命令说明见 [docs/10_脚本命令使用指南_V1.0_全组_20260707.md](docs/10_脚本命令使用指南_V1.0_全组_20260707.md)。
+更多命令说明见 [docs/10_脚本命令使用指南_V1.1_全组_20260710.md](docs/10_脚本命令使用指南_V1.1_全组_20260710.md)。数据库设计见 [docs/05_数据库详细设计说明书_V1.0_全组_20260710.md](docs/05_数据库详细设计说明书_V1.0_全组_20260710.md)，迁移规则见 [docs/10_Flyway数据库迁移规则_V1.0_全组_20260708.md](docs/10_Flyway数据库迁移规则_V1.0_全组_20260708.md)。
 
 ## 配置隔离
 
 不同成员的数据库用户名、密码、端口等本地配置不应写死进代码，也不要提交 `.env`。
 
 - Docker Compose 会自动读取项目根目录的 `.env`。
-- 直接运行后端时，Spring Boot 会尝试读取当前目录或上一级目录的 `.env`，也可以读取系统环境变量，例如 `MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`。
+- 文件上传接口只接受 `private`，通过 `/api/files/{id}/content` 携带 Bearer Token 获取；文件必须先绑定业务对象，再由对应业务模块通过 Policy 校验后发布，才能使用 `/api/public-files/{id}/content` 匿名访问。`/api/files/uploads/**` 旧物理路径由安全配置显式拒绝，底层存储目录不直接暴露。
+- 直接运行后端时，Spring Boot 会尝试读取当前目录或上一级目录的 `.env`，也可以读取系统环境变量，例如 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE`。
 - Windows 可在 IntelliJ IDEA / VS Code 运行配置中填写环境变量，或使用 PowerShell 设置临时变量。
 - Linux 可在 shell 中使用 `export MYSQL_USER=...`，或通过 IDE 运行配置注入。
 - `.env.example` 只作为字段模板，真实 `.env` 已被 `.gitignore` 忽略。

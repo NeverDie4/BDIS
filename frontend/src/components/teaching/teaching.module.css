@@ -1,0 +1,1011 @@
+.teachingPage {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  width: 100%;
+  height: calc(100vh - 78px);
+  min-width: 0;
+  min-height: 0;
+  margin-top: 0;
+  margin-left: 0;
+  overflow: hidden;
+}
+
+.moduleHero {
+  margin-bottom: 0;
+}
+
+.moduleTabs {
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+  padding: 0 20px;
+}
+
+.moduleTabs :global(.ant-tabs-nav) {
+  min-height: 50px;
+  margin: 0;
+}
+
+.moduleTabs :global(.ant-tabs-nav-list) {
+  gap: 18px;
+}
+
+.moduleTabs :global(.ant-tabs-tab) {
+  margin: 0;
+  padding: 14px 4px 12px;
+}
+
+/* 教学培训暂未开放，保留实现代码但隐藏入口。 */
+.moduleTabs :global(.ant-tabs-tab:nth-child(3)) {
+  display: none;
+}
+
+.moduleTabs :global(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: var(--color-primary) !important;
+  font-weight: 700;
+}
+
+.moduleTabs :global(.ant-tabs-ink-bar) {
+  height: 2px !important;
+  background: var(--color-primary);
+}
+
+.moduleTabs :global(.ant-tabs-content-holder) {
+  display: none;
+}
+
+.filterPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+  padding: 12px 18px;
+}
+
+.mainFilters,
+.filterFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.mainFilters {
+  flex-wrap: wrap;
+}
+
+.filterFooter {
+  justify-content: flex-end;
+}
+
+.keywordFilter,
+.statusFilter,
+.ownerFilter,
+.subjectFilter,
+.herbFilter,
+.dateFilter {
+  margin: 0;
+}
+
+.keywordFilter {
+  flex: 1 1 280px;
+  max-width: 340px;
+}
+
+.statusFilter {
+  flex: 0 1 130px;
+}
+
+.ownerFilter {
+  flex: 0 1 140px;
+}
+
+.subjectFilter {
+  flex: 0 1 160px;
+}
+
+.herbFilter {
+  flex: 0 1 150px;
+}
+
+.dateFilter {
+  flex: 0 1 260px;
+}
+
+.keywordFilter :global(.ant-form-item-control),
+.statusFilter :global(.ant-form-item-control),
+.ownerFilter :global(.ant-form-item-control),
+.subjectFilter :global(.ant-form-item-control),
+.herbFilter :global(.ant-form-item-control),
+.dateFilter :global(.ant-form-item-control) {
+  width: 100%;
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+}
+
+.workspace {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspaceWithDetail {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(360px, 3fr);
+}
+
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.managementGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+}
+
+.workspaceWithDetail .managementGrid {
+  border-right: 0;
+}
+
+.managementSection {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.managementSection:last-child {
+  border-right: 0;
+}
+
+.sectionToolbar,
+.researchToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 50px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px 14px;
+}
+
+.researchToolbarGroups {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.researchToolbarLeft,
+.researchToolbarRight {
+  min-width: 0;
+}
+
+.tableContainer {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.dataTable {
+  width: 100%;
+  min-width: 0;
+}
+
+.dataTable :global(.ant-table),
+.dataTable :global(.ant-table-container),
+.dataTable :global(.ant-table-content) {
+  background: transparent;
+}
+
+.dataTable :global(.ant-table-thead > tr > th) {
+  background: rgba(239, 233, 219, 0.68) !important;
+}
+
+.dataTable :global(.ant-table-tbody > tr > td),
+.dataTable :global(.ant-table-cell-fix-right),
+.dataTable :global(.ant-table-cell-fix-left) {
+  background: rgba(255, 250, 242, 0.56);
+}
+
+.dataTable :global(.ant-table-tbody > tr:hover > td),
+.dataTable :global(.ant-table-tbody > tr:hover > .ant-table-cell-fix-right),
+.dataTable :global(.ant-table-tbody > tr:hover > .ant-table-cell-fix-left) {
+  background: rgba(239, 243, 232, 0.82) !important;
+}
+
+.dataTable :global(.ant-pagination) {
+  margin: 10px 12px;
+}
+
+.courseNameCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.courseThumbnail {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.courseNameText {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.courseNameText strong,
+.courseNameText span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.courseNameText span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin: 0;
+  padding: 1px 7px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.statusPublished,
+.statusOngoing {
+  color: #185c35;
+  background-color: #e7f3e9;
+}
+
+.statusDraft,
+.statusCompleted {
+  color: #315f86;
+  background-color: #e8f1f7;
+}
+
+.statusOffline {
+  color: #a33a32;
+  background-color: #f8e9e7;
+}
+
+.statusApplying {
+  color: #9a5a16;
+  background-color: #faeedc;
+}
+
+.actionLink {
+  height: auto;
+  padding: 2px 4px;
+  color: var(--color-primary) !important;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.actionLink:hover {
+  color: var(--color-primary-hover) !important;
+}
+
+.trainingPanel {
+  margin-top: 12px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+  padding: 10px 14px 14px;
+}
+
+.trainingHeader {
+  padding-bottom: 8px;
+}
+
+.trainingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingCard {
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 10px;
+  min-width: 0;
+  min-height: 178px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background-color: rgba(255, 253, 246, 0.72);
+  padding: 14px 16px 10px;
+}
+
+.trainingCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trainingCardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.trainingCardDescription {
+  min-height: 42px;
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.trainingMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trainingMetric {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+  padding: 0 10px;
+  text-align: center;
+}
+
+.trainingMetric:first-child {
+  padding-left: 0;
+}
+
+.trainingMetric:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.trainingMetric span {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingAction {
+  justify-self: end;
+  height: auto;
+  padding: 2px 0;
+  color: var(--color-primary) !important;
+  font-size: 12px;
+}
+
+.trainingAction:hover {
+  color: var(--color-primary-hover) !important;
+}
+
+.detailPanel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+  overflow: hidden;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px 14px;
+}
+
+.detailHeader h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.detailHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.detailTabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 14px;
+}
+
+.detailTabs :global(.ant-tabs-nav) {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.detailTabs :global(.ant-tabs-tab) {
+  padding: 12px 0 10px;
+}
+
+.detailTabs :global(.ant-tabs-tab-btn) {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.detailTabs :global(.ant-tabs-content-holder) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.detailTabs :global(.ant-tabs-content),
+.detailTabs :global(.ant-tabs-tabpane) {
+  height: 100%;
+}
+
+.detailContent {
+  height: 100%;
+  padding: 14px 2px 22px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.courseSummary {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 14px;
+}
+
+.detailCover {
+  width: 104px;
+  height: 78px;
+  border: 1px solid rgba(77, 95, 72, 0.18);
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.courseSummaryBody {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.courseSummaryTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.courseSummaryTitle h3 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.courseSummaryMeta,
+.detailInfoList {
+  margin: 0;
+}
+
+.courseSummaryMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+}
+
+.courseSummaryMeta div {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.courseSummaryMeta dt,
+.courseSummaryMeta dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.courseSummaryMeta dt {
+  color: var(--color-muted);
+}
+
+.courseSummaryMeta dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailIntroSection {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 0 14px;
+}
+
+.detailIntroSection h3,
+.detailRelationGroup h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.detailIntroSection p,
+.detailStepList p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.detailInfoList > div {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid rgba(77, 95, 72, 0.13);
+  padding: 11px 0;
+}
+
+.detailInfoList dt,
+.detailInfoList dd {
+  margin: 0;
+}
+
+.detailInfoList dt {
+  color: var(--color-muted);
+}
+
+.detailInfoList dd {
+  min-width: 0;
+  line-height: 1.65;
+}
+
+.detailObjectiveList {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.detailTagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detailTag {
+  margin: 0;
+  border-color: rgba(47, 125, 74, 0.22);
+  border-radius: 3px;
+  color: var(--color-primary);
+  background: rgba(231, 243, 233, 0.72);
+}
+
+.detailStepList,
+.detailResourceList,
+.detailRecordList {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trainingManagementPanel {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.82);
+}
+
+.trainingManagementPanel :global(.ant-table) {
+  background: transparent;
+}
+
+.trainingManagementPanel :global(.ant-table-thead > tr > th) {
+  background: rgba(239, 233, 219, 0.68) !important;
+}
+
+.trainingDetailBody {
+  display: grid;
+  gap: 14px;
+}
+
+.trainingDetailBody :global(.ant-card) {
+  border-color: var(--color-border);
+  background: rgba(255, 250, 242, 0.66);
+}
+
+.trainingDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  color: var(--color-muted);
+}
+
+.trainingDetailBody p {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.trainingStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingStatsGrid :global(.ant-statistic-title) {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.trainingStatsGrid :global(.ant-statistic-content) {
+  color: var(--color-primary);
+  font-size: 20px;
+}
+
+.trainingDetailSection {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 250, 242, 0.56);
+  padding: 12px;
+}
+
+.trainingMaterialRow,
+.trainingFeedbackRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-bottom: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 8px 0;
+}
+
+.trainingMaterialRow span,
+.trainingFeedbackRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingMaterialRow small {
+  margin-left: auto;
+  color: var(--color-muted);
+}
+
+.trainingFormRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detailVideo {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: #111;
+}
+
+.detailStepList > li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  border-bottom: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 12px 0;
+}
+
+.detailStepList > li:first-child {
+  padding-top: 0;
+}
+
+.detailStepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(47, 125, 74, 0.28);
+  border-radius: 50%;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detailListHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 5px;
+}
+
+.detailListHeading strong {
+  min-width: 0;
+}
+
+.detailListHeading span {
+  flex-shrink: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.detailResourceRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 12px 0;
+}
+
+.detailResourceRow > :global(.anticon) {
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.detailResourceRow > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.detailResourceRow strong,
+.detailResourceRow span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailResourceRow span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.detailRelationGroup {
+  display: grid;
+  gap: 18px;
+}
+
+.detailRelationGroup section {
+  border-bottom: 1px solid rgba(77, 95, 72, 0.14);
+  padding-bottom: 16px;
+}
+
+.detailRelationGroup h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.detailRelationGroup h3 :global(.anticon) {
+  color: var(--color-primary);
+}
+
+.detailRelationGroup ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.detailRecordRow {
+  border-bottom: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 12px 0;
+}
+
+.detailRecordRow:first-child {
+  padding-top: 0;
+}
+
+.detailRecordMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detailRecordMetrics span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-left: 2px solid rgba(47, 125, 74, 0.32);
+  background: rgba(239, 243, 232, 0.56);
+  padding: 7px 9px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.detailRecordMetrics strong {
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.recordToolbar,
+.recordSectionHeading,
+.recordMetaLine,
+.recordActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recordToolbar {
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.recordMetaLine {
+  flex-wrap: wrap;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.recordMetaLine span + span::before {
+  margin-right: 8px;
+  content: "·";
+}
+
+.recordActions {
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+
+.recordFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+
+.recordAttachmentSection {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+}
+
+.recordSectionHeading {
+  justify-content: space-between;
+}
+
+.recordAttachmentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(77, 95, 72, 0.14);
+  padding: 6px 8px;
+}
+
+.recordAttachmentRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mutedText {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+
+@media (max-width: 1199px) {
+    .mainFilters,
+  .filterFooter {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sectionToolbar,
+  .researchToolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .researchToolbarGroups {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
+@media (max-width: 899px) {
+  .teachingPage {
+    height: auto;
+    min-height: calc(100vh - 78px);
+    overflow: visible;
+  }
+
+  .workspaceWithDetail {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mainContent,
+  .managementGrid {
+    overflow: visible;
+  }
+
+  .managementGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .managementSection {
+    min-height: 360px;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .detailPanel {
+    min-height: 420px;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .teachingPage {
+    margin-top: 0;
+  }
+
+  .trainingGrid {
+    grid-template-columns: 1fr;
+  }
+}

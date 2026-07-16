@@ -1,0 +1,46 @@
+.titleRow {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-lg);
+  align-items: end;
+}
+
+.copy {
+  min-width: 0;
+}
+
+.title {
+  max-width: 760px;
+  margin: 0 !important;
+  color: var(--color-title) !important;
+  font-family: var(--font-ui);
+  font-size: clamp(30px, 5vw, 52px) !important;
+  line-height: 1.12 !important;
+}
+
+.subtitle {
+  max-width: 760px;
+  margin: 18px 0 0 !important;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.9;
+}
+
+.extra {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .titleRow {
+    grid-template-columns: 1fr;
+  }
+
+  .extra {
+    justify-content: flex-start;
+  }
+}

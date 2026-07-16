@@ -1,0 +1,47 @@
+.tableShell {
+  overflow: hidden;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.12);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-card);
+}
+
+.tableShell:global(.compactTable) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tableShell:global(.compactTable) :global(.ant-table-thead > tr > th),
+.tableShell:global(.compactTable) :global(.ant-table-tbody > tr > td) {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  white-space: nowrap;
+}
+
+.tableShell :global(.ant-table) {
+  color: var(--color-text);
+  background: transparent;
+  font-family: var(--font-data);
+}
+
+.tableShell :global(.ant-table-thead > tr > th) {
+  color: var(--color-title);
+  background: var(--color-primary-light);
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+.tableShell :global(.ant-table-tbody > tr > td) {
+  border-bottom-color: rgba(var(--color-border-rgb), 0.7);
+}
+
+.tableShell :global(.ant-table-tbody > tr:hover > td) {
+  background: rgba(var(--color-primary-rgb), 0.05) !important;
+}
+
+.tableShell :global(.ant-pagination) {
+  margin-right: var(--space-md) !important;
+}

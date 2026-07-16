@@ -1,0 +1,122 @@
+.timeline {
+  border: 1px solid rgba(var(--color-primary-rgb), 0.14);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.timeline h2 {
+  margin: 0 0 var(--space-lg) !important;
+  color: var(--color-title) !important;
+  font-family: var(--font-ui);
+  font-size: 20px !important;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+.item::before {
+  position: absolute;
+  top: 18px;
+  bottom: -22px;
+  left: 8px;
+  width: 2px;
+  content: "";
+  background: rgba(var(--color-primary-rgb), 0.16);
+}
+
+.item:last-child::before {
+  display: none;
+}
+
+.node {
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  border: 3px solid var(--color-paper);
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.22);
+}
+
+.card {
+  padding: var(--space-md);
+  border: 1px solid rgba(var(--color-border-rgb), 0.8);
+  border-radius: var(--radius-card);
+  background: rgba(var(--color-texture-rgb), 0.76);
+}
+
+.header,
+.card footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.header strong {
+  color: var(--color-title);
+  font-family: var(--font-ui);
+}
+
+.status {
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.card p {
+  margin: var(--space-sm) 0;
+  color: var(--color-muted);
+  font-family: var(--font-ui);
+  line-height: 1.8;
+}
+
+.card footer {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.recorded,
+.approved,
+.archived {
+  color: var(--color-success);
+}
+
+.pending {
+  color: var(--color-warning);
+}
+
+.rejected {
+  color: var(--color-danger);
+}
+
+.status.recorded,
+.status.approved,
+.status.archived {
+  background: rgba(var(--color-success-rgb), 0.12);
+}
+
+.status.pending {
+  background: rgba(183, 121, 31, 0.13);
+}
+
+.status.rejected {
+  background: rgba(180, 35, 24, 0.12);
+}

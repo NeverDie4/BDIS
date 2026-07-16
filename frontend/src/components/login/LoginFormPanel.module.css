@@ -1,0 +1,341 @@
+.formPanel {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid rgba(116, 83, 48, 0.18);
+  box-sizing: border-box;
+  background: #fffaf2;
+}
+
+.frame {
+  position: absolute;
+  z-index: 0;
+  inset: 10px;
+  border: 1px solid rgba(116, 83, 48, 0.32);
+  pointer-events: none;
+}
+
+.frame::before {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(116, 83, 48, 0.13);
+  content: "";
+}
+
+.frameCorner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: rgba(116, 83, 48, 0.42);
+  border-style: solid;
+}
+
+.frameCornerTopLeft {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+}
+
+.frameCornerTopRight {
+  top: -1px;
+  right: -1px;
+  border-width: 2px 2px 0 0;
+}
+
+.frameCornerBottomLeft {
+  bottom: -1px;
+  left: -1px;
+  border-width: 0 0 2px 2px;
+}
+
+.frameCornerBottomRight {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 2px 2px 0;
+}
+
+.controlInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(72%, 600px);
+  max-width: 600px;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  margin: 0 auto;
+  padding-top: clamp(56px, 7vh, 82px);
+  padding-bottom: clamp(38px, 5vh, 58px);
+  box-sizing: border-box;
+}
+
+.heading {
+  flex: none;
+  margin-bottom: 18px;
+}
+
+.kicker {
+  color: var(--color-primary);
+  font-family: var(--font-data);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.heading h2 {
+  margin: 10px 0 12px !important;
+  color: var(--color-text);
+  font-size: clamp(40px, 3vw, 50px) !important;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.heading :global(.ant-typography.ant-typography) {
+  margin-bottom: 0;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+}
+
+.modeTabs {
+  flex: none;
+}
+
+.modeTabs :global(.ant-tabs-nav) {
+  min-height: 48px;
+  margin-bottom: 24px;
+}
+
+.modeTabs :global(.ant-tabs-tab) {
+  padding: 13px 0;
+  font-size: 15px;
+}
+
+.modeTabs :global(.ant-tabs-content-holder) {
+  display: none;
+}
+
+.formViewport {
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 6px;
+  padding-bottom: 48px;
+  scrollbar-color: rgba(91, 70, 54, 0.3) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  animation: form-enter 480ms ease-out both;
+}
+
+.formViewport :global(.ant-form-item) {
+  margin-bottom: 20px;
+}
+
+.formViewport :global(.ant-input-affix-wrapper),
+.formViewport :global(.ant-input) {
+  width: 100%;
+  min-height: 56px;
+  border-color: rgba(91, 70, 54, 0.24);
+  border-radius: 4px;
+  box-sizing: border-box;
+  background: #fffcf6;
+  font-size: 16px;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.formViewport :global(.ant-btn) {
+  min-height: 56px;
+  border-radius: 4px;
+  font-size: 18px;
+}
+
+.formViewport :global(.ant-btn-primary) {
+  letter-spacing: 0.06em;
+}
+
+.formViewport :global(.ant-btn-default) {
+  min-height: 54px;
+  font-size: 16px;
+}
+
+.formViewport :global(.ant-btn-primary) {
+  transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.formViewport :global(.ant-btn-primary:not(:disabled):hover) {
+  transform: translateY(-1px);
+  background: #0b4f31;
+  box-shadow: 0 5px 12px rgba(15, 95, 59, 0.18);
+}
+
+.formViewport :global(.ant-btn-primary:not(:disabled):active) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(15, 95, 59, 0.14);
+}
+
+.formViewport :global(.ant-input-affix-wrapper-focused),
+.formViewport :global(.ant-input:focus) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(15, 95, 59, 0.12);
+}
+
+.loginOptions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.loginOptions :global(.ant-btn) {
+  min-height: auto;
+  padding-right: 0;
+  color: #777066;
+  font-size: 14px;
+}
+
+.loginFormWrapper {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: clamp(18px, 3vh, 30px);
+  padding-bottom: 72px;
+  box-sizing: border-box;
+}
+
+.divider {
+  height: 1px;
+  margin: 26px 0;
+  background: rgba(91, 70, 54, 0.15);
+}
+
+.initializeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 14px;
+  padding-top: clamp(18px, 3vh, 30px);
+}
+
+.initializeGrid :global(.ant-form-item) {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.gridFull {
+  grid-column: 1 / -1;
+}
+
+.gridButton {
+  margin-top: 2px;
+}
+
+.seal {
+  position: absolute;
+  z-index: 0;
+  right: 42px;
+  bottom: 34px;
+  width: clamp(82px, 5vw, 96px);
+  height: auto;
+  opacity: 0;
+  pointer-events: none;
+  animation: seal-enter 560ms ease-out 300ms both;
+}
+
+@keyframes form-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes seal-enter {
+  from {
+    opacity: 0;
+    transform: scale(1.08) rotate(3deg);
+  }
+
+  to {
+    opacity: 0.84;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@media (max-width: 1280px) and (min-width: 901px) {
+  .controlInner {
+    width: min(82%, 540px);
+  }
+}
+
+@media (max-width: 900px) {
+  .formPanel {
+    height: auto;
+    min-height: calc(100dvh - 292px);
+    overflow: visible;
+  }
+
+  .frame {
+    inset: 8px;
+  }
+
+  .frameCorner {
+    width: 18px;
+    height: 18px;
+  }
+
+  .controlInner {
+    width: min(100%, 460px);
+    height: auto;
+    padding: 42px 24px 64px;
+  }
+
+  .formViewport {
+    overflow: visible;
+    padding-right: 0;
+    padding-bottom: 0;
+    scrollbar-gutter: auto;
+  }
+
+  .heading h2 {
+    font-size: clamp(34px, 9vw, 42px) !important;
+  }
+
+  .initializeGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gridFull {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .seal {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .formViewport,
+  .seal {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .seal {
+    opacity: 0.84;
+    transform: none;
+  }
+
+  .formViewport :global(.ant-input-affix-wrapper),
+  .formViewport :global(.ant-input),
+  .formViewport :global(.ant-btn-primary) {
+    transition: none !important;
+  }
+}
