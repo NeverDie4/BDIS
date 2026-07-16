@@ -4,6 +4,7 @@ import { CourseManagementPanel } from "./CourseManagementPanel";
 import { ResearchProjectPanel } from "./ResearchProjectPanel";
 import { ResearchDetailPanel } from "./ResearchDetailPanel";
 import { TrainingOverviewPanel } from "./TrainingOverviewPanel";
+import type { CourseDetailApi } from "@/lib/courses";
 import type { CourseRecord, ResearchRecord, TeachingTabKey } from "./types";
 import styles from "./teaching.module.css";
 
@@ -46,6 +47,7 @@ type TeachingWorkspaceProps = {
   onPublishCourse: (course: CourseRecord) => void;
   onOfflineCourse: (course: CourseRecord) => void;
   onDeleteCourse: (course: CourseRecord) => void;
+  onCourseUpdated?: (course: CourseDetailApi) => void;
   onAddResearch: () => void;
   onEditResearch: (project: ResearchRecord) => void;
   onViewResearch: (project: ResearchRecord) => void;
@@ -86,6 +88,7 @@ export function TeachingWorkspace({
   onPublishCourse,
   onOfflineCourse,
   onDeleteCourse,
+  onCourseUpdated,
   researchProjects,
   researchLoading,
   canResearchAdd,
@@ -160,6 +163,8 @@ export function TeachingWorkspace({
           canRecordArchive={canRecordArchive}
           canRecordDelete={canRecordDelete}
           canGrade={canGrade}
+          canEdit={canEdit}
+          onCourseUpdated={onCourseUpdated}
         />
       ) : null}
       {selectedResearch ? <ResearchDetailPanel project={selectedResearch} canEdit={canResearchEdit} onEdit={onEditResearch} onClose={onCloseResearch} /> : null}

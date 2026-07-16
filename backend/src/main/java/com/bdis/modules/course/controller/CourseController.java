@@ -4,6 +4,7 @@ import com.bdis.common.core.PageResult;
 import com.bdis.common.core.Result;
 import com.bdis.modules.course.query.CourseQuery;
 import com.bdis.modules.course.request.CourseCreateRequest;
+import com.bdis.modules.course.request.CourseRelationUpdateRequest;
 import com.bdis.modules.course.request.CourseStatusChangeRequest;
 import com.bdis.modules.course.request.CourseUpdateRequest;
 import com.bdis.modules.course.service.CourseLearningProgressService;
@@ -11,6 +12,7 @@ import com.bdis.modules.course.service.CourseService;
 import com.bdis.modules.course.vo.CourseDetailVO;
 import com.bdis.modules.course.vo.CourseLearningSummaryVO;
 import com.bdis.modules.course.vo.CourseListVO;
+import com.bdis.modules.course.vo.CourseRelationOptionsVO;
 import com.bdis.modules.permission.service.AuthorizationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -72,6 +74,20 @@ public class CourseController {
             @PathVariable @Positive Long id, @Valid @RequestBody CourseUpdateRequest request) {
         authorizationService.requirePermission("edu:course:update");
         return Result.success(courseService.update(id, request));
+    }
+
+    @GetMapping("/{id}/relation-options")
+    public Result<CourseRelationOptionsVO> relationOptions(@PathVariable @Positive Long id) {
+        authorizationService.requirePermission("edu:course:update");
+        return Result.success(courseService.getRelationOptions(id));
+    }
+
+    @PutMapping("/{id}/relations")
+    public Result<CourseDetailVO> updateRelations(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody CourseRelationUpdateRequest request) {
+        authorizationService.requirePermission("edu:course:update");
+        return Result.success(courseService.updateRelations(id, request));
     }
 
     @DeleteMapping("/{id}")

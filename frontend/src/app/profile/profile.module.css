@@ -1,16 +1,65 @@
-.overviewGrid {
+.profilePage {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-  gap: var(--space-lg);
-  align-items: stretch;
+  width: calc(100vw - 32px);
+  margin-left: calc((100% - 100vw + 32px) / 2);
+  gap: 12px;
+  padding-bottom: 24px;
+}
+
+.profilePage :global(.ant-card) {
+  border: 1px solid #d8cbb6;
+  border-radius: 2px;
+  background: #fffdf7;
+  box-shadow: none;
+}
+
+.profilePage :global(.ant-card-head) {
+  min-height: 50px;
+  padding-inline: 18px;
+  border-bottom-color: #e3d7c4;
+  background: rgba(255, 250, 242, 0.72);
+}
+
+.profilePage :global(.ant-card-head-title) {
+  padding-block: 13px;
+  color: var(--color-title);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.profilePage :global(.ant-card-body) {
+  padding: 18px;
+}
+
+.overviewGrid,
+.detailsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(360px, 0.8fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.identityCard {
+  min-width: 0;
 }
 
 .identityHeader {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--space-md);
+  gap: 14px;
   align-items: center;
-  margin-bottom: var(--space-lg);
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e7ddce;
+}
+
+.identityHeader :global(.ant-btn) {
+  height: 34px;
+  border-color: #d8cbb6;
+  border-radius: 2px;
+  background: #fffaf2;
+  box-shadow: none;
+  color: var(--color-primary);
 }
 
 .identityTitle {
@@ -21,79 +70,155 @@
   margin: 0;
 }
 
+.identityTitle :global(.ant-typography h3) {
+  color: var(--color-title);
+  font-family: var(--font-ui);
+  font-size: 23px;
+  letter-spacing: 0.02em;
+}
+
+.identityCard :global(.ant-descriptions) {
+  margin-top: 16px;
+}
+
+.identityCard :global(.ant-descriptions-view) {
+  overflow: hidden;
+  border-color: #e3d7c4;
+  border-radius: 0;
+}
+
+.identityCard :global(.ant-descriptions-bordered .ant-descriptions-item-label),
+.identityCard :global(.ant-descriptions-bordered .ant-descriptions-item-content) {
+  padding: 9px 14px;
+  border-color: #e3d7c4;
+  background: #fffdf7;
+}
+
+.identityCard :global(.ant-descriptions-bordered .ant-descriptions-item-label) {
+  width: 42%;
+  color: var(--color-muted);
+  background: #f7f2e8;
+}
+
+.identityCard :global(.ant-tag),
+.permissionTag {
+  margin: 0;
+  border-color: rgba(47, 125, 74, 0.28);
+  border-radius: 2px;
+  background: #f1f5ea;
+  color: var(--color-primary);
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-md);
+  gap: 12px;
+  align-content: start;
 }
 
 .summaryGrid > * {
   min-width: 0;
 }
 
-.detailsGrid {
+.summaryGrid :global(.ant-card) {
+  min-height: 172px;
+}
+
+.summaryGrid :global(.ant-card-body) {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-  gap: var(--space-lg);
+  align-content: start;
+  gap: 0;
+  padding: 18px 16px;
+}
+
+.summaryGrid :global(.ant-typography) {
+  color: var(--color-muted);
+}
+
+.summaryGrid :global(.ant-card) strong {
+  color: var(--color-title);
+  font-family: var(--font-data);
+  font-size: 32px;
+}
+
+.detailsGrid {
   align-items: start;
 }
 
 .permissionContent {
   display: grid;
-  gap: var(--space-md);
+  gap: 14px;
 }
 
 .permissionContent :global(.ant-typography) {
   margin-bottom: 0;
+  color: var(--color-muted);
+  line-height: 1.75;
 }
 
 .permissionTags,
 .codeTags {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: 8px;
 }
 
 .permissionTag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 0;
-  padding: 6px 10px;
-  color: var(--color-title);
-  border-color: rgba(var(--color-primary-rgb), 0.2);
-  background: rgba(var(--color-primary-rgb), 0.06);
+  padding: 5px 9px;
 }
 
 .codeTags :global(.ant-tag) {
   margin: 0;
 }
 
+.permissionContent :global(.ant-collapse) {
+  border-top: 1px solid #e7ddce;
+  border-bottom: 1px solid #e7ddce;
+  border-radius: 0;
+  background: transparent;
+}
+
+.permissionContent :global(.ant-collapse > .ant-collapse-item) {
+  border-bottom: 0;
+}
+
+.permissionContent :global(.ant-collapse-header) {
+  padding-inline: 0 !important;
+  color: var(--color-primary) !important;
+}
+
 .managementList {
   display: grid;
-  gap: var(--space-sm);
+  gap: 0;
 }
 
 .managementEntry {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-md);
-  min-height: 64px;
-  padding: 10px 12px;
+  gap: 14px;
+  min-height: 68px;
+  padding: 12px 2px;
+  border-bottom: 1px solid #e7ddce;
   color: var(--color-text);
-  border: 1px solid rgba(var(--color-border-rgb), 0.8);
-  border-radius: var(--radius-button);
-  background: rgba(var(--color-texture-rgb), 0.6);
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.managementEntry:first-child {
+  padding-top: 0;
+}
+
+.managementEntry:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 
 .managementEntry:hover {
-  color: var(--color-title);
-  border-color: rgba(var(--color-primary-rgb), 0.36);
-  background: rgba(var(--color-primary-rgb), 0.06);
+  color: var(--color-primary);
+  background: rgba(240, 245, 234, 0.48);
 }
 
 .managementEntry span {
@@ -104,30 +229,46 @@
 
 .managementEntry strong {
   color: var(--color-title);
+  font-family: var(--font-ui);
 }
 
 .managementEntry small {
   color: var(--color-muted);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 960px) {
   .overviewGrid,
   .detailsGrid {
     grid-template-columns: 1fr;
   }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 640px) {
+  .profilePage {
+    width: calc(100vw - 16px);
+    margin-left: calc((100% - 100vw + 16px) / 2);
+    gap: 8px;
+  }
+
   .identityHeader {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
   .identityHeader > :last-child {
     grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .summaryGrid {
     grid-template-columns: 1fr;
+  }
+
+  .profilePage :global(.ant-card-body) {
+    padding: 15px;
   }
 }
