@@ -428,6 +428,20 @@ public class ResearchProjectServiceImpl implements ResearchProjectService {
                 || !Set.of("approve", "reject", "archive").contains(request.getAction())) {
             throw new BusinessException("Invalid project review action");
         }
+        if ("archive".equals(request.getAction())) {
+            if (!"approved".equals(project.getReviewStatus())) {
+                throw new BusinessException(
+                        ResultCodeEnum.CONFLICT, "Only approved projects can be archived");
+            }
+        } else {
+            if (!"pending".equals(project.getReviewStatus())) {
+                throw new BusinessException(
+                        ResultCodeEnum.CONFLICT, "Only pending projects can be approved or rejected");
+            }
+            if ("approve".equals(request.getAction())) {
+                validateBeforeStart(project);
+            }
+        }
         String target =
                 "approve".equals(request.getAction())
                         ? "approved"

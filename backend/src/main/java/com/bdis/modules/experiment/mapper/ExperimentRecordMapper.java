@@ -189,6 +189,7 @@ public interface ExperimentRecordMapper extends BaseMapper<ExperimentRecordEntit
                 submitted_by = #{submittedBy},
                 archived_at = NULL,
                 archived_by = NULL,
+                archive_comment = NULL,
                 updated_at = #{submittedAt},
                 updated_by = #{submittedBy},
                 version = version + 1

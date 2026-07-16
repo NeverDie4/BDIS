@@ -4,6 +4,7 @@ import com.bdis.common.exception.BusinessException;
 import com.bdis.common.exception.ForbiddenException;
 import com.bdis.common.exception.ResourceNotFoundException;
 import com.bdis.common.utils.CurrentUserUtils;
+import com.bdis.modules.training.constant.TrainingStatus;
 import com.bdis.modules.training.entity.TrainingPlanItemEntity;
 import com.bdis.modules.training.entity.TrainingRecordEntity;
 import com.bdis.modules.training.entity.TrainingRecordItemEntity;
@@ -83,14 +84,23 @@ public class TrainingRecordItemProgressServiceImpl implements TrainingRecordItem
         } else {
             progressMapper.updateById(entity);
         }
+        boolean startedLearning = TrainingStatus.NOT_STARTED.equals(record.getTrainingStatus());
+        if (startedLearning) {
+            record.setTrainingStatus(TrainingStatus.LEARNING);
+            record.setStartedAt(record.getStartedAt() == null ? now : record.getStartedAt());
+        }
         int required = progressMapper.countRequiredItems(record.getPlanId());
         int completed = progressMapper.countCompletedRequiredItems(recordId);
         if (required > 0) {
             record.setProgress(
                     BigDecimal.valueOf(completed * 100.0 / required)
                             .setScale(2, RoundingMode.HALF_UP));
+        }
+        if (startedLearning || required > 0) {
             record.setUpdatedAt(now);
-            recordMapper.updateById(record);
+            if (recordMapper.updateById(record) == 0) {
+                throw new BusinessException("Training record progress update conflict");
+            }
         }
         return entity;
     }

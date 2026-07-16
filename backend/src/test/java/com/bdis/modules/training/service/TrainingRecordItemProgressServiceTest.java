@@ -2,6 +2,7 @@ package com.bdis.modules.training.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.security.CurrentUser;
@@ -60,6 +61,7 @@ class TrainingRecordItemProgressServiceTest {
         record.setUserId(8L);
         record.setPlanId(20L);
         record.setProgress(BigDecimal.ZERO);
+        record.setTrainingStatus("not_started");
         TrainingPlanItemEntity item = new TrainingPlanItemEntity();
         item.setId(30L);
         item.setPlanId(20L);
@@ -77,9 +79,15 @@ class TrainingRecordItemProgressServiceTest {
                                     .setId(40L);
                             return 1;
                         });
+        when(progressMapper.countRequiredItems(20L)).thenReturn(1);
+        when(progressMapper.countCompletedRequiredItems(10L)).thenReturn(1);
+        when(recordMapper.updateById(record)).thenReturn(1);
         TrainingRecordItemProgressRequest request = new TrainingRecordItemProgressRequest();
         request.setProgress(BigDecimal.valueOf(100));
         request.setCompleted(true);
         assertThat(service.save(10L, 30L, request).getId()).isEqualTo(40L);
+        assertThat(record.getTrainingStatus()).isEqualTo("learning");
+        assertThat(record.getStartedAt()).isNotNull();
+        verify(recordMapper).updateById(record);
     }
 }

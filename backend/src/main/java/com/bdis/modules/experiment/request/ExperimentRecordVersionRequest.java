@@ -7,6 +7,6 @@ import lombok.Data;
 public class ExperimentRecordVersionRequest {
     private Long reportFileId;
     @NotBlank private String experimentTitle;
-    private String experimentProcess;
-    private String experimentResult;
+    @NotBlank private String experimentProcess;
+    @NotBlank private String experimentResult;
 }

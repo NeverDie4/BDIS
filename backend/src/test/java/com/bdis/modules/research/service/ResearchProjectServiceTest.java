@@ -18,9 +18,12 @@ import com.bdis.modules.herb.entity.HerbEntity;
 import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.research.entity.ProjectMemberEntity;
 import com.bdis.modules.research.entity.ResearchProjectEntity;
+import com.bdis.modules.research.entity.ResearchProjectReviewEntity;
 import com.bdis.modules.research.mapper.ProjectMemberMapper;
 import com.bdis.modules.research.mapper.ResearchProjectMapper;
+import com.bdis.modules.research.mapper.ResearchProjectReviewMapper;
 import com.bdis.modules.research.request.ResearchProjectCreateRequest;
+import com.bdis.modules.research.request.ResearchProjectReviewRequest;
 import com.bdis.modules.research.request.ResearchProjectStatusChangeRequest;
 import com.bdis.modules.research.request.ResearchProjectUpdateRequest;
 import com.bdis.modules.research.service.impl.ResearchProjectServiceImpl;
@@ -49,7 +52,9 @@ class ResearchProjectServiceTest {
     @Mock private HerbSpeciesMapper herbSpeciesMapper;
     @Mock private ProjectMemberService memberService;
     @Mock private ProjectMaterialService materialService;
+    @Mock private ResearchAchievementService achievementService;
     @Mock private AuditLogService auditLogService;
+    @Mock private ResearchProjectReviewMapper reviewMapper;
 
     private ResearchProjectServiceImpl service;
 
@@ -63,7 +68,9 @@ class ResearchProjectServiceTest {
                         herbSpeciesMapper,
                         memberService,
                         materialService,
-                        auditLogService);
+                        achievementService,
+                        auditLogService,
+                        reviewMapper);
     }
 
     @AfterEach
@@ -120,6 +127,109 @@ class ResearchProjectServiceTest {
                 ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(projectMapper).selectPage(any(), captor.capture());
         assertThat(captor.getValue()).isNotNull();
+    }
+
+    @Test
+    void draftProjectCannotBeApprovedWithoutSubmission() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setReviewStatus("draft");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(9L, "REVIEWER");
+
+        assertThatThrownBy(() -> service.review(100L, reviewRequest("approve")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("pending");
+        verify(projectMapper, never()).updateById(any(ResearchProjectEntity.class));
+    }
+
+    @Test
+    void rejectedProjectCannotBeArchived() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setReviewStatus("rejected");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(9L, "REVIEWER");
+
+        assertThatThrownBy(() -> service.review(100L, reviewRequest("archive")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("approved");
+        verify(projectMapper, never()).updateById(any(ResearchProjectEntity.class));
+    }
+
+    @Test
+    void approvedProjectCannotBeReviewedAgain() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setReviewStatus("approved");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(9L, "REVIEWER");
+
+        assertThatThrownBy(() -> service.review(100L, reviewRequest("reject")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("pending");
+        verify(projectMapper, never()).updateById(any(ResearchProjectEntity.class));
+    }
+
+    @Test
+    void approvalRunsStartCompletenessValidation() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setReviewStatus("pending");
+        existing.setProjectName(" ");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        setUser(9L, "REVIEWER");
+
+        assertThatThrownBy(() -> service.review(100L, reviewRequest("approve")))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("name");
+        verify(projectMapper, never()).updateById(any(ResearchProjectEntity.class));
+    }
+
+    @Test
+    void pendingCompleteProjectCanBeApproved() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setLeaderId(7L);
+        existing.setReviewStatus("pending");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        when(userMapper.selectById(7L)).thenReturn(user(7L, "teacher"));
+        ProjectMemberEntity leader = new ProjectMemberEntity();
+        leader.setProjectId(100L);
+        leader.setUserId(7L);
+        leader.setMemberRole("leader");
+        leader.setMemberStatus("active");
+        when(memberMapper.selectByProjectIdAndUserId(100L, 7L)).thenReturn(leader);
+        when(memberMapper.selectCount(any())).thenReturn(1L);
+        when(projectMapper.updateById(existing)).thenReturn(1);
+        when(reviewMapper.insert(any(ResearchProjectReviewEntity.class))).thenReturn(1);
+        setUser(9L, "REVIEWER");
+
+        service.review(100L, reviewRequest("approve"));
+
+        assertThat(existing.getReviewStatus()).isEqualTo("approved");
+        assertThat(existing.getProjectStatus()).isEqualTo("ongoing");
+        verify(reviewMapper).insert(any(ResearchProjectReviewEntity.class));
+    }
+
+    @Test
+    void approvedProjectCanBeArchived() {
+        ResearchProjectEntity existing = project(100L, "P-001");
+        existing.setReviewStatus("approved");
+        existing.setProjectStatus("ongoing");
+        when(projectMapper.selectById(100L)).thenReturn(existing);
+        when(projectMapper.updateById(existing)).thenReturn(1);
+        when(reviewMapper.insert(any(ResearchProjectReviewEntity.class))).thenReturn(1);
+        setUser(9L, "REVIEWER");
+
+        service.review(100L, reviewRequest("archive"));
+
+        assertThat(existing.getReviewStatus()).isEqualTo("archived");
+        assertThat(existing.getProjectStatus()).isEqualTo("completed");
+        assertThat(existing.getArchivedAt()).isNotNull();
+        verify(reviewMapper).insert(any(ResearchProjectReviewEntity.class));
+    }
+
+    private ResearchProjectReviewRequest reviewRequest(String action) {
+        ResearchProjectReviewRequest request = new ResearchProjectReviewRequest();
+        request.setAction(action);
+        request.setComment("review comment");
+        return request;
     }
 
     private void setUser(Long id, String role) {

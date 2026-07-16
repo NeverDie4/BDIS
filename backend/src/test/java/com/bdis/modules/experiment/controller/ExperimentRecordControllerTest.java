@@ -60,7 +60,8 @@ class ExperimentRecordControllerTest {
         mockMvc.perform(
                         post("/experiment-records/1/versions")
                                 .contentType("application/json")
-                                .content("{\"experimentTitle\":\"Revised report\"}"))
+                                .content(
+                                        "{\"experimentTitle\":\"Revised report\",\"experimentProcess\":\"Revised process\",\"experimentResult\":\"Revised result\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(12));
 
