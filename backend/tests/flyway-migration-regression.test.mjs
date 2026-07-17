@@ -104,15 +104,15 @@ test("迁移版本唯一且 PR 迁移晚于 dev 基线", async () => {
     assert.ok(files.includes(name), `missing migration ${name}`);
 
   assert.equal(
-    files.includes("V20260716_007__add_assistant_agent_task_tables.sql"),
-    false,
-    "Agent migrations must not reuse latest dev migration version V20260716_007",
+    files.includes("V20260716_016__grant_teacher_performance_record_view.sql"),
+    true,
+    "The later teacher permission migration must not displace applied Agent versions",
   );
 });
 
 test("Agent 持久化底座通过独立前向迁移建立并发约束", async () => {
   const migration = await readMigration(
-    "V20260716_008__add_assistant_agent_task_tables.sql",
+    "V20260716_007__add_assistant_agent_task_tables.sql",
   );
 
   for (const table of [
@@ -135,7 +135,7 @@ test("Agent 持久化底座通过独立前向迁移建立并发约束", async ()
 
 test("Agent 只读工具调用日志通过独立前向迁移建立", async () => {
   const migration = await readMigration(
-    "V20260716_009__add_assistant_agent_tool_call_log.sql",
+    "V20260716_008__add_assistant_agent_tool_call_log.sql",
   );
 
   assert.match(
@@ -193,7 +193,7 @@ test("药材分类字典迁移不得复制到新的重复版本", async () => {
 
 test("Agent diagnosis finding idempotency uses a forward migration", async () => {
   const migration = await readMigration(
-    "V20260716_010__add_agent_finding_idempotency_key.sql",
+    "V20260716_009__add_agent_finding_idempotency_key.sql",
   );
 
   assert.match(migration, /ALTER TABLE `assistant_agent_finding`/);
@@ -205,7 +205,7 @@ test("Agent diagnosis finding idempotency uses a forward migration", async () =>
 
 test("Agent follow-up collection plan uses a forward migration", async () => {
   const migration = await readMigration(
-    "V20260716_011__add_agent_collection_plan.sql",
+    "V20260716_010__add_agent_collection_plan.sql",
   );
 
   assert.match(migration, /CREATE TABLE `assistant_agent_collection_plan`/);
@@ -219,7 +219,7 @@ test("Agent follow-up collection plan uses a forward migration", async () => {
 
 test("Agent terminal confirmation actions close historical waiting steps", async () => {
   const migration = await readMigration(
-    "V20260716_015__close_agent_confirmation_wait_steps.sql",
+    "V20260716_014__close_agent_confirmation_wait_steps.sql",
   );
 
   assert.match(migration, /UPDATE `assistant_agent_step` AS waiting_step/i);
@@ -231,7 +231,7 @@ test("Agent terminal confirmation actions close historical waiting steps", async
 
 test("Agent removes unsupported sample weight requirements with a forward migration", async () => {
   const migration = await readMigration(
-    "V20260716_016__remove_agent_sample_weight_requirement.sql",
+    "V20260716_015__remove_agent_sample_weight_requirement.sql",
   );
 
   assert.match(migration, /required_metrics_json[\s\S]*sampleWeight/i);

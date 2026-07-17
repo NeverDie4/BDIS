@@ -421,6 +421,13 @@ test("growth 筛选任务框不越界且审核操作栏位于详情末尾", () =
   );
 });
 
+test("reviewers can reach the audit actions from the selected record summary", () => {
+  assert.match(pageSource, /const auditActionsRef = useRef/);
+  assert.match(pageSource, /canAuditSelected[\s\S]*审核处理/);
+  assert.match(pageSource, /auditActionsRef\.current\?\.scrollIntoView/);
+  assert.match(pageSource, /<footer ref=\{auditActionsRef\} className=\{styles\.drawerActions\}>/);
+});
+
 test("审核员拥有生长记录审核所需的显式数据范围", () => {
   assert.equal(existsSync(reviewerScopeMigrationUrl), true);
   const migrationSource = readFileSync(reviewerScopeMigrationUrl, "utf8");

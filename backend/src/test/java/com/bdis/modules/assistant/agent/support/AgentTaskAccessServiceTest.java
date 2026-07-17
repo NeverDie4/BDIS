@@ -59,14 +59,13 @@ class AgentTaskAccessServiceTest {
     }
 
     @Test
-    void teacherCannotCreateAgentForAnotherTeachersTask() {
+    void teacherCanCreateAgentForAnyTaskInManagementScope() {
         authenticate(1001L, "TEACHER");
+        HerbCollectionTaskEntity collectionTask = collectionTask(12L, 3001L, 2001L);
 
-        assertThatThrownBy(
-                        () -> accessService.requireCreateAccess(collectionTask(12L, 3001L, 2001L)))
-                .isInstanceOf(ForbiddenException.class)
-                .hasMessageContaining("管理员或教师");
-        verifyNoInteractions(collectionAccessService);
+        accessService.requireCreateAccess(collectionTask);
+
+        verify(collectionAccessService).requireTaskManage(collectionTask);
     }
 
     @Test

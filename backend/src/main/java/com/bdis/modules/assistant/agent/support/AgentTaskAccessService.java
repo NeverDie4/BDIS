@@ -26,8 +26,7 @@ public class AgentTaskAccessService {
         if (isAdmin(current)) {
             return;
         }
-        if (current.getRoleCodes().contains("TEACHER")
-                && current.getUserId().equals(collectionTask.getCreatedBy())) {
+        if (current.getRoleCodes().contains("TEACHER")) {
             collectionAccessService.requireTaskManage(collectionTask);
             return;
         }

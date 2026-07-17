@@ -10,6 +10,7 @@ import com.bdis.modules.assistant.agent.dto.AgentTaskCancelRequest;
 import com.bdis.modules.assistant.agent.dto.AgentTaskCreateRequest;
 import com.bdis.modules.assistant.agent.dto.AgentTaskQueryRequest;
 import com.bdis.modules.assistant.agent.service.AgentActionExecutionDispatcher;
+import com.bdis.modules.assistant.agent.service.AgentCollectionPlanAsyncDispatcher;
 import com.bdis.modules.assistant.agent.service.AgentCollectionPlanService;
 import com.bdis.modules.assistant.agent.service.AgentDigitalArchiveService;
 import com.bdis.modules.assistant.agent.service.AgentReanalysisQueryService;
@@ -53,6 +54,7 @@ public class HerbDigitalTwinAgentController {
   private final HerbDigitalTwinAgentWorkflowRunner workflowRunner;
   private final HerbDigitalTwinEvidenceAnalysisRunner evidenceAnalysisRunner;
   private final AgentCollectionPlanService collectionPlanService;
+  private final AgentCollectionPlanAsyncDispatcher collectionPlanAsyncDispatcher;
   private final AgentActionExecutionDispatcher actionExecutionDispatcher;
   private final AgentWaitStatusQueryService waitStatusQueryService;
   private final AgentReanalysisQueryService reanalysisQueryService;
@@ -63,6 +65,7 @@ public class HerbDigitalTwinAgentController {
       HerbDigitalTwinAgentWorkflowRunner workflowRunner,
       HerbDigitalTwinEvidenceAnalysisRunner evidenceAnalysisRunner,
       AgentCollectionPlanService collectionPlanService,
+      AgentCollectionPlanAsyncDispatcher collectionPlanAsyncDispatcher,
       AgentActionExecutionDispatcher actionExecutionDispatcher,
       AgentWaitStatusQueryService waitStatusQueryService,
       AgentReanalysisQueryService reanalysisQueryService,
@@ -71,6 +74,7 @@ public class HerbDigitalTwinAgentController {
     this.workflowRunner = workflowRunner;
     this.evidenceAnalysisRunner = evidenceAnalysisRunner;
     this.collectionPlanService = collectionPlanService;
+    this.collectionPlanAsyncDispatcher = collectionPlanAsyncDispatcher;
     this.actionExecutionDispatcher = actionExecutionDispatcher;
     this.waitStatusQueryService = waitStatusQueryService;
     this.reanalysisQueryService = reanalysisQueryService;
@@ -158,7 +162,7 @@ public class HerbDigitalTwinAgentController {
   @RequirePermission("growth:record:create")
   public Result<AgentCollectionPlanVO> generateCollectionPlan(
       @PathVariable Long agentTaskId, @RequestParam(defaultValue = "false") boolean regenerate) {
-    return Result.success(collectionPlanService.generate(agentTaskId, regenerate));
+    return Result.success(collectionPlanAsyncDispatcher.triggerGenerate(agentTaskId, regenerate));
   }
 
   @GetMapping("/tasks/{agentTaskId}/collection-plan")

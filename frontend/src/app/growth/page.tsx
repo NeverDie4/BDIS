@@ -489,6 +489,7 @@ export default function GrowthPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [auditAction, setAuditAction] = useState<"approve" | "reject" | null>(null);
   const [auditSubmitting, setAuditSubmitting] = useState(false);
+  const auditActionsRef = useRef<HTMLElement>(null);
   const [autoMetricNotice, setAutoMetricNotice] = useState<string>();
   const [detailTab, setDetailTab] = useState<DetailTab>("base");
   const [collectorFilter, setCollectorFilter] = useState<string>();
@@ -1037,6 +1038,11 @@ export default function GrowthPage() {
   const canSubmitSelected =
     hasPermission("growth:record:submit") &&
     ["draft", "rejected"].includes(selectedRecord?.reviewStatus || "");
+
+  function scrollToAuditActions() {
+    auditActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
   return (
     <SiteLayout>
       <main className={styles.page}>
@@ -1541,6 +1547,16 @@ export default function GrowthPage() {
                   <span className={styles.growthStageTag}>
                     {selectedRecord.growthStage || "阶段未记录"}
                   </span>
+                  {canAuditSelected ? (
+                    <Button
+                      type="primary"
+                      className={styles.auditShortcutButton}
+                      icon={<ShieldCheck size={15} />}
+                      onClick={scrollToAuditActions}
+                    >
+                      审核处理
+                    </Button>
+                  ) : null}
                 </div>
               </section>
 
@@ -1847,7 +1863,7 @@ export default function GrowthPage() {
                 )}
               </section>
               {canAuditSelected || canSubmitSelected ? (
-                <footer className={styles.drawerActions}>
+                <footer ref={auditActionsRef} className={styles.drawerActions}>
                   {canSubmitSelected ? (
                     <Button className={styles.submitButton} onClick={() => void submitForReview()}>
                       重新提交审核

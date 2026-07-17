@@ -130,39 +130,6 @@
   justify-content: flex-end;
 }
 
-.iconButton {
-  width: 24px;
-  height: 24px;
-  color: var(--color-primary);
-  font-size: 21px;
-}
-
-.iconButton:hover {
-  background: transparent !important;
-  color: var(--color-primary) !important;
-}
-
-.drawerBody {
-  background: var(--color-bg);
-}
-
-.noticeList {
-  display: grid;
-  gap: 12px;
-}
-
-.noticeItem {
-  border: 1px solid rgba(var(--color-primary-rgb), 0.16);
-  border-radius: var(--radius-card);
-  background: rgba(var(--color-texture-rgb), 0.84);
-  padding: 14px;
-}
-
-.noticeItem p {
-  margin: 6px 0 0;
-  line-height: 1.7;
-}
-
 @media (max-width: 980px) {
   .header {
     flex-wrap: wrap;

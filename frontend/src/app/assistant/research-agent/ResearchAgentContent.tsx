@@ -29,6 +29,7 @@ import { getApiErrorMessage } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Empty, Form, Input, InputNumber, Modal, Progress, Spin } from "antd";
+import axios from "axios";
 import {
   Archive, ArrowRight, CheckCircle2, ClipboardCheck, Clock3, ExternalLink,
   FileSearch, FlaskConical, History, ListChecks, Play,
@@ -90,6 +91,16 @@ const TARGET_TYPE_LABEL: Record<string, string> = {
   GROWTH_RECORD: "生长记录", IMAGE: "现场图片", DIGITAL_ARCHIVE: "数字生命档案",
 };
 
+function isBackgroundGenerationTimeout(error: unknown) {
+  return Boolean(
+    axios.isAxiosError(error)
+      && !error.response
+      && (error.code === "ECONNABORTED"
+        || error.code === "ETIMEDOUT"
+        || error.message.toLowerCase().includes("timeout")),
+  );
+}
+
 export function ResearchAgentContent() {
   const search = useSearchParams();
   const router = useRouter();
@@ -104,6 +115,7 @@ export function ResearchAgentContent() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [planRegenerating, setPlanRegenerating] = useState(false);
+  const [regeneratingFromPlanId, setRegeneratingFromPlanId] = useState<number | null>(null);
   const [selectedAction, setSelectedAction] = useState<AgentAction | null>(null);
   const [createForm] = Form.useForm();
   const [cancelForm] = Form.useForm();
@@ -117,6 +129,11 @@ export function ResearchAgentContent() {
     refetchInterval: (query) => agentPollInterval(query.state.data?.status),
   });
   const task = taskQuery.data;
+  const canGeneratePlan = Boolean(
+    canManage
+      && task?.status === "RUNNING"
+      && task.currentPhase === "EVIDENCE_ANALYSIS_COMPLETED",
+  );
   const shouldLoadEvidence = Boolean(taskId && task && !["CREATED", "PLANNING"].includes(task.status));
   const evidenceQuery = useQuery({
     queryKey: ["research-agent-evidence", taskId], queryFn: () => fetchAgentEvidence(taskId!),
@@ -124,7 +141,9 @@ export function ResearchAgentContent() {
   });
   const planQuery = useQuery({
     queryKey: ["research-agent-plan", taskId], queryFn: () => fetchAgentPlan(taskId!),
-    enabled: shouldLoadEvidence, refetchInterval: agentPollInterval(task?.status), retry: false,
+    enabled: shouldLoadEvidence,
+    refetchInterval: planRegenerating ? 2_000 : agentPollInterval(task?.status),
+    retry: false,
   });
   const waitQuery = useQuery({
     queryKey: ["research-agent-wait", taskId], queryFn: () => fetchAgentWaitStatus(taskId!),
@@ -185,7 +204,16 @@ export function ResearchAgentContent() {
   const { mutate: resumeLegacyTask } = useMutation({
     mutationFn: startAgentTask,
     onSuccess: async () => { await refresh(); message.success("科研 Agent 已自动生成复测方案，请确认下一步动作"); },
-    onError: (error) => message.error(getApiErrorMessage(error, "自动恢复科研 Agent 失败")),
+    onError: async (error) => {
+      if (isBackgroundGenerationTimeout(error)) {
+        setRegeneratingFromPlanId(null);
+        setPlanRegenerating(true);
+        await refresh();
+        message.info("复测方案正在后台生成，请稍候");
+        return;
+      }
+      message.error(getApiErrorMessage(error, "自动恢复科研 Agent 失败"));
+    },
   });
 
   useEffect(() => {
@@ -198,6 +226,15 @@ export function ResearchAgentContent() {
 
   const findingsByGroup = useMemo(() => groupFindings(task?.findings ?? []), [task?.findings]);
   const plan = planQuery.data;
+
+  useEffect(() => {
+    if (!planRegenerating || !plan) return;
+    if (regeneratingFromPlanId === null || plan.id !== regeneratingFromPlanId) {
+      setPlanRegenerating(false);
+      setRegeneratingFromPlanId(null);
+      message.success(regeneratingFromPlanId === null ? "复测采集方案已生成" : "复测采集方案已重新生成");
+    }
+  }, [message, plan, planRegenerating, regeneratingFromPlanId]);
 
   function openPlanEditor(value: AgentCollectionPlan) {
     planForm.setFieldsValue({
@@ -212,15 +249,27 @@ export function ResearchAgentContent() {
 
   async function requestPlan(regenerate: boolean) {
     if (!taskId || planRegenerating) return;
+    setRegeneratingFromPlanId(regenerate ? plan?.id ?? null : null);
     setPlanRegenerating(true);
     try {
       await generateAgentPlan(taskId, regenerate);
-      await refresh();
-      message.success(regenerate ? "复测采集方案已重新生成" : "复测采集方案已生成");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["research-agent", taskId] }),
+        queryClient.invalidateQueries({ queryKey: ["research-agent-plan", taskId] }),
+      ]);
+      message.info(regenerate ? "已开始重新生成复测方案" : "已开始生成复测方案");
     } catch (error) {
+      if (isBackgroundGenerationTimeout(error)) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["research-agent", taskId] }),
+          queryClient.invalidateQueries({ queryKey: ["research-agent-plan", taskId] }),
+        ]);
+        message.info("复测方案正在后台生成，请稍候");
+        return;
+      }
       message.error(getApiErrorMessage(error, regenerate ? "重新生成方案失败" : "生成方案失败"));
-    } finally {
       setPlanRegenerating(false);
+      setRegeneratingFromPlanId(null);
     }
   }
 
@@ -330,7 +379,9 @@ export function ResearchAgentContent() {
                 {planRegenerating ? <PlanGenerating regenerating={Boolean(plan)} />
                   : plan ? <PlanCard value={plan} canManage={canManage} onEdit={() => openPlanEditor(plan)}
                     onGenerate={() => void requestPlan(true)} />
-                    : <div className={styles.emptyAction}><p>诊断完成后可生成基于证据缺口的复测方案。</p>{canManage && shouldLoadEvidence ? <Button onClick={() => void requestPlan(false)}>生成方案</Button> : null}</div>}
+                    : <div className={styles.emptyAction}><p>{task.status === "WAITING_FIELD_DATA"
+                      ? "当前正在等待复测采集任务的现场数据，数据提交并重新分析后才会生成下一轮方案。"
+                      : "诊断完成后可生成基于证据缺口的复测方案。"}</p>{canGeneratePlan ? <Button onClick={() => void requestPlan(false)}>生成方案</Button> : null}</div>}
                 </Section>
 
                 <Section icon={<ShieldCheck />} title="待确认动作">

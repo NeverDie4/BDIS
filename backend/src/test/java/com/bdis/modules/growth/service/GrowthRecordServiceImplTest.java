@@ -64,6 +64,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,6 +83,7 @@ class GrowthRecordServiceImplTest {
     @Mock private DataScopeService dataScopeService;
     @Mock private DictionaryReferenceValidator dictionaryReferenceValidator;
     @Mock private FileResourceService fileResourceService;
+    @Mock private ApplicationEventPublisher applicationEventPublisher;
 
     private GrowthRecordServiceImpl service;
     @org.junit.jupiter.api.io.TempDir Path tempDir;
@@ -105,6 +107,7 @@ class GrowthRecordServiceImplTest {
                         fileResourceService);
         ReflectionTestUtils.setField(service, "storagePath", tempDir.toString());
         ReflectionTestUtils.setField(service, "publicWebBaseUrl", "http://localhost:3000");
+        ReflectionTestUtils.setField(service, "applicationEventPublisher", applicationEventPublisher);
         DataScopeResultVO allScope = new DataScopeResultVO();
         allScope.setAllIncluded(true);
         lenient()
@@ -274,6 +277,27 @@ class GrowthRecordServiceImplTest {
 
         assertAudit("approve", "submitted", "approved");
         assertTrace("approved", "submitted", "approved");
+    }
+
+    @Test
+    void approvingPublicStageSynchronizesTaskDigitalLifeArchive() {
+        login(2L, "REVIEWER");
+        GrowthRecordEntity record = record("submitted", 1L);
+        record.setTaskId(30L);
+        record.setPublicVisible(1);
+        when(growthRecordMapper.selectById(100L)).thenReturn(record);
+        when(growthRecordMapper.selectCount(any())).thenReturn(2L);
+        HerbCollectionTaskEntity task = activeTask();
+        task.setStatus(1);
+        task.setPublicVisible(0);
+        when(herbCollectionTaskMapper.selectById(30L)).thenReturn(task);
+
+        service.approve(100L, comment("数据完整，审核通过"));
+
+        assertThat(task.getTraceCode()).isEqualTo("DL-TASK-00000030");
+        assertThat(task.getPublicVisible()).isEqualTo(1);
+        verify(herbCollectionTaskMapper).updateById(task);
+        verify(applicationEventPublisher).publishEvent(any(Object.class));
     }
 
     @Test

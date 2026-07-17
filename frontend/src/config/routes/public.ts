@@ -14,6 +14,14 @@ export const publicRoutes: RouteMeta[] = [
     navOrder: 70,
   },
   {
+    path: "/digital-life",
+    title: "数字生命展馆",
+    owner: "platform",
+    public: true,
+    navLabel: "数字生命展馆",
+    navOrder: 35,
+  },
+  {
     path: "/trace/growth/[traceCode]",
     title: "生长溯源",
     owner: "platform",

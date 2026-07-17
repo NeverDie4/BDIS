@@ -13,6 +13,7 @@ import com.bdis.common.core.PageResult;
 import com.bdis.common.exception.GlobalExceptionHandler;
 import com.bdis.modules.assistant.agent.dto.AgentTaskCreateRequest;
 import com.bdis.modules.assistant.agent.service.AgentActionExecutionDispatcher;
+import com.bdis.modules.assistant.agent.service.AgentCollectionPlanAsyncDispatcher;
 import com.bdis.modules.assistant.agent.service.AgentCollectionPlanService;
 import com.bdis.modules.assistant.agent.service.AgentDigitalArchiveService;
 import com.bdis.modules.assistant.agent.service.AgentReanalysisQueryService;
@@ -53,6 +54,8 @@ class HerbDigitalTwinAgentControllerTest {
 
   @Mock private AgentCollectionPlanService collectionPlanService;
 
+  @Mock private AgentCollectionPlanAsyncDispatcher collectionPlanAsyncDispatcher;
+
   @Mock private AgentActionExecutionDispatcher actionExecutionDispatcher;
 
   @Mock private AgentWaitStatusQueryService waitStatusQueryService;
@@ -72,6 +75,7 @@ class HerbDigitalTwinAgentControllerTest {
                     workflowRunner,
                     evidenceAnalysisRunner,
                     collectionPlanService,
+                    collectionPlanAsyncDispatcher,
                     actionExecutionDispatcher,
                     waitStatusQueryService,
                     reanalysisQueryService,
@@ -247,7 +251,7 @@ class HerbDigitalTwinAgentControllerTest {
             null,
             null,
             null);
-    when(collectionPlanService.generate(1L, false)).thenReturn(plan);
+    when(collectionPlanAsyncDispatcher.triggerGenerate(1L, false)).thenReturn(plan);
     when(collectionPlanService.get(1L)).thenReturn(plan);
 
     mockMvc

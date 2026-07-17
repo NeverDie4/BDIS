@@ -18,7 +18,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 app = FastAPI()
 
-MODEL_ID = "doubao-seed-2-1-pro"
+MODEL_ID = "doubao-seed-2-0-lite-260428"
 UPLOAD_DIR = "uploads"
 MAX_FILE_SIZE = 20 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}

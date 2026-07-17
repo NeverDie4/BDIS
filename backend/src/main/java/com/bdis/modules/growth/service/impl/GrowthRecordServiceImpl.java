@@ -73,6 +73,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.PathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,6 +108,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
   private final CollectionAccessService collectionAccessService;
   private final FileResourceService fileResourceService;
   private AgentFieldDataEventPublisher agentEventPublisher;
+  private ApplicationEventPublisher applicationEventPublisher;
 
   public GrowthRecordServiceImpl(
       GrowthRecordMapper growthRecordMapper,
@@ -140,6 +142,11 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
   @Autowired(required = false)
   void setAgentEventPublisher(AgentFieldDataEventPublisher agentEventPublisher) {
     this.agentEventPublisher = agentEventPublisher;
+  }
+
+  @Autowired(required = false)
+  void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+    this.applicationEventPublisher = applicationEventPublisher;
   }
 
   @Override
@@ -581,7 +588,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         "开启公开溯源",
         "该生长记录已允许通过溯源码公开查询",
         null);
-    synchronizeTaskDigitalLifeArchive(entity.getTaskId());
+    if (synchronizeTaskDigitalLifeArchive(entity.getTaskId())) {
+      requestDigitalLifeNarration(entity.getTaskId());
+    }
     return toTraceQrCodeVO(entity);
   }
 
@@ -605,15 +614,15 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     return toTraceQrCodeVO(entity);
   }
 
-  private void synchronizeTaskDigitalLifeArchive(Long taskId) {
+  private boolean synchronizeTaskDigitalLifeArchive(Long taskId) {
     if (taskId == null) {
-      return;
+      return false;
     }
     HerbCollectionTaskEntity task = herbCollectionTaskMapper.selectById(taskId);
     if (task == null
         || !Integer.valueOf(1).equals(task.getStatus())
         || HerbCollectionTaskStatusConstants.CANCELLED.equals(task.getTaskStatus())) {
-      return;
+      return false;
     }
     long publicStageCount =
         growthRecordMapper.selectCount(
@@ -636,6 +645,14 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     if (changed) {
       task.setUpdatedBy(SecurityUtils.currentUser().getUserId());
       herbCollectionTaskMapper.updateById(task);
+    }
+    return shouldPublish;
+  }
+
+  private void requestDigitalLifeNarration(Long taskId) {
+    if (applicationEventPublisher != null && taskId != null) {
+      applicationEventPublisher.publishEvent(
+          new DigitalLifeNarrationAutoGenerationListener.Requested(taskId));
     }
   }
 
@@ -1240,6 +1257,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
     String finalComment = StringUtils.hasText(comment) ? comment : defaultComment;
     saveAudit(entity.getId(), action, before, decision, finalComment);
     saveTraceEvent(entity.getId(), decision, before, decision, title, finalComment, null);
+    if (synchronizeTaskDigitalLifeArchive(entity.getTaskId())) {
+      requestDigitalLifeNarration(entity.getTaskId());
+    }
     return toVO(entity);
   }
 
