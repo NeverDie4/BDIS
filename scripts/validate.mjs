@@ -26,6 +26,8 @@ if (!hasRootEnv && missingComposeEnv.length > 0) {
 
 runStep("frontend lint", pnpm, ["--dir", "frontend", "lint"]);
 runStep("frontend build", pnpm, ["--dir", "frontend", "build"]);
+runStep("mobile tests", pnpm, ["--dir", "mobile", "test"]);
+runStep("mobile H5 build", pnpm, ["--dir", "mobile", "build:h5"]);
 runStep("backend tests", mvn, ["-f", "backend/pom.xml", "test"], {
   env: java21Env(),
 });

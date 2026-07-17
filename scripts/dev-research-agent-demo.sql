@@ -63,11 +63,11 @@ ON DUPLICATE KEY UPDATE plant_height=VALUES(plant_height), soil_ph=VALUES(soil_p
 INSERT INTO sys_file_resource
 (file_no,file_name,original_filename,file_type,file_format,file_size,file_url,storage_path,storage_type,access_level,content_type,uploader_id,uploader_name,uploaded_at,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
 VALUES
-('DEMO_AGENT_FILE_WHOLE_01','whole-stage-01.png','黄连整株演示样本01.png','image','png',NULL,'pending','demo-agent/whole-stage-01.png','local','private','image/png',@collector_id,'科研 Agent 演示采集员',NOW(),1,0,NOW(),NOW(),@collector_id,@collector_id,0,'科研演示证据样本，非现场实测'),
-('DEMO_AGENT_FILE_LEAF_02','leaf-stage-02.png','黄连叶片演示样本02.png','image','png',NULL,'pending','demo-agent/leaf-stage-02.png','local','private','image/png',@collector_id,'科研 Agent 演示采集员',NOW(),1,0,NOW(),NOW(),@collector_id,@collector_id,0,'科研演示证据样本，非现场实测'),
-('DEMO_AGENT_FILE_WHOLE_03','whole-stage-03.jpeg','黄连整株演示样本03.jpeg','image','jpeg',NULL,'pending','demo-agent/whole-stage-03.jpeg','local','private','image/jpeg',@collector_id,'科研 Agent 演示采集员',NOW(),1,0,NOW(),NOW(),@collector_id,@collector_id,0,'科研演示证据样本，非现场实测')
-ON DUPLICATE KEY UPDATE storage_path=VALUES(storage_path), status=1, is_deleted=0, updated_at=NOW(), remark=VALUES(remark);
-UPDATE sys_file_resource SET file_url=CONCAT('/api/files/',id,'/content') WHERE file_no IN ('DEMO_AGENT_FILE_WHOLE_01','DEMO_AGENT_FILE_LEAF_02','DEMO_AGENT_FILE_WHOLE_03');
+('DEMO_AGENT_FILE_WHOLE_01','whole-stage-01.png','黄连整株演示样本01.png','image','png',NULL,'pending','demo-agent/whole-stage-01.png','local','public','image/png',@collector_id,'科研 Agent 演示采集员',NOW(),1,0,NOW(),NOW(),@collector_id,@collector_id,0,'科研演示证据样本，非现场实测'),
+('DEMO_AGENT_FILE_LEAF_02','leaf-stage-02.png','黄连叶片演示样本02.png','image','png',NULL,'pending','demo-agent/leaf-stage-02.png','local','public','image/png',@collector_id,'科研 Agent 演示采集员',NOW(),1,0,NOW(),NOW(),@collector_id,@collector_id,0,'科研演示证据样本，非现场实测'),
+('DEMO_AGENT_FILE_WHOLE_03','whole-stage-03.jpeg','黄连整株演示样本03.jpeg','image','jpeg',NULL,'pending','demo-agent/whole-stage-03.jpeg','local','public','image/jpeg',@collector_id,'科研 Agent 演示采集员',NOW(),1,0,NOW(),NOW(),@collector_id,@collector_id,0,'科研演示证据样本，非现场实测')
+ON DUPLICATE KEY UPDATE storage_path=VALUES(storage_path), access_level='public', status=1, is_deleted=0, updated_at=NOW(), remark=VALUES(remark);
+UPDATE sys_file_resource SET file_url=CONCAT('/api/public-files/',id,'/content') WHERE file_no IN ('DEMO_AGENT_FILE_WHOLE_01','DEMO_AGENT_FILE_LEAF_02','DEMO_AGENT_FILE_WHOLE_03');
 
 SET @file1 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_AGENT_FILE_WHOLE_01' LIMIT 1);
 SET @file2 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_AGENT_FILE_LEAF_02' LIMIT 1);
@@ -78,20 +78,25 @@ SET @record3 := (SELECT id FROM herb_growth_record WHERE batch_id=@batch3 LIMIT 
 
 INSERT INTO herb_image
 (image_no,species_id,growth_record_id,image_url,original_filename,file_format,image_type,image_purpose,upload_source,uploader_id,collected_location,longitude,latitude,collected_at,growth_stage,process_status,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
-SELECT 'DEMO_AGENT_IMG_WHOLE_01',@species_id,@record1,CONCAT('/api/files/',@file1,'/content'),'黄连整株演示样本01.png','png','whole_plant','growth_record','demo_seed',@collector_id,'科研 Agent 演示样方',108.2450000,30.1840000,'2026-06-01 09:25:00','返青期','success',1,0,NOW(),NOW(),@collector_id,@collector_id,0,'演示图片样本，非现场实测'
+SELECT 'DEMO_AGENT_IMG_WHOLE_01',@species_id,@record1,CONCAT('/api/public-files/',@file1,'/content'),'黄连整株演示样本01.png','png','whole_plant','growth_record','demo_seed',@collector_id,'科研 Agent 演示样方',108.2450000,30.1840000,'2026-06-01 09:25:00','返青期','success',1,0,NOW(),NOW(),@collector_id,@collector_id,0,'演示图片样本，非现场实测'
 ON DUPLICATE KEY UPDATE growth_record_id=VALUES(growth_record_id), image_url=VALUES(image_url), status=1, is_deleted=0, updated_at=NOW();
 INSERT INTO herb_image
 (image_no,species_id,growth_record_id,image_url,original_filename,file_format,image_type,image_purpose,upload_source,uploader_id,collected_location,longitude,latitude,collected_at,growth_stage,process_status,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
-SELECT 'DEMO_AGENT_IMG_LEAF_02',@species_id,@record2,CONCAT('/api/files/',@file2,'/content'),'黄连叶片演示样本02.png','png','leaf','growth_record','demo_seed',@collector_id,'科研 Agent 演示样方',108.2450000,30.1840000,'2026-06-18 09:25:00','展叶期','success',1,0,NOW(),NOW(),@collector_id,@collector_id,0,'演示图片样本，非现场实测'
+SELECT 'DEMO_AGENT_IMG_LEAF_02',@species_id,@record2,CONCAT('/api/public-files/',@file2,'/content'),'黄连叶片演示样本02.png','png','leaf','growth_record','demo_seed',@collector_id,'科研 Agent 演示样方',108.2450000,30.1840000,'2026-06-18 09:25:00','展叶期','success',1,0,NOW(),NOW(),@collector_id,@collector_id,0,'演示图片样本，非现场实测'
 ON DUPLICATE KEY UPDATE growth_record_id=VALUES(growth_record_id), image_url=VALUES(image_url), status=1, is_deleted=0, updated_at=NOW();
 INSERT INTO herb_image
 (image_no,species_id,growth_record_id,image_url,original_filename,file_format,image_type,image_purpose,upload_source,uploader_id,collected_location,longitude,latitude,collected_at,growth_stage,process_status,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
-SELECT 'DEMO_AGENT_IMG_WHOLE_03',@species_id,@record3,CONCAT('/api/files/',@file3,'/content'),'黄连整株演示样本03.jpeg','jpeg','whole_plant','growth_record','demo_seed',@collector_id,'科研 Agent 演示样方',108.2450000,30.1840000,'2026-07-05 09:25:00','旺盛生长期','success',1,0,NOW(),NOW(),@collector_id,@collector_id,0,'演示图片样本，非现场实测'
+SELECT 'DEMO_AGENT_IMG_WHOLE_03',@species_id,@record3,CONCAT('/api/public-files/',@file3,'/content'),'黄连整株演示样本03.jpeg','jpeg','whole_plant','growth_record','demo_seed',@collector_id,'科研 Agent 演示样方',108.2450000,30.1840000,'2026-07-05 09:25:00','旺盛生长期','success',1,0,NOW(),NOW(),@collector_id,@collector_id,0,'演示图片样本，非现场实测'
 ON DUPLICATE KEY UPDATE growth_record_id=VALUES(growth_record_id), image_url=VALUES(image_url), status=1, is_deleted=0, updated_at=NOW();
 
 SET @img1 := (SELECT id FROM herb_image WHERE image_no='DEMO_AGENT_IMG_WHOLE_01' LIMIT 1);
 SET @img2 := (SELECT id FROM herb_image WHERE image_no='DEMO_AGENT_IMG_LEAF_02' LIMIT 1);
 SET @img3 := (SELECT id FROM herb_image WHERE image_no='DEMO_AGENT_IMG_WHOLE_03' LIMIT 1);
+INSERT IGNORE INTO sys_file_business (file_id,biz_type,biz_id,file_usage,is_public,sort_order,created_at,created_by,remark)
+VALUES
+(@file1,'herb_image',@img1,'original_image',1,1,NOW(),@collector_id,'research agent demo seed'),
+(@file2,'herb_image',@img2,'original_image',1,1,NOW(),@collector_id,'research agent demo seed'),
+(@file3,'herb_image',@img3,'original_image',1,1,NOW(),@collector_id,'research agent demo seed');
 INSERT INTO herb_batch_image (batch_id,image_id,image_role,is_primary,bind_status,sort_order,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
 SELECT @batch1,@img1,'whole_plant',1,'bound',1,1,0,NOW(),NOW(),@collector_id,@collector_id,0,'research agent demo seed' WHERE NOT EXISTS (SELECT 1 FROM herb_batch_image WHERE batch_id=@batch1 AND image_id=@img1 AND is_deleted=0);
 INSERT INTO herb_batch_image (batch_id,image_id,image_role,is_primary,bind_status,sort_order,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)

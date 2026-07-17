@@ -57,6 +57,36 @@ const coreCopies = [
   ],
   [
     "backend/import/herb_atlas/huanglian_coptis_chinensis/whole_growth_fresh/huanglian_whole_growth_fresh_01.png",
+    "backend/storage/defense-demo/huanglian-species-cover.png",
+    "defense-demo/huanglian-species-cover.png",
+  ],
+  [
+    "backend/import/herb_atlas/dangshen_codonopsis_pilosula/whole_growth_fresh/dangshen_whole_growth_fresh_01.jpeg",
+    "backend/storage/defense-demo/herb-cover-dangshen.jpeg",
+    "defense-demo/herb-cover-dangshen.jpeg",
+  ],
+  [
+    "backend/import/herb_atlas/gouqi_lycium_barbarum/whole_growth_fresh/gouqi_whole_growth_fresh_01.jpeg",
+    "backend/storage/defense-demo/herb-cover-gouqi.jpeg",
+    "defense-demo/herb-cover-gouqi.jpeg",
+  ],
+  [
+    "backend/import/herb_atlas/huanglian_coptis_chinensis/whole_growth_fresh/huanglian_whole_growth_fresh_01.png",
+    "backend/storage/defense-demo/herb-cover-huanglian.png",
+    "defense-demo/herb-cover-huanglian.png",
+  ],
+  [
+    "backend/import/herb_atlas/huangqi_astragalus_mongholicus/whole_growth_fresh/huangqi_whole_growth_fresh_01.png",
+    "backend/storage/defense-demo/herb-cover-huangqi.png",
+    "defense-demo/herb-cover-huangqi.png",
+  ],
+  [
+    "backend/import/herb_atlas/jinyinhua_lonicera_japonica/whole_growth_fresh/jinyinhua_whole_growth_fresh_01.jpeg",
+    "backend/storage/defense-demo/herb-cover-jinyinhua.jpeg",
+    "defense-demo/herb-cover-jinyinhua.jpeg",
+  ],
+  [
+    "backend/import/herb_atlas/huanglian_coptis_chinensis/whole_growth_fresh/huanglian_whole_growth_fresh_01.png",
     "backend/storage/defense-demo/map-point-01.png",
     "defense-demo/map-point-01.png",
   ],
@@ -74,6 +104,21 @@ const coreCopies = [
     "backend/import/herb_atlas/huanglian_coptis_chinensis/leaf_growth_fresh/huanglian_leaf_growth_fresh_03.jpeg",
     "backend/storage/defense-demo/map-point-04.jpeg",
     "defense-demo/map-point-04.jpeg",
+  ],
+  [
+    "backend/import/herb_atlas/huanglian_coptis_chinensis/leaf_growth_fresh/huanglian_leaf_growth_fresh_01.png",
+    "backend/storage/defense-demo/map-point-05.png",
+    "defense-demo/map-point-05.png",
+  ],
+  [
+    "backend/import/herb_atlas/huanglian_coptis_chinensis/rhizome_mature_dried/huanglian_rhizome_dried_01.png",
+    "backend/storage/defense-demo/map-point-06.png",
+    "defense-demo/map-point-06.png",
+  ],
+  [
+    "backend/import/herb_atlas/huanglian_coptis_chinensis/whole_growth_fresh/huanglian_whole_growth_fresh_02.jpeg",
+    "backend/storage/defense-demo/map-point-07.jpeg",
+    "defense-demo/map-point-07.jpeg",
   ],
 ];
 
@@ -271,18 +316,65 @@ function readSql(name) {
 
 function verifyCore(config) {
   const sql = `SELECT IF(
-    (SELECT COUNT(*) FROM sys_user WHERE username IN ('agent_teacher_demo','collector_agent_demo','agent_reviewer_demo','student_hl_demo','researcher_hl_demo','trainer_hl_demo') AND is_deleted=0)=6
-    AND (SELECT COUNT(*) FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M%' AND is_deleted=0)=4
+    (SELECT COUNT(*) FROM sys_user WHERE username IN ('agent_teacher_demo','collector_agent_demo','agent_reviewer_demo','student_hl_demo','researcher_hl_demo','admin_demo') AND is_deleted=0)=6
+    AND NOT EXISTS (SELECT 1 FROM sys_user WHERE username='trainer_hl_demo' AND is_deleted=0)
+    AND EXISTS (
+      SELECT 1 FROM sys_user u
+      JOIN rel_user_role ur ON ur.user_id=u.id
+      JOIN auth_role r ON r.id=ur.role_id
+      WHERE u.username='admin_demo' AND u.is_deleted=0 AND r.role_code='ADMIN'
+    )
+    AND (SELECT COUNT(*) FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M%' AND is_deleted=0)=7
+    AND (SELECT COUNT(*) FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O%' AND is_deleted=0)=4
+    AND EXISTS (
+      SELECT 1
+      FROM herb_species species
+      JOIN sys_file_business binding
+        ON binding.biz_type='herb_species' AND binding.biz_id=species.id AND binding.file_usage='cover'
+      JOIN sys_file_resource file_resource ON file_resource.id=binding.file_id
+      WHERE species.herb_no='DEMO_AGENT_HUANGLIAN' AND species.is_deleted=0
+        AND file_resource.file_no='DEMO_HL_SPECIES_COVER' AND file_resource.access_level='public'
+        AND species.cover_image_url=CONCAT('/api/public-files/', file_resource.id, '/content')
+    )
+    AND (
+      SELECT COUNT(*)
+      FROM herb_image image
+      JOIN sys_file_resource file_resource
+        ON image.image_url=CONCAT('/api/public-files/', file_resource.id, '/content')
+      JOIN sys_file_business binding
+        ON binding.file_id=file_resource.id AND binding.biz_type='herb_image' AND binding.biz_id=image.id
+      WHERE image.image_no IN ('DEMO_AGENT_IMG_WHOLE_01','DEMO_AGENT_IMG_LEAF_02','DEMO_AGENT_IMG_WHOLE_03')
+        AND image.is_deleted=0 AND file_resource.access_level='public' AND binding.is_public=1
+    )=3
+    AND (
+      SELECT COUNT(*)
+      FROM herb_species species
+      JOIN sys_file_business binding
+        ON binding.biz_type='herb_species' AND binding.biz_id=species.id AND binding.file_usage='cover'
+      JOIN sys_file_resource file_resource ON file_resource.id=binding.file_id
+      WHERE species.herb_no IN ('HERB_DANGSHEN','HERB_GOUQI','HERB_HUANGLIAN','HERB_HUANGQI','HERB_JINYINHUA')
+        AND species.is_deleted=0 AND file_resource.access_level='public'
+        AND species.cover_image_url=CONCAT('/api/public-files/', file_resource.id, '/content')
+    )=5
     AND (SELECT COUNT(*) FROM herb_growth_review_record WHERE remark LIKE 'BDIS_DEFENSE_DEMO:P%')=6
+    AND (SELECT COUNT(*) FROM edu_course WHERE course_no LIKE 'DEMO-HL-COURSE-%' AND is_deleted=0 AND publish_status='published')=3
     AND (SELECT COUNT(*) FROM edu_experiment_step WHERE course_id=(SELECT id FROM edu_course WHERE course_no='DEMO-HL-COURSE-01'))=3
     AND (SELECT COUNT(*) FROM rel_project_member WHERE project_id=(SELECT id FROM research_project WHERE project_no='DEMO-HL-RESEARCH-01'))=3
+    AND (SELECT COUNT(*) FROM research_project WHERE project_no LIKE 'DEMO-HL-RESEARCH-%' AND review_status='approved' AND is_deleted=0)=2
+    AND (SELECT COUNT(*) FROM research_project WHERE project_no='DEMO-HL-RESEARCH-02' AND project_status='completed' AND is_deleted=0)=1
     AND (SELECT COUNT(*) FROM edu_training_plan_item WHERE plan_id=(SELECT id FROM edu_training_plan WHERE plan_no='DEMO-HL-TRAIN-01') AND is_deleted=0)=4
-    AND (SELECT COUNT(*) FROM edu_training_record WHERE attendance_no LIKE 'DEMO-HL-ATT-%')=3
+    AND (SELECT COUNT(*) FROM edu_training_plan WHERE plan_no LIKE 'DEMO-HL-TRAIN-%' AND publish_status='published' AND is_deleted=0)=2
+    AND (SELECT COUNT(*) FROM edu_training_record WHERE attendance_no='DEMO-HL-ATT-STUDENT-02' AND training_status='completed')=1
+    AND (SELECT COUNT(*) FROM edu_training_record WHERE attendance_no LIKE 'DEMO-HL-ATT-%')=4
     AND (SELECT COUNT(*) FROM edu_training_feedback WHERE remark='BDIS_DEFENSE_DEMO:S11')=2
-    AND (SELECT COUNT(*) FROM eval_score_record WHERE task_id=(SELECT id FROM eval_task WHERE task_no='DEMO-HL-EVAL-01'))=4
+    AND (SELECT COUNT(*) FROM eval_task WHERE task_no LIKE 'DEMO-HL-EVAL-%' AND task_status='confirmed' AND is_deleted=0)=3
+    AND (SELECT COUNT(*) FROM eval_result WHERE task_id IN (SELECT id FROM eval_task WHERE task_no LIKE 'DEMO-HL-EVAL-%' AND is_deleted=0) AND is_deleted=0)=3
+    AND (SELECT COUNT(*) FROM eval_score_record WHERE task_id IN (SELECT id FROM eval_task WHERE task_no LIKE 'DEMO-HL-EVAL-%' AND is_deleted=0) AND is_deleted=0)=12
     AND EXISTS (SELECT 1 FROM eval_result r JOIN eval_task t ON t.id=r.task_id WHERE t.task_no='DEMO-HL-EVAL-01' AND r.total_score=91.10 AND r.result_level='excellent')
-    AND (SELECT COUNT(*) FROM eval_application WHERE application_no LIKE 'DEMO-HL-DECL-%')=2
-    AND (SELECT COUNT(*) FROM perf_record WHERE performance_no LIKE 'DEMO-HL-PERF-%')=2,
+    AND (SELECT COUNT(*) FROM eval_application WHERE application_no LIKE 'DEMO-HL-DECL-%' AND is_deleted=0)=4
+    AND (SELECT COUNT(*) FROM eval_application WHERE application_no LIKE 'DEMO-HL-DECL-%' AND review_status='approved' AND is_deleted=0)=3
+    AND (SELECT COUNT(*) FROM perf_record WHERE performance_no LIKE 'DEMO-HL-PERF-%' AND is_deleted=0)=4
+    AND (SELECT COUNT(*) FROM perf_record WHERE performance_no LIKE 'DEMO-HL-PERF-%' AND identify_status='approved' AND is_deleted=0)=3,
     1, 0
   );`;
   const output = run(
