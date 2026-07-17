@@ -286,7 +286,7 @@ class GrowthRecordServiceImplTest {
         record.setTaskId(30L);
         record.setPublicVisible(1);
         when(growthRecordMapper.selectById(100L)).thenReturn(record);
-        when(growthRecordMapper.selectCount(any())).thenReturn(2L);
+        when(growthRecordMapper.countPublicDigitalLifeStages(30L)).thenReturn(2L);
         HerbCollectionTaskEntity task = activeTask();
         task.setStatus(1);
         task.setPublicVisible(0);
@@ -530,7 +530,7 @@ class GrowthRecordServiceImplTest {
         record.setTraceCode("TRACE_GROWTH_EXISTING");
         record.setTracePublicUrl("/trace/growth/TRACE_GROWTH_EXISTING");
         when(growthRecordMapper.selectById(100L)).thenReturn(record);
-        when(growthRecordMapper.selectCount(any())).thenReturn(2L);
+        when(growthRecordMapper.countPublicDigitalLifeStages(30L)).thenReturn(2L);
         HerbCollectionTaskEntity task = activeTask();
         task.setStatus(1);
         task.setPublicVisible(0);
@@ -567,6 +567,7 @@ class GrowthRecordServiceImplTest {
         record.setBaseName("本草基地");
         record.setPlantHeight(new BigDecimal("18.50"));
         when(growthRecordMapper.selectOne(any())).thenReturn(record);
+        when(growthRecordMapper.countPublicDigitalLifeStages(30L)).thenReturn(2L);
         HerbBatchEntity batch = new HerbBatchEntity();
         batch.setId(20L);
         batch.setBatchName("采集批次A");
@@ -630,6 +631,38 @@ class GrowthRecordServiceImplTest {
                                 .map(java.lang.reflect.Field::getName))
                 .doesNotContain("operatorId", "operatorRole", "metadataJson");
         assertThat(archive.getLatestAuditResult()).isEqualTo("approved");
+    }
+
+    @Test
+    void publicTraceRepairsEligibleTaskDigitalLifeArchiveState() {
+        GrowthRecordEntity record = record("approved", 1L);
+        record.setTraceCode("TRACE_GROWTH_EXISTING");
+        record.setTracePublicUrl("/trace/growth/TRACE_GROWTH_EXISTING");
+        record.setPublicVisible(1);
+        record.setBatchId(20L);
+        record.setTaskId(30L);
+        when(growthRecordMapper.selectOne(any())).thenReturn(record);
+        when(growthRecordMapper.countPublicDigitalLifeStages(30L)).thenReturn(2L);
+
+        HerbBatchEntity batch = new HerbBatchEntity();
+        batch.setId(20L);
+        when(herbBatchMapper.selectById(20L)).thenReturn(batch);
+
+        HerbCollectionTaskEntity task = activeTask();
+        task.setId(30L);
+        task.setStatus(1);
+        task.setTraceCode(null);
+        task.setPublicVisible(0);
+        when(herbCollectionTaskMapper.selectById(30L)).thenReturn(task);
+        when(herbImageMapper.selectByBatchId(20L)).thenReturn(List.of());
+        when(growthAuditRecordMapper.selectList(any())).thenReturn(List.of());
+        when(growthTraceEventMapper.selectList(any())).thenReturn(List.of());
+
+        GrowthPublicTraceArchiveVO archive = service.publicTrace("TRACE_GROWTH_EXISTING");
+
+        assertThat(archive.getTaskTraceCode()).isEqualTo("DL-TASK-00000030");
+        assertThat(task.getPublicVisible()).isEqualTo(1);
+        verify(herbCollectionTaskMapper).updateById(task);
     }
 
     @Test

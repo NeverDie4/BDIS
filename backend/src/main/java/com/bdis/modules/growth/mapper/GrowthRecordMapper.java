@@ -14,6 +14,18 @@ public interface GrowthRecordMapper extends BaseMapper<GrowthRecordEntity> {
 
     @Select(
             """
+            SELECT COUNT(*)
+            FROM herb_growth_record
+            WHERE task_id = #{taskId}
+              AND status = 1
+              AND is_deleted = 0
+              AND review_status = 'approved'
+              AND public_visible = 1
+            """)
+    long countPublicDigitalLifeStages(@Param("taskId") Long taskId);
+
+    @Select(
+            """
             SELECT
                 id,
                 species_id AS speciesId,
