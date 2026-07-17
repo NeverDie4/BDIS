@@ -8,10 +8,13 @@ import com.bdis.common.security.RequirePermission;
 import com.bdis.modules.growth.service.DigitalLifeIntegrityService;
 import com.bdis.modules.growth.service.DigitalLifeNarrationService;
 import com.bdis.modules.growth.service.HerbDigitalLifeArchiveService;
+import com.bdis.modules.growth.service.impl.DigitalLifePublicGalleryService;
 import com.bdis.modules.growth.vo.DigitalLifeIntegrityVO;
 import com.bdis.modules.growth.vo.DigitalLifeNarrationGenerationVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifeArchiveVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifePublicArchiveVO;
+import com.bdis.modules.growth.vo.HerbDigitalLifePublicSummaryVO;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,6 +26,7 @@ class HerbDigitalLifeArchiveControllerTest {
     @Mock private HerbDigitalLifeArchiveService archiveService;
     @Mock private DigitalLifeNarrationService narrationService;
     @Mock private DigitalLifeIntegrityService integrityService;
+    @Mock private DigitalLifePublicGalleryService galleryService;
 
     @Test
     void managementControllerRequiresGrowthViewPermissionAndDelegates() {
@@ -75,7 +79,8 @@ class HerbDigitalLifeArchiveControllerTest {
         HerbDigitalLifePublicArchiveVO archive = new HerbDigitalLifePublicArchiveVO();
         when(archiveService.publicArchive("DL-009")).thenReturn(archive);
         HerbDigitalLifePublicArchiveController controller =
-                new HerbDigitalLifePublicArchiveController(archiveService, integrityService);
+                new HerbDigitalLifePublicArchiveController(
+                        archiveService, integrityService, galleryService);
 
         assertThat(controller.publicArchive("DL-009").getData()).isSameAs(archive);
         assertThat(
@@ -86,13 +91,26 @@ class HerbDigitalLifeArchiveControllerTest {
     }
 
     @Test
+    void publicGalleryDelegatesKeywordWithoutPermissionAnnotation() {
+        HerbDigitalLifePublicSummaryVO summary = new HerbDigitalLifePublicSummaryVO();
+        when(galleryService.list("黄连")).thenReturn(List.of(summary));
+        HerbDigitalLifePublicArchiveController controller =
+                new HerbDigitalLifePublicArchiveController(
+                        archiveService, integrityService, galleryService);
+
+        assertThat(controller.publicGallery("黄连").getData()).containsExactly(summary);
+        verify(galleryService).list("黄连");
+    }
+
+    @Test
     void publicIntegrityEndpointDelegatesWithoutExposingPayload() {
         DigitalLifeIntegrityVO integrity =
                 new DigitalLifeIntegrityVO(
                         true, 3, "root", "sha256-v1:1", null, null, null, "校验通过");
         when(integrityService.verifyPublic("DL-009")).thenReturn(integrity);
         HerbDigitalLifePublicArchiveController controller =
-                new HerbDigitalLifePublicArchiveController(archiveService, integrityService);
+                new HerbDigitalLifePublicArchiveController(
+                        archiveService, integrityService, galleryService);
 
         assertThat(controller.publicIntegrity("DL-009").getData()).isSameAs(integrity);
         verify(integrityService).verifyPublic("DL-009");

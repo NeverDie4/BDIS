@@ -21,7 +21,7 @@ test("research Agent client uses authenticated APIs and adaptive polling", () =>
 });
 
 test("research Agent workbench requires a formal confirmation before business writes", () => {
-  const page = read("frontend/src/app/assistant/research-agent/page.tsx");
+  const page = read("frontend/src/app/assistant/research-agent/ResearchAgentContent.tsx");
 
   assert.match(page, /task\.currentPhase !== "EVIDENCE_ANALYSIS_COMPLETED"/);
   assert.match(page, /resumeLegacyTask\(taskId\)/);
@@ -33,7 +33,7 @@ test("research Agent workbench requires a formal confirmation before business wr
 });
 
 test("research Agent localizes persisted technical codes for users", () => {
-  const page = read("frontend/src/app/assistant/research-agent/page.tsx");
+  const page = read("frontend/src/app/assistant/research-agent/ResearchAgentContent.tsx");
 
   assert.match(page, /leaf:\s*"叶片"/);
   assert.match(page, /root:\s*"根部"/);
@@ -46,7 +46,7 @@ test("research Agent localizes persisted technical codes for users", () => {
 });
 
 test("research Agent hides the stale plan while regeneration is pending", () => {
-  const page = read("frontend/src/app/assistant/research-agent/page.tsx");
+  const page = read("frontend/src/app/assistant/research-agent/ResearchAgentContent.tsx");
   const styles = read("frontend/src/app/assistant/research-agent/page.module.css");
 
   assert.match(page, /planRegenerating/);
@@ -55,6 +55,30 @@ test("research Agent hides the stale plan while regeneration is pending", () => 
   assert.match(page, /setPlanRegenerating\(false\)/);
   assert.match(page, /styles\.planGenerating/);
   assert.match(styles, /\.planGenerating/);
+});
+
+test("research Agent treats request timeouts as background generation", () => {
+  const page = read("frontend/src/app/assistant/research-agent/ResearchAgentContent.tsx");
+
+  assert.match(page, /function isBackgroundGenerationTimeout/);
+  assert.match(page, /isBackgroundGenerationTimeout\(error\)[\s\S]*正在后台生成/);
+  assert.match(page, /isBackgroundGenerationTimeout\(error\)[\s\S]*return;/);
+  assert.doesNotMatch(
+    page,
+    /catch \(error\) \{\s*message\.error\(getApiErrorMessage\(error, regenerate/,
+  );
+});
+
+test("research Agent does not offer plan generation while waiting for field data", () => {
+  const page = read("frontend/src/app/assistant/research-agent/ResearchAgentContent.tsx");
+
+  assert.match(
+    page,
+    /const canGeneratePlan = Boolean\([\s\S]*?canManage[\s\S]*?task\?\.status === "RUNNING"[\s\S]*?task\.currentPhase === "EVIDENCE_ANALYSIS_COMPLETED"/,
+  );
+  assert.match(page, /task\.status === "WAITING_FIELD_DATA"[\s\S]*?当前正在等待复测采集任务的现场数据/);
+  assert.match(page, /canGeneratePlan \? <Button onClick=\{\(\) => void requestPlan\(false\)\}/);
+  assert.doesNotMatch(page, /canManage && shouldLoadEvidence \? <Button onClick=\{\(\) => void requestPlan\(false\)\}/);
 });
 
 test("assistant float preserves chat while exposing Agent mode", () => {

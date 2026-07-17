@@ -73,6 +73,19 @@ export type PublicDigitalLifeArchiveApi = {
   stages?: PublicDigitalLifeStageApi[];
 };
 
+export type PublicDigitalLifeSummaryApi = {
+  taskId: number;
+  traceCode: string;
+  taskCode?: string;
+  taskName?: string;
+  speciesName?: string;
+  baseName?: string;
+  description?: string;
+  stageCount?: number;
+  startTime?: string;
+  endTime?: string;
+};
+
 export type PublicDigitalLifeIntegrityApi = {
   verified: boolean;
   eventCount: number;
@@ -90,6 +103,17 @@ export async function getPublicDigitalLifeArchive(traceCode: string) {
     { headers: { Accept: "application/json" } },
   );
   return response.data.data;
+}
+
+export async function getPublicDigitalLifeGallery(keyword?: string) {
+  const response = await axios.get<ApiResult<PublicDigitalLifeSummaryApi[]>>(
+    `${API_BASE_URL}/trace/digital-life`,
+    {
+      headers: { Accept: "application/json" },
+      params: keyword?.trim() ? { keyword: keyword.trim() } : undefined,
+    },
+  );
+  return response.data.data ?? [];
 }
 
 export async function getPublicDigitalLifeIntegrity(traceCode: string) {

@@ -116,6 +116,15 @@ public class AgentCollectionPlanService {
     return toVo(plan);
   }
 
+  public void validateGenerationRequest(Long agentTaskId, boolean regenerate) {
+    taskService.getDetail(agentTaskId);
+    AgentCollectionPlanEntity active = planMapper.selectLatestActive(agentTaskId);
+    if (active != null && !regenerate) {
+      return;
+    }
+    requireGenerationState(taskMapper.selectById(agentTaskId), regenerate);
+  }
+
   @Transactional
   public AgentCollectionPlanVO update(
       Long agentTaskId, Long planId, AgentCollectionPlanUpdateRequest request) {
@@ -304,6 +313,9 @@ public class AgentCollectionPlanService {
   private void requireGenerationState(AgentTaskEntity task, boolean regenerate) {
     if (task == null) {
       throw new BusinessException("Agent 任务不存在");
+    }
+    if (AgentTaskStatus.WAITING_FIELD_DATA.getCode().equals(task.getStatus())) {
+      throw new BusinessException("当前任务正在等待现场复测数据，不能重新生成复测方案");
     }
     boolean initial =
         AgentTaskStatus.RUNNING.getCode().equals(task.getStatus())

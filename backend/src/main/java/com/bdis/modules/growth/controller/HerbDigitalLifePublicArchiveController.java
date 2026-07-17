@@ -4,9 +4,12 @@ import com.bdis.common.core.Result;
 import com.bdis.file.vo.FileContentVO;
 import com.bdis.modules.growth.service.DigitalLifeIntegrityService;
 import com.bdis.modules.growth.service.HerbDigitalLifeArchiveService;
+import com.bdis.modules.growth.service.impl.DigitalLifePublicGalleryService;
 import com.bdis.modules.growth.vo.DigitalLifeIntegrityVO;
 import com.bdis.modules.growth.vo.HerbDigitalLifePublicArchiveVO;
+import com.bdis.modules.growth.vo.HerbDigitalLifePublicSummaryVO;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,12 +27,21 @@ public class HerbDigitalLifePublicArchiveController {
 
     private final HerbDigitalLifeArchiveService archiveService;
     private final DigitalLifeIntegrityService integrityService;
+    private final DigitalLifePublicGalleryService galleryService;
 
     public HerbDigitalLifePublicArchiveController(
             HerbDigitalLifeArchiveService archiveService,
-            DigitalLifeIntegrityService integrityService) {
+            DigitalLifeIntegrityService integrityService,
+            DigitalLifePublicGalleryService galleryService) {
         this.archiveService = archiveService;
         this.integrityService = integrityService;
+        this.galleryService = galleryService;
+    }
+
+    @GetMapping
+    public Result<List<HerbDigitalLifePublicSummaryVO>> publicGallery(
+            @RequestParam(required = false) String keyword) {
+        return Result.success(galleryService.list(keyword));
     }
 
     @GetMapping("/{traceCode}")

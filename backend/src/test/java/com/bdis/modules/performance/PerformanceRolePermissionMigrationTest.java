@@ -13,7 +13,7 @@ class PerformanceRolePermissionMigrationTest {
         String sql =
                 Files.readString(
                         Path.of(
-                                "src/main/resources/db/migration/V20260716_007__grant_teacher_performance_record_view.sql"));
+                                "src/main/resources/db/migration/V20260716_016__grant_teacher_performance_record_view.sql"));
 
         assertThat(sql)
                 .contains("role.`role_code` = 'TEACHER'", "'performance:record:view'")
