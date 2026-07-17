@@ -64,7 +64,7 @@ pnpm setup
 pnpm compose:up
 ```
 
-Compose 会等待 MySQL、Redis 健康后启动后端，并由后端自动执行 Flyway 迁移。`ARK_API_KEY` 未配置时识别服务仍可启动并通过健康检查，但调用大模型识别接口会返回明确的配置错误。特征提取服务首次启动时会下载经过哈希校验的 ResNet50 权重，并保存到 `ai-model-cache` 卷供后续启动复用；因此首次启动需要能够访问 `download.pytorch.org`。
+Compose 会等待 MySQL、Redis 健康后启动后端，并由后端自动执行 Flyway 迁移。Web 端通过 `http://localhost` 访问，移动端 H5 默认通过 `http://localhost:3001` 访问，并由移动端容器将同源 `/api` 请求代理到后端。`ARK_API_KEY` 未配置时识别服务仍可启动并通过健康检查，但调用大模型识别接口会返回明确的配置错误。特征提取服务首次启动时会下载经过哈希校验的 ResNet50 权重，并保存到 `ai-model-cache` 卷供后续启动复用；因此首次启动需要能够访问 `download.pytorch.org`。
 
 Compose 中 MySQL 的容器端口仍为 `3306`，宿主机默认通过 `127.0.0.1:3307` 访问，避免与本机 MySQL 冲突。需要其他端口时在 `.env` 中设置 `MYSQL_DOCKER_PORT`。
 

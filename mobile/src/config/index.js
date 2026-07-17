@@ -1,7 +1,11 @@
-const config = {
-  baseUrl: process.env.NODE_ENV === 'development' ? '' : 'http://localhost:8080',
-  mobilePrefix: '/api/mobile/herb',
-  timeout: 30000
-}
+const configuredApiBaseUrl = String(
+  import.meta.env.VITE_API_BASE_URL || "",
+).replace(/\/+$/, "");
 
-export default config
+const config = {
+  baseUrl: configuredApiBaseUrl,
+  mobilePrefix: "/api/mobile/herb",
+  timeout: 30000,
+};
+
+export default config;
