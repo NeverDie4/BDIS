@@ -2,6 +2,14 @@
 -- 所有数据均标记为 demo_seed / 非现场实测。
 SET @collector_id := (SELECT id FROM sys_user WHERE username='collector_agent_demo' AND is_deleted=0 LIMIT 1);
 SET @teacher_id := (SELECT id FROM sys_user WHERE username='agent_teacher_demo' AND is_deleted=0 LIMIT 1);
+SET @reviewer_id := COALESCE(
+  (SELECT id FROM sys_user WHERE username='agent_reviewer_demo' AND is_deleted=0 LIMIT 1),
+  @teacher_id
+);
+SET @reviewer_name := COALESCE(
+  (SELECT real_name FROM sys_user WHERE id=@reviewer_id LIMIT 1),
+  '黄连演示审核员'
+);
 SET @species_id := (SELECT id FROM herb_species WHERE herb_no='DEMO_AGENT_HUANGLIAN' AND is_deleted=0 LIMIT 1);
 SET @base_id := (SELECT id FROM herb_base WHERE base_no='DEMO_AGENT_BASE' AND is_deleted=0 LIMIT 1);
 SET @source_task_id := (SELECT id FROM herb_collection_task WHERE task_code='DEMO_AGENT_HL_CONTINUOUS' AND is_deleted=0 LIMIT 1);
@@ -22,10 +30,23 @@ SET @batch_id := (SELECT id FROM herb_batch WHERE batch_code=CONCAT('DEMO_AGENT_
 
 INSERT INTO herb_growth_record
 (batch_id,task_id,species_id,species_name,base_id,base_name,collector_id,collector_name_snapshot,longitude,latitude,growth_stage,plant_height,stem_diameter,soil_ph,temperature,humidity,soil_moisture,light,leaf_color,flowering_status,growth_evaluation,device_type,data_source,review_status,submitted_at,reviewed_at,collected_at,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
-SELECT @batch_id,@followup_task_id,@species_id,'黄连',@base_id,'石柱黄连科研 Agent 演示基地',@collector_id,'科研 Agent 演示采集员',108.2450000,30.1840000,'复测期',17.60,3.40,6.15,23.80,68.00,39.00,14800,'深绿','未开花','复测字段已按 Agent 清单补充；仅描述演示数据事实。','app','demo_seed','approved','2026-07-16 10:35:00','2026-07-16 11:30:00','2026-07-16 09:20:00',1,0,NOW(),NOW(),@collector_id,@teacher_id,0,'DEMO_COORDINATE; not field-measured'
+SELECT @batch_id,@followup_task_id,@species_id,'黄连',@base_id,'石柱黄连科研 Agent 演示基地',@collector_id,'黄连演示采集员',108.2450000,30.1840000,'复测期',17.60,3.40,6.15,23.80,68.00,39.00,14800,'深绿','未开花','复测字段已按 Agent 清单补充；仅描述演示数据事实。','app','demo_seed','approved','2026-07-16 10:35:00','2026-07-16 11:30:00','2026-07-16 09:20:00',1,0,NOW(),NOW(),@collector_id,@reviewer_id,0,'DEMO_COORDINATE; not field-measured'
 WHERE @batch_id IS NOT NULL
-ON DUPLICATE KEY UPDATE plant_height=VALUES(plant_height),soil_ph=VALUES(soil_ph),soil_moisture=VALUES(soil_moisture),review_status='approved',updated_at=NOW(),updated_by=@teacher_id,remark=VALUES(remark);
+ON DUPLICATE KEY UPDATE plant_height=VALUES(plant_height),soil_ph=VALUES(soil_ph),soil_moisture=VALUES(soil_moisture),review_status='approved',submitted_at=VALUES(submitted_at),reviewed_at=VALUES(reviewed_at),updated_at=NOW(),updated_by=@reviewer_id,remark=VALUES(remark);
 SET @record_id := (SELECT id FROM herb_growth_record WHERE batch_id=@batch_id LIMIT 1);
+
+INSERT INTO herb_growth_review_record
+(growth_record_id,reviewer_id,reviewer_name,reviewer_role,review_action,before_status,after_status,review_comment,reviewed_at,created_at,created_by,remark)
+SELECT @record_id,@collector_id,'黄连演示采集员','COLLECTOR','submit','draft','submitted','复测数据与整株、叶片、根茎影像已提交审核。','2026-07-16 10:35:00','2026-07-16 10:35:00',@collector_id,'BDIS_DEFENSE_DEMO:P12:submit'
+WHERE @record_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM herb_growth_review_record WHERE growth_record_id=@record_id AND remark='BDIS_DEFENSE_DEMO:P12:submit'
+);
+INSERT INTO herb_growth_review_record
+(growth_record_id,reviewer_id,reviewer_name,reviewer_role,review_action,before_status,after_status,review_comment,reviewed_at,created_at,created_by,remark)
+SELECT @record_id,@reviewer_id,@reviewer_name,'REVIEWER','approve','submitted','approved','pH 与整株、叶片、根茎图片已补齐，识别状态可用。','2026-07-16 11:30:00','2026-07-16 11:30:00',@reviewer_id,'BDIS_DEFENSE_DEMO:P12:approve'
+WHERE @record_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM herb_growth_review_record WHERE growth_record_id=@record_id AND remark='BDIS_DEFENSE_DEMO:P12:approve'
+);
 
 INSERT INTO sys_file_resource
 (file_no,file_name,original_filename,file_type,file_format,file_size,file_url,storage_path,storage_type,access_level,content_type,uploader_id,uploader_name,uploaded_at,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
@@ -60,8 +81,14 @@ INSERT INTO herb_batch_image (batch_id,image_id,image_role,is_primary,bind_statu
 SELECT @batch_id,@fu_root,'root',0,'bound',3,1,0,NOW(),NOW(),@collector_id,@collector_id,0,'research agent demo seed' WHERE @batch_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM herb_batch_image WHERE batch_id=@batch_id AND image_id=@fu_root AND is_deleted=0);
 
 INSERT INTO herb_identification_result (image_id,final_species_id,final_species_name,final_confidence,result_source,match_result,need_review,review_status,suggestion,identify_time,status,is_deleted,created_at,updated_at,created_by,updated_by,version,remark)
-SELECT image_id,@species_id,'黄连',0.9300,'manual_review','matched',0,'confirmed','复测演示图片已完成识别复核。',NOW(),1,0,NOW(),NOW(),@teacher_id,@teacher_id,0,'research agent demo seed'
+SELECT image_id,@species_id,'黄连',0.9300,'manual_review','matched',0,'confirmed','复测演示图片已完成识别复核。',NOW(),1,0,NOW(),NOW(),@reviewer_id,@reviewer_id,0,'research agent demo seed'
 FROM (SELECT @fu_whole image_id UNION ALL SELECT @fu_leaf UNION ALL SELECT @fu_root) images
 WHERE image_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM herb_identification_result r WHERE r.image_id=images.image_id AND r.is_deleted=0);
+
+UPDATE herb_identification_result
+SET reviewer_id=@reviewer_id, reviewer_name=@reviewer_name,
+    review_comment='复测影像完整，识别状态可用。', review_time='2026-07-16 11:20:00',
+    updated_by=@reviewer_id, updated_at=NOW()
+WHERE image_id IN (@fu_whole,@fu_leaf,@fu_root) AND is_deleted=0;
 
 SELECT @followup_task_id AS follow_up_task_id, @followup_code AS follow_up_task_code, @batch_id AS follow_up_batch_id;

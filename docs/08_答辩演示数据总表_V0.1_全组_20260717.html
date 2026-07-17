@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>BDIS 答辩演示数据总表｜石柱黄连全生命周期数字化研究</title>
+  <style>
+    :root {
+      --paper: #f4f1e8;
+      --surface: #fffdf8;
+      --ink: #17372b;
+      --muted: #607168;
+      --line: #d8cfbf;
+      --green: #236c49;
+      --green-soft: #e7f2eb;
+      --blue: #216b88;
+      --blue-soft: #e6f2f7;
+      --purple: #6654a5;
+      --purple-soft: #efecf9;
+      --orange: #a85e28;
+      --orange-soft: #faede2;
+      --gold: #a57827;
+      --danger: #a7443b;
+      --shadow: 0 18px 48px rgba(55, 45, 28, .09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(53, 125, 80, .13), transparent 28rem),
+        radial-gradient(circle at 96% 14%, rgba(165, 120, 39, .12), transparent 25rem),
+        var(--paper);
+      font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      line-height: 1.62;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    code {
+      padding: 1px 5px;
+      border-radius: 5px;
+      color: #534788;
+      background: #f1eef9;
+      font-family: "JetBrains Mono", "Cascadia Code", monospace;
+      font-size: .92em;
+    }
+
+    .shell { width: min(1880px, calc(100% - 34px)); margin: 0 auto; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid rgba(216, 207, 191, .85);
+      background: rgba(244, 241, 232, .92);
+      backdrop-filter: blur(14px);
+    }
+    .topbar-inner {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark {
+      width: 39px;
+      height: 39px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: #fff;
+      background: linear-gradient(145deg, #174d38, #3b7d57);
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(31, 101, 67, .22);
+    }
+    .brand strong { display: block; font-size: 14px; letter-spacing: .06em; }
+    .brand small { display: block; color: var(--muted); font-size: 11px; }
+    .top-actions { display: flex; gap: 8px; }
+    .button {
+      min-height: 36px;
+      padding: 7px 13px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      color: var(--ink);
+      background: var(--surface);
+    }
+    .button.primary { color: #fff; border-color: var(--green); background: var(--green); }
+
+    .hero {
+      margin: 32px 0 22px;
+      padding: clamp(32px, 5vw, 66px);
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: linear-gradient(120deg, rgba(255,253,248,.98), rgba(247,242,228,.95));
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 900; letter-spacing: .15em; }
+    .hero h1 {
+      max-width: 1150px;
+      margin: 13px 0 12px;
+      font-family: "Noto Serif SC", "Songti SC", serif;
+      font-size: clamp(34px, 4.7vw, 64px);
+      line-height: 1.14;
+      letter-spacing: -.035em;
+    }
+    .hero h1 span { color: var(--green); }
+    .hero p { max-width: 1080px; margin: 0; color: var(--muted); font-size: 17px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 11px;
+      max-width: 1050px;
+      margin-top: 27px;
+    }
+    .stat { padding: 14px 16px; border: 1px solid #dfd5c5; border-radius: 15px; background: rgba(255,253,248,.8); }
+    .stat strong { display: block; color: var(--green); font-size: 25px; line-height: 1; }
+    .stat span { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; }
+
+    .notice-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 16px; margin-bottom: 22px; }
+    .notice {
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,253,248,.93);
+      box-shadow: 0 9px 28px rgba(55,45,28,.055);
+    }
+    .notice h2 { margin: 0 0 8px; font-size: 19px; }
+    .notice p { margin: 0; color: var(--muted); }
+    .notice ul { margin: 10px 0 0; padding-left: 20px; color: #42584d; }
+    .notice.warning { border-color: #d9b472; background: #fff8e9; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 0 0 16px;
+    }
+    .chip, .source-badge, .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .chip.base { color: var(--green); background: var(--green-soft); }
+    .chip.map { color: var(--blue); background: var(--blue-soft); }
+    .chip.main { color: var(--purple); background: var(--purple-soft); }
+    .chip.secondary { color: var(--orange); background: var(--orange-soft); }
+    .source-badge.reuse { color: #276844; background: #e4f1e8; }
+    .source-badge.extend { color: #8a5f16; background: #fff1cf; }
+    .source-badge.new { color: #9c4e28; background: #f9e8dc; }
+    .source-badge.runtime { color: #5d4d99; background: #ece9f8; }
+    .source-badge.asset { color: #9b3e38; background: #fae6e4; }
+    .source-badge.none { color: #596961; background: #edf0ee; }
+    .role-badge { color: #355047; background: #edf2ef; }
+
+    .table-card {
+      margin-bottom: 28px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .table-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px 26px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .table-head h2 { margin: 0; font-size: 27px; }
+    .table-head p { margin: 4px 0 0; color: var(--muted); }
+    .filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .filters input, .filters select {
+      min-height: 38px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: #fff;
+    }
+    .filters input { width: 250px; }
+    .table-wrap { overflow: auto; max-height: 76vh; }
+    table { width: 100%; min-width: 1640px; border-collapse: separate; border-spacing: 0; }
+    th, td { padding: 13px 12px; border-right: 1px solid #e9e1d5; border-bottom: 1px solid #e7dfd2; vertical-align: top; text-align: left; }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      color: #314b40;
+      background: #f7f3ea;
+      font-size: 12px;
+      letter-spacing: .03em;
+    }
+    th:first-child, td:first-child { position: sticky; left: 0; z-index: 3; background: inherit; }
+    th:first-child { z-index: 6; background: #f7f3ea; }
+    tbody tr { background: #fffdf9; }
+    tbody tr:nth-child(even) { background: #fcf9f2; }
+    tbody tr:hover { background: #f5f8f4; }
+    tbody tr[data-section="base"] { --row: var(--green); }
+    tbody tr[data-section="map"] { --row: var(--blue); }
+    tbody tr[data-section="main"] { --row: var(--purple); }
+    tbody tr[data-section="secondary"] { --row: var(--orange); }
+    tbody tr td:first-child { border-left: 5px solid var(--row); }
+    td { color: #344d42; font-size: 13px; }
+    td strong { color: var(--ink); }
+    td small { display: block; margin-top: 5px; color: var(--muted); }
+    .check-cell { width: 54px; text-align: center; }
+    .check-cell input { width: 17px; height: 17px; accent-color: var(--green); }
+    .id-cell { width: 70px; color: var(--gold); font-weight: 900; }
+    .section-cell { width: 120px; }
+    .object-cell { width: 220px; }
+    .key-cell { width: 235px; }
+    .owner-cell { width: 155px; }
+    .value-cell { width: 320px; }
+    .relation-cell { width: 335px; }
+    .verify-cell { width: 310px; }
+    .source-cell { width: 145px; }
+    .hidden-row { display: none; }
+
+    .accuracy-card {
+      margin: 0 0 38px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255,253,248,.94);
+      box-shadow: var(--shadow);
+    }
+    .accuracy-card h2 { margin: 0 0 15px; }
+    .accuracy-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 11px; }
+    .accuracy-item { padding: 15px; border: 1px solid #dfd6c8; border-radius: 14px; background: #fff; }
+    .accuracy-item strong { display: block; margin-bottom: 5px; }
+    .accuracy-item p { margin: 0; color: var(--muted); font-size: 13px; }
+    .footer { padding: 0 0 34px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    @media (max-width: 980px) {
+      .stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .notice-grid, .accuracy-grid { grid-template-columns: 1fr; }
+      .table-head { align-items: stretch; flex-direction: column; }
+      .filters { justify-content: flex-start; }
+      .filters input { width: min(100%, 330px); }
+    }
+    @media print {
+      .topbar, .filters, .top-actions { display: none !important; }
+      body { background: #fff; }
+      .shell { width: 100%; }
+      .hero, .table-card, .notice, .accuracy-card { box-shadow: none; }
+      .table-wrap { overflow: visible; max-height: none; }
+      table { min-width: 0; font-size: 8px; }
+      th, td { padding: 5px; }
+      th, th:first-child, td:first-child { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">本</div>
+        <div><strong>BDIS 答辩演示数据总表</strong><small>V0.1 · 2026-07-17 · 数据规格阶段</small></div>
+      </div>
+      <div class="top-actions">
+        <button class="button" id="clearChecks" type="button">清空核对记录</button>
+        <button class="button primary" type="button" onclick="window.print()">打印 / 导出 PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">DEMO DATA MASTER SHEET</span>
+      <h1>以“黄连”为唯一主角的<br><span>整场答辩演示数据总表</span></h1>
+      <p>本表是后续编写独立演示数据脚本、准备素材、配置 Chrome 账号和排练验收的唯一工作底稿。所有名称、状态、关系和计算值均按当前代码能力核对；此时不把现有预置 SQL 当作最终演示数据。</p>
+      <div class="stats">
+        <div class="stat"><strong id="rowCount">0</strong><span>数据规格行</span></div>
+        <div class="stat"><strong>1</strong><span>唯一核心药材：黄连</span></div>
+        <div class="stat"><strong>3</strong><span>现场 Chrome 账号</span></div>
+        <div class="stat"><strong>4</strong><span>黄连地图点位</span></div>
+        <div class="stat"><strong>2</strong><span>普通业务现场账号</span></div>
+      </div>
+    </section>
+
+    <div class="notice-grid">
+      <section class="notice">
+        <h2>统一主题与账号原则</h2>
+        <p><strong>总主题：</strong>石柱黄连全生命周期数字化研究。整场只保留教师、采集员、审核员三个现场账号；第二部分继续使用其中的教师和审核员，不额外登录学生、研究人员和培训管理员。</p>
+      </section>
+      <section class="notice warning">
+        <h2>演示数据边界</h2>
+        <ul>
+          <li>全部坐标、指标和结论标记为 <code>demo_seed</code>、非现场实测。</li>
+          <li>适生分数是当前前端轻量规则结果，不是农学预测结论。</li>
+          <li>双快照使用两条独立记录，不伪造同一记录同时处于两个状态。</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="legend" aria-label="图例">
+      <span class="chip base">基础主数据</span>
+      <span class="chip map">地图数据</span>
+      <span class="chip main">第一部分主流程</span>
+      <span class="chip secondary">第二部分普通业务</span>
+      <span class="source-badge reuse">现有可复用</span>
+      <span class="source-badge extend">现有需扩展</span>
+      <span class="source-badge new">需要新建</span>
+      <span class="source-badge runtime">现场产生</span>
+      <span class="source-badge asset">待补文件</span>
+    </div>
+
+    <section class="table-card">
+      <div class="table-head">
+        <div><h2>演示数据规格主表</h2><p>“核对”勾选会保存在当前浏览器；可按模块、实现来源或关键词筛选。</p></div>
+        <div class="filters">
+          <input id="keyword" type="search" placeholder="搜索编号、名称、状态、素材……">
+          <select id="sectionFilter" aria-label="模块筛选">
+            <option value="">全部模块</option>
+            <option value="base">基础主数据</option>
+            <option value="map">地图数据</option>
+            <option value="main">第一部分主流程</option>
+            <option value="secondary">第二部分普通业务</option>
+          </select>
+          <select id="sourceFilter" aria-label="实现来源筛选">
+            <option value="">全部实现来源</option>
+            <option value="reuse">现有可复用</option>
+            <option value="extend">现有需扩展</option>
+            <option value="new">需要新建</option>
+            <option value="runtime">现场产生</option>
+            <option value="asset">待补文件</option>
+            <option value="none">无需造数</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="check-cell">核对</th>
+              <th class="id-cell">编号</th>
+              <th class="section-cell">分段 / 模块</th>
+              <th class="object-cell">数据对象与展示名称</th>
+              <th class="key-cell">业务标识 / 精确键值</th>
+              <th class="owner-cell">角色与归属</th>
+              <th class="value-cell">精确状态与关键数据</th>
+              <th class="relation-cell">关系、图片或材料</th>
+              <th class="verify-cell">现场用途与验收标准</th>
+              <th class="source-cell">实现来源</th>
+            </tr>
+          </thead>
+          <tbody id="dataRows">
+            <tr data-section="base" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="B01"></td><td class="id-cell">B01</td><td><span class="chip base">组织</span></td>
+              <td><strong>黄连数字化研究演示组</strong><small>统一演示部门</small></td>
+              <td><code>DEMO_HL_DEPT</code><small><code>sys_department.department_no</code></small></td>
+              <td><span class="role-badge">全部演示用户</span></td>
+              <td>状态启用；教师、采集员、审核员、学生、研究人员、培训管理员均归属此部门。</td>
+              <td>审核员角色是部门数据范围；采集员和学生必须与审核员同部门，否则看不到目标生长记录、申报和业绩。</td>
+              <td>三个现场账号均能看到各自目标数据；审核员不能审核自己的申报或业绩。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="base" data-source="extend">
+              <td class="check-cell"><input type="checkbox" data-check="B02"></td><td class="id-cell">B02</td><td><span class="chip base">账号</span></td>
+              <td><strong>科研 Agent 演示教师</strong><small>Chrome 教师个人资料</small></td>
+              <td><code>agent_teacher_demo</code><small>用户号 <code>DEMO_AGENT_TEACHER</code>；角色 <code>TEACHER</code></small></td>
+              <td><span class="role-badge">教师 · 现场登录</span></td>
+              <td>沿用现有账号；补齐 <code>department_id=B01</code>。承担地图决策、AI 小助手、Agent、课程培训、评价任务和指标展示。</td>
+              <td>复用 <code>scripts/dev-research-agent-demo.sql</code> 中账号，不另建第二个教师。</td>
+              <td>第一部分和第二部分始终使用同一个教师会话；右上角姓名正确。</td>
+              <td><span class="source-badge extend">现有需扩展</span></td>
+            </tr>
+            <tr data-section="base" data-source="extend">
+              <td class="check-cell"><input type="checkbox" data-check="B03"></td><td class="id-cell">B03</td><td><span class="chip base">账号</span></td>
+              <td><strong>科研 Agent 演示采集员</strong><small>Chrome 采集员个人资料</small></td>
+              <td><code>collector_agent_demo</code><small>用户号 <code>DEMO_AGENT_COLLECTOR</code>；角色 <code>COLLECTOR</code></small></td>
+              <td><span class="role-badge">采集员 · 现场登录</span></td>
+              <td>沿用现有账号；补齐 <code>department_id=B01</code>。原任务和 Agent 补采任务的采集人均为此账号。</td>
+              <td>复用现有 Agent 脚本账号和六张黄连图片的上传人关系。</td>
+              <td>“我的采集任务”可见原任务与新创建的重点复测任务。</td>
+              <td><span class="source-badge extend">现有需扩展</span></td>
+            </tr>
+            <tr data-section="base" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="B04"></td><td class="id-cell">B04</td><td><span class="chip base">账号</span></td>
+              <td><strong>科研 Agent 演示审核员</strong><small>Chrome 审核员个人资料</small></td>
+              <td><code>agent_reviewer_demo</code><small>用户号 <code>DEMO_AGENT_REVIEWER</code>；角色 <code>REVIEWER</code></small></td>
+              <td><span class="role-badge">审核员 · 现场登录</span></td>
+              <td>状态启用；归属 B01。负责原采集记录、补采记录、申报和业绩审核展示。</td>
+              <td>与 B03、B05 同部门；仅展示预置审核痕迹或打开审核弹窗，不现场提交普通业务审核。</td>
+              <td>审核工作台可见指定记录，且审核人不是记录提交人。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="base" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="B05"></td><td class="id-cell">B05</td><td><span class="chip base">账号</span></td>
+              <td><strong>黄连实验演示学生</strong><small>只作为预置记录责任人</small></td>
+              <td><code>student_hl_demo</code><small>用户号 <code>DEMO_HL_STUDENT</code>；角色 <code>STUDENT</code></small></td>
+              <td><span class="role-badge">学生 · 不登录</span></td>
+              <td>实验记录提交人、培训参与者、申报人、业绩负责人；归属 B01。</td>
+              <td>课程记录、培训记录、申报和业绩均引用同一学生，避免故事中出现多个无关姓名。</td>
+              <td>课程和培训页面能显示学生姓名；申报详情当前主要显示用户 ID，讲解时以本表映射为准。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="base" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="B06"></td><td class="id-cell">B06</td><td><span class="chip base">账号</span></td>
+              <td><strong>黄连课题演示研究员</strong><small>课题负责人</small></td>
+              <td><code>researcher_hl_demo</code><small>用户号 <code>DEMO_HL_RESEARCHER</code>；角色 <code>RESEARCHER</code></small></td>
+              <td><span class="role-badge">研究人员 · 不登录</span></td>
+              <td>科研课题负责人、培训参与者、业绩参与人；归属 B01。</td>
+              <td>在课题成员列表和业绩参与人列表中体现角色。</td>
+              <td>教师打开课题详情时能看到真实姓名和 <code>leader</code> 成员关系。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="base" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="B07"></td><td class="id-cell">B07</td><td><span class="chip base">账号</span></td>
+              <td><strong>黄连培训演示管理员</strong><small>培训计划负责人字段</small></td>
+              <td><code>trainer_hl_demo</code><small>用户号 <code>DEMO_HL_TRAINER</code>；角色 <code>TRAINER</code></small></td>
+              <td><span class="role-badge">培训管理员 · 不登录</span></td>
+              <td>作为培训计划 <code>trainer_id</code>；归属 B01。</td>
+              <td>角色职责仍以口头说明为主，不把单个负责人字段夸大为完整个人工作台。</td>
+              <td>计划详情能解析出培训管理员姓名；现场不切换此账号。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="base" data-source="reuse">
+              <td class="check-cell"><input type="checkbox" data-check="B08"></td><td class="id-cell">B08</td><td><span class="chip base">药材</span></td>
+              <td><strong>黄连</strong><small>全场唯一核心药材</small></td>
+              <td><code>DEMO_AGENT_HUANGLIAN</code><small><code>herb_species.herb_no</code></small></td>
+              <td><span class="role-badge">教师维护</span></td>
+              <td>药用部位“根茎”；产区“重庆石柱”；状态启用；描述明确“科研演示样本”。</td>
+              <td>地图、采集任务、课程、课题、培训和评价对象都引用这一条药材记录。</td>
+              <td>任何演示列表搜索“黄连”都只命中本次主题记录或能明确区分旧预置记录。</td>
+              <td><span class="source-badge reuse">现有可复用</span></td>
+            </tr>
+            <tr data-section="base" data-source="reuse">
+              <td class="check-cell"><input type="checkbox" data-check="B09"></td><td class="id-cell">B09</td><td><span class="chip base">基地</span></td>
+              <td><strong>石柱黄连科研 Agent 演示基地</strong></td>
+              <td><code>DEMO_AGENT_BASE</code><small><code>herb_base.base_no</code></small></td>
+              <td><span class="role-badge">教师 / 采集员</span></td>
+              <td>类型 <code>planting</code>；地址“重庆市石柱县（演示地址）”；状态启用。</td>
+              <td>主地图点、原任务、补采任务和培训计划均引用此基地。</td>
+              <td>页面显著位置必须保留“演示基地”字样。</td>
+              <td><span class="source-badge reuse">现有可复用</span></td>
+            </tr>
+
+            <tr data-section="map" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="M01"></td><td class="id-cell">M01</td><td><span class="chip map">地图点位</span></td>
+              <td><strong>石柱黄连科研演示基地</strong><small>主采集点</small></td>
+              <td><code>DEMO_HL_POINT_MAIN</code><small>108.245000，30.184000；海拔 1480 m</small></td>
+              <td><span class="role-badge">B03 采集</span></td>
+              <td>人工种植点；最新阶段“旺盛生长期”；18 km 半径内相邻点 2 个；预计适生分 <strong>90（高）</strong>。</td>
+              <td>绑定 B09、B08；原任务第三阶段记录补写 <code>distribution_id=M01</code>。封面使用黄连整株图的独立演示副本。</td>
+              <td>地图适生模式显示绿色高适生点；与原采集任务坐标保持一致。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="map" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="M02"></td><td class="id-cell">M02</td><td><span class="chip map">地图点位</span></td>
+              <td><strong>黄连林下观测点 A（演示）</strong></td>
+              <td><code>DEMO_HL_POINT_A</code><small>108.286000，30.205000；海拔 1520 m</small></td>
+              <td><span class="role-badge">B03 采集</span></td>
+              <td>人工种植点；最新阶段“成熟期”；相邻点 2 个；预计适生分 <strong>99（高）</strong>。</td>
+              <td>新增一条绑定该点的已审核生长记录；封面使用黄连整株图独立副本。</td>
+              <td>作为路线规划第二站，并用成熟期拉开阶段差异。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="map" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="M03"></td><td class="id-cell">M03</td><td><span class="chip map">地图点位</span></td>
+              <td><strong>黄连坡地观测点 B（演示）</strong></td>
+              <td><code>DEMO_HL_POINT_B</code><small>108.331000，30.160000；海拔 1560 m</small></td>
+              <td><span class="role-badge">B03 采集</span></td>
+              <td>人工种植点；最新阶段“开花期”；相邻点 2 个；预计适生分 <strong>93（高）</strong>。</td>
+              <td>新增一条绑定该点的已审核生长记录；封面使用黄连整株图独立副本。</td>
+              <td>作为路线规划第三站；与 M01、M02 构成 18 km 内高分聚类。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="map" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="M04"></td><td class="id-cell">M04</td><td><span class="chip map">地图点位</span></td>
+              <td><strong>黄连低海拔对照点 C（演示）</strong></td>
+              <td><code>DEMO_HL_POINT_C</code><small>108.020000，30.420000；海拔 650 m</small></td>
+              <td><span class="role-badge">B03 采集</span></td>
+              <td>对照点；最新阶段“幼苗期”；18 km 内无同种相邻点；预计适生分 <strong>17（低）</strong>。</td>
+              <td>新增一条绑定该点的已审核生长记录；描述明确“低海拔演示对照，不构成农学结论”。</td>
+              <td>显示橙色低适生点，使适生分析有清楚的颜色和空间对比；不加入现场路线。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="map" data-source="runtime">
+              <td class="check-cell"><input type="checkbox" data-check="M05"></td><td class="id-cell">M05</td><td><span class="chip map">路线</span></td>
+              <td><strong>M01 → M02 → M03 路线规划</strong></td>
+              <td>页面运行态，无数据库记录<small>点间直线距离约 4.6 km、6.6 km、8.7 km</small></td>
+              <td><span class="role-badge">教师 / 采集员</span></td>
+              <td>现场选择三个高分点后请求 OSRM 道路路线；不选择 M04。</td>
+              <td>依赖 <code>router.project-osrm.org</code> 和现场网络。实时导航另依赖浏览器定位，不作为必演动作。</td>
+              <td>稳定演示“路线规划与预览、距离、预计时间、道路指引”；不承诺从答辩电脑当前位置导航到重庆。</td>
+              <td><span class="source-badge runtime">现场产生</span></td>
+            </tr>
+
+            <tr data-section="main" data-source="reuse">
+              <td class="check-cell"><input type="checkbox" data-check="P01"></td><td class="id-cell">P01</td><td><span class="chip main">原任务</span></td>
+              <td><strong>黄连三阶段连续观测科研演示任务</strong></td>
+              <td><code>DEMO_AGENT_HL_CONTINUOUS</code></td>
+              <td><span class="role-badge">B02 创建 / B03 采集</span></td>
+              <td><code>task_status=completed</code>；计划期 2026-06-01 至 2026-07-10；三阶段。</td>
+              <td>绑定 B08、B09；第三阶段故意保留证据缺口。描述和备注均注明非现场实测。</td>
+              <td>采集管理、科研 Agent 和数字生命档案都以这一任务为主对象。</td>
+              <td><span class="source-badge reuse">现有可复用</span></td>
+            </tr>
+            <tr data-section="main" data-source="extend">
+              <td class="check-cell"><input type="checkbox" data-check="P02"></td><td class="id-cell">P02</td><td><span class="chip main">阶段一</span></td>
+              <td><strong>黄连返青阶段观测</strong></td>
+              <td><code>DEMO_AGENT_HL_STAGE_01</code><small>2026-06-01 09:20</small></td>
+              <td><span class="role-badge">B03 / B04</span></td>
+              <td>株高 8.40 cm；茎粗 2.10；pH 6.20；温度 18.50℃；湿度 72%；土壤湿度 46%；光照 12500；<code>approved</code>。</td>
+              <td>图片：<code>huanglian_whole_growth_fresh_01.png</code>；整株；识别黄连 0.94、<code>matched/confirmed</code>。补写 <code>distribution_id=M01</code>。</td>
+              <td>公开档案第一阶段；可见指标、图片、时间和审核状态。</td>
+              <td><span class="source-badge extend">现有需扩展</span></td>
+            </tr>
+            <tr data-section="main" data-source="extend">
+              <td class="check-cell"><input type="checkbox" data-check="P03"></td><td class="id-cell">P03</td><td><span class="chip main">阶段二</span></td>
+              <td><strong>黄连展叶阶段观测</strong></td>
+              <td><code>DEMO_AGENT_HL_STAGE_02</code><small>2026-06-18 09:20</small></td>
+              <td><span class="role-badge">B03 / B04</span></td>
+              <td>株高 13.20 cm；茎粗 2.80；pH 6.10；温度 22.30℃；湿度 66%；土壤湿度 32%；光照 14200；<code>approved</code>。</td>
+              <td>图片：<code>huanglian_leaf_growth_fresh_01.png</code>；叶片；识别黄连 0.91、<code>matched/confirmed</code>。补写 <code>distribution_id=M01</code>。</td>
+              <td>公开档案第二阶段；与阶段一形成株高上升、土壤湿度下降趋势。</td>
+              <td><span class="source-badge extend">现有需扩展</span></td>
+            </tr>
+            <tr data-section="main" data-source="extend">
+              <td class="check-cell"><input type="checkbox" data-check="P04"></td><td class="id-cell">P04</td><td><span class="chip main">阶段三</span></td>
+              <td><strong>黄连旺盛生长期观测</strong></td>
+              <td><code>DEMO_AGENT_HL_STAGE_03</code><small>2026-07-05 09:20</small></td>
+              <td><span class="role-badge">B03 / B04</span></td>
+              <td>株高 15.00 cm；茎粗 3.10；<strong>pH 缺失</strong>；温度 24.60℃；湿度 63%；土壤湿度 25%；光照 15000；生长记录 <code>approved</code>。</td>
+              <td>图片：<code>huanglian_whole_growth_fresh_02.jpeg</code>；整株；识别黄连仅 0.62、<code>ambiguous/pending</code>；缺根茎图。补写 <code>distribution_id=M01</code>。</td>
+              <td>业务审核通过但科研证据仍不完整：缺 pH、缺根茎图、识别置信度低，正好触发 Agent。</td>
+              <td><span class="source-badge extend">现有需扩展</span></td>
+            </tr>
+            <tr data-section="main" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="P05"></td><td class="id-cell">P05</td><td><span class="chip main">审核痕迹</span></td>
+              <td><strong>三阶段提交与审核记录</strong></td>
+              <td><code>herb_growth_review_record</code><small>每阶段 2 条：submit、approve</small></td>
+              <td><span class="role-badge">B03 提交 / B04 审核</span></td>
+              <td>状态链 <code>draft → submitted → approved</code>；审核时间晚于提交时间。阶段三意见说明“业务记录可用，识别不确定性由科研 Agent 继续分析”。</td>
+              <td>现有 Agent 脚本只把记录直接设为 <code>approved</code>，尚未写入独立审核历史，必须补齐。</td>
+              <td>审核员详情中必须能看到本人姓名、动作、前后状态、意见和时间。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="main" data-source="reuse">
+              <td class="check-cell"><input type="checkbox" data-check="P06"></td><td class="id-cell">P06</td><td><span class="chip main">AI 识别</span></td>
+              <td><strong>黄连三阶段识别结果组</strong></td>
+              <td><code>DEMO_AGENT_IMG_WHOLE_01</code><br><code>DEMO_AGENT_IMG_LEAF_02</code><br><code>DEMO_AGENT_IMG_WHOLE_03</code></td>
+              <td><span class="role-badge">B03 上传</span></td>
+              <td>置信度分别 0.94、0.91、0.62；前两条已确认，第三条需要复核。</td>
+              <td>源图片位于 <code>backend/import/herb_atlas/huanglian_coptis_chinensis</code>；由恢复脚本复制到 <code>backend/storage/demo-agent</code>。</td>
+              <td>现场直接打开稳定结果，不上传、不等待识别服务；突出第三阶段不确定性。</td>
+              <td><span class="source-badge reuse">现有可复用</span></td>
+            </tr>
+            <tr data-section="main" data-source="none">
+              <td class="check-cell"><input type="checkbox" data-check="P07"></td><td class="id-cell">P07</td><td><span class="chip main">AI 小助手</span></td>
+              <td><strong>流程解释问答</strong></td>
+              <td>固定问题：<br>“采集记录经过审核后，如何形成任务级数字生命档案？”</td>
+              <td><span class="role-badge">B02 提问</span></td>
+              <td>不依赖新增业务记录；依赖 AI 服务可用和知识库配置。</td>
+              <td>准备一条备用讲解口径；若模型不可用，展示已打开界面并口头说明，不伪造实时回答。</td>
+              <td>回答应区分记录审核、任务级档案、证据链校验和公开确认。</td>
+              <td><span class="source-badge none">无需造数</span></td>
+            </tr>
+            <tr data-section="main" data-source="runtime">
+              <td class="check-cell"><input type="checkbox" data-check="P08"></td><td class="id-cell">P08</td><td><span class="chip main">科研 Agent</span></td>
+              <td><strong>黄连任务数字孪生科研 Agent</strong></td>
+              <td>目标 <code>COLLECTION_TASK=P01</code><small><code>target_type=COLLECTION_TASK</code>；<code>goal_type=DIGITAL_TWIN_RESEARCH</code></small></td>
+              <td><span class="role-badge">B02 创建与管理</span></td>
+              <td>现场创建并开始；状态依次进入 <code>CREATED → PLANNING/RUNNING → WAITING_CONFIRMATION</code>。</td>
+              <td>应输出已确认事实、趋势、不确定性和证据缺口；具体任务由 Agent 持久化，不与 AI 小助手混为一谈。</td>
+              <td>能稳定发现 P04 的 pH 缺失、根茎图缺失和低置信度，并生成结构化复测方案。</td>
+              <td><span class="source-badge runtime">现场产生</span></td>
+            </tr>
+            <tr data-section="main" data-source="runtime">
+              <td class="check-cell"><input type="checkbox" data-check="P09"></td><td class="id-cell">P09</td><td><span class="chip main">重点复测任务</span></td>
+              <td><strong>黄连三阶段连续观测科研演示任务重点复测</strong></td>
+              <td><code>AGENT-FU-{actionId}</code><small>运行时生成，不硬编码具体 ID</small></td>
+              <td><span class="role-badge">B02 确认 / B03 执行</span></td>
+              <td>教师确认后由现有采集任务 Service 创建并发布；Agent 转为 <code>WAITING_FIELD_DATA</code>。</td>
+              <td>持久化必填指标、必拍图片、完成条件和 <code>FOLLOW_UP_COLLECTION_TASK</code> 业务链接。</td>
+              <td>任务必须出现在采集员“我的采集任务”中；不能预先伪造固定任务 ID。</td>
+              <td><span class="source-badge runtime">现场产生</span></td>
+            </tr>
+            <tr data-section="main" data-source="extend">
+              <td class="check-cell"><input type="checkbox" data-check="P10"></td><td class="id-cell">P10</td><td><span class="chip main">补采记录</span></td>
+              <td><strong>黄连科研 Agent 复测观测</strong></td>
+              <td><code>DEMO_AGENT_FOLLOWUP_{followUpTaskId}</code><small>2026-07-16 09:20</small></td>
+              <td><span class="role-badge">B03 采集</span></td>
+              <td>阶段“复测期”；株高 17.60 cm；茎粗 3.40；pH 6.15；温度 23.80℃；湿度 68%；土壤湿度 39%；光照 14800。</td>
+              <td>沿用 <code>scripts/dev-research-agent-followup.sql</code>，但只能在 P09 真实创建后执行；绑定该运行时任务。</td>
+              <td>补齐缺失 pH，并且采集时间晚于原分析快照；不得预先写死复测任务 ID。</td>
+              <td><span class="source-badge extend">现有需扩展</span></td>
+            </tr>
+            <tr data-section="main" data-source="reuse">
+              <td class="check-cell"><input type="checkbox" data-check="P11"></td><td class="id-cell">P11</td><td><span class="chip main">补采图片</span></td>
+              <td><strong>复测整株、叶片、根茎图片</strong></td>
+              <td><code>DEMO_AGENT_IMG_FU_WHOLE</code><br><code>DEMO_AGENT_IMG_FU_LEAF</code><br><code>DEMO_AGENT_IMG_FU_ROOT</code></td>
+              <td><span class="role-badge">B03 上传</span></td>
+              <td>图片类型 <code>whole_plant</code>、<code>leaf</code>、<code>root</code>；识别结果均为黄连 0.93、<code>matched/confirmed</code>。</td>
+              <td>源文件分别为 <code>whole_growth_fresh_03.jpeg</code>、<code>leaf_growth_fresh_02.jpeg</code>、<code>rhizome_dried_01.png</code>。</td>
+              <td>Agent 等待条件应显示三类图片已满足且识别完成。</td>
+              <td><span class="source-badge reuse">现有可复用</span></td>
+            </tr>
+            <tr data-section="main" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="P12"></td><td class="id-cell">P12</td><td><span class="chip main">补采审核</span></td>
+              <td><strong>复测提交与审核记录</strong></td>
+              <td><code>herb_growth_review_record</code><small>P10 的 submit、approve</small></td>
+              <td><span class="role-badge">B03 / B04</span></td>
+              <td><code>draft → submitted → approved</code>；审核意见“pH 与整株、叶片、根茎图片已补齐，识别状态可用”。</td>
+              <td>现有 follow-up 脚本直接将记录设为 <code>approved</code> 且更新人为教师，需要改为审核员痕迹。</td>
+              <td>审核员详情可见稳定已通过快照，Agent 等待条件能检测到已提交和已识别。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="main" data-source="runtime">
+              <td class="check-cell"><input type="checkbox" data-check="P13"></td><td class="id-cell">P13</td><td><span class="chip main">重新分析</span></td>
+              <td><strong>Agent 复测前后对比</strong></td>
+              <td><code>assistant_agent_analysis_round</code><small>第 1 轮与重新分析轮</small></td>
+              <td><span class="role-badge">系统 / B02 查看</span></td>
+              <td>等待条件满足后进入 <code>REANALYZING</code>，生成完整度前后对比、已解决发现和剩余限制。</td>
+              <td>具体分数由当前 Agent 规则实时计算，不在数据总表中伪造固定百分比。</td>
+              <td>页面必须能看到“补采前 / 补采后”、已解决项和仍然存在的不确定性。</td>
+              <td><span class="source-badge runtime">现场产生</span></td>
+            </tr>
+            <tr data-section="main" data-source="runtime">
+              <td class="check-cell"><input type="checkbox" data-check="P14"></td><td class="id-cell">P14</td><td><span class="chip main">可信档案</span></td>
+              <td><strong>P01 内部任务级数字生命档案</strong></td>
+              <td>任务级档案，目标仍为 P01<small>不是单条生长记录二维码</small></td>
+              <td><span class="role-badge">系统生成 / B02 确认</span></td>
+              <td>阶段解说、档案摘要、SHA-256 证据链、根哈希和完整性校验成功；此阶段尚未公开。</td>
+              <td>公开内容只来自 P01 三个已审核阶段；P10 只参与 Agent 重新分析，不并入原任务公开阶段。</td>
+              <td>点击“准备可信档案”后能展示生成步骤、校验结果和内部档案状态。</td>
+              <td><span class="source-badge runtime">现场产生</span></td>
+            </tr>
+            <tr data-section="main" data-source="runtime">
+              <td class="check-cell"><input type="checkbox" data-check="P15"></td><td class="id-cell">P15</td><td><span class="chip main">公开页 / 二维码</span></td>
+              <td><strong>P01 公开数字生命档案</strong></td>
+              <td><code>/trace/digital-life/{traceCode}</code><small>任务级二维码由系统生成</small></td>
+              <td><span class="role-badge">B02 二次确认</span></td>
+              <td>确认 <code>ENABLE_PUBLIC_TRACE</code> 后公开；免登录页展示三阶段、趋势、地图、图片、解说和完整性校验。</td>
+              <td>Chrome 对二维码图片右键 → “使用 Google Lens 搜索图片” → 打开识别出的公开链接。</td>
+              <td>公开基础地址必须能被当前 Chrome 访问；二维码目标不可为只在错误端口可见的地址。</td>
+              <td><span class="source-badge runtime">现场产生</span></td>
+            </tr>
+
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S01"></td><td class="id-cell">S01</td><td><span class="chip secondary">实验课程</span></td>
+              <td><strong>黄连生长观测与数字化鉴别实验</strong></td>
+              <td><code>DEMO-HL-COURSE-01</code><small><code>course_type=experiment</code></small></td>
+              <td><span class="role-badge">B02 教师</span></td>
+              <td><code>publish_status=published</code>；32 学时；2 学分；标签“黄连、野外采集、图像识别、数字档案”。</td>
+              <td>关联 B08 黄连和 S05 课题；教师为课程负责人。</td>
+              <td>“新增课程”只打开弹窗；再打开本课程查看基本信息、步骤、资源、视频、药材和课题关系。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S02"></td><td class="id-cell">S02</td><td><span class="chip secondary">实验步骤</span></td>
+              <td><strong>课程三步实验结构</strong></td>
+              <td><code>01</code> 点位与样本准备<br><code>02</code> 形态观察与影像采集<br><code>03</code> AI 识别与档案核验</td>
+              <td><span class="role-badge">B02 教师</span></td>
+              <td>排序 1–3；每步都有步骤说明和预期结果。</td>
+              <td>步骤内容引用地图选点、黄连整株/叶片/根茎观察和数字档案核验，但不声明课程自动创建采集任务。</td>
+              <td>课程详情的“实验步骤”页签至少稳定显示三条非空记录。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S03"></td><td class="id-cell">S03</td><td><span class="chip secondary">课程资源</span></td>
+              <td><strong>黄连观测记录表与形态识别演示视频</strong></td>
+              <td><code>黄连生长观测记录表.pdf</code><br><code>黄连形态识别演示.mp4</code></td>
+              <td><span class="role-badge">B02 上传</span></td>
+              <td>一份普通课程资源、一份 <code>resource_type=video</code> 的本地短视频；均绑定 S01。</td>
+              <td>当前仓库没有可用课程视频，这两个文件必须后续单独生成；不能把 PNG 图片伪装成视频。</td>
+              <td>课程资源可打开，视频能在浏览器内播放；现场只展示，不等待外部视频网站。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S04"></td><td class="id-cell">S04</td><td><span class="chip secondary">学生实验记录</span></td>
+              <td><strong>黄连三阶段形态观察实验报告</strong></td>
+              <td><code>DEMO-HL-EXP-01</code><small>关联 S01；记录人 B05</small></td>
+              <td><span class="role-badge">B05 提交 / B02 评分</span></td>
+              <td><code>archive_status=submitted</code>；成绩 92；教师评语“记录完整，能够结合影像说明阶段差异”。</td>
+              <td>附件 <code>黄连三阶段观察实验报告.pdf</code> 需后续生成。课程详情稳定展示标题、提交人、时间、状态、成绩；批阅弹窗只打开不保存。</td>
+              <td>不讲“批阅弹窗内可预览完整正文和附件”；当前页面并不稳定提供这一展示。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S05"></td><td class="id-cell">S05</td><td><span class="chip secondary">科研课题</span></td>
+              <td><strong>石柱黄连全生命周期数字化研究</strong></td>
+              <td><code>DEMO-HL-RESEARCH-01</code><small><code>project_type=research</code></small></td>
+              <td><span class="role-badge">B06 负责人</span></td>
+              <td><code>project_status=ongoing</code>；关联 B08；周期 2026-03-01 至 2026-12-31。</td>
+              <td>关联 S01；教师 B02 必须同时是有效成员，才能按当前行级权限只读访问该课题。</td>
+              <td>教师只读打开课题，查看基本信息、黄连、成员和过程材料；不新增、不编辑、不流转状态。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S06"></td><td class="id-cell">S06</td><td><span class="chip secondary">课题成员</span></td>
+              <td><strong>课题三人协作组</strong></td>
+              <td>B06 <code>leader/active</code><br>B02 <code>assistant/active</code><br>B05 <code>student/active</code></td>
+              <td><span class="role-badge">研究人员 / 教师 / 学生</span></td>
+              <td>负责人关系唯一；三人加入时间早于课题过程材料时间。</td>
+              <td>教师的 active 成员关系不是装饰字段，而是当前代码允许其访问课题详情的必要条件。</td>
+              <td>课题详情成员列表能显示三人姓名、角色和有效状态。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S07"></td><td class="id-cell">S07</td><td><span class="chip secondary">课题材料</span></td>
+              <td><strong>黄连阶段影像对比与研究过程摘要</strong></td>
+              <td><code>黄连阶段影像对比.png</code><br><code>黄连数字化研究过程摘要.pdf</code></td>
+              <td><span class="role-badge">B06 上传</span></td>
+              <td>两份过程材料，绑定 S05；均为私有文件并通过业务绑定授权查看。</td>
+              <td>PNG 可由 import 中黄连整株、叶片、根茎图片排版生成；PDF 后续生成。</td>
+              <td>课题详情“过程资料”至少显示两条可辨认文件名。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S08"></td><td class="id-cell">S08</td><td><span class="chip secondary">培训计划</span></td>
+              <td><strong>黄连规范化采集与影像记录培训</strong></td>
+              <td><code>DEMO-HL-TRAIN-01</code><small><code>plan_type=practice</code></small></td>
+              <td><span class="role-badge">B02 owner / B07 trainer</span></td>
+              <td><code>publish_status=published</code>；地点“石柱黄连科研 Agent 演示基地”；周期 2026-06-20 至 2026-06-21。</td>
+              <td>关联 S01 课程、S05 课题、B09 基地、B08 药材。</td>
+              <td>计划详情能一次展示四类关联项目和培训管理员姓名。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S09"></td><td class="id-cell">S09</td><td><span class="chip secondary">培训条目</span></td>
+              <td><strong>课程、课题、基地、药材四项资源</strong></td>
+              <td><code>item_type=course/project/base/species</code></td>
+              <td><span class="role-badge">B07 维护</span></td>
+              <td>四条 <code>edu_training_plan_item</code>；排序 1–4；名称直接使用对应业务对象名称。</td>
+              <td>分别引用 S01、S05、B09、B08，不把这些关系说成自动生成。</td>
+              <td>计划详情“关联资源”统计为 4，并显示四个可读标签。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S10"></td><td class="id-cell">S10</td><td><span class="chip secondary">培训参与</span></td>
+              <td><strong>三条培训参与记录</strong></td>
+              <td>B05：完成 100%、92 分<br>B06：完成 100%、88 分<br>B02：学习中 65%</td>
+              <td><span class="role-badge">学生 / 研究人员 / 教师</span></td>
+              <td>前两条 <code>training_status=completed</code>、<code>attendance_status=present</code>；教师记录 <code>learning</code>。</td>
+              <td>记录时间位于培训计划周期内；完成时间只在已完成记录上填写。</td>
+              <td>统计显示参与 3、完成 2、学习中 1，避免全零或全满的单调结果。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S11"></td><td class="id-cell">S11</td><td><span class="chip secondary">培训反馈</span></td>
+              <td><strong>两条培训反馈</strong></td>
+              <td>B05：5 星<br>B06：4 星</td>
+              <td><span class="role-badge">学生 / 研究人员</span></td>
+              <td>反馈数 2；平均评分 4.5；分别绑定 S10 中对应培训记录。</td>
+              <td>反馈内容围绕拍摄规范、指标记录和二维码档案，不使用空泛占位文本。</td>
+              <td>培训统计显示反馈数量 2、平均评分 4.5。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S12"></td><td class="id-cell">S12</td><td><span class="chip secondary">指标体系</span></td>
+              <td><strong>黄连数字化研究四项评价指标</strong></td>
+              <td><code>DEMO-HL-IND-01..04</code></td>
+              <td><span class="role-badge">B02 教师</span></td>
+              <td>数据完整性 30%、采集规范性 25%、图像与识别证据质量 25%、档案可追溯性 20%；每项满分 100；总权重严格为 100。</td>
+              <td>指标类型依次使用 <code>quality</code>、<code>process</code>、<code>quality</code>、<code>result</code>；全部启用。</td>
+              <td>指标列表能展示名称、类型、权重、满分和启用状态；不现场编辑。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S13"></td><td class="id-cell">S13</td><td><span class="chip secondary">评价任务</span></td>
+              <td><strong>石柱黄连数字化研究质量评价</strong></td>
+              <td><code>DEMO-HL-EVAL-01</code><small><code>target_type=herb_species</code>，<code>target_id=B08</code></small></td>
+              <td><span class="role-badge">B02 教师</span></td>
+              <td><code>task_type=comprehensive</code>；<code>task_status=confirmed</code>；评价对象类型使用当前前端明确支持的“药材品种”。</td>
+              <td>不使用前端下拉中不存在的 <code>research_project</code> 作为评价对象。</td>
+              <td>详情显示“药材品种 #ID”、四项评分、总分、等级和确认人。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S14"></td><td class="id-cell">S14</td><td><span class="chip secondary">评价结果</span></td>
+              <td><strong>四项评分与优秀结果</strong></td>
+              <td>94、90、88、92<small>按 S12 权重计算</small></td>
+              <td><span class="role-badge">B02 评分并确认</span></td>
+              <td>加权总分 <strong>91.10</strong>；<code>result_level=excellent</code>；任务状态 <code>confirmed</code>。</td>
+              <td>计算：94×30% + 90×25% + 88×25% + 92×20% = 91.10；符合代码中 ≥90 为 excellent 的规则。</td>
+              <td>页面显示总分 91.10 和“优秀”；不现场评分或再次确认。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S15"></td><td class="id-cell">S15</td><td><span class="chip secondary">待审核申报</span></td>
+              <td><strong>石柱黄连数字化采集实践成果申报</strong></td>
+              <td><code>DEMO-HL-DECL-PENDING</code><small><code>application_type=research_project</code></small></td>
+              <td><span class="role-badge">B05 申报 / B04 待审核</span></td>
+              <td><code>review_status=submitted</code>；有一条 <code>submit</code> 审核记录；3 份申报附件；无审核人、无档案袋。</td>
+              <td>附件：实验报告、阶段影像对比、研究过程摘要。待审核状态按当前业务规则不能预先生成档案项。</td>
+              <td>审核员查看基本信息、材料数量和提交记录，打开通过/退回弹窗但不提交。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S16"></td><td class="id-cell">S16</td><td><span class="chip secondary">已通过申报</span></td>
+              <td><strong>石柱黄连全生命周期数字化研究成果申报</strong></td>
+              <td><code>DEMO-HL-DECL-APPROVED</code><small>申报状态 <code>approved</code>；档案袋状态 <code>generated</code></small></td>
+              <td><span class="role-badge">B05 / B04</span></td>
+              <td>审核记录两条：<code>submit</code>、<code>approve</code>；审核意见明确材料完整；档案袋已生成。</td>
+              <td>档案项至少包含 3 个附件项，以及 S13 评价任务、S05 科研课题、S01 课程、S08 培训计划等来源引用。</td>
+              <td>打开“已通过且档案袋已生成”的独立记录，展示档案编号、生成时间、档案项和来源类型；不称数据库状态为 archived。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="new">
+              <td class="check-cell"><input type="checkbox" data-check="S17"></td><td class="id-cell">S17</td><td><span class="chip secondary">业绩标准</span></td>
+              <td><strong>科研数字化成果认定标准</strong></td>
+              <td><code>DEMO-HL-PERF-STD</code><small>版本 1；<code>performance_type=RESEARCH</code></small></td>
+              <td><span class="role-badge">教师维护 / 审核员查看</span></td>
+              <td><code>lifecycle_status=published</code>；当前日期在有效期内；要求至少 2 份佐证材料。</td>
+              <td>提交业绩时冻结编号、版本、名称和规则快照；后续详情展示的是快照，不依赖标准被修改后的现值。</td>
+              <td>业绩详情能显示标准版本和规则快照。</td>
+              <td><span class="source-badge new">需要新建</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S18"></td><td class="id-cell">S18</td><td><span class="chip secondary">待审核业绩</span></td>
+              <td><strong>石柱黄连采集与数字档案建设实践</strong></td>
+              <td><code>DEMO-HL-PERF-PENDING</code><small><code>source_type=eval_application</code>，来源 S16</small></td>
+              <td><span class="role-badge">B05 负责人 / B04 待审核</span></td>
+              <td><code>identify_status=submitted</code>；类别 <code>RESEARCH</code>；标准 S17 快照已冻结；有提交审核记录。</td>
+              <td>参与人：B05 <code>owner</code>（负责人、排序 0）、B06 <code>participant</code>（排序 1）、B02 <code>participant</code>（排序 2）；至少 2 份佐证材料；来源名称快照为 S16 标题。</td>
+              <td>审核员查看来源申报、参与人、材料、标准快照，打开通过/要求修改弹窗但不提交。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+            <tr data-section="secondary" data-source="asset">
+              <td class="check-cell"><input type="checkbox" data-check="S19"></td><td class="id-cell">S19</td><td><span class="chip secondary">已认定业绩</span></td>
+              <td><strong>石柱黄连全生命周期数字化研究成果</strong></td>
+              <td><code>DEMO-HL-PERF-APPROVED</code><small><code>source_type=eval_application</code>，来源 S16</small></td>
+              <td><span class="role-badge">B05 / B04</span></td>
+              <td><code>identify_status=approved</code>（界面显示“已通过”）；审核历史包含 submit、approve；标准快照完整。</td>
+              <td>参与人与 S18 一致；材料使用成果说明和数字档案摘要。S18、S19 是两条独立快照记录，不是一条记录同时拥有两个状态。</td>
+              <td>收尾展示来源名称快照、参与人、材料、标准版本和认定历史。</td>
+              <td><span class="source-badge asset">待补文件</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="accuracy-card">
+      <h2>准确性校验结论</h2>
+      <div class="accuracy-grid">
+        <article class="accuracy-item"><strong>地图适生分数</strong><p>M01–M04 的 90、99、93、17 均按当前前端公式预计算：海拔接近度 35%、18 km 内点位密度 35%、最新生长阶段 30%。</p></article>
+        <article class="accuracy-item"><strong>地图导航边界</strong><p>路线是页面运行态并依赖公共 OSRM。必演内容定为点位路线规划和预览；实时定位导航只有在浏览器定位与现场网络均可用时才演示。</p></article>
+        <article class="accuracy-item"><strong>采集审核与科研证据</strong><p>P04 的生长记录可以业务审核通过，同时保留图片识别待复核和科研证据不足；两者属于不同层次，不冲突。</p></article>
+        <article class="accuracy-item"><strong>Agent 补采数据归属</strong><p>P10–P12 用于 Agent 等待条件和重新分析，不会自动成为 P01 公开档案的新阶段；公开页只展示 P01 已审核阶段。</p></article>
+        <article class="accuracy-item"><strong>申报“归档”状态</strong><p>当前实现审核通过后生成档案袋：申报为 <code>approved</code>，档案袋为 <code>generated</code>。总表不再把它写成申报 <code>archived</code>。</p></article>
+        <article class="accuracy-item"><strong>实验记录页面能力</strong><p>课程详情稳定展示实验记录标题、记录人、时间、状态与成绩；批阅弹窗用于选择报告和填写评分，不承诺在弹窗内展示完整正文与附件。</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">BDIS · 生物医药数字信息系统 · 本表仅用于答辩演示数据准备，不代表真实现场实测或农学结论。</footer>
+
+  <script>
+    (() => {
+      const storageKey = "bdis-demo-data-master-v01";
+      const rows = Array.from(document.querySelectorAll("#dataRows tr"));
+      const checks = Array.from(document.querySelectorAll("[data-check]"));
+      const keyword = document.getElementById("keyword");
+      const sectionFilter = document.getElementById("sectionFilter");
+      const sourceFilter = document.getElementById("sourceFilter");
+      document.getElementById("rowCount").textContent = String(rows.length);
+
+      function load() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          checks.forEach((item) => { item.checked = Boolean(saved[item.dataset.check]); });
+        } catch { /* localStorage 不可用时不影响表格浏览 */ }
+      }
+      function save() {
+        const value = {};
+        checks.forEach((item) => { value[item.dataset.check] = item.checked; });
+        localStorage.setItem(storageKey, JSON.stringify(value));
+      }
+      function filter() {
+        const word = keyword.value.trim().toLowerCase();
+        const section = sectionFilter.value;
+        const source = sourceFilter.value;
+        rows.forEach((row) => {
+          const visible = (!section || row.dataset.section === section)
+            && (!source || row.dataset.source === source)
+            && (!word || row.textContent.toLowerCase().includes(word));
+          row.classList.toggle("hidden-row", !visible);
+        });
+      }
+      checks.forEach((item) => item.addEventListener("change", save));
+      [keyword, sectionFilter, sourceFilter].forEach((item) => item.addEventListener("input", filter));
+      document.getElementById("clearChecks").addEventListener("click", () => {
+        if (!window.confirm("确定清空本页全部数据核对记录吗？")) return;
+        checks.forEach((item) => { item.checked = false; });
+        save();
+      });
+      load();
+    })();
+  </script>
+</body>
+</html>

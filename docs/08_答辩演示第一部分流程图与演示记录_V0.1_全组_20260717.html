@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>BDIS 答辩演示第一部分｜全生命周期数字化闭环</title>
+  <style>
+    :root {
+      --paper: #f4f0e6;
+      --paper-deep: #e9e1d2;
+      --ink: #18342a;
+      --muted: #62736b;
+      --line: #d8cebd;
+      --white: #fffdf8;
+      --teacher: #286b4a;
+      --teacher-soft: #e5f1e9;
+      --collector: #216a86;
+      --collector-soft: #e4f1f6;
+      --reviewer: #a45b28;
+      --reviewer-soft: #faede2;
+      --system: #6555a4;
+      --system-soft: #eeebf8;
+      --gold: #b88932;
+      --danger: #a94138;
+      --shadow: 0 18px 50px rgba(50, 43, 29, .09);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(72, 128, 88, .13), transparent 28rem),
+        radial-gradient(circle at 96% 18%, rgba(184, 137, 50, .11), transparent 24rem),
+        var(--paper);
+      font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      line-height: 1.65;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+
+    .page-shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid rgba(216, 206, 189, .82);
+      background: rgba(244, 240, 230, .9);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 250px; }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: #fff;
+      background: linear-gradient(145deg, #174d38, #3b7d57);
+      box-shadow: 0 8px 22px rgba(31, 101, 67, .22);
+      font-weight: 900;
+    }
+    .brand strong { display: block; font-size: 14px; letter-spacing: .08em; }
+    .brand small { display: block; color: var(--muted); font-size: 11px; }
+
+    .topnav { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
+    .topnav::-webkit-scrollbar { display: none; }
+    .topnav a {
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: #52665d;
+      font-size: 13px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .topnav a:hover { color: var(--teacher); background: #fffaf0; }
+
+    .toolbar { display: flex; gap: 8px; }
+    .button {
+      min-height: 36px;
+      padding: 7px 13px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      color: var(--ink);
+      background: var(--white);
+      box-shadow: 0 4px 14px rgba(56, 46, 27, .04);
+    }
+    .button:hover { border-color: #9eb5a6; }
+    .button.primary { color: #fff; border-color: var(--teacher); background: var(--teacher); }
+    .button.danger { color: var(--danger); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      margin: 34px 0 24px;
+      padding: clamp(34px, 5vw, 72px);
+      border: 1px solid #d7cebd;
+      border-radius: 32px;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, .98), rgba(248, 243, 230, .94)),
+        var(--white);
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      position: absolute;
+      right: -70px;
+      bottom: -120px;
+      width: 420px;
+      height: 420px;
+      border: 55px solid rgba(45, 110, 73, .07);
+      border-radius: 50%;
+      content: "";
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--teacher);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      max-width: 960px;
+      margin: 14px 0 13px;
+      font-family: "Noto Serif SC", "Songti SC", serif;
+      font-size: clamp(34px, 5vw, 68px);
+      line-height: 1.14;
+      letter-spacing: -.04em;
+    }
+    .hero h1 span { color: var(--teacher); }
+    .hero-lead { max-width: 900px; margin: 0; color: var(--muted); font-size: clamp(15px, 1.6vw, 20px); }
+    .hero-detail { max-width: 1030px; margin: 22px 0 0; color: #455a50; }
+
+    .hero-stats {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 840px;
+      margin-top: 30px;
+    }
+    .hero-stat {
+      padding: 15px 17px;
+      border: 1px solid #dfd5c4;
+      border-radius: 16px;
+      background: rgba(255, 253, 248, .82);
+    }
+    .hero-stat strong { display: block; color: var(--teacher); font-size: 25px; line-height: 1; }
+    .hero-stat span { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; }
+
+    .draft-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 0 0 24px;
+      padding: 15px 18px;
+      border: 1px dashed #c89d54;
+      border-radius: 16px;
+      background: #fff7e8;
+      color: #745424;
+    }
+    .draft-banner strong { white-space: nowrap; }
+
+    section.block {
+      margin: 24px 0;
+      padding: clamp(24px, 3vw, 42px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 253, 248, .92);
+      box-shadow: var(--shadow);
+    }
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .section-index { color: var(--gold); font-size: 12px; font-weight: 900; letter-spacing: .14em; }
+    .section-head h2 { margin: 4px 0 0; font-size: clamp(24px, 3vw, 38px); line-height: 1.2; }
+    .section-head p { max-width: 700px; margin: 0; color: var(--muted); }
+
+    .role-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+    .role-chip, .mode-chip, .highlight-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .role-chip::before { width: 8px; height: 8px; border-radius: 50%; content: ""; background: currentColor; }
+    .role-chip.teacher { color: var(--teacher); background: var(--teacher-soft); }
+    .role-chip.collector { color: var(--collector); background: var(--collector-soft); }
+    .role-chip.reviewer { color: var(--reviewer); background: var(--reviewer-soft); }
+    .role-chip.system { color: var(--system); background: var(--system-soft); }
+    .mode-chip.live { color: #21673e; background: #e3f2e7; }
+    .mode-chip.seed { color: #7b5d20; background: #fff3d8; }
+    .mode-chip.auto { color: #5f5393; background: #efecfa; }
+    .mode-chip.guard { color: #983c34; background: #fae7e4; }
+    .highlight-chip { color: #705016; background: #f7e9c8; }
+
+    .profile-layout { display: grid; grid-template-columns: 1.15fr .85fr; gap: 22px; }
+    .profile-windows { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+    .profile-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 240px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+    .profile-card::before { position: absolute; inset: 0 0 auto; height: 7px; content: ""; background: var(--role-color); }
+    .profile-card.teacher { --role-color: var(--teacher); }
+    .profile-card.collector { --role-color: var(--collector); }
+    .profile-card.reviewer { --role-color: var(--reviewer); }
+    .profile-avatar {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      margin-top: 6px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--role-color);
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .profile-card h3 { margin: 13px 0 2px; }
+    .profile-card p { margin: 0 0 13px; color: var(--muted); font-size: 13px; }
+    .profile-card ul { margin: 0; padding-left: 18px; color: #3f554b; font-size: 13px; }
+    .profile-card .window-label {
+      position: absolute;
+      top: 15px;
+      right: 14px;
+      color: var(--role-color);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .profile-notes { padding: 22px; border-radius: 18px; color: #edf7f0; background: #173e2d; }
+    .profile-notes h3 { margin: 0 0 10px; color: #fff; }
+    .profile-notes ol { margin: 0; padding-left: 20px; }
+    .profile-notes li + li { margin-top: 8px; }
+    .profile-notes .callout { margin-top: 18px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; background: rgba(255,255,255,.07); font-size: 13px; }
+
+    .storyline {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(145px, 1fr));
+      gap: 26px;
+      overflow-x: auto;
+      padding: 8px 3px 18px;
+    }
+    .story-node {
+      position: relative;
+      min-width: 145px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+      text-align: center;
+    }
+    .story-node:not(:last-child)::after {
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 6px);
+      width: 16px;
+      color: #9c8a6d;
+      content: "→";
+      transform: translateY(-50%);
+    }
+    .story-node span { display: block; color: var(--muted); font-size: 11px; }
+    .story-node strong { display: block; margin-top: 4px; font-size: 14px; }
+    .story-node.highlight { border-color: #d7b56f; background: #fff8e8; }
+
+    .lane-board { overflow-x: auto; padding-bottom: 8px; }
+    .lane-grid {
+      min-width: 1040px;
+      display: grid;
+      grid-template-columns: 94px repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #f8f5ed;
+      overflow: hidden;
+    }
+    .lane-head {
+      position: static;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #f4efe3;
+      text-align: center;
+      font-weight: 900;
+    }
+    .lane-head + .lane-head { border-left: 1px solid var(--line); }
+    .lane-head.teacher { color: var(--teacher); }
+    .lane-head.collector { color: var(--collector); }
+    .lane-head.reviewer { color: var(--reviewer); }
+    .phase-cell {
+      display: grid;
+      place-items: center;
+      min-height: 168px;
+      padding: 12px 7px;
+      border-top: 1px solid var(--line);
+      color: #7a6d58;
+      background: #eee7da;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      writing-mode: vertical-rl;
+    }
+    .lane-cell {
+      position: relative;
+      min-height: 168px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: rgba(255,255,255,.44);
+    }
+    .lane-cell.empty { background: repeating-linear-gradient(-45deg, rgba(221,214,200,.18), rgba(221,214,200,.18) 8px, transparent 8px, transparent 16px); }
+
+    .flow-card {
+      height: 100%;
+      padding: 17px;
+      border: 1px solid color-mix(in srgb, var(--role-color) 35%, #d8cebd);
+      border-radius: 16px;
+      background: var(--role-soft);
+      box-shadow: 0 9px 26px rgba(49, 42, 29, .06);
+    }
+    .flow-card.teacher { --role-color: var(--teacher); --role-soft: var(--teacher-soft); }
+    .flow-card.collector { --role-color: var(--collector); --role-soft: var(--collector-soft); }
+    .flow-card.reviewer { --role-color: var(--reviewer); --role-soft: var(--reviewer-soft); }
+    .flow-card.system { --role-color: var(--system); --role-soft: var(--system-soft); }
+    .flow-card.highlight { outline: 2px solid rgba(184,137,50,.38); outline-offset: 2px; }
+    .flow-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .step-no {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      flex: none;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--role-color);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .step-check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+    .step-check input { width: 17px; height: 17px; accent-color: var(--role-color); }
+    .flow-card h3 { margin: 12px 0 4px; color: var(--role-color); font-size: 17px; }
+    .flow-card p { margin: 0; color: #44594f; font-size: 13px; }
+    .flow-card .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .flow-card .flow-result { margin-top: 12px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--role-color) 20%, transparent); color: #394e44; font-size: 12px; }
+    .flow-card .talking-point { margin-top: 9px; color: #344a40; font-size: 12px; }
+    .flow-card .talking-point b { color: var(--role-color); }
+
+    .handoff {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 54px;
+      padding: 10px 18px;
+      border-top: 1px solid var(--line);
+      background: #fffaf0;
+      color: #6d5a37;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .handoff::before, .handoff::after { width: 70px; height: 1px; content: ""; background: #ccb88f; }
+
+    .archive-output {
+      grid-column: 2 / -1;
+      min-height: 185px;
+      padding: 20px;
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      background: linear-gradient(135deg, #ece9f8, #fffaf0);
+    }
+    .archive-inner { display: grid; grid-template-columns: 1.35fr .65fr; gap: 18px; align-items: center; }
+    .archive-inner h3 { margin: 0 0 7px; color: var(--system); font-size: 20px; }
+    .archive-inner p { margin: 0; color: #4d5067; }
+    .qr-instruction { padding: 15px; border: 1px solid #cfc6e7; border-radius: 14px; background: rgba(255,255,255,.72); }
+    .qr-instruction strong { display: block; color: var(--system); }
+    .qr-instruction ol { margin: 7px 0 0; padding-left: 19px; font-size: 12px; }
+    .qr-instruction code { padding: 2px 5px; border-radius: 5px; color: #493f7e; background: #e8e3f5; font-family: inherit; font-weight: 900; }
+
+    .boundary-grid, .preflight-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 13px; }
+    .boundary-card, .check-card {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+    }
+    .boundary-card strong { display: block; margin-bottom: 5px; }
+    .boundary-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .boundary-card.warning { border-color: #d3a966; background: #fff8e8; }
+
+    .check-card { display: flex; align-items: flex-start; gap: 10px; }
+    .check-card input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--teacher); }
+    .check-card strong { display: block; }
+    .check-card small { display: block; color: var(--muted); }
+
+    .record-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+      padding: 17px 20px;
+      border-radius: 15px;
+      color: #fff;
+      background: linear-gradient(120deg, #174631, #2d7652);
+    }
+    .record-summary strong { font-size: 22px; }
+    .record-summary span { color: #d9eee1; }
+    .progress-track { flex: 1; max-width: 460px; height: 9px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.2); }
+    .progress-track i { display: block; width: 0; height: 100%; border-radius: inherit; background: #f2cf75; transition: width .25s ease; }
+
+    .record-form { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+    .field { display: grid; gap: 6px; }
+    .field.wide { grid-column: span 3; }
+    .field label { color: #40564c; font-size: 12px; font-weight: 800; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid #d8cfbf;
+      border-radius: 11px;
+      color: var(--ink);
+      background: #fff;
+      padding: 10px 12px;
+      outline: none;
+    }
+    .field textarea { min-height: 92px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: #79a48a; box-shadow: 0 0 0 3px rgba(47,125,79,.1); }
+
+    .data-table-wrap { overflow-x: auto; }
+    .data-table { width: 100%; min-width: 780px; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 12px; border-bottom: 1px solid #e6ded0; text-align: left; vertical-align: top; }
+    .data-table th { color: #50655b; background: #f4f0e7; font-size: 12px; }
+    .data-table td { font-size: 13px; }
+    .placeholder { color: #8e641c; font-weight: 800; }
+
+    footer { padding: 28px 0 44px; color: var(--muted); text-align: center; font-size: 12px; }
+
+    .focus-mode .planning-only { display: none !important; }
+    .focus-mode .hero { margin-top: 22px; }
+    .focus-mode section.block { box-shadow: none; }
+
+    @media (max-width: 1080px) {
+      .topnav { display: none; }
+      .profile-layout { grid-template-columns: 1fr; }
+      .profile-windows { grid-template-columns: repeat(3, minmax(180px, 1fr)); overflow-x: auto; }
+      .hero-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 720px) {
+      .page-shell { width: min(100% - 22px, 1480px); }
+      .topbar-inner { min-height: 58px; }
+      .brand small, .toolbar .danger { display: none; }
+      .hero { margin-top: 18px; padding: 28px 22px; border-radius: 22px; }
+      .hero-stats { grid-template-columns: 1fr 1fr; }
+      section.block { padding: 22px 16px; }
+      .section-head { display: block; }
+      .section-head p { margin-top: 10px; }
+      .boundary-grid, .preflight-grid, .record-form { grid-template-columns: 1fr; }
+      .field.wide { grid-column: auto; }
+      .archive-inner { grid-template-columns: 1fr; }
+      .record-summary { align-items: flex-start; flex-direction: column; }
+      .progress-track { width: 100%; }
+    }
+
+    @media print {
+      @page { size: A4 landscape; margin: 11mm; }
+      body { background: #fff; font-size: 10px; }
+      .page-shell { width: 100%; }
+      .topbar, .toolbar, .planning-only.interactive-only, footer { display: none !important; }
+      .hero, section.block { margin: 0 0 10mm; border-radius: 10px; box-shadow: none; break-inside: avoid; }
+      .hero { padding: 15mm; }
+      .hero h1 { font-size: 32px; }
+      .storyline {
+        overflow: visible;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 7px;
+        padding-bottom: 6px;
+      }
+      .story-node { min-width: 0; padding: 8px 5px; }
+      .story-node:not(:last-child)::after {
+        left: calc(100% + 1px);
+        width: 6px;
+        font-size: 10px;
+      }
+      .story-node strong { font-size: 11px; }
+      .story-node span { font-size: 8px; }
+      .lane-board { overflow: visible; }
+      .lane-grid { min-width: 0; }
+      .lane-head { position: static; }
+      .flow-card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="page-shell topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">BD</span>
+        <span><strong>BDIS 答辩演示</strong><small>第一部分·全生命周期数字化闭环</small></span>
+      </div>
+      <nav class="topnav" aria-label="页内导航">
+        <a href="#profiles">Chrome 账号</a>
+        <a href="#overview">主线总览</a>
+        <a href="#flow">角色流程</a>
+        <a href="#boundaries">讲解边界</a>
+        <a href="#preflight">现场检查</a>
+        <a href="#records">排练记录</a>
+      </nav>
+      <div class="toolbar">
+        <button class="button primary" id="modeButton" type="button">演示模式</button>
+        <button class="button" type="button" onclick="window.print()">打印</button>
+        <button class="button danger planning-only interactive-only" id="resetButton" type="button">清空记录</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero" aria-labelledby="page-title">
+      <span class="eyebrow">Defense Demo · Part One</span>
+      <h1 id="page-title">从野外采集到可信档案的<br><span>一条数字生命主线</span></h1>
+      <p class="hero-lead">教师决策与确认，采集员生产现场证据，审核员把守数据质量；地图、AI 小助手、科研 Agent 与数字档案被串成一个完整故事。</p>
+      <p class="hero-detail">
+        当前是流程初稿，演示药材、基地、任务和指标尚未定稿。本页使用通用占位符，后续可在不改变流程结构的情况下替换。
+      </p>
+      <div class="hero-stats" aria-label="演示摘要">
+        <div class="hero-stat"><strong>3</strong><span>核心登录角色</span></div>
+        <div class="hero-stat"><strong>4</strong><span>重点系统亮点</span></div>
+        <div class="hero-stat"><strong>2</strong><span>Agent 人工确认关口</span></div>
+        <div class="hero-stat"><strong>1</strong><span>连续业务故事线</span></div>
+      </div>
+    </section>
+
+    <div class="draft-banner">
+      <strong>数据状态</strong>
+      <span>本页不引用现有 SQL 作为最终演示数据。出现的 <span class="placeholder">[目标药材]</span>、<span class="placeholder">[目标基地]</span>、<span class="placeholder">[原采集任务]</span> 等内容均等待后续演示数据方案确定。</span>
+    </div>
+
+    <section class="block planning-only" id="profiles">
+      <div class="section-head">
+        <div><span class="section-index">01 · LOGIN ISOLATION</span><h2>Chrome 三个人资料，三个角色同时在线</h2></div>
+        <p>利用 Chrome 个人资料隔离 Cookie、JWT 与页面会话，一台电脑同时保持教师、采集员、审核员三个登录状态。</p>
+      </div>
+      <div class="profile-layout">
+        <div class="profile-windows">
+          <article class="profile-card teacher">
+            <span class="window-label">窗口 A</span><span class="profile-avatar">师</span>
+            <h3>教师个人资料</h3><p>决策、AI 与档案主窗口</p>
+            <ul><li>地图适生分析</li><li>AI 小助手</li><li>科研 Agent</li><li>数字档案与二维码</li></ul>
+          </article>
+          <article class="profile-card collector">
+            <span class="window-label">窗口 B</span><span class="profile-avatar">采</span>
+            <h3>采集员个人资料</h3><p>现场任务与数据证据窗口</p>
+            <ul><li>我的采集任务</li><li>地图导航</li><li>采集记录</li><li>Agent 补采要求</li></ul>
+          </article>
+          <article class="profile-card reviewer">
+            <span class="window-label">窗口 C</span><span class="profile-avatar">审</span>
+            <h3>审核员个人资料</h3><p>数据质量与审核痕迹窗口</p>
+            <ul><li>待审核记录</li><li>指标与图片证据</li><li>识别结果核对</li><li>审核历史</li></ul>
+          </article>
+        </div>
+        <aside class="profile-notes">
+          <h3>现场切换原则</h3>
+          <ol>
+            <li>答辩前分别打开三个 Chrome 个人资料窗口并完成登录。</li>
+            <li>三个窗口放在固定桌面位置，不在同一个人资料里反复退出和登录。</li>
+            <li>每次切换前通过 Chrome 个人资料颜色和系统右上角用户名双重确认角色。</li>
+            <li>建议按“教师 → 采集员 → 审核员 → 教师”的节奏切换，关键页面提前打开。</li>
+          </ol>
+          <div class="callout">三个 Chrome 个人资料是三套独立登录环境；这是现场演示组织方式，不是系统内的“角色一键切换”功能。</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="block" id="overview">
+      <div class="section-head">
+        <div><span class="section-index">02 · ONE STORY</span><h2>一句话串起整场演示</h2></div>
+        <p>先用地图辅助决策，再完成采集与审核，随后由 Agent 发现证据缺口并组织补采，最终将原任务签发为可验证的数字档案。</p>
+      </div>
+      <div class="storyline" aria-label="演示主线摘要">
+        <div class="story-node highlight"><span>教师</span><strong>地图决策</strong></div>
+        <div class="story-node"><span>采集员</span><strong>现场采集</strong></div>
+        <div class="story-node"><span>审核员</span><strong>质量审核</strong></div>
+        <div class="story-node highlight"><span>教师</span><strong>AI 与 Agent</strong></div>
+        <div class="story-node"><span>采集员</span><strong>补充证据</strong></div>
+        <div class="story-node"><span>审核员</span><strong>补采审核</strong></div>
+        <div class="story-node highlight"><span>系统输出</span><strong>可信档案</strong></div>
+      </div>
+      <div class="role-legend">
+        <span class="role-chip teacher">教师</span><span class="role-chip collector">采集员</span><span class="role-chip reviewer">审核员</span><span class="role-chip system">系统输出</span>
+        <span class="mode-chip live">现场点击</span><span class="mode-chip seed">预置数据</span><span class="mode-chip auto">系统自动</span><span class="mode-chip guard">人工确认</span>
+      </div>
+    </section>
+
+    <section class="block" id="flow">
+      <div class="section-head">
+        <div><span class="section-index">03 · ROLE SWIMLANES</span><h2>三角色连续演示流程</h2></div>
+        <p>创建类业务只展示按钮和弹窗；数据详情使用后续专门准备的演示数据。勾选“已演示”可在本地记录排练进度。</p>
+      </div>
+      <div class="lane-board">
+        <div class="lane-grid">
+          <div class="lane-head">阶段</div><div class="lane-head teacher">教师</div><div class="lane-head collector">采集员</div><div class="lane-head reviewer">审核员</div>
+
+          <div class="phase-cell">采集前</div>
+          <div class="lane-cell"><article class="flow-card teacher highlight">
+            <div class="flow-top"><span class="step-no">01</span><label class="step-check"><input data-demo-check="step-01" type="checkbox">已演示</label></div>
+            <h3>适生分析与路线规划</h3>
+            <p>筛选 <span class="placeholder">[目标药材]</span>，展示同种药材点位、辅助适生等级，选择采集点并生成道路路线。</p>
+            <div class="card-tags"><span class="highlight-chip">亮点·地图适生</span><span class="highlight-chip">亮点·地图导航</span><span class="mode-chip live">现场点击</span></div>
+            <div class="talking-point"><b>讲解：</b>这是基于现有观测数据的辅助分析，不是农学预测结论。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="phase-cell">任务下发</div>
+          <div class="lane-cell"><article class="flow-card teacher">
+            <div class="flow-top"><span class="step-no">02</span><label class="step-check"><input data-demo-check="step-02" type="checkbox">已演示</label></div>
+            <h3>展示创建并打开预置任务</h3>
+            <p>在采集管理中点击“新建任务”展示弹窗，不现场填表；随后打开 <span class="placeholder">[原采集任务]</span>。</p>
+            <div class="card-tags"><span class="mode-chip live">只展示弹窗</span><span class="mode-chip seed">预置任务</span></div>
+            <div class="flow-result">业务语义：地图辅助选点 → 教师据此建立采集任务。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="handoff">角色切换：Chrome 教师窗口 → Chrome 采集员窗口</div>
+
+          <div class="phase-cell">现场采集</div>
+          <div class="lane-cell empty"></div>
+          <div class="lane-cell"><article class="flow-card collector highlight">
+            <div class="flow-top"><span class="step-no">03</span><label class="step-check"><input data-demo-check="step-03" type="checkbox">已演示</label></div>
+            <h3>查看任务并启动地图导航</h3>
+            <p>打开“我的采集任务”，确认目标基地；再在地图中手动选择对应点位，查看距离、预计时间和导航指引。</p>
+            <div class="card-tags"><span class="highlight-chip">亮点·地图导航</span><span class="mode-chip live">现场点击</span></div>
+            <div class="talking-point"><b>注意：</b>采集任务与地图路线是业务上的衔接，不宣称为系统自动绑定。</div>
+          </article></div>
+          <div class="lane-cell empty"></div>
+
+          <div class="phase-cell">数据提交</div>
+          <div class="lane-cell empty"></div>
+          <div class="lane-cell"><article class="flow-card collector">
+            <div class="flow-top"><span class="step-no">04</span><label class="step-check"><input data-demo-check="step-04" type="checkbox">已演示</label></div>
+            <h3>展示采集记录与图像识别</h3>
+            <p>点击“新增记录”展示输入项，然后打开已准备记录，查看生长指标、现场图片、识别结果和置信度。</p>
+            <div class="card-tags"><span class="mode-chip live">只展示弹窗</span><span class="mode-chip seed">预置记录</span></div>
+            <div class="flow-result">为 Agent 预留可解释缺口：<span class="placeholder">[缺失指标]</span>、<span class="placeholder">[缺失图片]</span>、<span class="placeholder">[低置信度结果]</span>。</div>
+          </article></div>
+          <div class="lane-cell empty"></div>
+
+          <div class="handoff">角色切换：Chrome 采集员窗口 → Chrome 审核员窗口</div>
+
+          <div class="phase-cell">质量审核</div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+          <div class="lane-cell"><article class="flow-card reviewer">
+            <div class="flow-top"><span class="step-no">05</span><label class="step-check"><input data-demo-check="step-05" type="checkbox">已演示</label></div>
+            <h3>核对证据并展示审核痕迹</h3>
+            <p>查看待审核记录的指标、图片、识别结果、位置和时间，展示审核意见与历史记录。</p>
+            <div class="card-tags"><span class="mode-chip seed">预置审核状态</span><span class="mode-chip live">展示详情</span></div>
+            <div class="talking-point"><b>讲解：</b>业务审核通过不等于科研证据已经完整，后者由 Agent 在任务层继续分析。</div>
+          </article></div>
+
+          <div class="handoff">角色切换：Chrome 审核员窗口 → Chrome 教师窗口</div>
+
+          <div class="phase-cell">AI 辅助</div>
+          <div class="lane-cell"><article class="flow-card teacher highlight">
+            <div class="flow-top"><span class="step-no">06</span><label class="step-check"><input data-demo-check="step-06" type="checkbox">已演示</label></div>
+            <h3>AI 小助手解释业务流程</h3>
+            <p>在生长数据页面唤起 AI 小助手，询问：“采集记录经过审核后，如何形成任务级数字生命档案？”</p>
+            <div class="card-tags"><span class="highlight-chip">亮点·AI 小助手</span><span class="mode-chip live">现场问答</span></div>
+            <div class="talking-point"><b>定位：</b>AI 小助手负责知识问答与流程解释，具体任务的持续分析交给科研 Agent。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="phase-cell">Agent 分析</div>
+          <div class="lane-cell"><article class="flow-card teacher highlight">
+            <div class="flow-top"><span class="step-no">07</span><label class="step-check"><input data-demo-check="step-07" type="checkbox">已演示</label></div>
+            <h3>创建、启动并查看科研 Agent</h3>
+            <p>选择 <span class="placeholder">[原采集任务]</span>，创建 Agent 任务后点击“开始运行”，展示持久化步骤、数据事实、统计关联、不确定性和证据缺口。</p>
+            <div class="card-tags"><span class="highlight-chip">亮点·科研 Agent</span><span class="mode-chip live">创建与开始</span><span class="mode-chip auto">分析步骤</span></div>
+            <div class="flow-result">Agent 输出：<span class="placeholder">[缺口结论]</span> 与 <span class="placeholder">[结构化补采方案]</span>。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="phase-cell">确认关口一</div>
+          <div class="lane-cell"><article class="flow-card teacher">
+            <div class="flow-top"><span class="step-no">08</span><label class="step-check"><input data-demo-check="step-08" type="checkbox">已演示</label></div>
+            <h3>教师确认创建补采任务</h3>
+            <p>查看必填指标、必拍图片、完成条件和方案依据，再对“创建并发布补采任务”进行高风险二次确认。</p>
+            <div class="card-tags"><span class="mode-chip guard">第一次人工确认</span><span class="mode-chip live">现场点击</span></div>
+            <div class="talking-point"><b>讲解：</b>Agent 不会绕过人执行对真实业务有影响的动作。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="handoff">角色切换：Chrome 教师窗口 → Chrome 采集员窗口</div>
+
+          <div class="phase-cell">现场补采</div>
+          <div class="lane-cell empty"></div>
+          <div class="lane-cell"><article class="flow-card collector">
+            <div class="flow-top"><span class="step-no">09</span><label class="step-check"><input data-demo-check="step-09" type="checkbox">已演示</label></div>
+            <h3>查看 Agent 要求与补采证据</h3>
+            <p>打开新收到的 <span class="placeholder">[补采任务]</span>，展示其中的必填指标和必拍图片；打开预置补采记录，对照原缺口说明已补充内容。</p>
+            <div class="card-tags"><span class="mode-chip seed">预置补采数据</span><span class="mode-chip live">展示要求与证据</span></div>
+            <div class="flow-result">不现场长时间填表、上传图片或等待识别服务。</div>
+          </article></div>
+          <div class="lane-cell empty"></div>
+
+          <div class="handoff">角色切换：Chrome 采集员窗口 → Chrome 审核员窗口</div>
+
+          <div class="phase-cell">补采审核</div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+          <div class="lane-cell"><article class="flow-card reviewer">
+            <div class="flow-top"><span class="step-no">10</span><label class="step-check"><input data-demo-check="step-10" type="checkbox">已演示</label></div>
+            <h3>展示补采记录审核通过</h3>
+            <p>对照 Agent 补采清单核对新指标、新图片与识别状态，展示已审核状态和审核痕迹。</p>
+            <div class="card-tags"><span class="mode-chip seed">预置已审核快照</span><span class="mode-chip live">展示审核痕迹</span></div>
+            <div class="talking-point"><b>稳定性：</b>使用已识别、已提交、已审核的阶段快照，避免现场异步状态抢跑。</div>
+          </article></div>
+
+          <div class="handoff">角色切换：Chrome 审核员窗口 → Chrome 教师窗口</div>
+
+          <div class="phase-cell">重新分析</div>
+          <div class="lane-cell"><article class="flow-card teacher highlight">
+            <div class="flow-top"><span class="step-no">11</span><label class="step-check"><input data-demo-check="step-11" type="checkbox">已演示</label></div>
+            <h3>Agent 恢复并展示前后对比</h3>
+            <p>返回 Agent 工作台，展示等待条件已满足、重新分析记录、完整度变化、已解决发现和仍然存在的限制。</p>
+            <div class="card-tags"><span class="highlight-chip">亮点·Agent 生命周期</span><span class="mode-chip auto">恢复与重分析</span><span class="mode-chip live">展示对比</span></div>
+            <div class="talking-point"><b>讲解：</b>补采证据用于 Agent 重新评估，不宣称它已被合并成原任务的公开阶段。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="phase-cell">可信档案</div>
+          <div class="lane-cell"><article class="flow-card teacher highlight">
+            <div class="flow-top"><span class="step-no">12</span><label class="step-check"><input data-demo-check="step-12" type="checkbox">已演示</label></div>
+            <h3>准备可信数字档案</h3>
+            <p>点击“准备可信档案”，展示阶段解说、档案摘要、SHA-256 证据链生成与完整性校验步骤。</p>
+            <div class="card-tags"><span class="highlight-chip">亮点·数字档案</span><span class="mode-chip live">现场点击</span><span class="mode-chip auto">生成与校验</span></div>
+            <div class="flow-result">此时形成内部可信档案，但公开访问尚未开启。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="phase-cell">确认关口二</div>
+          <div class="lane-cell"><article class="flow-card teacher">
+            <div class="flow-top"><span class="step-no">13</span><label class="step-check"><input data-demo-check="step-13" type="checkbox">已演示</label></div>
+            <h3>教师确认开启公开档案</h3>
+            <p>检查档案完整度、阶段数、图片数和根哈希，对“开启任务级公开数字生命档案”进行二次确认。</p>
+            <div class="card-tags"><span class="mode-chip guard">第二次人工确认</span><span class="mode-chip live">现场点击</span></div>
+            <div class="talking-point"><b>讲解：</b>公开数据是独立高风险动作，只有教师或管理员可确认。</div>
+          </article></div>
+          <div class="lane-cell empty"></div><div class="lane-cell empty"></div>
+
+          <div class="phase-cell">系统输出</div>
+          <div class="archive-output">
+            <div class="archive-inner">
+              <div>
+                <div class="flow-top"><span class="step-no" style="--role-color: var(--system)">14</span><label class="step-check"><input data-demo-check="step-14" type="checkbox">已演示</label></div>
+                <h3>展示原任务数字档案与公开页</h3>
+                <p>查看原任务的生长阶段、时间轴、指标趋势、阶段地图、现场图片、阶段解说与完整性校验，然后展示任务级二维码。</p>
+                <div class="card-tags"><span class="highlight-chip">亮点·完整生命历程</span><span class="highlight-chip">亮点·二维码</span><span class="mode-chip auto">公开页</span></div>
+              </div>
+              <aside class="qr-instruction">
+                <strong>二维码打开方式</strong>
+                <ol>
+                  <li>在 Chrome 中对二维码图片点击右键。</li>
+                  <li>选择 <code>使用 Google Lens 搜索图片</code>。</li>
+                  <li>在 Google Lens 识别结果中点击检测到的档案链接。</li>
+                  <li>打开免登录公开页，完成第一部分收尾。</li>
+                </ol>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block planning-only" id="boundaries">
+      <div class="section-head">
+        <div><span class="section-index">04 · SPEAKING BOUNDARIES</span><h2>答辩讲解口径</h2></div>
+        <p>下列边界用于确保演示表述与当前系统能力一致。</p>
+      </div>
+      <div class="boundary-grid">
+        <article class="boundary-card"><strong>地图与任务</strong><p>说“地图辅助选点和规划路线，教师据此建立任务”；不说“地图路线自动生成系统任务”。</p></article>
+        <article class="boundary-card"><strong>适生分析</strong><p>说“基于现有观测数据的辅助分析”；不把轻量评分表述为经农学验证的预测模型。</p></article>
+        <article class="boundary-card"><strong>AI 小助手与 Agent</strong><p>AI 小助手负责知识问答和流程解释；科研 Agent 负责具体任务的持久分析、证据缺口、计划和待确认动作。</p></article>
+        <article class="boundary-card"><strong>Agent 不自主执行高风险动作</strong><p>创建补采任务和开启公开档案分别需要一次教师确认，突出人机协同与权限边界。</p></article>
+        <article class="boundary-card warning"><strong>补采证据的归属</strong><p>补采任务数据参与 Agent 重新分析，但不宣称其作为新阶段出现在原任务公开页。</p></article>
+        <article class="boundary-card warning"><strong>公开档案内容</strong><p>公开页展示原任务已审核且可公开的阶段、图片、趋势、地图、解说和完整性校验；不宣称展示完整 Agent 闭环结论。</p></article>
+      </div>
+    </section>
+
+    <section class="block planning-only" id="preflight">
+      <div class="section-head">
+        <div><span class="section-index">05 · DEMO PREFLIGHT</span><h2>现场演示前检查</h2></div>
+        <p>这些状态保存在当前浏览器本地，用于排练和答辩当天复核。</p>
+      </div>
+      <div class="preflight-grid">
+        <label class="check-card"><input data-demo-check="preflight-profiles" type="checkbox"><span><strong>Chrome 三个人资料已登录</strong><small>教师、采集员、审核员的右上角用户名均已核对。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-scope" type="checkbox"><span><strong>审核员数据范围已验证</strong><small>审核员与采集员的演示部门关系正确，可看到目标记录。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-map-data" type="checkbox"><span><strong>适生分析数据已准备</strong><small>同种药材至少有两个有效点位，包含海拔和生长阶段数据。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-map-network" type="checkbox"><span><strong>地图网络与定位已验证</strong><small>地图图层、道路路由服务可访问，Chrome 已授予位置权限。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-ai" type="checkbox"><span><strong>AI 小助手预设问题已测试</strong><small>模型配置、网络与知识库检索可用，回答口径稳定。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-agent" type="checkbox"><span><strong>Agent 关键节点快照已准备</strong><small>可恢复到等待补采确认、补采完成、待公开确认等状态。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-public" type="checkbox"><span><strong>公开页基础地址已核对</strong><small>二维码指向答辩现场可访问的前端地址，完整性校验通过。</small></span></label>
+        <label class="check-card"><input data-demo-check="preflight-lens" type="checkbox"><span><strong>Google Lens 二维码识别已测试</strong><small>右键菜单中可见“使用 Google Lens 搜索图片”，检测链接可打开。</small></span></label>
+      </div>
+    </section>
+
+    <section class="block planning-only" id="records">
+      <div class="section-head">
+        <div><span class="section-index">06 · REHEARSAL LOG</span><h2>排练与演示记录</h2></div>
+        <p>表单内容只保存在当前浏览器 localStorage，不提交到系统后端。</p>
+      </div>
+      <div class="record-summary">
+        <div><strong id="progressText">0 / 22</strong><span>已完成流程与现场检查</span></div>
+        <div class="progress-track" aria-label="排练进度"><i id="progressBar"></i></div>
+      </div>
+      <div class="record-form">
+        <div class="field"><label for="rehearsalDate">排练日期</label><input id="rehearsalDate" data-record-field type="date"></div>
+        <div class="field"><label for="rehearsalOwner">排练负责人</label><input id="rehearsalOwner" data-record-field placeholder="[姓名]"></div>
+        <div class="field"><label for="rehearsalStatus">整体结果</label><select id="rehearsalStatus" data-record-field><option value="">请选择</option><option>通过</option><option>有风险，可演示</option><option>需再排练</option><option>阻断</option></select></div>
+        <div class="field"><label for="demoHerb">目标药材</label><input id="demoHerb" data-record-field placeholder="[待确定]"></div>
+        <div class="field"><label for="demoBase">目标基地</label><input id="demoBase" data-record-field placeholder="[待确定]"></div>
+        <div class="field"><label for="demoTask">原采集任务</label><input id="demoTask" data-record-field placeholder="[待确定]"></div>
+        <div class="field wide"><label for="rehearsalIssues">发现的问题</label><textarea id="rehearsalIssues" data-record-field placeholder="记录页面状态、网络、权限、数据口径或演示节奏问题……"></textarea></div>
+        <div class="field wide"><label for="rehearsalActions">下次排练前处理项</label><textarea id="rehearsalActions" data-record-field placeholder="记录需要补充的演示数据、账号、快照或讲解调整……"></textarea></div>
+      </div>
+    </section>
+
+    <section class="block planning-only" id="data-plan">
+      <div class="section-head">
+        <div><span class="section-index">07 · DATA PLACEHOLDERS</span><h2>后续演示数据待办</h2></div>
+        <p>此表仅记录后续演示数据需求，不表示当前 SQL 已经满足。</p>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>数据组</th><th>最低需求</th><th>主要用途</th><th>当前状态</th></tr></thead>
+          <tbody>
+            <tr><td>三个角色账号</td><td>教师、采集员、审核员；审核员与采集员同部门</td><td>Chrome 个人资料隔离与数据范围</td><td class="placeholder">待实现</td></tr>
+            <tr><td>地图适生数据</td><td>同种药材多个点位，至少两个有海拔与生长记录</td><td>适生等级、点位选择和路线规划</td><td class="placeholder">待实现</td></tr>
+            <tr><td>原采集任务</td><td>至少三个连续阶段，均有生长记录、图片和审核痕迹</td><td>主流程、趋势、数字档案</td><td class="placeholder">待实现</td></tr>
+            <tr><td>Agent 证据缺口</td><td>缺少一项有意义指标、一类图片，并有一个低置信度识别结果</td><td>触发可解释的补采方案</td><td class="placeholder">待实现</td></tr>
+            <tr><td>补采任务快照</td><td>有补齐指标、必拍图片、已识别、已审核的稳定状态</td><td>Agent 重分析与完整度前后对比</td><td class="placeholder">待实现</td></tr>
+            <tr><td>公开数字档案</td><td>原任务阶段公开可见，证据链校验通过，二维码可识别</td><td>时间轴、地图、趋势、图片、Google Lens 收尾</td><td class="placeholder">待实现</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    BDIS · 生物医药数字信息系统 · 答辩演示第一部分流程初稿 V0.1 · 2026-07-17
+  </footer>
+
+  <script>
+    (() => {
+      const storageKey = "bdis-defense-demo-part-one-v01";
+      const body = document.body;
+      const modeButton = document.getElementById("modeButton");
+      const resetButton = document.getElementById("resetButton");
+      const checkboxes = [...document.querySelectorAll("[data-demo-check]")];
+      const fields = [...document.querySelectorAll("[data-record-field]")];
+      const progressText = document.getElementById("progressText");
+      const progressBar = document.getElementById("progressBar");
+
+      function readState() {
+        try { return JSON.parse(localStorage.getItem(storageKey) || "{}"); }
+        catch { return {}; }
+      }
+
+      function writeState() {
+        const checks = Object.fromEntries(checkboxes.map((item) => [item.dataset.demoCheck, item.checked]));
+        const values = Object.fromEntries(fields.map((item) => [item.id, item.value]));
+        localStorage.setItem(storageKey, JSON.stringify({ checks, values }));
+        updateProgress();
+      }
+
+      function updateProgress() {
+        const completed = checkboxes.filter((item) => item.checked).length;
+        const total = checkboxes.length;
+        const percent = total ? Math.round(completed * 100 / total) : 0;
+        progressText.textContent = `${completed} / ${total}`;
+        progressBar.style.width = `${percent}%`;
+      }
+
+      const state = readState();
+      checkboxes.forEach((item) => {
+        item.checked = Boolean(state.checks?.[item.dataset.demoCheck]);
+        item.addEventListener("change", writeState);
+      });
+      fields.forEach((item) => {
+        if (state.values?.[item.id] != null) item.value = state.values[item.id];
+        item.addEventListener("input", writeState);
+        item.addEventListener("change", writeState);
+      });
+      updateProgress();
+
+      modeButton.addEventListener("click", () => {
+        const focused = body.classList.toggle("focus-mode");
+        modeButton.textContent = focused ? "返回记录模式" : "演示模式";
+        if (focused) document.getElementById("overview")?.scrollIntoView({ behavior: "smooth" });
+      });
+
+      resetButton.addEventListener("click", () => {
+        if (!window.confirm("确定清空当前浏览器中的排练勾选与记录吗？")) return;
+        localStorage.removeItem(storageKey);
+        checkboxes.forEach((item) => { item.checked = false; });
+        fields.forEach((item) => { item.value = ""; });
+        updateProgress();
+      });
+    })();
+  </script>
+</body>
+</html>
