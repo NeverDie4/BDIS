@@ -122,7 +122,7 @@ const mavenArgs = ["-f", "flyway/pom.xml"];
 if (goal === "clean") {
   mavenArgs.push("-Dflyway.cleanDisabled=false");
 }
-mavenArgs.push(`flyway:${goal}`);
+mavenArgs.push("compile", `flyway:${goal}`);
 
 const flywayEnv = {
   ...mergedEnv,

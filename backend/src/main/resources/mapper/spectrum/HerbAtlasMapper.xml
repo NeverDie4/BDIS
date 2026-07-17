@@ -53,8 +53,8 @@
         <result column="source_type" property="source"/>
         <result column="identification_points" property="description"/>
         <result column="status" property="status"/>
-        <result column="created_at" property="createdAt"/>
-        <result column="updated_at" property="updatedAt"/>
+        <result column="created_at" property="createTime"/>
+        <result column="updated_at" property="updateTime"/>
     </resultMap>
 
     <sql id="AtlasColumns">

@@ -436,8 +436,12 @@ export async function getPublicGrowthTrace(traceCode: string) {
 export function resolveGrowthResourceUrl(value?: string) {
   if (!value || /^https?:\/\//i.test(value)) return value || "";
   const baseUrl = request.defaults.baseURL || "http://localhost:8080/api";
-  const origin = new URL(baseUrl, "http://localhost").origin;
-  return `${origin}${value.startsWith("/") ? value : `/${value}`}`;
+  const normalizedApiBase = baseUrl.replace(/\/+$/, "");
+  const absoluteApiBase = /^https?:\/\//i.test(normalizedApiBase);
+  if (value.startsWith("/")) {
+    return absoluteApiBase ? `${new URL(normalizedApiBase).origin}${value}` : value;
+  }
+  return `${normalizedApiBase}/${value}`;
 }
 
 export function fetchGrowthAuditHistory(recordId: number) {

@@ -615,6 +615,10 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
   }
 
   private boolean synchronizeTaskDigitalLifeArchive(Long taskId) {
+    return synchronizeTaskDigitalLifeArchive(taskId, SecurityUtils.currentUser().getUserId());
+  }
+
+  private boolean synchronizeTaskDigitalLifeArchive(Long taskId, Long updatedBy) {
     if (taskId == null) {
       return false;
     }
@@ -624,13 +628,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
         || HerbCollectionTaskStatusConstants.CANCELLED.equals(task.getTaskStatus())) {
       return false;
     }
-    long publicStageCount =
-        growthRecordMapper.selectCount(
-            new LambdaQueryWrapper<GrowthRecordEntity>()
-                .eq(GrowthRecordEntity::getTaskId, taskId)
-                .eq(GrowthRecordEntity::getStatus, 1)
-                .eq(GrowthRecordEntity::getReviewStatus, "approved")
-                .eq(GrowthRecordEntity::getPublicVisible, 1));
+    long publicStageCount = growthRecordMapper.countPublicDigitalLifeStages(taskId);
     boolean shouldPublish = publicStageCount >= 2;
     boolean changed = false;
     if (shouldPublish && !StringUtils.hasText(task.getTraceCode())) {
@@ -643,7 +641,9 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
       changed = true;
     }
     if (changed) {
-      task.setUpdatedBy(SecurityUtils.currentUser().getUserId());
+      if (updatedBy != null) {
+        task.setUpdatedBy(updatedBy);
+      }
       herbCollectionTaskMapper.updateById(task);
     }
     return shouldPublish;
@@ -659,6 +659,7 @@ public class GrowthRecordServiceImpl implements GrowthRecordService {
   @Override
   public GrowthPublicTraceArchiveVO publicTrace(String traceCode) {
     GrowthRecordEntity entity = requirePublicTrace(traceCode);
+    synchronizeTaskDigitalLifeArchive(entity.getTaskId(), null);
     GrowthPublicTraceArchiveVO archive = toPublicTraceArchive(entity);
     attachPublicDigitalLifeTrace(archive);
     archive.setImages(loadPublicImages(entity.getBatchId(), entity.getTraceCode()));

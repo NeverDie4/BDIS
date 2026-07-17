@@ -194,7 +194,8 @@ export function ResearchAgentContent() {
   });
   const createMutation = useMutation({
     mutationFn: createAgentTask,
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
+      await queryClient.invalidateQueries({ queryKey: ["research-agent-list"] });
       setCreateOpen(false);
       router.replace(`/assistant/research-agent?agentTaskId=${created.id}`);
       message.success("科研 Agent 任务已创建");
@@ -279,8 +280,12 @@ export function ResearchAgentContent() {
         {!taskId ? (
           <Landing
             canManage={canManage}
-            loading={recentTasks.isLoading}
+            loading={recentTasks.isLoading || recentTasks.isFetching}
             tasks={recentTasks.data?.records ?? []}
+            error={recentTasks.isError
+              ? getApiErrorMessage(recentTasks.error, "无法读取科研 Agent 任务")
+              : undefined}
+            onRetry={() => void recentTasks.refetch()}
             onCreate={() => { createForm.setFieldsValue({ goalText: DEFAULT_GOAL }); setCreateOpen(true); }}
           />
         ) : taskQuery.isLoading ? (
@@ -454,8 +459,8 @@ export function ResearchAgentContent() {
   );
 }
 
-function Landing({ canManage, loading, tasks, onCreate }: { canManage: boolean; loading: boolean; tasks: Array<{ id: number; taskNo: string; goalText: string; status: AgentStatus; progressPercent: number; target?: { name?: string } }>; onCreate: () => void }) {
-  return <><section className={styles.landingHero}><span className={styles.eyebrow}><FlaskConical size={15} /> HERB DIGITAL TWIN RESEARCH AGENT</span><h1>本草数字孪生科研 Agent 工作台</h1><p>持续分析连续观测任务，识别证据缺口，安全编排复测采集与可信数字生命档案。</p>{canManage ? <Button type="primary" size="large" icon={<Sprout size={17} />} onClick={onCreate}>启动科研 Agent</Button> : <p className={styles.permissionHint}>当前角色可查看有权访问的 Agent 任务；启动权限由后端业务权限决定。</p>}</section><Section icon={<History />} title="最近科研任务" subtitle="选择任务可恢复执行步骤、发现项和等待状态。">{loading ? <Spin /> : tasks.length ? <div className={styles.taskList}>{tasks.map((task) => <Link href={`/assistant/research-agent?agentTaskId=${task.id}`} key={task.id}><div><strong>{task.taskNo}</strong><span>{task.target?.name || "采集任务"}</span><p>{task.goalText}</p></div><aside><em>{STATUS_LABEL[task.status]}</em><b>{task.progressPercent}%</b><ArrowRight size={17} /></aside></Link>)}</div> : <Empty description="暂无科研 Agent 任务" />}</Section></>;
+function Landing({ canManage, loading, tasks, error, onRetry, onCreate }: { canManage: boolean; loading: boolean; tasks: Array<{ id: number; taskNo: string; goalText: string; status: AgentStatus; progressPercent: number; target?: { name?: string } }>; error?: string; onRetry: () => void; onCreate: () => void }) {
+  return <><section className={styles.landingHero}><span className={styles.eyebrow}><FlaskConical size={15} /> HERB DIGITAL TWIN RESEARCH AGENT</span><h1>本草数字孪生科研 Agent 工作台</h1><p>持续分析连续观测任务，识别证据缺口，安全编排复测采集与可信数字生命档案。</p>{canManage ? <Button type="primary" size="large" icon={<Sprout size={17} />} onClick={onCreate}>启动科研 Agent</Button> : <p className={styles.permissionHint}>当前角色可查看有权访问的 Agent 任务；启动权限由后端业务权限决定。</p>}</section><Section icon={<History />} title="最近科研任务" subtitle="选择任务可恢复执行步骤、发现项和等待状态。">{loading ? <Spin /> : error ? <div><Empty description={error} /><Button icon={<RefreshCw size={15} />} onClick={onRetry}>重新加载</Button></div> : tasks.length ? <div className={styles.taskList}>{tasks.map((task) => <Link href={`/assistant/research-agent?agentTaskId=${task.id}`} key={task.id}><div><strong>{task.taskNo}</strong><span>{task.target?.name || "采集任务"}</span><p>{task.goalText}</p></div><aside><em>{STATUS_LABEL[task.status]}</em><b>{task.progressPercent}%</b><ArrowRight size={17} /></aside></Link>)}</div> : <Empty description="暂无科研 Agent 任务" />}</Section></>;
 }
 
 function Section({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
