@@ -14,6 +14,8 @@ import { getOrCreateDeviceId } from "./device-id";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api";
 const AUTH_REDIRECT_FLAG = "__bdisAuthRedirect";
+const REQUEST_TIMEOUT_MESSAGE = "请求仍在处理中，请稍后查看结果";
+const REQUEST_TIMEOUT_PATTERN = /timeout|timed out|time out|超时|请求时间过长|响应时间过长/i;
 
 type AuthRedirectError = {
   [AUTH_REDIRECT_FLAG]?: true;
@@ -31,6 +33,18 @@ function isPasswordChangeRequired(error: unknown) {
     error.response?.status === 403 &&
     error.response.data?.code === "PASSWORD_CHANGE_REQUIRED"
   );
+}
+
+function sanitizeTimeoutError(error: unknown) {
+  if (!isRequestTimeoutError(error)) {
+    return;
+  }
+  if (error instanceof Error) {
+    error.message = REQUEST_TIMEOUT_MESSAGE;
+  }
+  if (axios.isAxiosError<ApiResult<unknown>>(error) && error.response?.data) {
+    error.response.data.message = REQUEST_TIMEOUT_MESSAGE;
+  }
 }
 
 export const request = axios.create({
@@ -100,6 +114,7 @@ request.interceptors.request.use((config) => {
 request.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
+    sanitizeTimeoutError(error);
     if (isPasswordChangeRequired(error) && typeof window !== "undefined") {
       const securitySettingsUrl = "/settings?tab=security";
       if (`${window.location.pathname}${window.location.search}` !== securitySettingsUrl) {
@@ -147,7 +162,30 @@ export async function apiPost<T>(url: string, data?: unknown) {
   return response.data.data;
 }
 
+export function isRequestTimeoutError(error: unknown) {
+  if (axios.isAxiosError<ApiResult<unknown>>(error)) {
+    const responseMessage = error.response?.data?.message;
+    const message = [error.message, typeof responseMessage === "string" ? responseMessage : ""]
+      .filter(Boolean)
+      .join(" ");
+    return (
+      error.code === "ECONNABORTED"
+      || error.code === "ETIMEDOUT"
+      || error.response?.status === 408
+      || error.response?.status === 504
+      || REQUEST_TIMEOUT_PATTERN.test(message)
+    );
+  }
+  if (error instanceof Error) {
+    return error.name === "AbortError" || REQUEST_TIMEOUT_PATTERN.test(error.message);
+  }
+  return false;
+}
+
 export function getApiErrorMessage(error: unknown, fallback = "操作失败") {
+  if (isRequestTimeoutError(error)) {
+    return REQUEST_TIMEOUT_MESSAGE;
+  }
   if (axios.isAxiosError<ApiResult<unknown>>(error)) {
     return error.response?.data?.message || error.message || fallback;
   }

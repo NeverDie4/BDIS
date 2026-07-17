@@ -25,11 +25,10 @@ import {
   type AgentStatus,
   type FollowUpPlan,
 } from "@/lib/research-agent";
-import { getApiErrorMessage } from "@/lib/request";
+import { getApiErrorMessage, isRequestTimeoutError } from "@/lib/request";
 import { useAuthStore } from "@/stores/auth-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Empty, Form, Input, InputNumber, Modal, Progress, Spin } from "antd";
-import axios from "axios";
 import {
   Archive, ArrowRight, CheckCircle2, ClipboardCheck, Clock3, ExternalLink,
   FileSearch, FlaskConical, History, ListChecks, Play,
@@ -90,16 +89,6 @@ const TARGET_TYPE_LABEL: Record<string, string> = {
   COLLECTION_TASK: "采集任务", HERB_COLLECTION_TASK: "采集任务", BATCH: "采集批次",
   GROWTH_RECORD: "生长记录", IMAGE: "现场图片", DIGITAL_ARCHIVE: "数字生命档案",
 };
-
-function isBackgroundGenerationTimeout(error: unknown) {
-  return Boolean(
-    axios.isAxiosError(error)
-      && !error.response
-      && (error.code === "ECONNABORTED"
-        || error.code === "ETIMEDOUT"
-        || error.message.toLowerCase().includes("timeout")),
-  );
-}
 
 export function ResearchAgentContent() {
   const search = useSearchParams();
@@ -200,13 +189,24 @@ export function ResearchAgentContent() {
       router.replace(`/assistant/research-agent?agentTaskId=${created.id}`);
       message.success("科研 Agent 任务已创建");
     },
-    onError: (error) => message.error(getApiErrorMessage(error, "创建失败")),
+    onError: async (error) => {
+      if (isRequestTimeoutError(error)) {
+        setCreateOpen(false);
+        await queryClient.invalidateQueries({ queryKey: ["research-agent-list"] });
+        window.setTimeout(() => {
+          void queryClient.invalidateQueries({ queryKey: ["research-agent-list"] });
+        }, 20_000);
+        message.info("科研 Agent 任务正在后台创建，请稍后在任务列表查看");
+        return;
+      }
+      message.error(getApiErrorMessage(error, "创建失败"));
+    },
   });
   const { mutate: resumeLegacyTask } = useMutation({
     mutationFn: startAgentTask,
     onSuccess: async () => { await refresh(); message.success("科研 Agent 已自动生成复测方案，请确认下一步动作"); },
     onError: async (error) => {
-      if (isBackgroundGenerationTimeout(error)) {
+      if (isRequestTimeoutError(error)) {
         setRegeneratingFromPlanId(null);
         setPlanRegenerating(true);
         await refresh();
@@ -260,7 +260,7 @@ export function ResearchAgentContent() {
       ]);
       message.info(regenerate ? "已开始重新生成复测方案" : "已开始生成复测方案");
     } catch (error) {
-      if (isBackgroundGenerationTimeout(error)) {
+      if (isRequestTimeoutError(error)) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["research-agent", taskId] }),
           queryClient.invalidateQueries({ queryKey: ["research-agent-plan", taskId] }),
