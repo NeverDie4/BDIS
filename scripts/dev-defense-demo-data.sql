@@ -45,6 +45,24 @@ SET @demo_dept_id := (
   WHERE department_no='DEMO_HL_DEPT' AND is_deleted=0 LIMIT 1
 );
 
+-- 兼容已执行过旧版演示脚本的本地库：将培训管理员原地替换为系统管理员。
+-- 若管理员账号已存在，则停用旧账号，避免现场出现两个不在流程内的演示账号。
+UPDATE sys_user legacy
+LEFT JOIN sys_user admin_user
+  ON admin_user.username='admin_demo' AND admin_user.is_deleted=0
+SET legacy.user_no='DEMO_HL_ADMIN', legacy.username='admin_demo',
+    legacy.real_name='黄连演示系统管理员', legacy.user_type='admin',
+    legacy.must_change_password=0, legacy.status=1, legacy.is_deleted=0,
+    legacy.updated_at=NOW(), legacy.remark='BDIS_DEFENSE_DEMO; admin; demo_seed'
+WHERE legacy.username='trainer_hl_demo' AND legacy.is_deleted=0 AND admin_user.id IS NULL;
+
+UPDATE sys_user legacy
+JOIN sys_user admin_user
+  ON admin_user.username='admin_demo' AND admin_user.is_deleted=0
+SET legacy.status=0, legacy.is_deleted=1, legacy.updated_at=NOW(),
+    legacy.remark='BDIS_DEFENSE_DEMO; replaced by admin_demo'
+WHERE legacy.username='trainer_hl_demo' AND legacy.is_deleted=0;
+
 -- 统一密码为 password，仅限本地演示库。
 INSERT INTO sys_user
 (user_no, username, password_hash, real_name, organization_id, department_id,
@@ -55,7 +73,7 @@ VALUES
 ('DEMO_HL_REVIEWER', 'agent_reviewer_demo', '$2a$10$6bvbc4YcNNJ8G04ht4nF8.gyQlisoJ55a/yX/LTwdigeEApavMgpK', '黄连演示审核员', @demo_org_id, @demo_dept_id, 'reviewer', 0, 1, 0, NOW(), NOW(), 0, 'BDIS_DEFENSE_DEMO; reviewer; demo_seed'),
 ('DEMO_HL_STUDENT', 'student_hl_demo', '$2a$10$6bvbc4YcNNJ8G04ht4nF8.gyQlisoJ55a/yX/LTwdigeEApavMgpK', '黄连演示学生', @demo_org_id, @demo_dept_id, 'student', 0, 1, 0, NOW(), NOW(), 0, 'BDIS_DEFENSE_DEMO; student; demo_seed'),
 ('DEMO_HL_RESEARCHER', 'researcher_hl_demo', '$2a$10$6bvbc4YcNNJ8G04ht4nF8.gyQlisoJ55a/yX/LTwdigeEApavMgpK', '黄连演示研究员', @demo_org_id, @demo_dept_id, 'researcher', 0, 1, 0, NOW(), NOW(), 0, 'BDIS_DEFENSE_DEMO; researcher; demo_seed'),
-('DEMO_HL_TRAINER', 'trainer_hl_demo', '$2a$10$6bvbc4YcNNJ8G04ht4nF8.gyQlisoJ55a/yX/LTwdigeEApavMgpK', '黄连演示培训管理员', @demo_org_id, @demo_dept_id, 'trainer', 0, 1, 0, NOW(), NOW(), 0, 'BDIS_DEFENSE_DEMO; trainer; demo_seed')
+('DEMO_HL_ADMIN', 'admin_demo', '$2a$10$6bvbc4YcNNJ8G04ht4nF8.gyQlisoJ55a/yX/LTwdigeEApavMgpK', '黄连演示系统管理员', @demo_org_id, @demo_dept_id, 'admin', 0, 1, 0, NOW(), NOW(), 0, 'BDIS_DEFENSE_DEMO; admin; demo_seed')
 ON DUPLICATE KEY UPDATE
  real_name=VALUES(real_name), organization_id=VALUES(organization_id),
  department_id=VALUES(department_id), user_type=VALUES(user_type),
@@ -66,7 +84,13 @@ SET @collector_id := (SELECT id FROM sys_user WHERE username='collector_agent_de
 SET @reviewer_id := (SELECT id FROM sys_user WHERE username='agent_reviewer_demo' AND is_deleted=0 LIMIT 1);
 SET @student_id := (SELECT id FROM sys_user WHERE username='student_hl_demo' AND is_deleted=0 LIMIT 1);
 SET @researcher_id := (SELECT id FROM sys_user WHERE username='researcher_hl_demo' AND is_deleted=0 LIMIT 1);
-SET @trainer_id := (SELECT id FROM sys_user WHERE username='trainer_hl_demo' AND is_deleted=0 LIMIT 1);
+SET @admin_id := (SELECT id FROM sys_user WHERE username='admin_demo' AND is_deleted=0 LIMIT 1);
+
+DELETE user_role
+FROM rel_user_role user_role
+JOIN sys_user user ON user.id=user_role.user_id
+JOIN auth_role role ON role.id=user_role.role_id
+WHERE user.username='admin_demo' AND role.role_code<>'ADMIN';
 
 INSERT IGNORE INTO rel_user_role (user_id, role_id, created_at, created_by, remark)
 SELECT u.id, r.id, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO; demo_seed'
@@ -77,11 +101,11 @@ JOIN auth_role r ON r.role_code = CASE u.username
   WHEN 'agent_reviewer_demo' THEN 'REVIEWER'
   WHEN 'student_hl_demo' THEN 'STUDENT'
   WHEN 'researcher_hl_demo' THEN 'RESEARCHER'
-  WHEN 'trainer_hl_demo' THEN 'TRAINER'
+  WHEN 'admin_demo' THEN 'ADMIN'
 END
 WHERE u.username IN (
   'agent_teacher_demo', 'collector_agent_demo', 'agent_reviewer_demo',
-  'student_hl_demo', 'researcher_hl_demo', 'trainer_hl_demo'
+  'student_hl_demo', 'researcher_hl_demo', 'admin_demo'
 );
 
 SET @species_id := (
@@ -126,7 +150,16 @@ VALUES
 ('DEMO_HL_MAP_FILE_01', 'map-point-01.png', '黄连主采集点封面.png', 'image', 'png', NULL, 'pending', 'defense-demo/map-point-01.png', 'local', 'public', 'image/png', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
 ('DEMO_HL_MAP_FILE_02', 'map-point-02.jpeg', '黄连林下观测点A封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/map-point-02.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
 ('DEMO_HL_MAP_FILE_03', 'map-point-03.jpeg', '黄连坡地观测点B封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/map-point-03.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
-('DEMO_HL_MAP_FILE_04', 'map-point-04.jpeg', '黄连低海拔对照点C封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/map-point-04.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed')
+('DEMO_HL_MAP_FILE_04', 'map-point-04.jpeg', '黄连低海拔对照点C封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/map-point-04.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
+('DEMO_HL_MAP_FILE_05', 'map-point-05.png', '黄连林缘样地D封面.png', 'image', 'png', NULL, 'pending', 'defense-demo/map-point-05.png', 'local', 'public', 'image/png', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
+('DEMO_HL_MAP_FILE_06', 'map-point-06.png', '黄连沟谷样地E封面.png', 'image', 'png', NULL, 'pending', 'defense-demo/map-point-06.png', 'local', 'public', 'image/png', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
+('DEMO_HL_MAP_FILE_07', 'map-point-07.jpeg', '黄连高海拔对照点F封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/map-point-07.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; map cover; demo_seed'),
+('DEMO_HL_SPECIES_COVER', 'huanglian-species-cover.png', '黄连药材品种封面.png', 'image', 'png', NULL, 'pending', 'defense-demo/huanglian-species-cover.png', 'local', 'public', 'image/png', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; herb species cover; demo_seed'),
+('DEMO_HERB_COVER_DANGSHEN', 'herb-cover-dangshen.jpeg', '党参药材品种封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/herb-cover-dangshen.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; standard herb species cover; demo_seed'),
+('DEMO_HERB_COVER_GOUQI', 'herb-cover-gouqi.jpeg', '枸杞药材品种封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/herb-cover-gouqi.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; standard herb species cover; demo_seed'),
+('DEMO_HERB_COVER_HUANGLIAN', 'herb-cover-huanglian.png', '黄连标准药材品种封面.png', 'image', 'png', NULL, 'pending', 'defense-demo/herb-cover-huanglian.png', 'local', 'public', 'image/png', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; standard herb species cover; demo_seed'),
+('DEMO_HERB_COVER_HUANGQI', 'herb-cover-huangqi.png', '黄芪药材品种封面.png', 'image', 'png', NULL, 'pending', 'defense-demo/herb-cover-huangqi.png', 'local', 'public', 'image/png', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; standard herb species cover; demo_seed'),
+('DEMO_HERB_COVER_JINYINHUA', 'herb-cover-jinyinhua.jpeg', '金银花药材品种封面.jpeg', 'image', 'jpeg', NULL, 'pending', 'defense-demo/herb-cover-jinyinhua.jpeg', 'local', 'public', 'image/jpeg', @teacher_id, '黄连演示教师', NOW(), 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; standard herb species cover; demo_seed')
 ON DUPLICATE KEY UPDATE
  file_name=VALUES(file_name), original_filename=VALUES(original_filename), file_type=VALUES(file_type),
  file_format=VALUES(file_format), storage_path=VALUES(storage_path), storage_type='local',
@@ -136,12 +169,16 @@ ON DUPLICATE KEY UPDATE
 
 UPDATE sys_file_resource
 SET file_url=CONCAT('/api/public-files/', id, '/content')
-WHERE file_no IN ('DEMO_HL_MAP_FILE_01','DEMO_HL_MAP_FILE_02','DEMO_HL_MAP_FILE_03','DEMO_HL_MAP_FILE_04');
+WHERE file_no IN ('DEMO_HL_MAP_FILE_01','DEMO_HL_MAP_FILE_02','DEMO_HL_MAP_FILE_03','DEMO_HL_MAP_FILE_04','DEMO_HL_MAP_FILE_05','DEMO_HL_MAP_FILE_06','DEMO_HL_MAP_FILE_07','DEMO_HL_SPECIES_COVER','DEMO_HERB_COVER_DANGSHEN','DEMO_HERB_COVER_GOUQI','DEMO_HERB_COVER_HUANGLIAN','DEMO_HERB_COVER_HUANGQI','DEMO_HERB_COVER_JINYINHUA');
 
 SET @map_file_01 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_01' LIMIT 1);
 SET @map_file_02 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_02' LIMIT 1);
 SET @map_file_03 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_03' LIMIT 1);
 SET @map_file_04 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_04' LIMIT 1);
+SET @map_file_05 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_05' LIMIT 1);
+SET @map_file_06 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_06' LIMIT 1);
+SET @map_file_07 := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_MAP_FILE_07' LIMIT 1);
+SET @species_cover_file := (SELECT id FROM sys_file_resource WHERE file_no='DEMO_HL_SPECIES_COVER' LIMIT 1);
 
 SET @point_01 := (SELECT id FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M01%' AND is_deleted=0 ORDER BY id LIMIT 1);
 INSERT INTO herb_distribution
@@ -199,6 +236,48 @@ SELECT @species_id, @base_id, '黄连低海拔对照点 C（演示）', 108.0200
 WHERE @point_04 IS NULL;
 SET @point_04 := COALESCE(@point_04, LAST_INSERT_ID());
 
+SET @point_05 := (SELECT id FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M05%' AND is_deleted=0 ORDER BY id LIMIT 1);
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT @species_id, @base_id, '黄连林缘样地 D（演示）', 108.3100000, 30.2250000,
+ '重庆市', '重庆市', '石柱土家族自治县', '林缘样地 D（演示）',
+ 1450.00, 'artificial', 'secondary', '林缘遮阴环境观测演示点。', CONCAT('/api/public-files/',@map_file_05,'/content'),
+ '2026-07-10 09:40:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:M05; DEMO_HL_POINT_D; not field-measured'
+WHERE @point_05 IS NULL;
+SET @point_05 := COALESCE(@point_05, LAST_INSERT_ID());
+
+SET @point_06 := (SELECT id FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M06%' AND is_deleted=0 ORDER BY id LIMIT 1);
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT @species_id, @base_id, '黄连沟谷样地 E（演示）', 108.2700000, 30.1450000,
+ '重庆市', '重庆市', '石柱土家族自治县', '沟谷样地 E（演示）',
+ 1320.00, 'artificial', 'secondary', '沟谷湿润环境观测演示点。', CONCAT('/api/public-files/',@map_file_06,'/content'),
+ '2026-07-11 09:10:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:M06; DEMO_HL_POINT_E; not field-measured'
+WHERE @point_06 IS NULL;
+SET @point_06 := COALESCE(@point_06, LAST_INSERT_ID());
+
+SET @point_07 := (SELECT id FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M07%' AND is_deleted=0 ORDER BY id LIMIT 1);
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT @species_id, @base_id, '黄连高海拔对照点 F（演示）', 108.3700000, 30.2400000,
+ '重庆市', '重庆市', '石柱土家族自治县', '高海拔对照点 F（演示）',
+ 1680.00, 'artificial', 'comparison', '高海拔阴湿环境演示对照点。', CONCAT('/api/public-files/',@map_file_07,'/content'),
+ '2026-07-12 09:50:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:M07; DEMO_HL_POINT_F; not field-measured'
+WHERE @point_07 IS NULL;
+SET @point_07 := COALESCE(@point_07, LAST_INSERT_ID());
+
 UPDATE herb_distribution SET
  species_id=@species_id, base_id=@base_id, location_name='石柱黄连科研演示基地',
  longitude=108.2450000, latitude=30.1840000, altitude=1480.00,
@@ -223,6 +302,24 @@ UPDATE herb_distribution SET
  cover_image_url=CONCAT('/api/public-files/',@map_file_04,'/content'), last_collected_at='2026-07-07 09:30:00',
  status=1, is_deleted=0, updated_at=NOW(), updated_by=@teacher_id
 WHERE id=@point_04;
+UPDATE herb_distribution SET
+ species_id=@species_id, base_id=@base_id, location_name='黄连林缘样地 D（演示）',
+ longitude=108.3100000, latitude=30.2250000, altitude=1450.00,
+ cover_image_url=CONCAT('/api/public-files/',@map_file_05,'/content'), last_collected_at='2026-07-10 09:40:00',
+ status=1, is_deleted=0, updated_at=NOW(), updated_by=@teacher_id
+WHERE id=@point_05;
+UPDATE herb_distribution SET
+ species_id=@species_id, base_id=@base_id, location_name='黄连沟谷样地 E（演示）',
+ longitude=108.2700000, latitude=30.1450000, altitude=1320.00,
+ cover_image_url=CONCAT('/api/public-files/',@map_file_06,'/content'), last_collected_at='2026-07-11 09:10:00',
+ status=1, is_deleted=0, updated_at=NOW(), updated_by=@teacher_id
+WHERE id=@point_06;
+UPDATE herb_distribution SET
+ species_id=@species_id, base_id=@base_id, location_name='黄连高海拔对照点 F（演示）',
+ longitude=108.3700000, latitude=30.2400000, altitude=1680.00,
+ cover_image_url=CONCAT('/api/public-files/',@map_file_07,'/content'), last_collected_at='2026-07-12 09:50:00',
+ status=1, is_deleted=0, updated_at=NOW(), updated_by=@teacher_id
+WHERE id=@point_07;
 
 INSERT IGNORE INTO sys_file_business
 (file_id, biz_type, biz_id, file_usage, is_public, sort_order, created_at, created_by, remark)
@@ -230,11 +327,105 @@ VALUES
 (@map_file_01, 'map_point', @point_01, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO'),
 (@map_file_02, 'map_point', @point_02, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO'),
 (@map_file_03, 'map_point', @point_03, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO'),
-(@map_file_04, 'map_point', @point_04, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO');
+(@map_file_04, 'map_point', @point_04, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO'),
+(@map_file_05, 'map_point', @point_05, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO'),
+(@map_file_06, 'map_point', @point_06, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO'),
+(@map_file_07, 'map_point', @point_07, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO');
 
 UPDATE herb_species
-SET cover_image_url=CONCAT('/api/public-files/',@map_file_01,'/content')
+SET cover_image_url=CONCAT('/api/public-files/',@species_cover_file,'/content'),
+    updated_at=NOW(), updated_by=@teacher_id
 WHERE id=@species_id;
+
+INSERT IGNORE INTO sys_file_business
+(file_id, biz_type, biz_id, file_usage, is_public, sort_order, created_at, created_by, remark)
+VALUES
+(@species_cover_file, 'herb_species', @species_id, 'cover', 1, 1, NOW(), @teacher_id, 'BDIS_DEFENSE_DEMO; herb species cover; demo_seed');
+
+UPDATE herb_species species
+JOIN sys_file_resource file_resource ON file_resource.file_no=CASE species.herb_no
+  WHEN 'HERB_DANGSHEN' THEN 'DEMO_HERB_COVER_DANGSHEN'
+  WHEN 'HERB_GOUQI' THEN 'DEMO_HERB_COVER_GOUQI'
+  WHEN 'HERB_HUANGLIAN' THEN 'DEMO_HERB_COVER_HUANGLIAN'
+  WHEN 'HERB_HUANGQI' THEN 'DEMO_HERB_COVER_HUANGQI'
+  WHEN 'HERB_JINYINHUA' THEN 'DEMO_HERB_COVER_JINYINHUA'
+END
+SET species.cover_image_url=CONCAT('/api/public-files/', file_resource.id, '/content'),
+    species.status=1, species.is_deleted=0, species.updated_at=NOW(), species.updated_by=@teacher_id
+WHERE species.herb_no IN ('HERB_DANGSHEN','HERB_GOUQI','HERB_HUANGLIAN','HERB_HUANGQI','HERB_JINYINHUA')
+  AND file_resource.is_deleted=0;
+
+INSERT IGNORE INTO sys_file_business
+(file_id, biz_type, biz_id, file_usage, is_public, sort_order, created_at, created_by, remark)
+SELECT file_resource.id, 'herb_species', species.id, 'cover', 1, 1, NOW(), @teacher_id,
+       'BDIS_DEFENSE_DEMO; standard herb species cover; demo_seed'
+FROM herb_species species
+JOIN sys_file_resource file_resource ON file_resource.file_no=CASE species.herb_no
+  WHEN 'HERB_DANGSHEN' THEN 'DEMO_HERB_COVER_DANGSHEN'
+  WHEN 'HERB_GOUQI' THEN 'DEMO_HERB_COVER_GOUQI'
+  WHEN 'HERB_HUANGLIAN' THEN 'DEMO_HERB_COVER_HUANGLIAN'
+  WHEN 'HERB_HUANGQI' THEN 'DEMO_HERB_COVER_HUANGQI'
+  WHEN 'HERB_JINYINHUA' THEN 'DEMO_HERB_COVER_JINYINHUA'
+END
+WHERE species.herb_no IN ('HERB_DANGSHEN','HERB_GOUQI','HERB_HUANGLIAN','HERB_HUANGQI','HERB_JINYINHUA')
+  AND species.is_deleted=0 AND file_resource.is_deleted=0;
+
+-- 地图背景补充：其他药材仅提供稳定的采集地点，不关联黄连主流程的生长记录、批次或审核链路。
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT species.id, NULL, '岷县党参示范采集点（演示）', 104.0360000, 34.4380000,
+ '甘肃省', '定西市', '岷县', '岷县党参示范采集点（演示）',
+ 2310.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+ '2026-07-03 10:00:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O01; DEMO_OTHER_DANGSHEN; not field-measured'
+FROM herb_species species
+WHERE species.herb_no='HERB_DANGSHEN' AND species.is_deleted=0
+  AND NOT EXISTS (SELECT 1 FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O01%' AND is_deleted=0);
+
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT species.id, NULL, '中宁枸杞标准化采集点（演示）', 105.6740000, 37.4920000,
+ '宁夏回族自治区', '中卫市', '中宁县', '中宁枸杞标准化采集点（演示）',
+ 1240.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+ '2026-07-04 10:00:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O02; DEMO_OTHER_GOUQI; not field-measured'
+FROM herb_species species
+WHERE species.herb_no='HERB_GOUQI' AND species.is_deleted=0
+  AND NOT EXISTS (SELECT 1 FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O02%' AND is_deleted=0);
+
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT species.id, NULL, '陇西黄芪生态采集点（演示）', 104.6320000, 35.0040000,
+ '甘肃省', '定西市', '陇西县', '陇西黄芪生态采集点（演示）',
+ 1980.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+ '2026-07-05 10:00:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O03; DEMO_OTHER_HUANGQI; not field-measured'
+FROM herb_species species
+WHERE species.herb_no='HERB_HUANGQI' AND species.is_deleted=0
+  AND NOT EXISTS (SELECT 1 FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O03%' AND is_deleted=0);
+
+INSERT INTO herb_distribution
+(species_id, base_id, location_name, longitude, latitude, province, city, district, address,
+ altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
+ last_collected_at, source_type, data_source, status, is_deleted,
+ created_at, updated_at, created_by, updated_by, version, remark)
+SELECT species.id, NULL, '平邑金银花种植采集点（演示）', 117.6310000, 35.5030000,
+ '山东省', '临沂市', '平邑县', '平邑金银花种植采集点（演示）',
+ 310.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+ '2026-07-06 10:00:00', 'pc', 'demo_seed', 1, 0,
+ NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O04; DEMO_OTHER_JINYINHUA; not field-measured'
+FROM herb_species species
+WHERE species.herb_no='HERB_JINYINHUA' AND species.is_deleted=0
+  AND NOT EXISTS (SELECT 1 FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O04%' AND is_deleted=0);
 
 -- 原任务三阶段全部归属主点，适生分析取最新的旺盛生长期记录。
 UPDATE herb_growth_record
@@ -266,7 +457,25 @@ VALUES
  6.20, 1.50, 6.35, 26.40, 61.00, 28.00, 15800,
  '嫩绿', '未开花', '低海拔演示对照，不构成农学结论。', 'app', 'demo_seed',
  'defense_demo', 'DEMO-HL-MAP-04', 'approved', '2026-07-07 10:00:00', '2026-07-07 15:00:00', '2026-07-07 09:30:00',
- 1, 0, NOW(), NOW(), @collector_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:M04; not field-measured')
+ 1, 0, NOW(), NOW(), @collector_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:M04; not field-measured'),
+(@species_id, '黄连', @base_id, '石柱黄连科研 Agent 演示基地', @point_05,
+ @collector_id, '黄连演示采集员', 108.3100000, 30.2250000, '展叶期',
+ 14.10, 3.00, 6.12, 21.60, 74.00, 48.00, 11800,
+ '绿色', '未开花', '林缘遮阴样地演示记录。', 'app', 'demo_seed',
+ 'defense_demo', 'DEMO-HL-MAP-05', 'approved', '2026-07-10 10:10:00', '2026-07-10 15:10:00', '2026-07-10 09:40:00',
+ 1, 0, NOW(), NOW(), @collector_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:M05; not field-measured'),
+(@species_id, '黄连', @base_id, '石柱黄连科研 Agent 演示基地', @point_06,
+ @collector_id, '黄连演示采集员', 108.2700000, 30.1450000, '成熟期',
+ 19.40, 3.80, 6.06, 23.40, 78.00, 53.00, 10900,
+ '深绿', '已开花', '沟谷湿润样地演示记录。', 'app', 'demo_seed',
+ 'defense_demo', 'DEMO-HL-MAP-06', 'approved', '2026-07-11 10:00:00', '2026-07-11 15:00:00', '2026-07-11 09:10:00',
+ 1, 0, NOW(), NOW(), @collector_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:M06; not field-measured'),
+(@species_id, '黄连', @base_id, '石柱黄连科研 Agent 演示基地', @point_07,
+ @collector_id, '黄连演示采集员', 108.3700000, 30.2400000, '花期',
+ 17.30, 3.50, 6.22, 18.80, 81.00, 58.00, 9800,
+ '深绿', '开花', '高海拔阴湿对照点演示记录。', 'app', 'demo_seed',
+ 'defense_demo', 'DEMO-HL-MAP-07', 'approved', '2026-07-12 10:20:00', '2026-07-12 15:20:00', '2026-07-12 09:50:00',
+ 1, 0, NOW(), NOW(), @collector_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:M07; not field-measured')
 ON DUPLICATE KEY UPDATE
  species_id=VALUES(species_id), base_id=VALUES(base_id), distribution_id=VALUES(distribution_id),
  collector_id=VALUES(collector_id), collector_name_snapshot=VALUES(collector_name_snapshot),
@@ -367,7 +576,23 @@ VALUES
  '掌握中药材基础鉴别知识。',
  '能够完成黄连生长观测、影像证据采集与数字档案核验。',
  '讲授、示范、实验和数字化工具实践。', '黄连,野外采集,图像识别,数字档案',
- 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S01; demo_seed')
+ 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S01; demo_seed'),
+('DEMO-HL-COURSE-02', '黄连规范化采集与质量控制实训', 'experiment', @teacher_id,
+ '围绕样方选择、环境指标采集、规范拍摄和批次提交审核开展的已发布实训课程。', 'published',
+ '2026-04-06 08:00:00', '2026-05-22 18:00:00', '2026-03-25 09:00:00', @teacher_id,
+ '中药学、生物制药、药学', 24, 1.50,
+ '完成中药材基础鉴别课程。',
+ '能够按采集规范完成样方记录、影像采集和质量自检。',
+ '讲授、实训、案例复盘。', '黄连,采集规范,质量控制,批次审核',
+ 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; published course; demo_seed'),
+('DEMO-HL-COURSE-03', '中药材数字档案与溯源应用', 'mixed', @teacher_id,
+ '面向已完成采集的药材记录，学习二维码公开页、证据链和数字档案核验的混合式课程。', 'published',
+ '2026-05-11 08:00:00', '2026-06-26 18:00:00', '2026-04-28 09:00:00', @teacher_id,
+ '中药学、信息管理、数字农业', 20, 1.00,
+ '了解中药材采集与档案基础。',
+ '能够说明公开溯源页、二维码和证据链之间的关联。',
+ '在线学习、案例讨论、档案核验练习。', '数字档案,二维码溯源,证据链,黄连',
+ 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; published course; demo_seed')
 ON DUPLICATE KEY UPDATE
  course_name=VALUES(course_name), course_type=VALUES(course_type), teacher_id=VALUES(teacher_id),
  description=VALUES(description), publish_status='published', started_at=VALUES(started_at),
@@ -378,6 +603,8 @@ ON DUPLICATE KEY UPDATE
  updated_at=NOW(), updated_by=@teacher_id, remark=VALUES(remark);
 
 SET @course_id := (SELECT id FROM edu_course WHERE course_no='DEMO-HL-COURSE-01' AND is_deleted=0 LIMIT 1);
+SET @course_02_id := (SELECT id FROM edu_course WHERE course_no='DEMO-HL-COURSE-02' AND is_deleted=0 LIMIT 1);
+SET @course_03_id := (SELECT id FROM edu_course WHERE course_no='DEMO-HL-COURSE-03' AND is_deleted=0 LIMIT 1);
 
 INSERT INTO edu_experiment_step
 (course_id, step_no, step_title, step_content, expected_result, sort_order,
@@ -448,16 +675,24 @@ VALUES
  '研究内容包括地图点位、三阶段生长数据、影像识别、Agent 补采和数字档案。',
  '2026-03-01 08:00:00', '2026-12-31 18:00:00', 'ongoing', 'approved',
  '课题方案与演示范围一致，同意开展。', @reviewer_id, '2026-03-01 09:00:00',
- 1, 0, NOW(), NOW(), @researcher_id, @researcher_id, 0, 'BDIS_DEFENSE_DEMO:S05; demo_seed')
+ 1, 0, NOW(), NOW(), @researcher_id, @researcher_id, 0, 'BDIS_DEFENSE_DEMO:S05; demo_seed'),
+('DEMO-HL-RESEARCH-02', '黄连适生环境与质量关联研究', 'research', @researcher_id, @species_id,
+ '围绕不同海拔、湿度和光照条件下的黄连生长指标开展的已结题演示研究。',
+ '归纳演示点位的环境指标与生长表现关联。',
+ '对比七个黄连演示点的海拔、温湿度、土壤湿度和生长阶段记录。',
+ '2026-01-10 08:00:00', '2026-06-30 18:00:00', 'completed', 'approved',
+ '研究过程与评价记录完整，同意结题。', @reviewer_id, '2026-07-02 09:00:00',
+ 1, 0, NOW(), NOW(), @researcher_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO; completed research project; demo_seed')
 ON DUPLICATE KEY UPDATE
  project_name=VALUES(project_name), project_type=VALUES(project_type), leader_id=VALUES(leader_id),
  species_id=VALUES(species_id), description=VALUES(description), research_objective=VALUES(research_objective),
  research_content=VALUES(research_content), started_at=VALUES(started_at), ended_at=VALUES(ended_at),
- project_status='ongoing', review_status='approved', review_comment=VALUES(review_comment),
+ project_status=VALUES(project_status), review_status='approved', review_comment=VALUES(review_comment),
  reviewed_by=@reviewer_id, reviewed_at=VALUES(reviewed_at), status=1, is_deleted=0,
  updated_at=NOW(), updated_by=@researcher_id, remark=VALUES(remark);
 
 SET @project_id := (SELECT id FROM research_project WHERE project_no='DEMO-HL-RESEARCH-01' AND is_deleted=0 LIMIT 1);
+SET @project_02_id := (SELECT id FROM research_project WHERE project_no='DEMO-HL-RESEARCH-02' AND is_deleted=0 LIMIT 1);
 
 INSERT INTO rel_project_member
 (project_id, user_id, member_role, member_status, invitation_status,
@@ -508,10 +743,16 @@ INSERT INTO edu_training_plan
 VALUES
 ('DEMO-HL-TRAIN-01', '黄连规范化采集与影像记录培训', 'practice', @teacher_id,
  '培训内容包括黄连生长指标记录、整株/叶片/根茎拍摄规范、AI 识别和二维码档案核验。',
- '2026-06-20 08:00:00', '2026-06-21 18:00:00', 'published', @course_id, @trainer_id,
+ '2026-06-20 08:00:00', '2026-06-21 18:00:00', 'published', @course_id, @admin_id,
  '石柱黄连科研 Agent 演示基地', '2026-06-15 09:00:00', @teacher_id,
  '完成必修资源并通过采集规范与影像证据检查。',
- 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S08; demo_seed')
+ 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S08; demo_seed'),
+('DEMO-HL-TRAIN-02', '黄连采集规范复训', 'practice', @teacher_id,
+ '面向已完成采集任务的成员，复核点位记录、影像类型和批次审核规范。',
+ '2026-05-08 08:00:00', '2026-05-09 18:00:00', 'published', @course_02_id, @admin_id,
+ '石柱黄连科研 Agent 演示基地', '2026-04-30 09:00:00', @teacher_id,
+ '完成采集规范复训并通过课后核验。',
+ 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; completed training plan; demo_seed')
 ON DUPLICATE KEY UPDATE
  plan_name=VALUES(plan_name), plan_type=VALUES(plan_type), owner_id=VALUES(owner_id),
  description=VALUES(description), started_at=VALUES(started_at), ended_at=VALUES(ended_at),
@@ -521,34 +762,35 @@ ON DUPLICATE KEY UPDATE
  updated_at=NOW(), updated_by=@teacher_id, remark=VALUES(remark);
 
 SET @training_plan_id := (SELECT id FROM edu_training_plan WHERE plan_no='DEMO-HL-TRAIN-01' AND is_deleted=0 LIMIT 1);
+SET @training_plan_02_id := (SELECT id FROM edu_training_plan WHERE plan_no='DEMO-HL-TRAIN-02' AND is_deleted=0 LIMIT 1);
 
 INSERT INTO edu_training_plan_item
 (plan_id, item_type, item_title, description, course_id, project_id, base_id, species_id,
  is_required, completion_weight, sort_order, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
 SELECT @training_plan_id, 'course', '黄连生长观测与数字化鉴别实验', '培训基础课程', @course_id, NULL, NULL, NULL,
- 1, 25.00, 1, 1, 0, NOW(), NOW(), @trainer_id, @trainer_id, 0, 'BDIS_DEFENSE_DEMO:S09'
+ 1, 25.00, 1, 1, 0, NOW(), NOW(), @admin_id, @admin_id, 0, 'BDIS_DEFENSE_DEMO:S09'
 WHERE NOT EXISTS (SELECT 1 FROM edu_training_plan_item WHERE plan_id=@training_plan_id AND item_type='course' AND course_id=@course_id AND is_deleted=0);
 INSERT INTO edu_training_plan_item
 (plan_id, item_type, item_title, description, course_id, project_id, base_id, species_id,
  is_required, completion_weight, sort_order, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
 SELECT @training_plan_id, 'project', '石柱黄连全生命周期数字化研究', '培训关联课题', NULL, @project_id, NULL, NULL,
- 1, 25.00, 2, 1, 0, NOW(), NOW(), @trainer_id, @trainer_id, 0, 'BDIS_DEFENSE_DEMO:S09'
+ 1, 25.00, 2, 1, 0, NOW(), NOW(), @admin_id, @admin_id, 0, 'BDIS_DEFENSE_DEMO:S09'
 WHERE NOT EXISTS (SELECT 1 FROM edu_training_plan_item WHERE plan_id=@training_plan_id AND item_type='project' AND project_id=@project_id AND is_deleted=0);
 INSERT INTO edu_training_plan_item
 (plan_id, item_type, item_title, description, course_id, project_id, base_id, species_id,
  is_required, completion_weight, sort_order, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
 SELECT @training_plan_id, 'base', '石柱黄连科研 Agent 演示基地', '实践场地', NULL, NULL, @base_id, NULL,
- 1, 25.00, 3, 1, 0, NOW(), NOW(), @trainer_id, @trainer_id, 0, 'BDIS_DEFENSE_DEMO:S09'
+ 1, 25.00, 3, 1, 0, NOW(), NOW(), @admin_id, @admin_id, 0, 'BDIS_DEFENSE_DEMO:S09'
 WHERE NOT EXISTS (SELECT 1 FROM edu_training_plan_item WHERE plan_id=@training_plan_id AND item_type='base' AND base_id=@base_id AND is_deleted=0);
 INSERT INTO edu_training_plan_item
 (plan_id, item_type, item_title, description, course_id, project_id, base_id, species_id,
  is_required, completion_weight, sort_order, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
 SELECT @training_plan_id, 'species', '黄连', '核心观测药材', NULL, NULL, NULL, @species_id,
- 1, 25.00, 4, 1, 0, NOW(), NOW(), @trainer_id, @trainer_id, 0, 'BDIS_DEFENSE_DEMO:S09'
+ 1, 25.00, 4, 1, 0, NOW(), NOW(), @admin_id, @admin_id, 0, 'BDIS_DEFENSE_DEMO:S09'
 WHERE NOT EXISTS (SELECT 1 FROM edu_training_plan_item WHERE plan_id=@training_plan_id AND item_type='species' AND species_id=@species_id AND is_deleted=0);
 
 INSERT INTO edu_training_record
@@ -558,7 +800,8 @@ INSERT INTO edu_training_record
 VALUES
 ('DEMO-HL-ATT-STUDENT', @student_id, @course_id, @training_plan_id, 100.00, 'completed', 92.00, 'present', '2026-06-20 08:05:00', '2026-06-20 08:05:00', '2026-06-21 16:30:00', '已完成采集指标、影像规范和档案核验。', NOW(), NOW(), 'BDIS_DEFENSE_DEMO:S10'),
 ('DEMO-HL-ATT-RESEARCHER', @researcher_id, @course_id, @training_plan_id, 100.00, 'completed', 88.00, 'present', '2026-06-20 08:02:00', '2026-06-20 08:02:00', '2026-06-21 16:20:00', '已完成科研证据采集与复核练习。', NOW(), NOW(), 'BDIS_DEFENSE_DEMO:S10'),
-('DEMO-HL-ATT-TEACHER', @teacher_id, @course_id, @training_plan_id, 65.00, 'learning', NULL, 'present', '2026-06-20 08:00:00', '2026-06-20 08:00:00', NULL, '已完成课程与地图部分，继续学习数字档案环节。', NOW(), NOW(), 'BDIS_DEFENSE_DEMO:S10')
+('DEMO-HL-ATT-TEACHER', @teacher_id, @course_id, @training_plan_id, 65.00, 'learning', NULL, 'present', '2026-06-20 08:00:00', '2026-06-20 08:00:00', NULL, '已完成课程与地图部分，继续学习数字档案环节。', NOW(), NOW(), 'BDIS_DEFENSE_DEMO:S10'),
+('DEMO-HL-ATT-STUDENT-02', @student_id, @course_02_id, @training_plan_02_id, 100.00, 'completed', 94.00, 'present', '2026-05-08 08:05:00', '2026-05-08 08:05:00', '2026-05-09 16:40:00', '已完成采集规范复训和课后核验。', NOW(), NOW(), 'BDIS_DEFENSE_DEMO; completed training attendance; demo_seed')
 ON DUPLICATE KEY UPDATE
  user_id=VALUES(user_id), course_id=VALUES(course_id), plan_id=VALUES(plan_id),
  progress=VALUES(progress), training_status=VALUES(training_status), score=VALUES(score),
@@ -609,7 +852,13 @@ INSERT INTO eval_task
 VALUES
 ('DEMO-HL-EVAL-01', '石柱黄连数字化研究质量评价', 'comprehensive',
  'herb_species', @species_id, @teacher_id, '2026-07-10 08:00:00', '2026-07-12 18:00:00',
- 'confirmed', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S13; demo_seed')
+ 'confirmed', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S13; demo_seed'),
+('DEMO-HL-EVAL-02', '黄连规范化采集质量评价', 'process',
+ 'herb_distribution', @point_01, @teacher_id, '2026-06-24 08:00:00', '2026-06-25 18:00:00',
+ 'confirmed', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation; demo_seed'),
+('DEMO-HL-EVAL-03', '黄连数字档案完整性评价', 'quality',
+ 'research_project', @project_id, @teacher_id, '2026-06-28 08:00:00', '2026-06-29 18:00:00',
+ 'confirmed', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation; demo_seed')
 ON DUPLICATE KEY UPDATE
  task_name=VALUES(task_name), task_type=VALUES(task_type), target_type=VALUES(target_type),
  target_id=VALUES(target_id), owner_id=VALUES(owner_id), started_at=VALUES(started_at),
@@ -617,6 +866,8 @@ ON DUPLICATE KEY UPDATE
  updated_at=NOW(), updated_by=@teacher_id, remark=VALUES(remark);
 
 SET @eval_task_id := (SELECT id FROM eval_task WHERE task_no='DEMO-HL-EVAL-01' AND is_deleted=0 LIMIT 1);
+SET @eval_task_collection_id := (SELECT id FROM eval_task WHERE task_no='DEMO-HL-EVAL-02' AND is_deleted=0 LIMIT 1);
+SET @eval_task_archive_id := (SELECT id FROM eval_task WHERE task_no='DEMO-HL-EVAL-03' AND is_deleted=0 LIMIT 1);
 
 INSERT INTO eval_score_record
 (task_id, indicator_id, evaluator_id, score, score_comment, scored_at,
@@ -625,7 +876,15 @@ VALUES
 (@eval_task_id, @indicator_01, @teacher_id, 94.00, '三阶段指标与时序基本完整，第三阶段缺口已被明确标记。', '2026-07-12 09:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14'),
 (@eval_task_id, @indicator_02, @teacher_id, 90.00, '采集、提交与审核时序清晰，演示标识完整。', '2026-07-12 09:05:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14'),
 (@eval_task_id, @indicator_03, @teacher_id, 88.00, '影像类型可追溯，第三阶段低置信度与缺图风险已显式保留。', '2026-07-12 09:10:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14'),
-(@eval_task_id, @indicator_04, @teacher_id, 92.00, '审核留痕、任务级档案和公开页设计完整。', '2026-07-12 09:15:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14')
+(@eval_task_id, @indicator_04, @teacher_id, 92.00, '审核留痕、任务级档案和公开页设计完整。', '2026-07-12 09:15:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14'),
+(@eval_task_collection_id, @indicator_01, @teacher_id, 93.00, '采集点位、时间和环境指标完整。', '2026-06-25 09:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_collection_id, @indicator_02, @teacher_id, 95.00, '采集、提交和审核流程符合规范。', '2026-06-25 09:05:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_collection_id, @indicator_03, @teacher_id, 91.00, '现场影像类型和采集位置可追溯。', '2026-06-25 09:10:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_collection_id, @indicator_04, @teacher_id, 90.00, '采集链路与审核记录完整。', '2026-06-25 09:15:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_archive_id, @indicator_01, @teacher_id, 96.00, '任务级档案要素齐全。', '2026-06-29 09:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_archive_id, @indicator_02, @teacher_id, 92.00, '过程留痕和审核节点清晰。', '2026-06-29 09:05:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_archive_id, @indicator_03, @teacher_id, 94.00, '影像、识别与证据链关联完整。', '2026-06-29 09:10:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_archive_id, @indicator_04, @teacher_id, 97.00, '二维码公开页和档案核验结果可复查。', '2026-06-29 09:15:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation')
 ON DUPLICATE KEY UPDATE
  score=VALUES(score), score_comment=VALUES(score_comment), scored_at=VALUES(scored_at),
  status=1, is_deleted=0, updated_at=NOW(), updated_by=@teacher_id, remark=VALUES(remark);
@@ -635,9 +894,13 @@ INSERT INTO eval_result
  status, is_deleted, created_at, updated_at, created_by, updated_by, version, remark)
 VALUES
 (@eval_task_id, 91.10, 'excellent', '数据完整性 94、采集规范性 90、图像与识别证据质量 88、档案可追溯性 92；加权总分 91.10，等级优秀。',
- @teacher_id, '2026-07-12 10:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14; demo_seed')
+ @teacher_id, '2026-07-12 10:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:S14; demo_seed'),
+(@eval_task_collection_id, 92.40, 'excellent', '黄连采集点位、环境指标、影像证据和审核链完整，评价等级优秀。',
+ @teacher_id, '2026-06-25 10:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation'),
+(@eval_task_archive_id, 94.70, 'excellent', '黄连数字档案、二维码公开页、证据链和审核记录完整，评价等级优秀。',
+ @teacher_id, '2026-06-29 10:00:00', 1, 0, NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO; confirmed evaluation')
 ON DUPLICATE KEY UPDATE
- total_score=91.10, result_level='excellent', result_desc=VALUES(result_desc),
+ total_score=VALUES(total_score), result_level='excellent', result_desc=VALUES(result_desc),
  confirmed_by=@teacher_id, confirmed_at=VALUES(confirmed_at), status=1, is_deleted=0,
  updated_at=NOW(), updated_by=@teacher_id, remark=VALUES(remark);
 
@@ -655,7 +918,13 @@ VALUES
  1, 0, NOW(), NOW(), @student_id, @student_id, 0, 'BDIS_DEFENSE_DEMO:S15; demo_seed'),
 ('DEMO-HL-DECL-APPROVED', '石柱黄连全生命周期数字化研究成果申报', 'research_project', @student_id, 'approved',
  '2026-07-10 09:00:00', @reviewer_id, '2026-07-11 10:00:00', '申报材料完整，能够对应课程、课题、培训和评价结果，同意通过并生成档案袋。',
- 1, 0, NOW(), NOW(), @student_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:S16; demo_seed')
+ 1, 0, NOW(), NOW(), @student_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:S16; demo_seed'),
+('DEMO-HL-DECL-APPROVED-02', '黄连规范化采集实践成果申报', 'teaching', @student_id, 'approved',
+ '2026-06-26 09:00:00', @reviewer_id, '2026-06-27 10:00:00', '课程实践、采集记录和评价结果对应清晰，同意通过。',
+ 1, 0, NOW(), NOW(), @student_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO; approved declaration; demo_seed'),
+('DEMO-HL-DECL-APPROVED-03', '黄连数字档案应用成果申报', 'research_project', @researcher_id, 'approved',
+ '2026-06-30 09:00:00', @reviewer_id, '2026-07-01 10:00:00', '数字档案、公开溯源和证据链材料完备，同意通过。',
+ 1, 0, NOW(), NOW(), @researcher_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO; approved declaration; demo_seed')
 ON DUPLICATE KEY UPDATE
  application_title=VALUES(application_title), application_type=VALUES(application_type),
  applicant_id=VALUES(applicant_id), review_status=VALUES(review_status),
@@ -665,6 +934,8 @@ ON DUPLICATE KEY UPDATE
 
 SET @declaration_pending_id := (SELECT id FROM eval_application WHERE application_no='DEMO-HL-DECL-PENDING' AND is_deleted=0 LIMIT 1);
 SET @declaration_approved_id := (SELECT id FROM eval_application WHERE application_no='DEMO-HL-DECL-APPROVED' AND is_deleted=0 LIMIT 1);
+SET @declaration_approved_02_id := (SELECT id FROM eval_application WHERE application_no='DEMO-HL-DECL-APPROVED-02' AND is_deleted=0 LIMIT 1);
+SET @declaration_approved_03_id := (SELECT id FROM eval_application WHERE application_no='DEMO-HL-DECL-APPROVED-03' AND is_deleted=0 LIMIT 1);
 
 INSERT INTO eval_review_record
 (application_id, reviewer_id, review_action, before_status, review_status,
@@ -690,6 +961,24 @@ SELECT @declaration_approved_id, @reviewer_id, 'approve', 'submitted', 'approved
  '2026-07-11 10:00:00', '2026-07-11 10:00:00', @reviewer_id, 'BDIS_DEFENSE_DEMO:S16:approve'
 WHERE NOT EXISTS (
  SELECT 1 FROM eval_review_record WHERE application_id=@declaration_approved_id AND review_action='approve' AND remark='BDIS_DEFENSE_DEMO:S16:approve'
+);
+INSERT INTO eval_review_record
+(application_id, reviewer_id, review_action, before_status, review_status,
+ review_comment, reviewed_at, created_at, created_by, remark)
+SELECT @declaration_approved_02_id, @reviewer_id, 'approve', 'submitted', 'approved',
+ '课程实践、采集记录和评价结果对应清晰，同意通过。',
+ '2026-06-27 10:00:00', '2026-06-27 10:00:00', @reviewer_id, 'BDIS_DEFENSE_DEMO:DECL02:approve'
+WHERE NOT EXISTS (
+ SELECT 1 FROM eval_review_record WHERE application_id=@declaration_approved_02_id AND review_action='approve' AND remark='BDIS_DEFENSE_DEMO:DECL02:approve'
+);
+INSERT INTO eval_review_record
+(application_id, reviewer_id, review_action, before_status, review_status,
+ review_comment, reviewed_at, created_at, created_by, remark)
+SELECT @declaration_approved_03_id, @reviewer_id, 'approve', 'submitted', 'approved',
+ '数字档案、公开溯源和证据链材料完备，同意通过。',
+ '2026-07-01 10:00:00', '2026-07-01 10:00:00', @reviewer_id, 'BDIS_DEFENSE_DEMO:DECL03:approve'
+WHERE NOT EXISTS (
+ SELECT 1 FROM eval_review_record WHERE application_id=@declaration_approved_03_id AND review_action='approve' AND remark='BDIS_DEFENSE_DEMO:DECL03:approve'
 );
 
 -- 素材未就绪前使用现有黄连影像保证申报材料数量和文件访问均有效；附件脚本会替换为最终文件。
@@ -814,20 +1103,30 @@ VALUES
 ('DEMO-HL-PERF-APPROVED', @student_id, '石柱黄连全生命周期数字化研究成果', 'RESEARCH', '校级', '2026-07-11 10:00:00',
  @performance_standard_id, 'DEMO-HL-PERF-STD', 1, '科研数字化成果认定标准', @standard_snapshot,
  'eval_application', @declaration_approved_id, '石柱黄连全生命周期数字化研究成果申报',
- 'approved', '2026-07-12 09:00:00', 1, 0, NOW(), NOW(), @student_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:S19; demo_seed')
+ 'approved', '2026-07-12 09:00:00', 1, 0, NOW(), NOW(), @student_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO:S19; demo_seed'),
+('DEMO-HL-PERF-APPROVED-02', @student_id, '黄连规范化采集教学实践成果', 'TEACHING', '院级', '2026-06-27 10:00:00',
+ @performance_standard_id, 'DEMO-HL-PERF-STD', 1, '科研数字化成果认定标准', @standard_snapshot,
+ 'eval_application', @declaration_approved_02_id, '黄连规范化采集实践成果申报',
+ 'approved', '2026-06-28 09:00:00', 1, 0, NOW(), NOW(), @student_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO; approved performance; demo_seed'),
+('DEMO-HL-PERF-APPROVED-03', @researcher_id, '黄连数字档案与溯源应用成果', 'RESEARCH', '校级', '2026-07-01 10:00:00',
+ @performance_standard_id, 'DEMO-HL-PERF-STD', 1, '科研数字化成果认定标准', @standard_snapshot,
+ 'eval_application', @declaration_approved_03_id, '黄连数字档案应用成果申报',
+ 'approved', '2026-07-02 09:00:00', 1, 0, NOW(), NOW(), @researcher_id, @reviewer_id, 0, 'BDIS_DEFENSE_DEMO; approved performance; demo_seed')
 ON DUPLICATE KEY UPDATE
  user_id=VALUES(user_id), performance_title=VALUES(performance_title),
  performance_type=VALUES(performance_type), performance_level=VALUES(performance_level),
  occurred_at=VALUES(occurred_at), standard_id=VALUES(standard_id),
  standard_no_snapshot=VALUES(standard_no_snapshot), standard_version_snapshot=1,
  standard_name_snapshot=VALUES(standard_name_snapshot), standard_rule_snapshot=VALUES(standard_rule_snapshot),
- source_type='eval_application', source_id=@declaration_approved_id,
+ source_type=VALUES(source_type), source_id=VALUES(source_id),
  source_name_snapshot=VALUES(source_name_snapshot), identify_status=VALUES(identify_status),
  submitted_at=VALUES(submitted_at), status=1, is_deleted=0, updated_at=NOW(),
  updated_by=VALUES(updated_by), remark=VALUES(remark);
 
 SET @performance_pending_id := (SELECT id FROM perf_record WHERE performance_no='DEMO-HL-PERF-PENDING' AND is_deleted=0 LIMIT 1);
 SET @performance_approved_id := (SELECT id FROM perf_record WHERE performance_no='DEMO-HL-PERF-APPROVED' AND is_deleted=0 LIMIT 1);
+SET @performance_approved_02_id := (SELECT id FROM perf_record WHERE performance_no='DEMO-HL-PERF-APPROVED-02' AND is_deleted=0 LIMIT 1);
+SET @performance_approved_03_id := (SELECT id FROM perf_record WHERE performance_no='DEMO-HL-PERF-APPROVED-03' AND is_deleted=0 LIMIT 1);
 
 INSERT IGNORE INTO perf_participant
 (performance_id, user_id, participant_role, sort_order, is_primary,
@@ -858,6 +1157,18 @@ INSERT INTO perf_identification
 SELECT @performance_approved_id, @reviewer_id, 'approve', 'approved', '来源申报、参与人、佐证材料与标准快照完整，同意认定。',
  '2026-07-13 10:00:00', '2026-07-13 10:00:00', @reviewer_id, 'BDIS_DEFENSE_DEMO:S19:approve'
 WHERE NOT EXISTS (SELECT 1 FROM perf_identification WHERE performance_id=@performance_approved_id AND identify_action='approve' AND remark='BDIS_DEFENSE_DEMO:S19:approve');
+INSERT INTO perf_identification
+(performance_id, identifier_id, identify_action, identify_result, identify_comment,
+ identified_at, created_at, created_by, remark)
+SELECT @performance_approved_02_id, @reviewer_id, 'approve', 'approved', '课程实践来源与材料快照完整，同意认定。',
+ '2026-06-28 10:00:00', '2026-06-28 10:00:00', @reviewer_id, 'BDIS_DEFENSE_DEMO:PERF02:approve'
+WHERE NOT EXISTS (SELECT 1 FROM perf_identification WHERE performance_id=@performance_approved_02_id AND identify_action='approve' AND remark='BDIS_DEFENSE_DEMO:PERF02:approve');
+INSERT INTO perf_identification
+(performance_id, identifier_id, identify_action, identify_result, identify_comment,
+ identified_at, created_at, created_by, remark)
+SELECT @performance_approved_03_id, @reviewer_id, 'approve', 'approved', '数字档案应用成果来源完整，同意认定。',
+ '2026-07-02 10:00:00', '2026-07-02 10:00:00', @reviewer_id, 'BDIS_DEFENSE_DEMO:PERF03:approve'
+WHERE NOT EXISTS (SELECT 1 FROM perf_identification WHERE performance_id=@performance_approved_03_id AND identify_action='approve' AND remark='BDIS_DEFENSE_DEMO:PERF03:approve');
 
 -- 临时使用两张黄连证据图满足标准的“至少 2 份材料”业务不变式；素材脚本会替换为成果说明和档案摘要。
 INSERT IGNORE INTO sys_file_business
