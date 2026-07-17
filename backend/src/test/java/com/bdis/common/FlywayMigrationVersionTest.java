@@ -18,15 +18,21 @@ import org.junit.jupiter.api.Test;
 
 class FlywayMigrationVersionTest {
 
-    private static final Pattern MIGRATION_FILE = Pattern.compile("V(\\d{8})_(\\d{3})__.+\\.sql");
+    private static final Pattern MIGRATION_FILE =
+            Pattern.compile("V(\\d{8})_(\\d{3})__.+\\.(?:sql|java)");
     private static final Pattern SHA_256 = Pattern.compile("[a-f0-9]{64}");
     private static final Path MIGRATION_DIRECTORY = Path.of("src/main/resources/db/migration");
+    private static final Path JAVA_MIGRATION_DIRECTORY = Path.of("src/main/java/db/migration");
     private static final Path DEV_BASELINE_MANIFEST =
             Path.of("src/test/resources/flyway-dev-migration-baseline.txt");
 
     @Test
     void migrationVersionsAreUniqueAndNewMigrationsFollowDevBaseline() throws IOException {
-        List<MigrationFile> migrations = readMigrationFiles(MIGRATION_DIRECTORY);
+        List<MigrationFile> migrations =
+                java.util.stream.Stream.concat(
+                                readMigrationFiles(MIGRATION_DIRECTORY).stream(),
+                                readMigrationFiles(JAVA_MIGRATION_DIRECTORY).stream())
+                        .toList();
         List<BaselineMigration> baseline = readMigrationManifest();
         Set<String> baselineNames =
                 baseline.stream()
@@ -66,7 +72,7 @@ class FlywayMigrationVersionTest {
             return files.filter(Files::isRegularFile)
                     .map(Path::getFileName)
                     .map(Path::toString)
-                    .filter(filename -> filename.endsWith(".sql"))
+                    .filter(filename -> filename.endsWith(".sql") || filename.endsWith(".java"))
                     .map(this::parseMigrationFile)
                     .toList();
         }

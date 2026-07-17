@@ -17,4 +17,14 @@ class HerbCollectionTaskMapperContractTest {
         assertThat(xml).contains("<result column=\"status\" property=\"status\"/>");
         assertThat(xml).containsPattern("(?s)<sql id=\"BaseColumns\">.*public_visible,\\s*status,");
     }
+
+    @Test
+    void taskUpdatePersistsDigitalLifeArchivePublicationState() throws Exception {
+        Path mapper = Path.of("src/main/resources/mapper/collection/HerbCollectionTaskMapper.xml");
+        String xml = Files.readString(mapper, StandardCharsets.UTF_8);
+
+        assertThat(xml)
+                .containsPattern(
+                        "(?s)<update id=\"updateById\".*trace_code = #\\{traceCode}.*public_visible = #\\{publicVisible}.*</update>");
+    }
 }

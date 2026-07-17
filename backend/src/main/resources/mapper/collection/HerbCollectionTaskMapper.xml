@@ -272,6 +272,8 @@
             collector_name = #{collectorName},
             task_status = #{taskStatus},
             description = #{description},
+            trace_code = #{traceCode},
+            public_visible = #{publicVisible},
             remark = #{remark},
             updated_at = #{updatedAt},
             updated_by = #{updatedBy}
