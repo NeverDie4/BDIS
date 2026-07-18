@@ -175,6 +175,12 @@ export BDIS_DEMO_TOKEN='本地访问令牌'
 pnpm demo:soap
 ```
 
+当后端运行在 Docker 中时，宿主机访问 SOAP WSDL 可能因容器网桥地址不属于回环地址而被安全策略拒绝。此时使用 REST-only 模式，宿主机只访问 BDIS REST 接口，由后端容器内部调用 SOAP mock：
+
+```bash
+pnpm demo:soap -- --rest-only
+```
+
 也可设置 `BDIS_DEMO_USERNAME`、`BDIS_DEMO_PASSWORD` 由脚本登录。脚本会校验 API 与 SOAP 端点均为本机 HTTP 地址，并要求显式 `BDIS_SOAP_MODE=mock`；仅允许对名称以 `_dev` 结尾的本地数据库执行 [scripts/dev-soap-seed.sql](../scripts/dev-soap-seed.sql)。默认种子步骤需要本机可用的 MySQL/MariaDB 客户端；若已手工执行演示数据脚本，可使用 `pnpm demo:soap -- --skip-seed` 跳过数据准备。它不会启动服务、创建账号、连接真实校内地址或共享数据库。
 
 冻结前的验收标准：
