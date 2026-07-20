@@ -326,6 +326,16 @@ function verifyCore(config) {
     )
     AND (SELECT COUNT(*) FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:M%' AND is_deleted=0)=7
     AND (SELECT COUNT(*) FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O%' AND is_deleted=0)=4
+    AND NOT EXISTS (
+      SELECT 1 FROM herb_distribution
+      WHERE remark LIKE 'BDIS_DEFENSE_DEMO:%' AND is_deleted=0
+        AND (
+          COALESCE(province, '')<>'重庆市' OR COALESCE(city, '')<>'重庆市'
+          OR longitude IS NULL OR latitude IS NULL
+          OR longitude NOT BETWEEN 105.8 AND 110.2
+          OR latitude NOT BETWEEN 28.0 AND 32.3
+        )
+    )
     AND EXISTS (
       SELECT 1
       FROM herb_species species

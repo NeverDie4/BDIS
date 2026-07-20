@@ -10,9 +10,10 @@ import { projectPath } from "./utils.mjs";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const EXPECTED_EXTERNAL_NO = "CAMPUS-DEMO-GROWTH-001";
-const usage = `用法：pnpm demo:soap [--skip-seed] [--base-url <本地 API 地址>]
+const usage = `用法：pnpm demo:soap [--skip-seed] [--rest-only] [--base-url <本地 API 地址>]
 
-前置条件：本地 MySQL、Redis 和 BDIS 后端已启动；默认种子步骤需要 mysql/MariaDB 客户端；提供 BDIS_DEMO_TOKEN，或同时提供 BDIS_DEMO_USERNAME 与 BDIS_DEMO_PASSWORD。`;
+前置条件：本地 MySQL、Redis 和 BDIS 后端已启动；默认种子步骤需要 mysql/MariaDB 客户端；提供 BDIS_DEMO_TOKEN，或同时提供 BDIS_DEMO_USERNAME 与 BDIS_DEMO_PASSWORD。
+--rest-only     仅从本机访问 BDIS REST 接口，由 Docker 后端在容器内调用 SOAP mock，适用于 Docker 演示。`;
 
 function parseDotEnvValue(value) {
   const trimmed = value.trim();
@@ -193,10 +194,17 @@ async function main() {
     );
   }
 
-  const wsdl = wsdlUrl(apiUrl);
-  step("校验本地 mock SOAP 服务");
-  await verifyMockService(wsdl);
-  process.stdout.write(`WSDL：${wsdl}\n`);
+  if (args["rest-only"]) {
+    step("使用本机 REST 接口调用容器内 SOAP mock");
+    process.stdout.write(
+      "跳过宿主机 WSDL 直连校验；SOAP 请求将由 Docker 后端通过 localhost:8080 在容器内完成。\n",
+    );
+  } else {
+    const wsdl = wsdlUrl(apiUrl);
+    step("校验本地 mock SOAP 服务");
+    await verifyMockService(wsdl);
+    process.stdout.write(`WSDL：${wsdl}\n`);
+  }
 
   if (!args["skip-seed"]) {
     step("写入本地演示前置数据（幂等）");

@@ -376,9 +376,9 @@ INSERT INTO herb_distribution
  altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
  last_collected_at, source_type, data_source, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
-SELECT species.id, NULL, '岷县党参示范采集点（演示）', 104.0360000, 34.4380000,
- '甘肃省', '定西市', '岷县', '岷县党参示范采集点（演示）',
- 2310.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+SELECT species.id, NULL, '城口党参示范采集点（演示）', 108.6600000, 32.0300000,
+ '重庆市', '重庆市', '城口县', '城口县北屏乡党参示范采集点（演示）',
+ 1350.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
  '2026-07-03 10:00:00', 'pc', 'demo_seed', 1, 0,
  NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O01; DEMO_OTHER_DANGSHEN; not field-measured'
 FROM herb_species species
@@ -390,9 +390,9 @@ INSERT INTO herb_distribution
  altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
  last_collected_at, source_type, data_source, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
-SELECT species.id, NULL, '中宁枸杞标准化采集点（演示）', 105.6740000, 37.4920000,
- '宁夏回族自治区', '中卫市', '中宁县', '中宁枸杞标准化采集点（演示）',
- 1240.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+SELECT species.id, NULL, '江津枸杞标准化采集点（演示）', 106.4100000, 28.6200000,
+ '重庆市', '重庆市', '江津区', '江津区四面山镇枸杞标准化采集点（演示）',
+ 780.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
  '2026-07-04 10:00:00', 'pc', 'demo_seed', 1, 0,
  NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O02; DEMO_OTHER_GOUQI; not field-measured'
 FROM herb_species species
@@ -404,9 +404,9 @@ INSERT INTO herb_distribution
  altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
  last_collected_at, source_type, data_source, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
-SELECT species.id, NULL, '陇西黄芪生态采集点（演示）', 104.6320000, 35.0040000,
- '甘肃省', '定西市', '陇西县', '陇西黄芪生态采集点（演示）',
- 1980.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+SELECT species.id, NULL, '巫溪黄芪生态采集点（演示）', 109.1500000, 31.4900000,
+ '重庆市', '重庆市', '巫溪县', '巫溪县红池坝镇黄芪生态采集点（演示）',
+ 1650.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
  '2026-07-05 10:00:00', 'pc', 'demo_seed', 1, 0,
  NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O03; DEMO_OTHER_HUANGQI; not field-measured'
 FROM herb_species species
@@ -418,14 +418,59 @@ INSERT INTO herb_distribution
  altitude, distribution_type, distribution_level, distribution_desc, cover_image_url,
  last_collected_at, source_type, data_source, status, is_deleted,
  created_at, updated_at, created_by, updated_by, version, remark)
-SELECT species.id, NULL, '平邑金银花种植采集点（演示）', 117.6310000, 35.5030000,
- '山东省', '临沂市', '平邑县', '平邑金银花种植采集点（演示）',
- 310.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
+SELECT species.id, NULL, '秀山金银花种植采集点（演示）', 109.0200000, 28.3800000,
+ '重庆市', '重庆市', '秀山土家族苗族自治县', '秀山县清溪场街道金银花种植采集点（演示）',
+ 420.00, 'cultivated', 'secondary', '地图背景采集点；仅作答辩演示，不进入黄连主流程。', species.cover_image_url,
  '2026-07-06 10:00:00', 'pc', 'demo_seed', 1, 0,
  NOW(), NOW(), @teacher_id, @teacher_id, 0, 'BDIS_DEFENSE_DEMO:O04; DEMO_OTHER_JINYINHUA; not field-measured'
 FROM herb_species species
 WHERE species.herb_no='HERB_JINYINHUA' AND species.is_deleted=0
   AND NOT EXISTS (SELECT 1 FROM herb_distribution WHERE remark LIKE 'BDIS_DEFENSE_DEMO:O04%' AND is_deleted=0);
+
+-- 重复执行演示数据脚本时，同步迁移已经存在的其他药材点位。
+UPDATE herb_distribution point
+JOIN herb_species species ON species.herb_no='HERB_DANGSHEN' AND species.is_deleted=0
+SET point.species_id=species.id, point.base_id=NULL,
+    point.location_name='城口党参示范采集点（演示）',
+    point.longitude=108.6600000, point.latitude=32.0300000,
+    point.province='重庆市', point.city='重庆市', point.district='城口县',
+    point.address='城口县北屏乡党参示范采集点（演示）', point.altitude=1350.00,
+    point.cover_image_url=species.cover_image_url, point.status=1,
+    point.updated_at=NOW(), point.updated_by=@teacher_id
+WHERE point.remark LIKE 'BDIS_DEFENSE_DEMO:O01%' AND point.is_deleted=0;
+
+UPDATE herb_distribution point
+JOIN herb_species species ON species.herb_no='HERB_GOUQI' AND species.is_deleted=0
+SET point.species_id=species.id, point.base_id=NULL,
+    point.location_name='江津枸杞标准化采集点（演示）',
+    point.longitude=106.4100000, point.latitude=28.6200000,
+    point.province='重庆市', point.city='重庆市', point.district='江津区',
+    point.address='江津区四面山镇枸杞标准化采集点（演示）', point.altitude=780.00,
+    point.cover_image_url=species.cover_image_url, point.status=1,
+    point.updated_at=NOW(), point.updated_by=@teacher_id
+WHERE point.remark LIKE 'BDIS_DEFENSE_DEMO:O02%' AND point.is_deleted=0;
+
+UPDATE herb_distribution point
+JOIN herb_species species ON species.herb_no='HERB_HUANGQI' AND species.is_deleted=0
+SET point.species_id=species.id, point.base_id=NULL,
+    point.location_name='巫溪黄芪生态采集点（演示）',
+    point.longitude=109.1500000, point.latitude=31.4900000,
+    point.province='重庆市', point.city='重庆市', point.district='巫溪县',
+    point.address='巫溪县红池坝镇黄芪生态采集点（演示）', point.altitude=1650.00,
+    point.cover_image_url=species.cover_image_url, point.status=1,
+    point.updated_at=NOW(), point.updated_by=@teacher_id
+WHERE point.remark LIKE 'BDIS_DEFENSE_DEMO:O03%' AND point.is_deleted=0;
+
+UPDATE herb_distribution point
+JOIN herb_species species ON species.herb_no='HERB_JINYINHUA' AND species.is_deleted=0
+SET point.species_id=species.id, point.base_id=NULL,
+    point.location_name='秀山金银花种植采集点（演示）',
+    point.longitude=109.0200000, point.latitude=28.3800000,
+    point.province='重庆市', point.city='重庆市', point.district='秀山土家族苗族自治县',
+    point.address='秀山县清溪场街道金银花种植采集点（演示）', point.altitude=420.00,
+    point.cover_image_url=species.cover_image_url, point.status=1,
+    point.updated_at=NOW(), point.updated_by=@teacher_id
+WHERE point.remark LIKE 'BDIS_DEFENSE_DEMO:O04%' AND point.is_deleted=0;
 
 -- 原任务三阶段全部归属主点，适生分析取最新的旺盛生长期记录。
 UPDATE herb_growth_record
