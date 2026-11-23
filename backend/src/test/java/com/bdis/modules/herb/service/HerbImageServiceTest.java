@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.bdis.common.core.PageResult;
+import com.bdis.common.enums.ResultCodeEnum;
 import com.bdis.common.exception.BusinessException;
 import com.bdis.common.security.CurrentUser;
 import com.bdis.file.service.FileBusinessService;
@@ -134,6 +137,18 @@ class HerbImageServiceTest {
     }
 
     @Test
+    void uploadRejectsOverlongFilenameBeforeStorageOrDatabaseWrite() {
+        MockMultipartFile file =
+                new MockMultipartFile("file", "a".repeat(296) + ".png", "image/png", new byte[] {1});
+
+        assertThatThrownBy(() -> herbImageService.upload(file, new HerbImageUploadRequest()))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        error -> assertThat(error.getResultCode()).isEqualTo(ResultCodeEnum.VALIDATION_ERROR));
+        verifyNoInteractions(fileResourceService, herbImageMapper, fileBusinessService);
+    }
+
+    @Test
     void getByIdRejectsMissingImage() {
         when(herbImageMapper.selectDetailById(1L)).thenReturn(null);
 
@@ -168,6 +183,35 @@ class HerbImageServiceTest {
         verify(herbImageMapper).logicalDeleteById(captor.capture());
         assertThat(captor.getValue().getId()).isEqualTo(1L);
         assertThat(captor.getValue().getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void updateRejectsUnknownProcessStatusWithoutWritingImage() {
+        HerbImageEntity existing = imageEntity();
+        existing.setProcessStatus("uploaded");
+        HerbImageUpdateRequest request = new HerbImageUpdateRequest();
+        request.setProcessStatus("dropped_by_client");
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(existing);
+
+        assertThatThrownBy(() -> herbImageService.update(1L, request))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        error -> assertThat(error.getResultCode()).isEqualTo(ResultCodeEnum.VALIDATION_ERROR));
+        assertThat(existing.getProcessStatus()).isEqualTo("uploaded");
+        verify(herbImageMapper, never()).updateImage(any());
+    }
+
+    @Test
+    void updatePreservesOmittedProcessStatus() {
+        HerbImageEntity existing = imageEntity();
+        existing.setProcessStatus("feature_extracted");
+        when(herbImageMapper.selectActiveById(1L)).thenReturn(existing);
+
+        HerbImageVO result = herbImageService.update(1L, new HerbImageUpdateRequest());
+
+        assertThat(result.getProcessStatus()).isEqualTo("feature_extracted");
+        assertThat(existing.getProcessStatus()).isEqualTo("feature_extracted");
+        verify(herbImageMapper).updateImage(existing);
     }
 
     @Test
