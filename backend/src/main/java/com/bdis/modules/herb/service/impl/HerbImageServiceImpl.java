@@ -22,9 +22,11 @@ import com.bdis.modules.herb.mapper.HerbSpeciesMapper;
 import com.bdis.modules.herb.service.HerbImageService;
 import com.bdis.modules.herb.support.HerbImageAccessService;
 import com.bdis.modules.herb.vo.HerbImageVO;
+import com.bdis.modules.spectrum.constant.HerbProcessStatusConstants;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +37,18 @@ import org.springframework.web.multipart.MultipartFile;
 public class HerbImageServiceImpl implements HerbImageService {
 
     private static final String DEFAULT_UPLOAD_SOURCE = "mobile";
-    private static final String DEFAULT_PROCESS_STATUS = "uploaded";
+    private static final int MAX_FILENAME_LENGTH = 255;
+    private static final Set<String> VALID_PROCESS_STATUSES =
+            Set.of(
+                    "pending",
+                    "recognizing",
+                    "recognized",
+                    HerbProcessStatusConstants.UPLOADED,
+                    HerbProcessStatusConstants.FEATURE_EXTRACTED,
+                    HerbProcessStatusConstants.MATCHED,
+                    HerbProcessStatusConstants.IDENTIFIED,
+                    HerbProcessStatusConstants.REVIEWED,
+                    HerbProcessStatusConstants.FAILED);
     private static final DateTimeFormatter IMAGE_CODE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
@@ -64,6 +77,11 @@ public class HerbImageServiceImpl implements HerbImageService {
     @Override
     @Transactional
     public HerbImageVO upload(MultipartFile file, HerbImageUploadRequest request) {
+        String originalFilename = file == null ? null : file.getOriginalFilename();
+        if (originalFilename != null
+                && originalFilename.codePointCount(0, originalFilename.length()) > MAX_FILENAME_LENGTH) {
+            throw new BusinessException("图片文件名长度不能超过 255 个字符");
+        }
         HerbImageUploadRequest safeRequest =
                 request == null ? new HerbImageUploadRequest() : request;
         synchronizeGrowthReference(safeRequest);
@@ -95,10 +113,14 @@ public class HerbImageServiceImpl implements HerbImageService {
     public HerbImageVO update(Long id, HerbImageUpdateRequest request) {
         HerbImageEntity image = getActiveImage(id);
         requireOwner(image);
-        Long fileId = fileResourceService.resolveFileId(image.getImageUrl());
-        Long previousGrowthRecordId = image.getGrowthRecordId();
         HerbImageUpdateRequest safeRequest =
                 request == null ? new HerbImageUpdateRequest() : request;
+        String processStatus = safeRequest.getProcessStatus();
+        if (processStatus != null && !VALID_PROCESS_STATUSES.contains(processStatus)) {
+            throw new BusinessException("图片处理状态不合法");
+        }
+        Long fileId = fileResourceService.resolveFileId(image.getImageUrl());
+        Long previousGrowthRecordId = image.getGrowthRecordId();
         synchronizeGrowthReference(safeRequest);
         HerbEntity species = getActiveSpeciesIfPresent(safeRequest.getSpeciesId());
         LocalDateTime now = LocalDateTime.now();
@@ -116,7 +138,9 @@ public class HerbImageServiceImpl implements HerbImageService {
         image.setImageType(safeRequest.getImageType());
         image.setGrowthStage(safeRequest.getGrowthStage());
         image.setHealthStatus(safeRequest.getHealthStatus());
-        image.setProcessStatus(safeRequest.getProcessStatus());
+        if (processStatus != null) {
+            image.setProcessStatus(processStatus);
+        }
         image.setUpdatedAt(now);
         herbImageMapper.updateImage(image);
         syncGrowthFileRelation(fileId, previousGrowthRecordId, image.getGrowthRecordId());
@@ -229,7 +253,7 @@ public class HerbImageServiceImpl implements HerbImageService {
         image.setImageType(request.getImageType());
         image.setGrowthStage(request.getGrowthStage());
         image.setHealthStatus(request.getHealthStatus());
-        image.setProcessStatus(DEFAULT_PROCESS_STATUS);
+        image.setProcessStatus(HerbProcessStatusConstants.UPLOADED);
         image.setStatus(1);
         image.setCreatedAt(now);
         image.setUpdatedAt(now);

@@ -74,6 +74,7 @@ class HerbBatchImageServiceTest {
         request.setIdentificationResultId(null);
         request.setImageRole(null);
         request.setIsPrimary(1);
+        request.setSortOrder(null);
 
         HerbIdentificationPageVO latest = new HerbIdentificationPageVO();
         latest.setId(5L);
@@ -96,6 +97,7 @@ class HerbBatchImageServiceTest {
         assertThat(inserted.getImageRole()).isEqualTo("other");
         assertThat(inserted.getBindStatus()).isEqualTo(HerbBatchImageStatusConstants.BOUND);
         assertThat(inserted.getIdentificationResultId()).isEqualTo(5L);
+        assertThat(inserted.getSortOrder()).isZero();
         assertThat(inserted.getIsDeleted()).isZero();
         assertThat(result.getImageId()).isEqualTo(12L);
         verify(herbBatchMapper).updateStatisticsById(any(HerbBatchEntity.class));
@@ -176,6 +178,7 @@ class HerbBatchImageServiceTest {
         HerbBatchImageBindRequest second = bindRequest();
         second.setImageId(13L);
         second.setIsPrimary(1);
+        second.setSortOrder(null);
         request.setImages(List.of(first, second));
 
         when(herbBatchMapper.selectById(1L))
@@ -192,6 +195,9 @@ class HerbBatchImageServiceTest {
         verify(herbBatchImageMapper).batchInsert(captor.capture());
         assertThat(captor.getValue())
                 .extracting(HerbBatchImageEntity::getIsPrimary)
+                .containsExactly(1, 0);
+        assertThat(captor.getValue())
+                .extracting(HerbBatchImageEntity::getSortOrder)
                 .containsExactly(1, 0);
         assertThat(result.getSuccessCount()).isEqualTo(2);
     }
@@ -223,6 +229,27 @@ class HerbBatchImageServiceTest {
 
         verify(herbBatchImageMapper).clearPrimaryByBatchId(1L);
         verify(herbBatchImageMapper).updatePrimaryByBatchIdAndImageId(1L, 12L);
+    }
+
+    @Test
+    void updateImageRolePreservesOmittedSortOrderAndRemark() {
+        HerbBatchImageEntity binding = activeBinding();
+        binding.setSortOrder(7);
+        binding.setRemark("Existing remark");
+        HerbBatchImageUpdateRequest request = new HerbBatchImageUpdateRequest();
+        request.setImageRole("root");
+        when(herbBatchMapper.selectById(1L))
+                .thenReturn(activeBatch(HerbBatchStatusConstants.COLLECTING));
+        when(herbBatchImageMapper.selectByBatchIdAndImageId(1L, 12L)).thenReturn(binding);
+
+        herbBatchImageService.update(1L, 12L, request);
+
+        ArgumentCaptor<HerbBatchImageEntity> saved =
+                ArgumentCaptor.forClass(HerbBatchImageEntity.class);
+        verify(herbBatchImageMapper).updateById(saved.capture());
+        assertThat(saved.getValue().getImageRole()).isEqualTo("root");
+        assertThat(saved.getValue().getSortOrder()).isEqualTo(7);
+        assertThat(saved.getValue().getRemark()).isEqualTo("Existing remark");
     }
 
     @Test
