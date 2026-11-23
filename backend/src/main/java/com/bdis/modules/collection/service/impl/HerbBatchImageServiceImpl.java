@@ -214,8 +214,12 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
     }
     String imageRole = normalizeRole(request.getImageRole(), binding.getImageRole());
     binding.setImageRole(imageRole);
-    binding.setSortOrder(request.getSortOrder());
-    binding.setRemark(request.getRemark());
+    if (request.getSortOrder() != null) {
+      binding.setSortOrder(request.getSortOrder());
+    }
+    if (request.getRemark() != null) {
+      binding.setRemark(request.getRemark());
+    }
     binding.setUpdatedAt(LocalDateTime.now());
     herbBatchImageMapper.updateById(binding);
     return herbBatchImageMapper.selectDetailByBatchIdAndImageId(batch.getId(), imageId);
@@ -257,7 +261,7 @@ public class HerbBatchImageServiceImpl implements HerbBatchImageService {
     entity.setImageRole(normalizeRole(request.getImageRole(), HerbBatchImageRoleConstants.OTHER));
     entity.setIsPrimary(request.getIsPrimary() != null && request.getIsPrimary() == 1 ? 1 : 0);
     entity.setBindStatus(HerbBatchImageStatusConstants.BOUND);
-    entity.setSortOrder(request.getSortOrder());
+    entity.setSortOrder(request.getSortOrder() == null ? 0 : request.getSortOrder());
     entity.setRemark(request.getRemark());
     entity.setCreatedAt(now);
     entity.setUpdatedAt(now);
